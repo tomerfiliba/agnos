@@ -1,0 +1,9 @@
+.project
+.pydevproject
+*.pyc
+*.class
+*.jar
+*.so
+*.o
+*.dll
+*.exe
