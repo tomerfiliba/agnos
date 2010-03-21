@@ -1,0 +1,59 @@
+<!--    builtin types:-->
+<!--    * bool, int8, int16, int32, int64, float, datetime-->
+<!--    * bytes, string-->
+<!--    * list<v>, map<k, v>-->
+<!--    -->
+<!--    project (name)-->
+<!--        include (name)-->
+<!--        const (name, type, value)-->
+<!--	    enum (name)-->
+<!--	        attr (name, value)-->
+<!--	    typedef (name, oldname)-->
+<!--	    record (name)-->
+<!--	        attr (name, type)-->
+<!--	    exception (name, extends)-->
+<!--	        attr (name, type)-->
+<!--	    class (exposed, extends)-->
+<!--            attr (get, set)-->
+<!--	        method (name, type, static, throws)-->
+<!--	            arg (name, type, default)-->
+<!--	    func (name, type, throws)-->
+<!--            arg (name, type, default)-->
+<project name="xtest">
+
+	<record name="Person">
+	   <attr name="first_name" type="string"/>
+       <attr name="last_name" type="string"/>
+	   <attr name="birth_date" type="datetime"/>
+	</record>
+	
+	<class name="File">
+	   <attr name="filename" get="yes" set="no"/>
+	   <method name="read" type="bytes">
+	       <arg name="count" type="int32"/>
+	   </method>
+       <method name="write" type="void">
+           <arg name="data" type="bytes"/>
+       </method>
+	</class>
+	
+    <func name="open" type="File">
+        <arg name="filename" type="string"/>
+        <arg name="mode" type="string" default="'r'"/>
+    </func>
+
+</project>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
