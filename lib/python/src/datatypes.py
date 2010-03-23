@@ -117,7 +117,7 @@ record Person:
     //List<Person> parents
 """
 
-class Person(object):
+class Person(Datatype):
     _datatype = Record([
         StructMember("name", String), 
         StructMember("id", Int32)
