@@ -24,7 +24,7 @@
 
 	<func name="open" type="File">
 		<arg name="filename" type="string" />
-		<arg name="mode" type="string" default="'r'" />
+		<arg name="mode" type="string" />
 	</func>
 
 	<func name="getPerson" type="Person">

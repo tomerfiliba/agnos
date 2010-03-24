@@ -10,12 +10,28 @@ def str_to_bool(text):
     return text in ["true", "t", "yes", "y"] 
 
 
+class REQUIRED(object):
+    pass
+
 class Element(object):
     XML_TAG = None
     CHILDREN = []
+    ATTRS = {}
     
     def __init__(self, attrib, members):
-        pass
+        for name, default in self.ATTRS.iteritems():
+            if name not in attrib:
+                if default is REQUIRED:
+                    raise IDLError("required attribute %r missing" % (name,))
+                else:
+                    value = default
+            else:
+                value = attrib.pop(name)
+            setattr(self, name, value)
+        if attrib:
+            raise IDLError("unknown attributes: %r" % (attrib.keys(),))
+        if self.CHILDREN:
+            self.members = members
     
     @classmethod
     def load(cls, node):
@@ -31,9 +47,9 @@ class Element(object):
         return cls(node.attrib, members)
     
     def resolve(self, service):
-        if getattr(self, "_resolved", False):
-            self._resolved = True
+        if not getattr(self, "_resolved", False):
             self._resolve(service)
+            self._resolved = True
     def _resolve(self, service):
         if hasattr(self, "type"):
             self.type = service.get_type(self.type)
@@ -41,10 +57,8 @@ class Element(object):
 
 class EnumMember(Element):
     XML_TAG = "member"
+    ATTRS = dict(name = REQUIRED, value = None)
     
-    def __init__(self, attrib, members):
-        self.name = attrib["name"]
-        self.value = attrib.get("value", None)
     def fixate(self, value):
         if self.value is None:
             self.value = value
@@ -53,10 +67,8 @@ class EnumMember(Element):
 class Enum(Element):
     XML_TAG = "enum"
     CHILDREN = [EnumMember]
+    ATTRS = dict(name = REQUIRED)
 
-    def __init__(self, attrib, members):
-        self.name = attrib["name"]
-        self.members = members
     def _resolve(self, service):
         next = 0
         for member in self.members:
@@ -64,25 +76,17 @@ class Enum(Element):
 
 class Typedef(Element):
     XML_TAG = "typedef"
-
-    def __init__(self, attrib, members):
-        self.name = attrib["name"]
-        self.type = attrib["type"]
+    ATTRS = dict(name = REQUIRED, type = REQUIRED)
 
 class RecordMember(Element):
     XML_TAG = "attr"
+    ATTRS = dict(name = REQUIRED, type = REQUIRED)
     
-    def __init__(self, attrib, members):
-        self.name = attrib["name"]
-        self.type = attrib["type"]
-
 class Record(Element):
     XML_TAG = "record"
     CHILDREN = [RecordMember]
+    ATTRS = dict(name = REQUIRED)
 
-    def __init__(self, attrib, members):
-        self.name = attrib["name"]
-        self.members = members
     def _resolve(self, service):
         for mem in self.members:
             mem.resolve(service)
@@ -90,10 +94,8 @@ class Record(Element):
 class Exception(Record):
     XML_TAG = "exception"
     CHILDREN = [RecordMember]
+    ATTRS = dict(name = REQUIRED)
 
-    def __init__(self, attrib, members):
-        self.name = attrib["name"]
-        self.members = members
     def _resolve(self, service):
         for mem in self.members:
             mem.resolve(service)
@@ -109,10 +111,7 @@ class ClassAttr(Element):
 
 class MethodArg(Element):
     XML_TAG = "arg"
-
-    def __init__(self, attrib, members):
-        self.name = attrib["name"]
-        self.type = attrib["type"]
+    ATTRS = dict(name = REQUIRED, type = REQUIRED)
 
 class ClassMethod(Element):
     XML_TAG = "method"
@@ -140,11 +139,8 @@ class Class(Element):
 
 class FuncArg(Element):
     XML_TAG = "arg"
+    ATTRS = dict(name = REQUIRED, type = REQUIRED)
     
-    def __init__(self, attrib, members):
-        self.name = attrib["name"]
-        self.type = attrib["type"]
-
 class Func(Element):
     XML_TAG = "func"
     CHILDREN = [FuncArg]
@@ -158,7 +154,7 @@ class BuiltinType(object):
     def __init__(self, name):
         self.name = name
     def __repr__(self):
-        return self.name
+        return "BuiltinType(%s)" % (self.name,)
     def resolve(self, service):
         pass
 
@@ -171,25 +167,29 @@ t_bool = BuiltinType("bool")
 t_date = BuiltinType("date")
 t_buffer = BuiltinType("buffer")
 t_string = BuiltinType("str")
+t_void = BuiltinType("void")
+t_objref = BuiltinType("objref")
 
-class ListType(BuiltinType):
+
+class TList(BuiltinType):
     def __init__(self, oftype):
         self.oftype = oftype
     def __repr__(self):
-        return "list<%r>" % (self.oftype,)
+        return "BuiltinType(list<%r>)" % (self.oftype,)
 
-class MapType(BuiltinType):
+class TMap(BuiltinType):
     def __init__(self, keytype, valtype):
         self.keytype = keytype
         self.valtype = valtype
     def __repr__(self):
-        return "map<%r, %r>" % (self.keytype, self.valtype)
+        return "BuiltinType(map<%r, %r>)" % (self.keytype, self.valtype)
 
 
 class Service(Element):
     XML_TAG = "service"
     CHILDREN = [Typedef, Enum, Record, Exception, Class, Func]
     BUILTIN_TYPES = {
+        "void" : t_void,
         "int8" : t_int8,
         "int16" : t_int16,
         "int32" : t_int32,
@@ -199,6 +199,7 @@ class Service(Element):
         "date" : t_date,
         "buffer" : t_buffer,
         "str" : t_string,
+        "objref" : t_objref,
         "string" : t_string,
         "list" : None,
         "map" : None,
@@ -245,7 +246,11 @@ class Service(Element):
         if name in self.BUILTIN_TYPES:
             return self.BUILTIN_TYPES[name]
         if name in self.types:
-            return self.types[name]
+            tp = self.types[name]
+            if isinstance(tp, Typedef):
+                return tp.type
+            else:
+                return tp
         raise IDLError("unknown type %r" % (name,))
     
     @classmethod
@@ -262,26 +267,15 @@ class Service(Element):
             return
         self._resolved = True
         for mem in self.types.values():
-            mem.resolve(self.types)
+            mem.resolve(self)
         for mem in self.roots.values():
-            mem.resolve(self.types)
+            mem.resolve(self)
 
 
 def compile(filename, target):
     service = Service.from_file(filename)
-    s.resolve()
+    service.resolve()
     target.generate(service)
-
-
-
-
-
-
-
-
-
-
-
 
 
 
