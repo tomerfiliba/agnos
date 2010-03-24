@@ -11,7 +11,7 @@
     <target name="compile">
         <mkdir dir="build/classes" />
         <javac srcdir="src" destdir="build/classes" debug="true" classpathref="compile.classpath" >
-            <compilerarg value="-Xlint"/>   
+            <!-- compilerarg value="-Xlint"/-->   
         </javac>
         
     </target>
