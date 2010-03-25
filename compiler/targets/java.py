@@ -111,7 +111,7 @@ class JavaTarget(TargetBase):
                 for member in service.types.values():
                     if isinstance(member, compiler.Class):
                         self.generate_class_interface(module, member)
-                        self.generate_class_proxy(module, member)
+                        self.generate_class_proxy(module, service, member)
     
     def generate_enum(self, module, enum):
         BLOCK = module.block
@@ -138,10 +138,13 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         if isinstance(rec, compiler.Exception):
+            isexc = True
             extends = "extends Protocol.PackedException"
         else:
+            isexc = False
             extends = ""
         with BLOCK("public static class {0} {1}", rec.name, extends):
+            STMT("protected final static Integer __record_id = new Integer({0})", rec.id)
             for mem in rec.members:
                 STMT("public {0} {1}", type_to_java(mem.type), mem.name)
             SEP()
@@ -151,6 +154,9 @@ class JavaTarget(TargetBase):
             with BLOCK("public {0}({1})", rec.name, args):
                 for mem in rec.members:
                     STMT("this.{0} = {0}", mem.name)
+            with BLOCK("public void pack(OutputStream stream) throws IOException"):
+                STMT("Packers.Int32.pack(__record_id, stream)")
+                STMT("{0}Record.pack(this, stream)", rec.name)
         SEP()
         with BLOCK("protected static class _{0}Record implements Packers.IPacker", rec.name):
             with BLOCK("public void pack(Object obj, OutputStream stream) throws IOException"):
@@ -158,8 +164,6 @@ class JavaTarget(TargetBase):
                 for mem in rec.members:
                     if isinstance(mem.type, compiler.Enum):
                         STMT("Packers.Int32.pack(val.{0}.value, stream)", mem.name)
-                    #if isinstance(mem.type, compiler.t_int8):
-                    #    STMT("{0}.pack(new {1}(val.{2}), stream)", type_to_packer(mem.type) type_to_type(mem.type), mem.name)
                     else:
                         STMT("{0}.pack(val.{1}, stream)", type_to_packer(mem.type), mem.name)
 
@@ -185,28 +189,28 @@ class JavaTarget(TargetBase):
                 DOC("attributes")
             for attr in cls.attrs:
                 if attr.get:
-                    STMT("{0} get_{1}()", type_to_java(attr.type), attr.name)
+                    STMT("{0} get_{1}() throws Exception", type_to_java(attr.type), attr.name)
                 if attr.set:
-                    STMT("void set_{1}({0} value)", attr.name, type_to_java(attr.type))
+                    STMT("void set_{1}({0} value) throws Exception", attr.name, type_to_java(attr.type))
             SEP()
             if cls.attrs:
                 DOC("methods")
             for method in cls.methods:
                 args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) for arg in method.args)
-                STMT("{0} {1}({2})", type_to_java(method.type), method.name, args)
+                STMT("{0} {1}({2}) throws Exception", type_to_java(method.type), method.name, args)
         SEP()
 
-    def generate_class_proxy(self, module, cls):
+    def generate_class_proxy(self, module, service, cls):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
         DOC = module.doc
         with BLOCK("public static class {0}Proxy implements I{0}", cls.name):
-            STMT("protected {0}.Client __client", "foo")
+            STMT("protected {0}.Client __client", service.name)
             STMT("protected Long __objref")
             STMT("protected boolean __disposed")
             SEP()
-            with BLOCK("protected {0}Proxy({1}.Client client, Long objref)", cls.name, "foo"):
+            with BLOCK("protected {0}Proxy({1}.Client client, Long objref)", cls.name, service.name):
                 STMT("__client = client")
                 STMT("__objref = objref")
                 STMT("__disposed = false")
@@ -222,17 +226,20 @@ class JavaTarget(TargetBase):
             SEP()
             for attr in cls.attrs:
                 if attr.get:
-                    with BLOCK("public {0} get_{1}()", type_to_java(attr.type), attr.name):
+                    with BLOCK("public {0} get_{1}() throws Exception", type_to_java(attr.type), attr.name):
                         STMT("return __client._{0}_get_{1}(__objref)", cls.name, attr.name)
                 if attr.set:
-                    with BLOCK("public void set_{1}({0} value)", attr.name, type_to_java(attr.type)):
+                    with BLOCK("public void set_{1}({0} value) throws Exception", attr.name, type_to_java(attr.type)):
                         STMT("__client._{0}_set_{1}(__objref, value)", cls.name, attr.name)
             
             for method in cls.methods:
                 args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) for arg in method.args)
-                with BLOCK("public {0} {1}({2})", type_to_java(method.type), method.name, args):
+                with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(method.type), method.name, args):
                     callargs = ["__objref"] + [arg.name for arg in method.args]
-                    STMT("__client._{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
+                    if method.type == compiler.t_void:
+                        STMT("__client._{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
+                    else:
+                        STMT("return __client._{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
         SEP()
 
     def generate_service(self, service):
@@ -277,55 +284,49 @@ class JavaTarget(TargetBase):
                 STMT("super(inStream, outStream)")
                 STMT("this.handler = handler")
             SEP()
-            with BLOCK("protected void process_invoke(int seq)"):
+            with BLOCK("protected void process_invoke(int seq) throws Exception"):
                 STMT("int funcid = (Integer){0}.unpack(inStream)", type_to_packer(compiler.t_int32))
                 STMT("Packers.IPacker packer = null")
                 STMT("Object result = null")
                 STMT("Long id")
-                with BLOCK("try"):
-                    with BLOCK("switch (funcid)"):
-                        for func in funcs:
-                            with BLOCK("case {0}:", func.funcid, prefix = None, suffix = None):
-                                if isinstance(func, compiler.Func):
-                                    args = []
-                                    for arg in func.args:
-                                        if isinstance(arg.type, compiler.Class):
-                                            args.append("(%s)(load((Long)Packers.Int64.unpack(inStream)))" % (type_to_java(arg.type)))
-                                        else:
-                                            args.append("(%s)(%s.unpack(inStream))" % (type_to_java(arg.type), type_to_packer(arg.type)))
-                                    if func.type == compiler.t_void:
-                                        STMT("handler.{0}({1})", type_to_java(func.type), func.name, ", ".join(args))
+                with BLOCK("switch (funcid)"):
+                    for func in funcs:
+                        with BLOCK("case {0}:", func.id, prefix = None, suffix = None):
+                            if isinstance(func, compiler.Func):
+                                args = []
+                                for arg in func.args:
+                                    if isinstance(arg.type, compiler.Class):
+                                        args.append("(%s)(load((Long)Packers.Int64.unpack(inStream)))" % (type_to_java(arg.type)))
                                     else:
-                                        STMT("result = handler.{0}({1})", func.name, ", ".join(args))
+                                        args.append("(%s)(%s.unpack(inStream))" % (type_to_java(arg.type), type_to_packer(arg.type)))
+                                if func.type == compiler.t_void:
+                                    STMT("handler.{0}({1})", type_to_java(func.type), func.name, ", ".join(args))
                                 else:
-                                    args = []
-                                    for arg in func.args[1:]:
-                                        if isinstance(arg.type, compiler.Class):
-                                            args.append("(%s)(load((Long)Packers.Int64.unpack(inStream)))" % (type_to_java(arg.type)))
-                                        else:
-                                            args.append("(%s)(%s.unpack(inStream))" % (type_to_java(arg.type), type_to_packer(arg.type)))
-                                    STMT("id = (Long)(Packers.Int64.unpack(inStream))")
-                                    if isinstance(func.origin, compiler.ClassAttr):
-                                        if "_get_" in func.name:
-                                            STMT("result = (({0})load(id)).get_{1}({2})", type_to_java(func.origin.parent), func.origin.name, ", ".join(args))
-                                        else:
-                                            STMT("(({0})load(id)).set_{1}({2})", type_to_java(func.origin.parent), func.origin.name, ", ".join(args))
+                                    STMT("result = handler.{0}({1})", func.name, ", ".join(args))
+                            else:
+                                args = []
+                                for arg in func.args[1:]:
+                                    if isinstance(arg.type, compiler.Class):
+                                        args.append("(%s)(load((Long)Packers.Int64.unpack(inStream)))" % (type_to_java(arg.type)))
                                     else:
-                                        if func.type == compiler.t_void:
-                                            STMT("(({0})load(id)).{1}({2})", type_to_java(func.origin.parent), func.origin.name, ", ".join(args))
-                                        else:
-                                            STMT("result = (({0})load(id)).{1}({2})", type_to_java(func.origin.parent), func.origin.name, ", ".join(args))
-                                if isinstance(func.type, compiler.Class):
-                                    STMT("result = store(result)")
-                                STMT("packer = {0}", type_to_packer(func.type))
-                                STMT("break")
-                        with BLOCK("default:", prefix = None, suffix = None):
-                            STMT("throw new Exception()")
-                with BLOCK("catch (Exception ex)"):
-                    STMT("{0}.pack(new Integer(seq), outStream)", type_to_packer(compiler.t_int32))
-                    STMT("{0}.pack(new Byte((byte)Protocol.REPLY_EXECUTION_ERROR), outStream)", type_to_packer(compiler.t_int8))
-                    STMT("outStream.flush()")
-                    STMT("return")
+                                        args.append("(%s)(%s.unpack(inStream))" % (type_to_java(arg.type), type_to_packer(arg.type)))
+                                STMT("id = (Long)(Packers.Int64.unpack(inStream))")
+                                if isinstance(func.origin, compiler.ClassAttr):
+                                    if "_get_" in func.name:
+                                        STMT("result = (({0})load(id)).get_{1}({2})", type_to_java(func.origin.parent), func.origin.name, ", ".join(args))
+                                    else:
+                                        STMT("(({0})load(id)).set_{1}({2})", type_to_java(func.origin.parent), func.origin.name, ", ".join(args))
+                                else:
+                                    if func.type == compiler.t_void:
+                                        STMT("(({0})load(id)).{1}({2})", type_to_java(func.origin.parent), func.origin.name, ", ".join(args))
+                                    else:
+                                        STMT("result = (({0})load(id)).{1}({2})", type_to_java(func.origin.parent), func.origin.name, ", ".join(args))
+                            if isinstance(func.type, compiler.Class):
+                                STMT("result = store(result)")
+                            STMT("packer = {0}", type_to_packer(func.type))
+                            STMT("break")
+                    with BLOCK("default:", prefix = None, suffix = None):
+                        STMT('throw new Protocol.ProtocolError("unknown function id: " + funcid)')
                 SEP()
                 STMT("{0}.pack(new Integer(seq), outStream)", type_to_packer(compiler.t_int32))
                 STMT("{0}.pack(new Byte((byte)Protocol.REPLY_SUCCESS), outStream)", type_to_packer(compiler.t_int8))
@@ -343,6 +344,20 @@ class JavaTarget(TargetBase):
             with BLOCK("public Client(InputStream inStream, OutputStream outStream)"):
                 STMT("super(inStream, outStream)")
             SEP()
+            with BLOCK("protected void _decref(Long id)"):
+                STMT("super._decref(id)")
+            SEP()
+            with BLOCK("protected Protocol.PackedException _load_packed_exception() throws Exception"):
+                STMT("int clsid = (Integer)Packers.Int32.unpack(_inStream)")
+                with BLOCK("switch (clsid)"):
+                    for mem in service.types:
+                        if not isinstance(mem, compiler.Exception):
+                            continue
+                        with BLOCK("case {0}:", mem.id, prefix = None, suffix = None):
+                            STMT("return (Protocol.PackedException)(Types.{0}Record.unpack(_outStream))")
+                    with BLOCK("default:", prefix = None, suffix = None):
+                        STMT('throw new Protocol.ProtocolError("unknown exception class id: " + clsid)')
+            SEP()
             for mem in service.roots.values():
                 if isinstance(mem, compiler.Func):
                     access = "public"
@@ -352,8 +367,8 @@ class JavaTarget(TargetBase):
                     continue
                 func = mem
                 args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in func.args)
-                with BLOCK("{0} {1} {2}({3})", access, type_to_java(func.type, proxy = True), func.name, args):
-                    STMT("_cmd_invoke({0})", func.funcid)
+                with BLOCK("{0} {1} {2}({3}) throws Exception", access, type_to_java(func.type, proxy = True), func.name, args):
+                    STMT("_cmd_invoke({0})", func.id)
                     for arg in func.args:
                         if isinstance(arg.type, compiler.Class):
                             STMT("Packers.Int64.pack({0}.__objref, _outStream)", arg.name)

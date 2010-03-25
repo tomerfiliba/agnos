@@ -167,13 +167,15 @@ public class Packers {
 	public static _Date Date = new _Date();
 
 	public static class _Str implements IPacker {
+		private static final String encoding = "UTF-8";
+		
 		public void pack(Object obj, OutputStream stream) throws IOException {
-			Buffer.pack(((String) obj).getBytes("UTF-8"), stream);
+			Buffer.pack(((String) obj).getBytes(encoding), stream);
 		}
 
 		public Object unpack(InputStream stream) throws IOException {
 			byte[] buf = (byte[])Buffer.unpack(stream);
-			return new String(buf, "UTF-8");
+			return new String(buf, encoding);
 		}
 	}
 
