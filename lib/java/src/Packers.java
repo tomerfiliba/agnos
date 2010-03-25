@@ -3,8 +3,8 @@ package agnos;
 import java.io.*;
 import java.util.*;
 
-public class Datatypes {
-	public interface IDatatype {
+public class Packers {
+	public interface IPacker {
 		public void pack(Object obj, OutputStream stream) throws IOException;
 
 		public Object unpack(InputStream stream) throws IOException;
@@ -29,7 +29,7 @@ public class Datatypes {
 		}
 	}
 
-	public static class _Int8 implements IDatatype {
+	public static class _Int8 implements IPacker {
 		private byte[] buffer = new byte[1];
 
 		public void pack(Object obj, OutputStream stream) throws IOException
@@ -46,7 +46,7 @@ public class Datatypes {
 
 	public static _Int8 Int8 = new _Int8();
 
-	public static class _Bool implements IDatatype {
+	public static class _Bool implements IPacker {
 		public void pack(Object obj, OutputStream stream) throws IOException {
 			Int8.pack(new Byte(((Boolean) obj) ? (byte) 1 : (byte) 0), stream);
 		}
@@ -58,7 +58,7 @@ public class Datatypes {
 
 	public static _Bool Bool = new _Bool();
 
-	public static class _Int16 implements IDatatype {
+	public static class _Int16 implements IPacker {
 		private byte[] buffer = new byte[2];
 
 		public void pack(Object obj, OutputStream stream) throws IOException {
@@ -76,7 +76,7 @@ public class Datatypes {
 
 	public static _Int16 Int16 = new _Int16();
 
-	public static class _Int32 implements IDatatype {
+	public static class _Int32 implements IPacker {
 		private byte[] buffer = new byte[4];
 
 		public void pack(Object obj, OutputStream stream) throws IOException {
@@ -97,7 +97,7 @@ public class Datatypes {
 
 	public static _Int32 Int32 = new _Int32();
 
-	public static class _Int64 implements IDatatype {
+	public static class _Int64 implements IPacker {
 		private byte[] buffer = new byte[8];
 
 		public void pack(Object obj, OutputStream stream) throws IOException {
@@ -124,7 +124,7 @@ public class Datatypes {
 	public static _Int64 Int64 = new _Int64();
 	public static _Int64 ObjRef = Int64;
 
-	public static class _Float implements IDatatype {
+	public static class _Float implements IPacker {
 		public void pack(Object obj, OutputStream stream) throws IOException {
 			Int64.pack(Double.doubleToLongBits((Double) obj), stream);
 		}
@@ -137,7 +137,7 @@ public class Datatypes {
 
 	public static _Float Float = new _Float();
 
-	public static class _Buffer implements IDatatype {
+	public static class _Buffer implements IPacker {
 		public void pack(Object obj, OutputStream stream) throws IOException {
 			byte[] val = (byte[]) obj;
 			Int32.pack(new Integer(val.length), stream);
@@ -154,7 +154,7 @@ public class Datatypes {
 
 	public static _Buffer Buffer = new _Buffer();
 
-	public static class _Date implements IDatatype {
+	public static class _Date implements IPacker {
 		public void pack(Object obj, OutputStream stream) throws IOException {
 			Int64.pack(new Long((Date) obj.getTime()), stream);
 		}
@@ -166,7 +166,7 @@ public class Datatypes {
 
 	public static _Date Date = new _Date();
 
-	public static class _Str implements IDatatype {
+	public static class _Str implements IPacker {
 		public void pack(Object obj, OutputStream stream) throws IOException {
 			Buffer.pack((String) obj.getBytes("UTF-8"), stream);
 		}
@@ -179,10 +179,10 @@ public class Datatypes {
 
 	public static _Str Str = new _String();
 
-	public static class ListOf implements IDatatype {
-		private IDatatype type;
+	public static class ListOf implements IPacker {
+		private IPacker type;
 
-		public ListOf(IDatatype type) {
+		public ListOf(IPacker type) {
 			this.type = type;
 		}
 
@@ -205,11 +205,11 @@ public class Datatypes {
 		}
 	}
 
-	public static class MapOf implements IDatatype {
-		private IDatatype keytype;
-		private IDatatype valtype;
+	public static class MapOf implements IPacker {
+		private IPacker keytype;
+		private IPacker valtype;
 
-		public MapOf(IDatatype keytype, IDatatype valtype) {
+		public MapOf(IPacker keytype, IPacker valtype) {
 			this.keytype = keytype;
 			this.valtype = valtype;
 		}

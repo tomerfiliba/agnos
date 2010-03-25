@@ -18,7 +18,7 @@
 			<arg name="count" type="int32" />
 		</method>
 		<method name="write" type="void">
-			<arg name="data" type="bytes" />
+			<arg name="data" type="buffer" />
 		</method>
 	</class>
 

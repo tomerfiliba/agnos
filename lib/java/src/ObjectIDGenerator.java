@@ -1,22 +1,23 @@
-import java.util.WeakHashMap;
+package agnos;
 
+import java.util.*;
 
 public class ObjectIDGenerator
 {
-	protected WeakHashMap map;
-	protected long counter;
+	protected Map<Object, Long> map;
+	protected Long counter;
 	
 	public ObjectIDGenerator()
 	{
-		map = new WeakHashMap();
-		counter = 0;
+		map = new WeakHashMap<Object, Long>();
+		counter = new Long(0);
 	}
 	
-	public synchronized long getID(Object obj)
+	public synchronized Long getID(Object obj)
 	{
 		Object id = map.get(obj);
 		if (id != null) {
-			return (long)id;
+			return (Long)id;
 		}
 		else {
 			counter += 1;
@@ -24,6 +25,5 @@ public class ObjectIDGenerator
 			return counter;
 		}
 	}
-	
 }
 

@@ -1,17 +1,36 @@
 import xml.etree.ElementTree as etree
+import itertools
 
 
 class IDLError(Exception):
     pass
 
 
-def str_to_bool(text):
-    text = text.lower()
-    return text in ["true", "t", "yes", "y"] 
+ID_GENERATOR = itertools.count(1337)
 
+def DEFAULT(default):
+    def checker(name, v):
+        return v if v else default
+    return checker
 
-class REQUIRED(object):
-    pass
+def STR_TO_BOOL(default):
+    def checker(name, text):
+        if not text:
+            return default
+        return text.lower() in ["true", "t", "yes", "y"]
+    return checker
+
+def IDENTIFIER(name, v):
+    if not v:
+        raise IDLError("required attribute %r missing" % (name,))
+    first = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+    rest = first + "0123456789"
+    if v[0] not in first:
+        raise IDLError("invalid identifier %r assigned to %r" % (v, name))
+    for ch in v[1:]:
+        if ch not in rest:
+            raise IDLError("invalid identifier %r assigned to %r" % (v, name))
+    return v
 
 class Element(object):
     XML_TAG = None
@@ -19,17 +38,15 @@ class Element(object):
     ATTRS = {}
     
     def __init__(self, attrib, members):
-        for name, default in self.ATTRS.iteritems():
-            if name not in attrib:
-                if default is REQUIRED:
-                    raise IDLError("required attribute %r missing" % (name,))
-                else:
-                    value = default
-            else:
-                value = attrib.pop(name)
+        self._resolved = False
+        for name, checker in self.ATTRS.iteritems():
+            value = checker(name, attrib.pop(name, None)) 
             setattr(self, name, value)
         if attrib:
             raise IDLError("unknown attributes: %r" % (attrib.keys(),))
+        self.build_members(members)
+    
+    def build_members(self, members):
         if self.CHILDREN:
             self.members = members
     
@@ -47,17 +64,20 @@ class Element(object):
         return cls(node.attrib, members)
     
     def resolve(self, service):
-        if not getattr(self, "_resolved", False):
+        if not self._resolved:
             self._resolve(service)
             self._resolved = True
     def _resolve(self, service):
         if hasattr(self, "type"):
             self.type = service.get_type(self.type)
+    
+    def postprocess(self, service):
+        pass
 
 
 class EnumMember(Element):
     XML_TAG = "member"
-    ATTRS = dict(name = REQUIRED, value = None)
+    ATTRS = dict(name = IDENTIFIER, value = DEFAULT(None))
     
     def fixate(self, value):
         if self.value is None:
@@ -67,7 +87,7 @@ class EnumMember(Element):
 class Enum(Element):
     XML_TAG = "enum"
     CHILDREN = [EnumMember]
-    ATTRS = dict(name = REQUIRED)
+    ATTRS = dict(name = IDENTIFIER)
 
     def _resolve(self, service):
         next = 0
@@ -76,16 +96,16 @@ class Enum(Element):
 
 class Typedef(Element):
     XML_TAG = "typedef"
-    ATTRS = dict(name = REQUIRED, type = REQUIRED)
+    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER)
 
 class RecordMember(Element):
     XML_TAG = "attr"
-    ATTRS = dict(name = REQUIRED, type = REQUIRED)
+    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER)
     
 class Record(Element):
     XML_TAG = "record"
     CHILDREN = [RecordMember]
-    ATTRS = dict(name = REQUIRED)
+    ATTRS = dict(name = IDENTIFIER)
 
     def _resolve(self, service):
         for mem in self.members:
@@ -94,7 +114,7 @@ class Record(Element):
 class Exception(Record):
     XML_TAG = "exception"
     CHILDREN = [RecordMember]
-    ATTRS = dict(name = REQUIRED)
+    ATTRS = dict(name = IDENTIFIER)
 
     def _resolve(self, service):
         for mem in self.members:
@@ -102,53 +122,84 @@ class Exception(Record):
 
 class ClassAttr(Element):
     XML_TAG = "attr"
-
-    def __init__(self, attrib, members):
-        self.name = attrib["name"]
-        self.type = attrib["type"]
-        self.get = str_to_bool(attrib.get("get", "yes"))
-        self.set = str_to_bool(attrib.get("set", "yes"))
+    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER, get = STR_TO_BOOL(True), set = STR_TO_BOOL(True))
 
 class MethodArg(Element):
     XML_TAG = "arg"
-    ATTRS = dict(name = REQUIRED, type = REQUIRED)
+    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER)
 
 class ClassMethod(Element):
     XML_TAG = "method"
     CHILDREN = [MethodArg]
+    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER)
 
-    def __init__(self, attrib, members):
-        self.name = attrib["name"]
-        self.type = attrib["type"]
+    def build_members(self, members):
         self.args = members
+    
+    def _resolve(self, service):
+        self.type = service.get_type(self.type)
+        for arg in self.args:
+            arg.resolve(service)
 
 class Class(Element):
     XML_TAG = "class"
     CHILDREN = [ClassMethod, ClassAttr]
+    ATTRS = dict(name = IDENTIFIER)
     
-    def __init__(self, attrib, members):
-        self.name = attrib["name"]
+    def build_members(self, members):
         self.attrs = [mem for mem in members if isinstance(mem, ClassAttr)]
         self.methods = [mem for mem in members if isinstance(mem, ClassMethod)]
+    
+    def autogen(self, service, name, type, *args):
+        if name in service.roots:
+            raise IDLError("special name %s already in use" % (name,))
+        service.roots[name] = AutoGeneratedFunc(name, type, args)
     
     def _resolve(self, service):
         for attr in self.attrs:
             attr.resolve(service)
         for method in self.methods:
             method.resolve(service)
+    
+    def postprocess(self, service): 
+        for attr in self.attrs:
+            if attr.get:
+                self.autogen(service, "_%s_get_%s" % (self.name, attr.name), attr.type, ("_objref", t_objref))
+            if attr.set:
+                self.autogen(service, "_%s_set_%s" % (self.name, attr.name), t_void, ("_objref", t_objref), ("value", attr.type))
+        for method in self.methods:
+            self.autogen(service, "_%s_%s" % (self.name, method.name), method.type, ("_objref", t_objref), *[(arg.name, arg.type) for arg in method.args]) 
+        self.autogen(service, "_decref_%s" % (self.name), method.type, ("_objref", t_objref))
 
 class FuncArg(Element):
     XML_TAG = "arg"
-    ATTRS = dict(name = REQUIRED, type = REQUIRED)
-    
+    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER)
+
 class Func(Element):
     XML_TAG = "func"
     CHILDREN = [FuncArg]
-    
-    def __init__(self, attrib, members):
-        self.name = attrib["name"]
-        self.type = attrib["type"]
+    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER)
+
+    def build_members(self, members):
         self.args = members
+        self.funcid = ID_GENERATOR.next()
+
+    def _resolve(self, service):
+        self.type = service.get_type(self.type)
+        for arg in self.args:
+            arg.resolve(service)
+
+class AutoGeneratedFuncArg(object):
+    def __init__(self, name, type):
+        self.name = name
+        self.type = type
+
+class AutoGeneratedFunc(object):
+    def __init__(self, name, type, args):
+        self.name = name
+        self.type = type
+        self.args = [AutoGeneratedFuncArg(arg[0], arg[1]) for arg in args]
+        self.funcid = ID_GENERATOR.next()
 
 class BuiltinType(object):
     def __init__(self, name):
@@ -188,6 +239,7 @@ class TMap(BuiltinType):
 class Service(Element):
     XML_TAG = "service"
     CHILDREN = [Typedef, Enum, Record, Exception, Class, Func]
+    ATTRS = dict(name = IDENTIFIER)
     BUILTIN_TYPES = {
         "void" : t_void,
         "int8" : t_int8,
@@ -205,21 +257,20 @@ class Service(Element):
         "map" : None,
     }
     
-    def __init__(self, attrib, members):
-        self.name = attrib["name"]
+    def build_members(self, members):
         self.types = {}
         self.roots = {}
         self._resolved = False
         for mem in members:
             if isinstance(mem, (Func,)):
                 if mem.name in self.roots:
-                    raise IDLError("name %r already defined" % (mem.name,))
+                    raise IDLError("root name %r already defined" % (mem.name,))
                 self.roots[mem.name] = mem
             else:
                 if mem.name in self.BUILTIN_TYPES:
-                    raise IDLError("name %r is reserved" % (mem.name,))
+                    raise IDLError("type name %r is reserved" % (mem.name,))
                 if mem.name in self.types:
-                    raise IDLError("name %r already defined" % (mem.name,))
+                    raise IDLError("type name %r already defined" % (mem.name,))
                 self.types[mem.name] = mem
     
 #    def _parse_template(self, stream):
@@ -270,6 +321,8 @@ class Service(Element):
             mem.resolve(self)
         for mem in self.roots.values():
             mem.resolve(self)
+        for mem in self.types.values():
+            mem.postprocess(self)
 
 
 def compile(filename, target):
