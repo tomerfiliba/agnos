@@ -189,15 +189,15 @@ class JavaTarget(TargetBase):
                 DOC("attributes")
             for attr in cls.attrs:
                 if attr.get:
-                    STMT("{0} get_{1}() throws Exception", type_to_java(attr.type), attr.name)
+                    STMT("{0} get_{1}() throws IOException, Protocol.ProtocolError, Protocol.PackedException", type_to_java(attr.type), attr.name)
                 if attr.set:
-                    STMT("void set_{1}({0} value) throws Exception", attr.name, type_to_java(attr.type))
+                    STMT("void set_{1}({0} value) throws IOException, Protocol.ProtocolError, Protocol.PackedException", attr.name, type_to_java(attr.type))
             SEP()
             if cls.attrs:
                 DOC("methods")
             for method in cls.methods:
                 args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) for arg in method.args)
-                STMT("{0} {1}({2}) throws Exception", type_to_java(method.type), method.name, args)
+                STMT("{0} {1}({2}) throws IOException, Protocol.ProtocolError, Protocol.PackedException", type_to_java(method.type), method.name, args)
         SEP()
 
     def generate_class_proxy(self, module, service, cls):
@@ -226,15 +226,15 @@ class JavaTarget(TargetBase):
             SEP()
             for attr in cls.attrs:
                 if attr.get:
-                    with BLOCK("public {0} get_{1}() throws Exception", type_to_java(attr.type), attr.name):
+                    with BLOCK("public {0} get_{1}() throws IOException, Protocol.ProtocolError, Protocol.PackedException", type_to_java(attr.type), attr.name):
                         STMT("return __client._{0}_get_{1}(__objref)", cls.name, attr.name)
                 if attr.set:
-                    with BLOCK("public void set_{1}({0} value) throws Exception", attr.name, type_to_java(attr.type)):
+                    with BLOCK("public void set_{1}({0} value) throws IOException, Protocol.ProtocolError, Protocol.PackedException", attr.name, type_to_java(attr.type)):
                         STMT("__client._{0}_set_{1}(__objref, value)", cls.name, attr.name)
             
             for method in cls.methods:
                 args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) for arg in method.args)
-                with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(method.type), method.name, args):
+                with BLOCK("public {0} {1}({2}) throws IOException, Protocol.ProtocolError, Protocol.PackedException", type_to_java(method.type), method.name, args):
                     callargs = ["__objref"] + [arg.name for arg in method.args]
                     if method.type == compiler.t_void:
                         STMT("__client._{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
@@ -280,11 +280,11 @@ class JavaTarget(TargetBase):
         with BLOCK("public static class Processor extends Protocol.BaseProcessor"):
             STMT("protected IHandler handler")
             SEP()
-            with BLOCK("public Processor(IHandler handler, InputStream inStream, OutputStream outStream)"):
-                STMT("super(inStream, outStream)")
+            with BLOCK("public Processor(IHandler handler)"):
+                STMT("super()")
                 STMT("this.handler = handler")
             SEP()
-            with BLOCK("protected void process_invoke(int seq) throws Exception"):
+            with BLOCK("protected void process_invoke(InputStream inStream, OutputStream outStream, int seq) throws IOException, Protocol.ProtocolError, Protocol.PackedException"):
                 STMT("int funcid = (Integer){0}.unpack(inStream)", type_to_packer(compiler.t_int32))
                 STMT("Packers.IPacker packer = null")
                 STMT("Object result = null")
@@ -347,7 +347,7 @@ class JavaTarget(TargetBase):
             with BLOCK("protected void _decref(Long id)"):
                 STMT("super._decref(id)")
             SEP()
-            with BLOCK("protected Protocol.PackedException _load_packed_exception() throws Exception"):
+            with BLOCK("protected Protocol.PackedException _load_packed_exception() throws IOException, Protocol.ProtocolError"):
                 STMT("int clsid = (Integer)Packers.Int32.unpack(_inStream)")
                 with BLOCK("switch (clsid)"):
                     for mem in service.types:
@@ -367,7 +367,7 @@ class JavaTarget(TargetBase):
                     continue
                 func = mem
                 args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in func.args)
-                with BLOCK("{0} {1} {2}({3}) throws Exception", access, type_to_java(func.type, proxy = True), func.name, args):
+                with BLOCK("{0} {1} {2}({3}) throws IOException, Protocol.ProtocolError, Protocol.PackedException", access, type_to_java(func.type, proxy = True), func.name, args):
                     STMT("_cmd_invoke({0})", func.id)
                     for arg in func.args:
                         if isinstance(arg.type, compiler.Class):
@@ -375,7 +375,7 @@ class JavaTarget(TargetBase):
                         else:
                             STMT("{0}.pack({1}, _outStream)", type_to_packer(arg.type), arg.name)
                     STMT("_outStream.flush()")
-                    STMT("Object res = _read_result({0})", type_to_packer(func.type))
+                    STMT("Object res = _read_reply({0})", type_to_packer(func.type))
                     if isinstance(func.type, compiler.Class):
                         STMT("return new {0}(this, (Long)res)", type_to_java(func.type, proxy = True))
                     elif func.type != compiler.t_void:
