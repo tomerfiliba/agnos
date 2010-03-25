@@ -18,16 +18,7 @@
 
     <target name="jar" depends="compile">
         <mkdir dir="build/jars" />
-        <jar destfile="build/jars/libagnostic.jar" basedir="build/classes" />
+        <jar destfile="build/jars/agnos.jar" basedir="build/classes" />
     </target>
-
-    <!-- target name="run" depends="jar">
-        <java fork="true" classname="Main">
-            <classpath>
-                <path refid="compile.classpath"/>
-                <path location="build/pipetest.jar"/>
-            </classpath>
-        </java>
-    </target-->
 
 </project>

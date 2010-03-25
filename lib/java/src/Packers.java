@@ -22,7 +22,7 @@ public class Packers {
 
 		while (total_got < buffer.length) {
 			got = stream.read(buffer, total_got, buffer.length - total_got);
-			count += got;
+			total_got += got;
 			if (got <= 0 && total_got < buffer.length) {
 				throw new IOException("end of stream detected");
 			}
@@ -34,7 +34,7 @@ public class Packers {
 
 		public void pack(Object obj, OutputStream stream) throws IOException
 		{
-			buffer[0] = ((Byte)obj) & 0xFF
+			buffer[0] = (byte)(((Byte)obj) & 0xFF);
 			_write(stream, buffer);
 		}
 
@@ -156,11 +156,11 @@ public class Packers {
 
 	public static class _Date implements IPacker {
 		public void pack(Object obj, OutputStream stream) throws IOException {
-			Int64.pack(new Long((Date) obj.getTime()), stream);
+			Int64.pack(new Long(((Date) obj).getTime()), stream);
 		}
 
 		public Object unpack(InputStream stream) throws IOException {
-			return new Date(Int64.unpack(stream));
+			return new Date((Long)Int64.unpack(stream));
 		}
 	}
 
@@ -168,16 +168,16 @@ public class Packers {
 
 	public static class _Str implements IPacker {
 		public void pack(Object obj, OutputStream stream) throws IOException {
-			Buffer.pack((String) obj.getBytes("UTF-8"), stream);
+			Buffer.pack(((String) obj).getBytes("UTF-8"), stream);
 		}
 
 		public Object unpack(InputStream stream) throws IOException {
-			bytes[] buf = Buffer.unpack(stream);
+			byte[] buf = (byte[])Buffer.unpack(stream);
 			return new String(buf, "UTF-8");
 		}
 	}
 
-	public static _Str Str = new _String();
+	public static _Str Str = new _Str();
 
 	public static class ListOf implements IPacker {
 		private IPacker type;
@@ -218,7 +218,7 @@ public class Packers {
 			Map val = (Map) obj;
 			Int32.pack(new Integer(val.size()), stream);
 
-			for (Map.Entry<Object, Object> e : val.entrySet()) {
+			for (Map.Entry e : (Set<Map.Entry>)val.entrySet()) {
 				keytype.pack(e.getKey(), stream);
 				valtype.pack(e.getValue(), stream);
 			}

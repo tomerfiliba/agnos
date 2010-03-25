@@ -1,19 +1,31 @@
 package agnos;
 
-import java.utils.*;
+import java.io.*;
+import java.util.*;
 
 public class Protocol
 {
-	public enum CommandCodes
-	{
-		CMD_INVOKE, CMD_QUIT, CMD_DECREF, CMD_PING
-	}
+	public static final int CMD_PING = 0;
+	public static final int CMD_INVOKE = 1;
+	public static final int CMD_QUIT = 2;
+	public static final int CMD_DECREF = 3;
+	
+	public static final int REPLY_SUCCESS = 0;
+	public static final int REPLY_PROTOCOL_ERROR = 1;
+	public static final int REPLY_EXECUTION_ERROR = 2;
 
-	public enum ReplyCodes
+	
+	public static class PackedException extends Exception
 	{
-		REPLY_SUCCESS, REPLY_PROTOCOL_ERROR, REPLY_EXECUTION_ERROR,
+		public PackedException()
+		{
+		}
+		public PackedException(String message)
+		{
+			super(message);
+		}
 	}
-
+	
 	public static class ObjectIDGenerator
 	{
 		protected Map<Object, Long>	map;
@@ -62,7 +74,7 @@ public class Protocol
 		}
 	}
 
-	public static class BaseProcessor
+	public static abstract class BaseProcessor
 	{
 		protected InputStream		inStream;
 		protected OutputStream		outStream;
@@ -73,7 +85,7 @@ public class Protocol
         {
             this.inStream = inStream;
             this.outStream = outStream;
-            cells = new HashMap<Long, Cell>;
+            cells = new HashMap<Long, Cell>();
             idGenerator = new ObjectIDGenerator();
         }
 
@@ -104,9 +116,9 @@ public class Protocol
 			}
 		}
 
-		protected void process()
+		protected void process() throws IOException
 		{
-			int seq = (Integer) (Packers.Int32.unpack(inStream));
+			Integer seq = (Integer) (Packers.Int32.unpack(inStream));
 			int cmdid = (Byte) (Packers.Int8.unpack(inStream));
 			switch (cmdid) {
 				case CMD_INVOKE:
@@ -127,30 +139,35 @@ public class Protocol
 			}
 		}
 
-		protected void process_decref(int seq)
+		protected void process_decref(Integer seq) throws IOException
 		{
 			Long id = (Long) (Packers.Int64.unpack(inStream));
 			decref(id);
 		}
 
-		protected void process_quit(int seq)
+		protected void process_quit(Integer seq) throws IOException
 		{
 		}
 
-		protected void process_ping(int seq)
+		protected void process_ping(Integer seq) throws IOException
 		{
+			String message = (String)(Packers.Str.unpack(inStream));
+			Packers.Int32.pack(seq, outStream);
+			Packers.Int8.pack(REPLY_SUCCESS, outStream);
+			Packers.Str.pack(message, outStream);
+			outStream.flush();
 		}
 
-		abstract protected void process_invoke(int seq);
+		abstract protected void process_invoke(int seq) throws IOException;
 	}
 	
-	public static class BaseClient
+	public static abstract class BaseClient
 	{
         protected InputStream _inStream;
         protected OutputStream _outStream;
         protected int _seq;
         
-        public BaseClient(InputStream inStream, OutputStream, outStream)
+        public BaseClient(InputStream inStream, OutputStream outStream)
         {
             _inStream = inStream;
             _outStream = outStream;
@@ -177,26 +194,31 @@ public class Protocol
         	}
         }
 
-        public int _cmd_invoke(int funcid)
+        protected int _cmd_invoke(int funcid) throws IOException
         {
         	int seq = _get_seq();
             Packers.Int32.pack(new Integer(seq), _outStream);
             Packers.Int8.pack(new Integer(CMD_INVOKE), _outStream);
             Packers.Int32.pack(new Integer(funcid), _outStream);
+            return seq;
         }
         
-        public Object _read_result(IPacker packer)
+        protected Object _read_result(Packers.IPacker packer) throws IOException
         {
-            ResultCodes code = (ResultCodes)(Packers.Int8.pack(_inStream));
-            if (code == RESULT_SUCCESS)
+            int code = (Byte)(Packers.Int8.unpack(_inStream));
+            switch (code)
             {
-                return packer.unpack(_inStream);
+            	case REPLY_SUCCESS:
+            		return packer.unpack(_inStream);
+            	case REPLY_EXECUTION_ERROR:
+            		break;
+            	case REPLY_PROTOCOL_ERROR:
+            		break;
+            	default:
+            		break;
             }
-            else
-            {
-                throw new Exception("oops");
-            }
-        }		
+            return null;
+        }	
 	}
 	
 	

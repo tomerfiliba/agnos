@@ -113,12 +113,6 @@ class Record(Element):
 
 class Exception(Record):
     XML_TAG = "exception"
-    CHILDREN = [RecordMember]
-    ATTRS = dict(name = IDENTIFIER)
-
-    def _resolve(self, service):
-        for mem in self.members:
-            mem.resolve(service)
 
 class ClassAttr(Element):
     XML_TAG = "attr"
