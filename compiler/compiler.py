@@ -39,6 +39,7 @@ class Element(object):
     
     def __init__(self, attrib, members):
         self._resolved = False
+        self._postprocessed = False
         for name, checker in self.ATTRS.iteritems():
             value = checker(name, attrib.pop(name, None)) 
             setattr(self, name, value)
@@ -73,8 +74,12 @@ class Element(object):
             self.type = service.get_type(self.type)
     
     def postprocess(self, service):
+        if not self._postprocessed:
+            self._postprocess(service)
+            self._postprocessed = True
+    
+    def _postprocess(self, service):
         pass
-
 
 class EnumMember(Element):
     XML_TAG = "member"
@@ -156,7 +161,7 @@ class Class(Element):
         for method in self.methods:
             method.resolve(service)
     
-    def postprocess(self, service): 
+    def _postprocess(self, service): 
         for attr in self.attrs:
             attr.parent = self 
             if attr.get:
