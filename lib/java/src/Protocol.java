@@ -12,8 +12,7 @@ public class Protocol
 	
 	public static final int REPLY_SUCCESS = 0;
 	public static final int REPLY_PROTOCOL_ERROR = 1;
-	public static final int REPLY_GENERIC_ERROR = 2;
-	public static final int REPLY_EXECUTION_ERROR = 3;
+	public static final int REPLY_EXECUTION_ERROR = 2;
 
 	
 	public abstract static class PackedException extends Exception
@@ -28,16 +27,6 @@ public class Protocol
         public abstract void pack(OutputStream stream) throws IOException;
 	}
 
-	/*public static class GenericException extends Exception
-	{
-		public String className;
-		public GenericException(String className, String message)
-		{
-			super(message);
-			this.className = className;
-		}
-	}*/
-	
 	public static class ProtocolError extends Exception
 	{
 		public ProtocolError(String message)
@@ -96,15 +85,11 @@ public class Protocol
 
 	public static abstract class BaseProcessor
 	{
-		//protected InputStream		inStream;
-		//protected OutputStream		outStream;
 		protected Map<Long, Cell>	cells;
 		protected ObjectIDGenerator	idGenerator;
 
-		public BaseProcessor(/*InputStream inStream, OutputStream outStream*/)
+		public BaseProcessor()
         {
-            //this.inStream = inStream;
-            //this.outStream = outStream;
             cells = new HashMap<Long, Cell>();
             idGenerator = new ObjectIDGenerator();
         }
@@ -139,7 +124,7 @@ public class Protocol
 		protected void send_packed_exception(OutputStream outStream, Integer seq, PackedException exc) throws IOException
 		{
             Packers.Int32.pack(new Integer(seq), outStream);
-            Packers.Int8.pack(new Byte((byte)Protocol.REPLY_EXECUTION_ERROR), outStream);
+            Packers.Int8.pack(new Byte((byte)REPLY_EXECUTION_ERROR), outStream);
             exc.pack(outStream);
             outStream.flush();
 		}
@@ -147,21 +132,12 @@ public class Protocol
 		protected void send_protocol_error(OutputStream outStream, Integer seq, ProtocolError exc) throws IOException
 		{
             Packers.Int32.pack(new Integer(seq), outStream);
-            Packers.Int8.pack(new Byte((byte)Protocol.REPLY_PROTOCOL_ERROR), outStream);
+            Packers.Int8.pack(new Byte((byte)REPLY_PROTOCOL_ERROR), outStream);
             Packers.Str.pack(exc.toString(), outStream);
             outStream.flush();
 		}
 		
-		/*protected void send_generic_exception(OutputStream outStream, Integer seq, Exception exc) throws IOException
-		{
-            Packers.Int32.pack(new Integer(seq), outStream);
-            Packers.Int8.pack(new Byte((byte)Protocol.REPLY_GENERIC_ERROR), outStream);
-            Packers.Str.pack(exc.getClass().getName(), outStream);
-            Packers.Str.pack(exc.toString(), outStream);
-            outStream.flush();
-		}*/
-
-		protected void process(InputStream inStream, OutputStream outStream) throws IOException
+		protected void process(InputStream inStream, OutputStream outStream) throws IOException, PackedException, ProtocolError
 		{
 			Integer seq = (Integer) (Packers.Int32.unpack(inStream));
 			int cmdid = (Byte) (Packers.Int8.unpack(inStream));
@@ -229,6 +205,22 @@ public class Protocol
             _seq = 0;
         }
         
+        /*public BaseClient(Servers.ITransport transport) throws IOException
+        {
+        	this(transport.getInputStream(), transport.getOutputStream());
+        }*/
+        
+        public void close() throws IOException
+        {
+        	if (_inStream != null) { 
+	        	_inStream.close();
+	        	_outStream.close();
+	        	_inStream = null;
+	        	_outStream = null;
+        	}
+        }
+        
+        
         protected synchronized int _get_seq()
         {
             _seq += 1;
@@ -260,13 +252,6 @@ public class Protocol
 
         protected abstract PackedException _load_packed_exception() throws IOException, ProtocolError;
 
-        /*protected GenericException _load_generic_exception() throws IOException
-        {
-        	String className = (String)Packers.Str.unpack(_inStream);
-        	String message = (String)Packers.Str.unpack(_inStream);
-        	return new GenericException(className, message);
-        }*/
-
         protected ProtocolError _load_protocol_error() throws IOException
         {
         	String message = (String)Packers.Str.unpack(_inStream);
@@ -282,12 +267,10 @@ public class Protocol
             		return packer.unpack(_inStream);
             	case REPLY_PROTOCOL_ERROR:
             		throw _load_protocol_error();
-            	//case REPLY_GENERIC_ERROR:
-            	//	throw _load_generic_exception();
             	case REPLY_EXECUTION_ERROR:
             		throw _load_packed_exception();
             	default:
-            		throw new Protocol.ProtocolError("unknown reply code: " + code);
+            		throw new ProtocolError("unknown reply code: " + code);
             }
         }	
 	}

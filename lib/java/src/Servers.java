@@ -46,11 +46,16 @@ public class Servers
 	public static class SocketTransport implements ITransport
 	{
 		protected Socket sock;
-		public static final int bufsize = 4096;
+		public static final int bufsize = 8000;
 		
 		public SocketTransport(Socket sock)
 		{
 			this.sock = sock;
+		}
+		
+		public SocketTransport(String host, int port) throws IOException, UnknownHostException
+		{
+			this(new Socket(host, port));
 		}
 		
 		public InputStream getInputStream() throws IOException
@@ -64,7 +69,7 @@ public class Servers
 		}
 	}
 	
-	public static class BaseServer
+	public abstract static class BaseServer
 	{
 		Protocol.BaseProcessor processor;
 		ITransportFactory transportFactory;
@@ -75,7 +80,7 @@ public class Servers
 			this.transportFactory = transportFactory;
 		}
 		
-		public void serve() throws Exception
+		public void serve() throws IOException, Protocol.PackedException, Protocol.ProtocolError
 		{
 			while (true)
 			{
@@ -83,8 +88,18 @@ public class Servers
 				_handleClient(transport);
 			}
 		}
-		
-		protected void _handleClient(ITransport transport) throws Exception
+
+		protected abstract void _handleClient(ITransport transport) throws IOException, Protocol.PackedException, Protocol.ProtocolError;
+	}
+
+	public static class SimpleServer extends BaseServer
+	{
+		public SimpleServer(Protocol.BaseProcessor processor, ITransportFactory transportFactory)
+		{
+			super(processor, transportFactory);
+		}
+
+		protected void _handleClient(ITransport transport) throws IOException, Protocol.PackedException, Protocol.ProtocolError
 		{
 			InputStream inStream = transport.getInputStream();
 			OutputStream outStream = transport.getOutputStream();
@@ -96,18 +111,10 @@ public class Servers
 					processor.process(inStream, outStream);
 				}
 			}
-			catch (IOException exc)
+			catch (EOFError exc)
 			{
-				// check for EOF
+				// finish on EOF
 			}
-		}
-	}
-
-	public static class SimpleServer extends BaseServer
-	{
-		public SimpleServer(Protocol.BaseProcessor processor, ITransportFactory transportFactory)
-		{
-			super(processor, transportFactory);
 		}
 	}
 
@@ -117,6 +124,48 @@ public class Servers
 		{
 			super(processor, transportFactory);
 		}
+
+		protected void _handleClient(ITransport transport) throws IOException, Protocol.PackedException, Protocol.ProtocolError
+		{
+			InputStream inStream = transport.getInputStream();
+			OutputStream outStream = transport.getOutputStream();
+		}
 	}
+	
+	public abstract static class ChildServer
+	{
+		protected Process proc;
+		public Protocol.BaseClient client;
 		
+		public ChildServer(ProcessBuilder procBuilder) throws IOException, UnknownHostException
+		{
+			Process p = procBuilder.start();
+			InputStream stream = p.getInputStream();
+			BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
+			String hostname = reader.readLine();
+			String portstr = reader.readLine();
+			stream.close();
+			int port = Integer.parseInt(portstr);
+			ITransport trans = new SocketTransport(hostname, port);
+			client = getClient(trans);
+		}
+		
+		protected abstract Protocol.BaseClient getClient(ITransport transport);
+		
+		public void close() throws IOException, InterruptedException
+		{
+			client.close();
+			client = null;
+			proc.waitFor();
+		}
+		
+	}
 }
+
+
+
+
+
+
+
+

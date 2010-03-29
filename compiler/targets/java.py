@@ -80,7 +80,7 @@ class JavaTarget(TargetBase):
     def new_module(self, filename):
         mod = blocklang.Module()
         yield mod
-        with self.open(filename) as f:
+        with self.open(filename, "w") as f:
             f.write(mod.render())
 
     def generate(self, service):

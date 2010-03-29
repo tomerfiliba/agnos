@@ -3,7 +3,7 @@ from compiler import compile, JavaTarget
 
 if __name__ == "__main__":
     try:
-        compile("tests/test2.xml", JavaTarget("tests/gen-java2"))
+        compile("tests/test.xml", JavaTarget("tests/gen-java"))
     except:
         import sys
         import pdb

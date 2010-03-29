@@ -9,7 +9,7 @@ public class Packers {
 
 		public Object unpack(InputStream stream) throws IOException;
 	}
-
+	
 	protected static void _write(OutputStream stream, byte[] buffer)
 			throws IOException {
 		stream.write(buffer, 0, buffer.length);
@@ -24,7 +24,7 @@ public class Packers {
 			got = stream.read(buffer, total_got, buffer.length - total_got);
 			total_got += got;
 			if (got <= 0 && total_got < buffer.length) {
-				throw new IOException("end of stream detected");
+				throw new EOFException("premature end of stream detected");
 			}
 		}
 	}

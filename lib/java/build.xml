@@ -1,8 +1,8 @@
 <project>
 
-    <path id="compile.classpath">
+    <!--path id="compile.classpath">
         <fileset dir="/usr/local/lib" includes="*.jar" />
-    </path>
+    </path-->
 
     <target name="clean">
         <delete dir="build" />
@@ -10,7 +10,7 @@
 
     <target name="compile">
         <mkdir dir="build/classes" />
-        <javac srcdir="src" destdir="build/classes" debug="true" classpathref="compile.classpath" >
+        <javac srcdir="src" destdir="build/classes" debug="true" includeAntRuntime="no">
             <!-- compilerarg value="-Xlint"/-->   
         </javac>
         
