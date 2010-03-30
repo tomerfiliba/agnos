@@ -165,12 +165,12 @@ class Class(Element):
         for attr in self.attrs:
             attr.parent = self 
             if attr.get:
-                self.autogen(service, attr, "_%s_get_%s" % (self.name, attr.name), attr.type, ("_objref", t_objref))
+                self.autogen(service, attr, "_%s_get_%s" % (self.name, attr.name), attr.type, ("_objref", self))
             if attr.set:
-                self.autogen(service, attr, "_%s_set_%s" % (self.name, attr.name), t_void, ("_objref", t_objref), ("value", attr.type))
+                self.autogen(service, attr, "_%s_set_%s" % (self.name, attr.name), t_void, ("_objref", self), ("value", attr.type))
         for method in self.methods:
             method.parent = self 
-            self.autogen(service, method, "_%s_%s" % (self.name, method.name), method.type, ("_objref", t_objref), *[(arg.name, arg.type) for arg in method.args]) 
+            self.autogen(service, method, "_%s_%s" % (self.name, method.name), method.type, ("_objref", self), *[(arg.name, arg.type) for arg in method.args]) 
 
 class FuncArg(Element):
     XML_TAG = "arg"

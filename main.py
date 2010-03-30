@@ -1,9 +1,9 @@
-from compiler import compile, JavaTarget
+from compiler import compile, JavaTarget, PythonTarget
 
 
 if __name__ == "__main__":
     try:
-        compile("tests/test.xml", JavaTarget("tests/gen-java"))
+        compile("tests/test.xml", PythonTarget("tests/gen-py"))
     except:
         import sys
         import pdb

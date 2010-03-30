@@ -158,6 +158,7 @@ class JavaTarget(TargetBase):
                 STMT("Packers.Int32.pack(__record_id, stream)")
                 STMT("{0}Record.pack(this, stream)", rec.name)
         SEP()
+        
         with BLOCK("protected static class _{0}Record implements Packers.IPacker", rec.name):
             with BLOCK("public void pack(Object obj, OutputStream stream) throws IOException"):
                 STMT("{0} val = ({0})obj", rec.name)

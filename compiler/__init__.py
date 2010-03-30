@@ -1,4 +1,4 @@
 from .compiler import compile
-from .targets import JavaTarget
+from .targets import JavaTarget, PythonTarget
 
 

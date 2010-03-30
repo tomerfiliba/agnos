@@ -20,9 +20,10 @@ class ProtocolError(Exception):
 
 
 class BaseProcessor(object):
-    def __init__(self):
+    def __init__(self, func_mapping):
         self.cells = {}
-        
+        self.func_mapping = func_mapping
+    
     def store(self, obj):
         oid = id(obj)
         if oid in self.cells:
@@ -88,10 +89,21 @@ class BaseProcessor(object):
         pass
 
     def process_invoke(self, seq, instream, outstream):
-        raise NotImplementedError()
+        funcid = Int32.unpack(instream)
+        try:
+            func, unpack_args, pack_res = self.func_mapping[funcid]
+        except KeyError:
+            raise ProtocolError("unknown function id: %d" % (funcid,))
+        args = unpack_args(instream)
+        res = func(args)
+        Int32.pack(seq, outstream)
+        Int8.pack(seq, REPLY_SUCCESS)
+        pack_res(res, outstream)
 
 
 class BaseClient(object):
+    PACKED_EXCEPTIONS = {}
+    
     def __init__(self, instream, outstream):
         self._instream = instream
         self._outstream = outstream 
@@ -121,7 +133,12 @@ class BaseClient(object):
         return seq
 
     def _load_packed_exception():
-        raise NotImplementedError()
+        clsid = Int32.unpack(self._instream)
+        try:
+            packer = self.PACKED_EXCEPTIONS[clsid]
+        except KeyError:
+            raise ProtocolError("invalid class id: %d" % (clsid,))
+        return packer.unpack(self._instream)
 
     def _load_protocol_error():
         msg = Str.unpack(self._instream)

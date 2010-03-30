@@ -82,6 +82,36 @@ public class Protocol
 			return refcount <= 0;
 		}
 	}
+	
+	/*public static abstract class BaseProxy
+	{
+        protected Long __objref;
+        protected boolean __disposed;
+        
+        protected FileProxy(Long objref)
+        {
+            __objref = objref;
+            __disposed = false;
+        }
+        
+        public void finalize()
+        {
+            dispose();
+        }
+        
+        public void dispose()
+        {
+            if (__disposed)
+            {
+                return;
+            }
+            synchronized(this)
+            {
+                __disposed = true;
+                __client._decref(__objref);
+            }
+        }
+	}*/
 
 	public static abstract class BaseProcessor
 	{

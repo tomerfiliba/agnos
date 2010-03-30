@@ -29,7 +29,7 @@ class Block(object):
         if kwargs:
             raise TypeError("invalid keyword arguments %r" % (kwargs.keys(),))
         if text is not None:
-            self.title = Stmt(text + (":" if colon else ""))
+            self.title = Stmt(text + (":" if colon else ""), *args)
         self.children = []
         self.stack = []
     
