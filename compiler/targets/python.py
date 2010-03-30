@@ -205,7 +205,15 @@ class PythonTarget(TargetBase):
             for func in service.roots.values():
                 args = ", ".join(arg.name for arg in func.args)
                 with BLOCK("def {0}(self, {1})", func.name, args):
-                    STMT("_cmd_invoke({0})", func.id)
+                    STMT("self._cmd_invoke({0})", func.id)
+                    for arg in func.args:
+                        STMT("{0}.pack({1}, self._outstream)", type_to_packer(arg.type), arg.name)
+                    STMT("self._outstream.flush()")
+                    STMT("res = self._read_reply({0})", type_to_packer(func.type))
+                    if isinstance(func.type, compiler.Class):
+                        STMT("return {0}Proxy(self, res)", func.type)
+                    elif func.type != compiler.t_void:
+                        STMT("return res")
         SEP()
 
 
