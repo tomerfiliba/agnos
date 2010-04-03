@@ -13,6 +13,11 @@ def DEFAULT(default):
         return v if v else default
     return checker
 
+def REQUIRED(name, v):
+    if not v:
+        raise IDLError("required argument %r missing" % (name,))
+    return v
+
 def STR_TO_BOOL(default):
     def checker(name, text):
         if not text:
@@ -104,10 +109,18 @@ class Typedef(Element):
     XML_TAG = "typedef"
     ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER)
 
+class Const(Element):
+    XML_TAG = "const"
+    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER, value = REQUIRED)
+    
+    def _resolve(self, service):
+        Element._resolve(self, service)
+        self.value = consts.parse(self.value)
+    
 class RecordMember(Element):
     XML_TAG = "attr"
     ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER)
-    
+
 class Record(Element):
     XML_TAG = "record"
     CHILDREN = [RecordMember]
@@ -239,7 +252,7 @@ class TMap(BuiltinType):
 
 class Service(Element):
     XML_TAG = "service"
-    CHILDREN = [Typedef, Enum, Record, Exception, Class, Func]
+    CHILDREN = [Typedef, Const, Enum, Record, Exception, Class, Func]
     ATTRS = dict(name = IDENTIFIER)
     BUILTIN_TYPES = {
         "void" : t_void,
