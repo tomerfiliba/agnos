@@ -1,4 +1,4 @@
-from .compiler import compile
-from .targets import JavaTarget, PythonTarget
+from .compiler import compile, IDLError
+from .targets import JavaTarget, PythonTarget, CSharpTarget, CPPTarget
 
 

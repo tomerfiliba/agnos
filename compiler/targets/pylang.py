@@ -13,6 +13,8 @@ EmptyStmt = Stmt("")
 class Doc(object):
     def __init__(self, text, box = False, spacer = False):
         self.text = text
+        self.box = box
+        self.spacer = spacer
     def render(self):
         lines = ["# " + l for l in self.text.splitlines()]
         if self.box:

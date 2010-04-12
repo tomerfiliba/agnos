@@ -35,6 +35,9 @@ def type_to_packer(t):
         return type_to_packer(compiler.t_objref)
     return "%s$packer" % (t,)
 
+def const_to_python(value):
+    return repr(value)
+
 
 class PythonTarget(TargetBase):
     @contextmanager
@@ -49,34 +52,53 @@ class PythonTarget(TargetBase):
             BLOCK = module.block
             STMT = module.stmt
             SEP = module.sep
+            DOC = module.doc
             
             STMT("import agnos")
-            STMT("from agnos import packers")
             SEP()
+            
+            DOC("enums", spacer = True)
             for member in service.types.values():
                 if isinstance(member, compiler.Enum):
                     self.generate_enum(module, member)
+                    SEP()
             
+            DOC("records", spacer = True)
             for member in service.types.values():
                 if isinstance(member, compiler.Record):
                     self.generate_record(module, member)
-
+                    SEP()
+            
+            DOC("consts", spacer = True)
+            for member in service.consts.values():
+                STMT("{0} = {1}", member.name, const_to_python(member.value))
+            SEP()
+            
+            DOC("classes", spacer = True)
             for member in service.types.values():
                 if isinstance(member, compiler.Class):
                     self.generate_class_proxy(module, service, member)
-    
+                    SEP()
+            SEP()
+            
+            DOC("server", spacer = True)
             self.generate_handler_interface(module, service)
+            SEP()
+            
             self.generate_processor(module, service)
+            SEP()
+            
+            DOC("client", spacer = True)
             self.generate_client(module, service)
+            SEP()
     
     def generate_enum(self, module, enum):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
         
-        members = ["%s = %s" % (m.name, m.value) for m in enum.members]
-        STMT("{0} = agnos.create_enum('{0}', {1})", enum.name, ", ".join(members))
-        SEP()
+        members = ["\n    '%s' : %s" % (m.name, m.value) for m in enum.members]
+        STMT("{0} = agnos.create_enum('{0}', {{{1}}})", enum.name, ", ".join(members))
 
     def generate_record(self, module, rec):
         BLOCK = module.block
@@ -111,7 +133,6 @@ class PythonTarget(TargetBase):
                 for mem in rec.members:
                     args.append("%s.unpack(stream)" % (type_to_packer(mem.type),))
                 STMT("return {0}({1})", rec.name, ", ".join(args))
-        SEP()
     
     def generate_class_proxy(self, module, service, cls):
         BLOCK = module.block
@@ -138,33 +159,35 @@ class PythonTarget(TargetBase):
                 with BLOCK("def {0}(self, {1})", method.name, args):
                     callargs = ["self._objref"] + [arg.name for arg in method.args]
                     STMT("return _client._{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
-        SEP()
 
     def generate_handler_interface(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
         with BLOCK("class IHandler(object)"):
-            for member in service.roots.values():
+            for member in service.funcs.values():
                 if isinstance(member, compiler.Func):
                     args = ", ".join(arg.name for arg in member.args)
                     with BLOCK("def {0}(self, {1})", member.name, args):
                         STMT("raise NotImplementedError()")
-        SEP()
     
     def generate_processor(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
         with BLOCK("class Processor(agnos.BaseProcessor)"):
-            #STMT()
             with BLOCK("def __init__(self, handler)"):
+                STMT("self.handler = handler")
                 STMT("func_mapping = {}")
-                for func in service.roots.values():
-                    STMT("func_mapping[{0}] = (self._func_{0}, self._unpack_{0}, self._pack_{0})", func.id)
+                for func in service.funcs.values():
+                    if func.type == compiler.t_void:
+                        packer = "None"
+                    else: 
+                        packer = "self._pack_%s" % (func.id,)
+                    STMT("func_mapping[{0}] = (self._func_{0}, self._unpack_{0}, {1})", func.id, packer)
                 STMT("agnos.BaseProcessor.__init__(self, func_mapping)")
             SEP()
-            for func in service.roots.values():
+            for func in service.funcs.values():
                 if isinstance(func, compiler.Func):
                     with BLOCK("def _func_{0}(self, args)", func.id):
                         STMT("return self.handler.{0}(*args)", func.name)
@@ -180,16 +203,14 @@ class PythonTarget(TargetBase):
                         else:
                             unpackers.append("%s.unpack(stream)" % (type_to_packer(arg.type),))
                     STMT("return [{0}]", ", ".join(unpackers))
-                with BLOCK("def _pack_{0}(self, res, stream)", func.id):
-                    if func.type == compiler.t_void:
-                        STMT("pass")
-                    elif isinstance(func.type, compiler.Class):
-                        STMT("oid = self.store(res)")
-                        STMT("{0}.pack(oid, stream)", type_to_packer(func.type))
-                    else:
-                        STMT("{0}.pack(res, stream)", type_to_packer(func.type))
+                if func.type != compiler.t_void:
+                    with BLOCK("def _pack_{0}(self, res, stream)", func.id):
+                        if isinstance(func.type, compiler.Class):
+                            STMT("oid = self.store(res)")
+                            STMT("{0}.pack(oid, stream)", type_to_packer(func.type))
+                        else:
+                            STMT("{0}.pack(res, stream)", type_to_packer(func.type))
                 SEP()
-        SEP()
     
     def generate_client(self, module, service):
         BLOCK = module.block
@@ -198,11 +219,11 @@ class PythonTarget(TargetBase):
         DOC = module.doc
         with BLOCK("class Client(agnos.BaseClient)"):
             STMT("PACKED_EXCEPTIONS = {}")
-            for mem in service.types:
+            for mem in service.types.values():
                 if isinstance(mem, compiler.Exception):
                     STMT("PACKED_EXCEPTIONS[{0}] = {1}", mem.id, type_to_packer(mem))
             SEP()
-            for func in service.roots.values():
+            for func in service.funcs.values():
                 args = ", ".join(arg.name for arg in func.args)
                 with BLOCK("def {0}(self, {1})", func.name, args):
                     STMT("self._cmd_invoke({0})", func.id)
@@ -211,10 +232,9 @@ class PythonTarget(TargetBase):
                     STMT("self._outstream.flush()")
                     STMT("res = self._read_reply({0})", type_to_packer(func.type))
                     if isinstance(func.type, compiler.Class):
-                        STMT("return {0}Proxy(self, res)", func.type)
+                        STMT("return {0}Proxy(self, res)", func.type.name)
                     elif func.type != compiler.t_void:
                         STMT("return res")
-        SEP()
 
 
 

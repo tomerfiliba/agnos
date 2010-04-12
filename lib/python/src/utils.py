@@ -23,7 +23,7 @@ class Enum(object):
     def unpack(cls, stream):
         return cls.get_by_value(Int32.unpack(stream))
 
-def create_enum(_name, **members):
+def create_enum(name, members):
     cls = type(_name, (Enum,), dict(_BY_VALUE = {}))
     for n, v in members.iteritems():
         em = cls(n, v)

@@ -2,7 +2,19 @@ WHITESPACE = " \t\n\r"
 IDENTIFIER_FIRST = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
 IDENTIFIER_REST = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789"
 
-def parse_const(stream):
+class IDLError(Exception):
+    pass
+
+
+def parse_const(text):
+    stream = list(text)
+    res = _parse_const(stream)
+    trailing = "".join(stream).strip()
+    if trailing:
+        raise IDLError("trailing data after template: %r" % (trailing,))
+    return res
+
+def _parse_const(stream):
     while True:
         ch = stream[0]
         if ch in WHITESPACE:
@@ -24,6 +36,8 @@ def _parse_list(stream):
     items = []
     assert stream.pop(0) == "["
     while True:
+        if not stream:
+            raise IDLError("list: missing closing ']'")
         ch = stream[0]
         if ch in WHITESPACE + ",": 
             stream.pop(0)
@@ -32,13 +46,15 @@ def _parse_list(stream):
             stream.pop(0)
             break
         else:
-            items.append(parse_const(stream))
+            items.append(_parse_const(stream))
     return items
 
 def _parse_dict(stream):
-    items = []
+    items = {}
     assert stream.pop(0) == "{"
     while True:
+        if not stream:
+            raise IDLError("dict: missing closing '}'")
         ch = stream[0]
         if ch in WHITESPACE + ",": 
             stream.pop(0)
@@ -47,7 +63,7 @@ def _parse_dict(stream):
             stream.pop(0)
             break
         else:
-            k = parse_const(stream)
+            k = _parse_const(stream)
             while True:
                 ch = stream[0]
                 if ch in WHITESPACE: 
@@ -58,7 +74,7 @@ def _parse_dict(stream):
                     break
                 else:
                     raise IDLError("dict item expected ':', found %r", ch)
-            v = parse_const(stream)
+            v = _parse_const(stream)
             items[k] = v
     return items
 
@@ -67,21 +83,20 @@ def _parse_number(stream):
         del stream[0:2]
         DIGSET = "0123456789abcdefABCDEF"
         base = 16
-    
     elif stream[0:2] == ["0", "o"]:
         del stream[0:2]
-        base = 10
+        base = 8
         DIGSET = "01234567"
     elif stream[0:2] == ["0", "b"]:
         del stream[0:2]
-        base = 10
+        base = 2
         DIGSET = "01"
     else:
         base = 10
         DIGSET = "0123456789.eE+-"
     
     digits = []
-    while True:
+    while stream:
         ch = stream[0]
         if ch in DIGSET:
             stream.pop(0)
@@ -98,6 +113,7 @@ def _parse_number(stream):
 STRING_ESCAPES = {
     "n" : "\n",
     "r" : "\r",
+    "t" : "\t",
     "\\" : "\\",
     "'" : "'",
     '"' : '"',
@@ -108,35 +124,45 @@ def _parse_string(stream):
     assert delim in ("'", '"')
     chars = []
     while True:
-        ch = stream[0]
+        if not stream:
+            raise IDLError("string: missing closing quote")
+        ch = stream.pop(0)
         if ch == delim:
-            stream.pop(0)
             break
         elif ch == "\\":
-            stream.pop(0)
             ch = stream.pop(0)
             if ch in STRING_ESCAPES:
                 ch = STRING_ESCAPES[ch]
             elif ch == "x":
-                d1=stream.pop(0)
-                d2=stream.pop(0)
+                d1 = stream.pop(0)
+                d2 = stream.pop(0)
                 ch = chr(int(d1,16)*16 + int(d2,16))
             ch = STRING_ESCAPES.get(ch, ch)
         chars.append(ch)
     return "".join(chars)
 
 
+def parse_template(text):
+    stream = list(text)
+    res = _parse_template(stream)
+    trailing = "".join(stream).strip()
+    if trailing:
+        raise IDLError("trailing data after template: %r" % (trailing,))
+    return res
 
-def parse_template(stream):
+def _parse_template(stream):
     head = []
     children = []
+    end_of_head = False
     while stream:
         ch = stream[0]
         if ch in WHITESPACE:
             stream.pop(0)
+            end_of_head = True
             continue
         elif ch == "[":
             stream.pop(0)
+            end_of_head = True
             child = None
             while True:
                 ch = stream[0]
@@ -154,15 +180,34 @@ def parse_template(stream):
                     else:
                         raise IDLError("expected identifier before ','")
                 else:
-                    child = parse_template(stream)
+                    child = _parse_template(stream)
         elif ch in ",]":
+            break
+        if end_of_head:
             break
         else:
             head.append(ch)
             stream.pop(0)
     return "".join(head), children
 
-print parse_template(list("map[int,str]"))
+
+if __name__ == "__main__":
+    try:
+        print parse_const(r"""[0x12, 11, 0b1110, 3.1415926535, 3.14e+19, 3.14e-19]""")
+        print parse_const(r"""['hello', "world", 'hi\n\r\tthere', 'hi\\there', 'hi\"there', 'hi\'there', 'hi\x20there']""")
+        print parse_const(r"""{1 : 2, "hello" : 17.3}""")
+        #print parse_const(r"""[17, 18, 19] 20""")
+        #print parse_const(r"""{17 : 18, 19 : 20} 21""")
+        print parse_template("map[int, list[str]]")
+    except IDLError:
+        raise
+    except Exception:
+        import pdb
+        import sys
+        import traceback
+        print "".join(traceback.format_exception(*sys.exc_info()))
+        pdb.post_mortem(sys.exc_info()[2])
+    
 
 
 

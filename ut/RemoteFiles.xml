@@ -1,12 +1,4 @@
 <service name="RemoteFiles">
-	<!--
-		<const name="S_IXOTH" value="1" /> <const name="S_IWOTH" value="2" />
-		<const name="S_IROTH" value="4" /> <const name="S_IXGRP" value="16" />
-		<const name="S_IWGRP" value="32" /> <const name="S_IROTH" value="64"
-		/> <const name="S_IXUSR" value="256" /> <const name="S_IWUSR"
-		value="512" /> <const name="S_IRUSR" value="1024" />
-	-->
-
 	<enum name="Errno">
 		<member name="EACCES" />
 		<member name="EBADF" />
@@ -18,10 +10,9 @@
 		<member name="ENOTDIR" />
 		<member name="EEXIST" />
 		<member name="EISDIR" />
-		<member name="ENOMEM" />
 		<member name="EPERM" />
 		<member name="EROFS" />
-		<member name="EWOULDBLOCK" />
+		<member name="EWOULDBLOCK" ></member>
 	</enum>
 
 	<exception name="UnderlyingIOError">
@@ -29,16 +20,16 @@
 		<attr name="errno" type="Errno" />
 	</exception>
 
-<!--	<const name="S_IFIFO" type="int32" value="0x010000" />-->
-<!--	<const name="S_IFCHR" type="int32" value="0x020000" />-->
-<!--	<const name="S_IFDIR" type="int32" value="0x040000" />-->
-<!--	<const name="S_IFBLK" type="int32" value="0x060000" />-->
-<!--	<const name="S_IFREG" type="int32" value="0x100000" />-->
-<!--	<const name="S_IFLNK" type="int32" value="0x120000" />-->
+	<const name="S_IFIFO" type="int32" value="0x010000" />
+	<const name="S_IFCHR" type="int32" value="0x020000" />
+	<const name="S_IFDIR" type="int32" value="0x040000" />
+	<const name="S_IFBLK" type="int32" value="0x060000" />
+	<const name="S_IFREG" type="int32" value="0x100000" />
+	<const name="S_IFLNK" type="int32" value="0x120000" />
 
-    <typedef name="st_mode" type="int32"/>
+	<typedef name="st_mode" type="int32" />
 
-	<struct name="StatRes">
+	<record name="StatRes">
 		<attr name="inode" type="int32" />
 		<attr name="mode" type="st_mode" />
 		<attr name="size" type="int32" />
@@ -47,9 +38,9 @@
 		<attr name="atime" type="date" />
 		<attr name="mtime" type="date" />
 		<attr name="ctime" type="date" />
-	</struct>
+	</record>
 
-    <class name="File">
+	<class name="File">
 		<attr name="filename" type="str" set="false" />
 		<method name="stat" type="StatRes" />
 		<method name="read" type="buffer">
@@ -61,20 +52,15 @@
 		<method name="close" type="void" />
 		<method name="flush" type="void" />
 	</class>
-	
-<!--	<class name="Directory">-->
-<!--        <attr name="path" type="str" set="false" />-->
-<!--        <method name="stat" type="StatRes" />-->
-<!--        <method name="list_dirs" type="list(Directory)"/>-->
-<!--        <method name="list_files" type="list(File)"/>-->
-<!--        <method name="append" type="Directory">-->
-<!--        -->
-<!--        </method>-->
-<!--	</class>-->
 
 	<func name="open" type="File">
-		<arg name="filename" type="str />
+		<arg name="filename" type="str" />
 		<arg name="mode" type="str" />
+	</func>
+
+	<func name="copy" type="void">
+		<arg name="src" type="File" />
+		<arg name="dst" type="File" />
 	</func>
 
 </service>

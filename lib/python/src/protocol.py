@@ -98,7 +98,9 @@ class BaseProcessor(object):
         res = func(args)
         Int32.pack(seq, outstream)
         Int8.pack(seq, REPLY_SUCCESS)
-        pack_res(res, outstream)
+        if pack_res:
+            pack_res(res, outstream)
+        outstream.flush()
 
 
 class BaseClient(object):
