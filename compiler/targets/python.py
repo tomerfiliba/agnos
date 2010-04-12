@@ -33,7 +33,7 @@ def type_to_packer(t):
         return t.name
     if isinstance(t, compiler.Class):
         return type_to_packer(compiler.t_objref)
-    return "%s$packer" % (t,)
+    return "%r$packer" % (t,)
 
 def const_to_python(value):
     return repr(value)
@@ -55,6 +55,7 @@ class PythonTarget(TargetBase):
             DOC = module.doc
             
             STMT("import agnos")
+            STMT("from agnos import packers")
             SEP()
             
             DOC("enums", spacer = True)
@@ -117,6 +118,11 @@ class PythonTarget(TargetBase):
                 for mem in rec.members:
                     STMT("self.{0} = {0}", mem.name)
             SEP()
+            with BLOCK("def __repr__(self)"):
+                attrs = ["self.%s" % (mem.name,) for mem in rec.members]
+                STMT("attrs = [{0}]", ", ".join(attrs))
+                STMT("return '{0}(%s)' % (', '.join(repr(a) for a in attrs),)", rec.name)
+            SEP()
             with BLOCK("def pack(self, stream)"):
                 STMT("agnos.packers.Int32.pack(self.__record_id, stream)")
                 STMT("{0}Record.pack(self, stream)", rec.name)
@@ -146,19 +152,19 @@ class PythonTarget(TargetBase):
                 accessors = []
                 if attr.get:
                     with BLOCK("def _get_{0}(self)", attr.name):
-                        STMT("return self._client._{0}_get_{1}(self._objref)", cls.name, attr.name)
+                        STMT("return self._client._{0}_get_{1}(self)", cls.name, attr.name)
                     accessors.append("_get_%s" % (attr.name,))
                 if attr.set:
                     with BLOCK("def _set_{0}(self, value)", attr.name):
-                        STMT("self._client._{0}_set_{1}(self._objref, value)", cls.name, attr.name)
+                        STMT("self._client._{0}_set_{1}(self, value)", cls.name, attr.name)
                     accessors.append("_set_%s" % (attr.name,))
                 STMT("{0} = property({1})", attr.name, ", ".join(accessors))
             SEP()
             for method in cls.methods:
                 args = ", ".join(arg.name for arg in method.args)
                 with BLOCK("def {0}(self, {1})", method.name, args):
-                    callargs = ["self._objref"] + [arg.name for arg in method.args]
-                    STMT("return _client._{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
+                    callargs = ["self"] + [arg.name for arg in method.args]
+                    STMT("return self._client._{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
 
     def generate_handler_interface(self, module, service):
         BLOCK = module.block
@@ -194,7 +200,7 @@ class PythonTarget(TargetBase):
                 else:
                     with BLOCK("def _func_{0}(self, args)", func.id):
                         STMT("obj = args.pop(0)")
-                        STMT("return obj.{0}(*args)", func.name)
+                        STMT("return obj.{0}(*args)", func.origin.name)
                 with BLOCK("def _unpack_{0}(self, stream)", func.id):
                     unpackers = []
                     for arg in func.args:
@@ -226,11 +232,14 @@ class PythonTarget(TargetBase):
             for func in service.funcs.values():
                 args = ", ".join(arg.name for arg in func.args)
                 with BLOCK("def {0}(self, {1})", func.name, args):
-                    STMT("self._cmd_invoke({0})", func.id)
-                    for arg in func.args:
-                        STMT("{0}.pack({1}, self._outstream)", type_to_packer(arg.type), arg.name)
-                    STMT("self._outstream.flush()")
-                    STMT("res = self._read_reply({0})", type_to_packer(func.type))
+                    with BLOCK("with self._outstream.transaction()"):
+                        STMT("self._cmd_invoke({0})", func.id)
+                        for arg in func.args:
+                            if isinstance(arg.type, compiler.Class):
+                                STMT("{0}.pack({1}._objref, self._outstream)", type_to_packer(arg.type), arg.name)
+                            else:
+                                STMT("{0}.pack({1}, self._outstream)", type_to_packer(arg.type), arg.name)
+                    STMT("seq, res = self._read_reply({0})", type_to_packer(func.type))
                     if isinstance(func.type, compiler.Class):
                         STMT("return {0}Proxy(self, res)", func.type.name)
                     elif func.type != compiler.t_void:

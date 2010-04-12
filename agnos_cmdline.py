@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-from agnos.compiler import compile, IDLError, JavaTarget, PythonTarget
+from compiler import compile, IDLError, JavaTarget, PythonTarget
 
 
 if __name__ == "__main__":
     try:
-        compile("../ut/RemoteFiles.xml", PythonTarget("gen-py"))
+        compile("ut/RemoteFiles.xml", JavaTarget("ut/gen-java"))
     except IDLError:
         raise
     except Exception:

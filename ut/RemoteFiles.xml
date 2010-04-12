@@ -1,18 +1,18 @@
 <service name="RemoteFiles">
 	<enum name="Errno">
-		<member name="EACCES" />
-		<member name="EBADF" />
-		<member name="EFAULT" />
-		<member name="ELOOP" />
-		<member name="ENAMETOOLONG" />
-		<member name="ENOENT" />
-		<member name="ENOMEM" />
-		<member name="ENOTDIR" />
-		<member name="EEXIST" />
-		<member name="EISDIR" />
-		<member name="EPERM" />
-		<member name="EROFS" />
-		<member name="EWOULDBLOCK" ></member>
+		<member name="EACCES"/>
+		<member name="EBADF"/>
+		<member name="EFAULT"/>
+		<member name="ELOOP"/>
+		<member name="ENAMETOOLONG"/>
+		<member name="ENOENT"/>
+		<member name="ENOMEM"/>
+		<member name="ENOTDIR"/>
+		<member name="EEXIST"/>
+		<member name="EISDIR"/>
+		<member name="EPERM"/>
+		<member name="EROFS"/>
+		<member name="EWOULDBLOCK"/>
 	</enum>
 
 	<exception name="UnderlyingIOError">

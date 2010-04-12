@@ -20,7 +20,7 @@ class BaseServer(object):
                 self.processor.process(instream, outstream)
         except EOFError:
             pass
-    
+
 
 class SimpleServer(BaseServer):
     pass

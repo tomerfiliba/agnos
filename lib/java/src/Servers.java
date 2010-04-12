@@ -111,7 +111,7 @@ public class Servers
 					processor.process(inStream, outStream);
 				}
 			}
-			catch (EOFError exc)
+			catch (EOFException exc)
 			{
 				// finish on EOF
 			}

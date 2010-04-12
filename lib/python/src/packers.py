@@ -55,10 +55,10 @@ class Buffer(Packer):
 class Str(Packer):
     @classmethod
     def pack(cls, obj, stream):
-        Buffer.pack(obj.encode("utf-8"))
+        Buffer.pack(obj.encode("utf-8"), stream)
     @classmethod
     def unpack(cls, stream):
-        return Buffer.unpack().decode("utf-8")
+        return Buffer.unpack(stream).decode("utf-8")
 
 class ListOf(Packer):
     def __init__(self, type):
@@ -68,7 +68,7 @@ class ListOf(Packer):
         for item in obj:
             self.type.pack(item, stream)
     def unpack(self, stream):
-        length = Int32.pack(len(obj), stream)
+        length = Int32.unpack(stream)
         obj = []
         for i in xrange(length):
             obj.append(self.type.unpack(stream))
@@ -84,7 +84,7 @@ class MapOf(Packer):
             self.keytype.pack(key, stream)
             self.valtype.pack(val, stream)
     def unpack(self, stream):
-        length = Int32.pack(len(obj), stream)
+        length = Int32.unpack(stream)
         obj = {}
         for i in xrange(length):
             k = self.keytype.unpack(stream)

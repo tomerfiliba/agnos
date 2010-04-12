@@ -90,6 +90,8 @@ class EnumMember(Element):
     def fixate(self, value):
         if self.value is None:
             self.value = value
+        else:
+            self.value = parse_const(self.value)
         return self.value
 
 class Enum(Element):
@@ -179,12 +181,12 @@ class Class(Element):
         for attr in self.attrs:
             attr.parent = self 
             if attr.get:
-                self.autogen(service, attr, "_%s_get_%s" % (self.name, attr.name), attr.type, ("_objref", self))
+                self.autogen(service, attr, "_%s_get_%s" % (self.name, attr.name), attr.type, ("_proxy", self))
             if attr.set:
-                self.autogen(service, attr, "_%s_set_%s" % (self.name, attr.name), t_void, ("_objref", self), ("value", attr.type))
+                self.autogen(service, attr, "_%s_set_%s" % (self.name, attr.name), t_void, ("_proxy", self), ("value", attr.type))
         for method in self.methods:
             method.parent = self 
-            self.autogen(service, method, "_%s_%s" % (self.name, method.name), method.type, ("_objref", self), *[(arg.name, arg.type) for arg in method.args]) 
+            self.autogen(service, method, "_%s_%s" % (self.name, method.name), method.type, ("_proxy", self), *[(arg.name, arg.type) for arg in method.args]) 
 
 class FuncArg(Element):
     XML_TAG = "arg"
