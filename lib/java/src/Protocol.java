@@ -186,7 +186,7 @@ public class Protocol {
 		}
 
 		abstract protected void process_invoke(InputStream inStream,
-				OutputStream outStream, int seq) throws IOException,
+				OutputStream outStream, int seq) throws Exception, IOException,
 				PackedException, ProtocolError, GenericError;
 	}
 

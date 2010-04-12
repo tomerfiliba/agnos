@@ -72,9 +72,9 @@ def type_to_packer(t):
         return type_to_packer(compiler.t_int32)
     if isinstance(t, compiler.Class):
         return type_to_packer(compiler.t_objref)
-    return "%s$packer" % (t,)
+    return "%r$packer" % (t,)
 
-def const_to_java(val):
+def const_to_java(typ, val):
     if val is None:
         return "null"
     if val is True:
@@ -87,6 +87,7 @@ def const_to_java(val):
         return repr(val)
     elif isinstance(val, list):
         return "$const-list"
+        #return "new ArrayList<%s>{{%s}}" % (typ.oftype, body,)
     elif isinstance(val, dict):
         return "$const-map"
     else:
@@ -133,7 +134,7 @@ class JavaTarget(TargetBase):
 
                 DOC("consts", spacer = True)
                 for member in service.consts.values():
-                    STMT("public final static {0} {1} = {2}", type_to_java(member.type), member.name, const_to_java(member.value))
+                    STMT("public final static {0} {1} = {2}", type_to_java(member.type), member.name, const_to_java(member.type, member.value))
                 SEP()
                 
                 DOC("classes", spacer = True)
@@ -161,7 +162,7 @@ class JavaTarget(TargetBase):
                     STMT("put(member.value, member)")
             with BLOCK("private static final Map<String, {0}> _BY_NAME = new HashMap<String, {0}>()", enum.name, prefix = "{{", suffix = "}};"):
                 with BLOCK("for({0} member : {0}.values())", enum.name):
-                    STMT("put(member.name, member)")
+                    STMT("put(member.toString(), member)")
             SEP()
             with BLOCK("private {0}(int v)", enum.name):
                 STMT("value = new Integer(v)")
