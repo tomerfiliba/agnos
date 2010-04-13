@@ -95,6 +95,8 @@ def const_to_java(typ, val):
 
 
 class JavaTarget(TargetBase):
+    DEFAULT_TARGET_DIR = "gen-java"
+    
     @contextmanager
     def new_module(self, filename):
         mod = blocklang.Module()
@@ -227,15 +229,15 @@ class JavaTarget(TargetBase):
                 DOC("attributes")
             for attr in cls.attrs:
                 if attr.get:
-                    STMT("{0} get_{1}() throws IOException, Protocol.ProtocolError, Protocol.PackedException, Protocol.GenericError", type_to_java(attr.type), attr.name)
+                    STMT("{0} get_{1}() throws Exception", type_to_java(attr.type), attr.name)
                 if attr.set:
-                    STMT("void set_{1}({0} value) throws IOException, Protocol.ProtocolError, Protocol.PackedException, Protocol.GenericError", attr.name, type_to_java(attr.type))
+                    STMT("void set_{1}({0} value) throws Exception", attr.name, type_to_java(attr.type))
             SEP()
             if cls.attrs:
                 DOC("methods")
             for method in cls.methods:
                 args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) for arg in method.args)
-                STMT("{0} {1}({2}) throws IOException, Protocol.ProtocolError, Protocol.PackedException, Protocol.GenericError", type_to_java(method.type), method.name, args)
+                STMT("{0} {1}({2}) throws Exception", type_to_java(method.type), method.name, args)
 
     def generate_base_class_proxy(self, module, service):
         BLOCK = module.block
@@ -244,10 +246,10 @@ class JavaTarget(TargetBase):
         DOC = module.doc
         with BLOCK("public static abstract class BaseProxy"):
             STMT("protected Long _objref")
-            STMT("protected {0}.Client _client", service.name)
+            STMT("protected Service.Client _client")
             STMT("protected boolean _disposed")
             SEP()
-            with BLOCK("protected BaseProxy({0}.Client client, Long objref)", service.name):
+            with BLOCK("protected BaseProxy(Service.Client client, Long objref)"):
                 STMT("_client = client")
                 STMT("_objref = objref")
                 STMT("_disposed = false")
@@ -268,20 +270,20 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         with BLOCK("public static class {0}Proxy extends BaseProxy implements I{0}", cls.name):
-            with BLOCK("protected {0}Proxy({1}.Client client, Long objref)", cls.name, service.name):
+            with BLOCK("protected {0}Proxy(Service.Client client, Long objref)", cls.name):
                 STMT("super(client, objref)")
             SEP()
             for attr in cls.attrs:
                 if attr.get:
-                    with BLOCK("public {0} get_{1}() throws IOException, Protocol.ProtocolError, Protocol.PackedException, Protocol.GenericError", type_to_java(attr.type), attr.name):
+                    with BLOCK("public {0} get_{1}() throws Exception", type_to_java(attr.type), attr.name):
                         STMT("return _client._{0}_get_{1}(this)", cls.name, attr.name)
                 if attr.set:
-                    with BLOCK("public void set_{1}({0} value) throws IOException, Protocol.ProtocolError, Protocol.PackedException, Protocol.GenericError", attr.name, type_to_java(attr.type)):
+                    with BLOCK("public void set_{1}({0} value) throws Exception", attr.name, type_to_java(attr.type)):
                         STMT("_client._{0}_set_{1}(this, value)", cls.name, attr.name)
             SEP()
             for method in cls.methods:
                 args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) for arg in method.args)
-                with BLOCK("public {0} {1}({2}) throws IOException, Protocol.ProtocolError, Protocol.PackedException, Protocol.GenericError", type_to_java(method.type), method.name, args):
+                with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(method.type), method.name, args):
                     callargs = ["this"] + [arg.name for arg in method.args]
                     if method.type == compiler.t_void:
                         STMT("_client._{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
@@ -289,7 +291,7 @@ class JavaTarget(TargetBase):
                         STMT("return _client._{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
 
     def generate_service(self, service):
-        with self.new_module("%s.java" % (service.name,)) as module:
+        with self.new_module("Service.java") as module:
             BLOCK = module.block
             STMT = module.stmt
             SEP = module.sep
@@ -301,7 +303,7 @@ class JavaTarget(TargetBase):
             STMT("import java.io.*")
             STMT("import agnos.*")
             SEP()
-            with BLOCK("public class {0}", service.name):
+            with BLOCK("public class Service"):
                 DOC("server implementation", spacer = True)
                 self.generate_handler_interface(module, service)
                 SEP()
@@ -320,7 +322,7 @@ class JavaTarget(TargetBase):
             for member in service.funcs.values():
                 if isinstance(member, compiler.Func):
                     args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) for arg in member.args)
-                    STMT("{0} {1}({2})", type_to_java(member.type), member.name, args)
+                    STMT("{0} {1}({2}) throws Exception", type_to_java(member.type), member.name, args)
 
     def generate_processor(self, module, service):
         BLOCK = module.block
@@ -336,7 +338,7 @@ class JavaTarget(TargetBase):
                 STMT("super()")
                 STMT("this.handler = handler")
             SEP()
-            with BLOCK("protected void process_invoke(InputStream inStream, OutputStream outStream, int seq) throws IOException, Protocol.ProtocolError, Protocol.PackedException, Protocol.GenericError"):
+            with BLOCK("protected void process_invoke(InputStream inStream, OutputStream outStream, int seq) throws Exception"):
                 STMT("int funcid = (Integer){0}.unpack(inStream)", type_to_packer(compiler.t_int32))
                 STMT("Packers.IPacker packer = null")
                 STMT("Object result = null")

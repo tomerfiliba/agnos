@@ -15,6 +15,7 @@ public class Packers
 	protected static void _write(OutputStream stream, byte[] buffer)
 			throws IOException
 	{
+		System.out.println("W: " + Arrays.toString(buffer));
 		stream.write(buffer, 0, buffer.length);
 	}
 
@@ -31,6 +32,8 @@ public class Packers
 				throw new EOFException("premature end of stream detected");
 			}
 		}
+		
+		System.out.println("R: " + Arrays.toString(buffer));
 	}
 
 	public static class _Int8 implements IPacker
@@ -43,7 +46,7 @@ public class Packers
 				buffer[0] = 0;
 			}
 			else {
-				buffer[0] = (byte) (((Byte) obj) & 0xFF);
+				buffer[0] = ((Number)obj).byteValue();
 			}
 			_write(stream, buffer);
 		}
@@ -61,12 +64,12 @@ public class Packers
 	{
 		public void pack(Object obj, OutputStream stream) throws IOException
 		{
-			Int8.pack(new Byte(((Boolean) obj) ? (byte) 1 : (byte) 0), stream);
+			Int8.pack(new Byte((byte)(((Boolean)obj)?1:0)), stream);
 		}
 
 		public Object unpack(InputStream stream) throws IOException
 		{
-			return new Boolean((Byte) Int8.unpack(stream) != 0);
+			return new Boolean(((Byte) Int8.unpack(stream)) != 0);
 		}
 	}
 
@@ -83,7 +86,7 @@ public class Packers
 				buffer[1] = 0;
 			}
 			else {
-				short val = (Short) obj;
+				short val = ((Number)obj).shortValue();
 				buffer[0] = (byte) ((val >> 8) & 0xff);
 				buffer[1] = (byte) ((val) & 0xFF);
 			}
@@ -112,7 +115,7 @@ public class Packers
 				buffer[3] = 0;
 			}
 			else {
-				int val = (Integer) obj;
+				int val = ((Number)obj).intValue();
 				buffer[0] = (byte) ((val >> 24) & 0xff);
 				buffer[1] = (byte) ((val >> 16) & 0xff);
 				buffer[2] = (byte) ((val >> 8) & 0xff);
@@ -148,7 +151,7 @@ public class Packers
 				buffer[7] = 0;
 			}
 			else {
-				int val = (Integer) obj;
+				long val = ((Number)obj).longValue();
 				buffer[0] = (byte) ((val >> 56) & 0xff);
 				buffer[1] = (byte) ((val >> 48) & 0xff);
 				buffer[2] = (byte) ((val >> 40) & 0xff);
@@ -181,7 +184,7 @@ public class Packers
 				Int64.pack(new Long(0), stream);
 			}
 			else {
-				Int64.pack(Double.doubleToLongBits((Double) obj), stream);
+				Int64.pack(Double.doubleToLongBits(((Number)obj).doubleValue()), stream);
 			}
 		}
 

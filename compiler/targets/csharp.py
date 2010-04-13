@@ -5,6 +5,6 @@ from .. import compiler
 
 
 class CSharpTarget(TargetBase):
-    pass
+    DEFAULT_TARGET_DIR = "gen-csharp"
 
 

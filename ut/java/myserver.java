@@ -1,7 +1,7 @@
 import java.util.*;
 import java.io.*;
-import agnos.*;
-import RemoteFiles.RemoteFiles.*;
+//import agnos.*;
+import RemoteFiles.Service.*;
 import RemoteFiles.Types.*;
 
 public class myserver
@@ -12,61 +12,47 @@ public class myserver
 
 		// protected FileChannel fc;
 
-		public MyFile(String filename, String mode) throws IOException
+		public MyFile(String filename, String mode) throws Exception
 		{
 			_filename = filename;
-			/*
-			 * if (mode == "r") { fc = FileChannel.open(new File(filename),
-			 * READ); } else if (mode == "w") { fc = FileChannel.open(new
-			 * File(filename), WRITE); } else { throw new
-			 * UnderlyingIOError("invalid file open mode",
-			 * RemoteFiles.Errno.EFAULT); }
-			 */
+			if (mode != "r" && mode != "w") {
+				throw new UnderlyingIOError("invalid file open mode",
+						Errno.EFAULT);
+
+			}
 		}
 
-		public String get_filename() throws IOException,
-				Protocol.ProtocolError, Protocol.PackedException,
-				Protocol.GenericError
+		public String get_filename() throws Exception
 		{
 			return _filename;
 		}
 
-		public StatRes stat() throws IOException, Protocol.ProtocolError,
-				Protocol.PackedException, Protocol.GenericError
+		public StatRes stat() throws Exception
 		{
-			return new StatRes();
+			return new StatRes(new Integer(15), new Integer(12345),
+					new Integer(17772), new Integer(1001), new Integer(1002),
+					new Date(), new Date(), new Date());
 		}
 
-		public byte[] read(Integer count) throws IOException,
-				Protocol.ProtocolError, Protocol.PackedException,
-				Protocol.GenericError
+		public byte[] read(Integer count) throws Exception
 		{
-			/*
-			 * ByteBuffer bb = ByteBuffer.allocate(count); int size =
-			 * fc.read(bb); return Arrays.copyOf(bb.array(), size);
-			 */
-			return null;
+			byte[] buf = new byte[] { 1, 2, 3, 4, 5, 6 };
+			return buf;
 		}
 
-		public void write(byte[] data) throws IOException,
-				Protocol.ProtocolError, Protocol.PackedException,
-				Protocol.GenericError
+		public void write(byte[] data) throws Exception
 		{
-			/*
-			 * ByteBuffer bb = ByteBuffer.wrap(data); fc.write(bb);
-			 */
+			System.out.println("#write");
 		}
 
-		public void close() throws IOException, Protocol.ProtocolError,
-				Protocol.PackedException, Protocol.GenericError
+		public void close() throws Exception
 		{
-			// fc.close();
+			System.out.println("#close");
 		}
 
-		public void flush() throws IOException, Protocol.ProtocolError,
-				Protocol.PackedException, Protocol.GenericError
+		public void flush() throws Exception
 		{
-			// fc.force(false);
+			System.out.println("#flush");
 		}
 	}
 
@@ -93,9 +79,11 @@ public class myserver
 	public static void main(String[] args)
 	{
 		try {
-			Servers.SimpleServer server = new Servers.SimpleServer(new Processor(
-					new MyHandler()), new Servers.SocketTransportFactory(17732));
+			agnos.Servers.SimpleServer server = new agnos.Servers.SimpleServer(
+					new Processor(new MyHandler()),
+					new agnos.Servers.SocketTransportFactory("localhost", 17732));
 
+			System.out.println("starting server");
 			server.serve();
 		} catch (Exception ex) {
 			ex.printStackTrace();

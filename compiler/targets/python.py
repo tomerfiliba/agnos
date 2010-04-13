@@ -40,6 +40,8 @@ def const_to_python(value):
 
 
 class PythonTarget(TargetBase):
+    DEFAULT_TARGET_DIR = "gen-py"
+
     @contextmanager
     def new_module(self, filename):
         mod = pylang.Module()

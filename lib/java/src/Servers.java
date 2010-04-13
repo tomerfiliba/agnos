@@ -35,10 +35,13 @@ public class Servers
 		public SocketTransportFactory(InetAddress addr, int port) throws IOException
 		{
 			serverSocket = new ServerSocket(port, backlog, addr);
+			System.out.println("is bound = " + serverSocket.isBound());
+			System.out.println("port = " + port + ", addr = " + addr);
 		}
 		
 		public ITransport accept() throws IOException
 		{
+			System.out.println("accepting...");
 			return new SocketTransport(serverSocket.accept());
 		}
 	}

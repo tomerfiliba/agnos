@@ -1,24 +1,42 @@
 <project>
 
-    <path id="compile.classpath">
-        <fileset dir="../../lib/java/build/jars" includes="*.jar" />
-        <fileset dir="../gen-java/build/jars" includes="*.jar" />
-    </path>
+	<path id="classpath">
+		<fileset dir="../../lib/java/build/jars" includes="*.jar" />
+		<fileset dir="../gen-java/build/jars" includes="*.jar" />
+	</path>
 
-    <target name="clean">
-        <delete dir="build" />
+	<target name="clean">
+		<delete dir="build" />
+	</target>
+
+	<target name="compile">
+		<mkdir dir="build/classes" />
+		<javac srcdir="." destdir="build/classes" debug="true"
+			includeAntRuntime="no" classpathref="classpath">
+			<!-- compilerarg value="-Xlint"/-->
+		</javac>
+	</target>
+
+	<target name="jar" depends="compile">
+		<mkdir dir="build/jars" />
+		<jar destfile="build/jars/test.jar" basedir="build/classes" />
+	</target>
+
+	<target name="run-server" depends="jar">
+		<java fork="true" classname="myserver">
+			<classpath>
+				<path refid="classpath" />
+				<path location="build/jars/test.jar" />
+			</classpath>
+		</java>
+	</target>
+
+    <target name="run-client" depends="jar">
+        <java fork="true" classname="myclient">
+            <classpath>
+                <path refid="classpath" />
+                <path location="build/jars/test.jar" />
+            </classpath>
+        </java>
     </target>
-
-    <target name="compile">
-        <mkdir dir="build/classes" />
-        <javac srcdir="." destdir="build/classes" debug="true" includeAntRuntime="no" classpathref="compile.classpath">
-            <!-- compilerarg value="-Xlint"/-->   
-        </javac>
-    </target>
-
-    <target name="jar" depends="compile">
-        <mkdir dir="build/jars" />
-        <jar destfile="build/jars/test.jar" basedir="build/classes" />
-    </target>
-
 </project>

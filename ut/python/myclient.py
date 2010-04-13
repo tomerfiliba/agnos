@@ -2,7 +2,6 @@ import sys
 sys.path.append("../gen-py")
 
 import agnos 
-from agnos.servers import SimpleServer
 import RemoteFiles
 
 

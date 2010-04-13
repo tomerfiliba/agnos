@@ -1,0 +1,2 @@
+#! /bin/sh
+exec ./agnos_cmdline.py "$@"
