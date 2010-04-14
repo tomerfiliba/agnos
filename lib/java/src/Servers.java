@@ -35,8 +35,7 @@ public class Servers
 		public SocketTransportFactory(InetAddress addr, int port) throws IOException
 		{
 			serverSocket = new ServerSocket(port, backlog, addr);
-			System.out.println("is bound = " + serverSocket.isBound());
-			System.out.println("port = " + port + ", addr = " + addr);
+			System.out.println("listening on " + addr + ":" + port );
 		}
 		
 		public ITransport accept() throws IOException

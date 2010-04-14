@@ -12,16 +12,16 @@ public class Packers
 		public Object unpack(InputStream stream) throws IOException;
 	}
 	
-	protected static String repr(byte[] buffer)
+	/*private static String repr(byte[] buffer)
 	{
 		StringBuilder sb = new StringBuilder(buffer.length);
-		byte b;
+		int b;
 		String s;
 		
 		for (int i = 0; i < buffer.length; i++) {
-			b = buffer[i];
+			b = buffer[i] & 0xff;
 			if (b >= 32 && b <= 127) {
-				sb.append((char)(b & 0xFF));
+				sb.append((char)b);
 			}
 			else {
 				s = Integer.toString(b, 16);
@@ -32,12 +32,12 @@ public class Packers
 			}
 		}
 		return sb.toString();
-	}
+	}*/
 
 	protected static void _write(OutputStream stream, byte[] buffer)
 			throws IOException
 	{
-		System.out.println("W: " + repr(buffer));
+		//System.out.println("W: " + repr(buffer));
 		stream.write(buffer, 0, buffer.length);
 	}
 
@@ -55,7 +55,7 @@ public class Packers
 			}
 		}
 		
-		System.out.println("R: " + repr(buffer));
+		//System.out.println("R: " + repr(buffer));
 	}
 
 	public static class _Int8 implements IPacker
@@ -118,7 +118,7 @@ public class Packers
 		public Object unpack(InputStream stream) throws IOException
 		{
 			_read(stream, buffer);
-			return new Short((short) (buffer[0] << 8 | buffer[1]));
+			return new Short((short) ((buffer[0] & 0xff) << 8 | (buffer[1] & 0xff)));
 		}
 	}
 
@@ -149,8 +149,8 @@ public class Packers
 		public Object unpack(InputStream stream) throws IOException
 		{
 			_read(stream, buffer);
-			return new Integer((buffer[0] << 24 | buffer[1] << 16
-					| buffer[2] << 8 | buffer[3]));
+			return new Integer(((buffer[0] & 0xff) << 24 | (buffer[1] & 0xff) << 16
+					| (buffer[2] & 0xff) << 8 | (buffer[3] & 0xff)));
 		}
 	}
 
@@ -189,9 +189,11 @@ public class Packers
 		public Object unpack(InputStream stream) throws IOException
 		{
 			_read(stream, buffer);
-			return new Long((long) (buffer[0] << 56 | buffer[1] << 48
-					| buffer[2] << 40 | buffer[3] << 32 | buffer[4] << 24
-					| buffer[5] << 16 | buffer[6] << 8 | buffer[7]));
+			return new Long((long) ((buffer[0] & 0xff) << 56 | 
+					(buffer[1] & 0xff) << 48 | (buffer[2] & 0xff) << 40 | 
+					(buffer[3] & 0xff) << 32 | (buffer[4] & 0xff) << 24 |
+					(buffer[5] & 0xff) << 16 | (buffer[6] & 0xff) << 8 | 
+					(buffer[7]  & 0xff)));
 		}
 	}
 

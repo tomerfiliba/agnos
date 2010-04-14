@@ -157,14 +157,33 @@ class ClassMethod(Element):
         for arg in self.args:
             arg.resolve(service)
 
+class ClassCtor(Element):
+    XML_TAG = "ctor"
+    CHILDREN = [MethodArg]
+    ATTRS = dict()
+
+    def build_members(self, members):
+        self.args = members
+    
+    def _resolve(self, service):
+        for arg in self.args:
+            arg.resolve(service)
+
 class Class(Element):
     XML_TAG = "class"
-    CHILDREN = [ClassMethod, ClassAttr]
+    CHILDREN = [ClassMethod, ClassAttr, ClassCtor]
     ATTRS = dict(name = IDENTIFIER)
     
     def build_members(self, members):
         self.attrs = [mem for mem in members if isinstance(mem, ClassAttr)]
         self.methods = [mem for mem in members if isinstance(mem, ClassMethod)]
+        ctors = [mem for mem in members if isinstance(mem, ClassCtor)]
+        if not ctors:
+            self.ctor = None
+        elif len(ctors) == 1:
+            self.ctor = ctors[0]
+        else:
+            raise IDLError("only one class constructor for %r may be defined" % (self.name,))
     
     def autogen(self, service, origin, name, type, *args):
         if name in service.funcs:
@@ -186,7 +205,9 @@ class Class(Element):
                 self.autogen(service, attr, "_%s_set_%s" % (self.name, attr.name), t_void, ("_proxy", self), ("value", attr.type))
         for method in self.methods:
             method.parent = self 
-            self.autogen(service, method, "_%s_%s" % (self.name, method.name), method.type, ("_proxy", self), *[(arg.name, arg.type) for arg in method.args]) 
+            self.autogen(service, method, "_%s_%s" % (self.name, method.name), method.type, ("_proxy", self), *[(arg.name, arg.type) for arg in method.args])
+        if self.ctor:
+            self.autogen(service, self, self.name, self, ("_proxy", self), *[(arg.name, arg.type) for arg in self.ctor.args])
 
 class FuncArg(Element):
     XML_TAG = "arg"

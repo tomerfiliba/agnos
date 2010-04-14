@@ -1,18 +1,18 @@
 <service name="RemoteFiles">
 	<enum name="Errno">
-		<member name="EACCES"/>
-		<member name="EBADF"/>
-		<member name="EFAULT"/>
-		<member name="ELOOP"/>
-		<member name="ENAMETOOLONG"/>
-		<member name="ENOENT"/>
-		<member name="ENOMEM"/>
-		<member name="ENOTDIR"/>
-		<member name="EEXIST"/>
-		<member name="EISDIR"/>
-		<member name="EPERM"/>
-		<member name="EROFS"/>
-		<member name="EWOULDBLOCK"/>
+		<member name="EACCES" />
+		<member name="EBADF" />
+		<member name="EFAULT" />
+		<member name="ELOOP" />
+		<member name="ENAMETOOLONG" />
+		<member name="ENOENT" />
+		<member name="ENOMEM" />
+		<member name="ENOTDIR" />
+		<member name="EEXIST" />
+		<member name="EISDIR" />
+		<member name="EPERM" />
+		<member name="EROFS" />
+		<member name="EWOULDBLOCK" />
 	</enum>
 
 	<exception name="UnderlyingIOError">
@@ -51,6 +51,19 @@
 		</method>
 		<method name="close" type="void" />
 		<method name="flush" type="void" />
+	</class>
+
+	<class name="Path">
+		<ctor>
+			<arg name="" type="int32" />
+		</ctor>
+
+		<method name="read" type="buffer">
+			<arg name="count" type="int32" />
+		</method>
+		<method name="write" type="void">
+			<arg name="data" type="buffer" />
+		</method>
 	</class>
 
 	<func name="open" type="File">

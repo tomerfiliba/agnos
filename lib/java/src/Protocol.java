@@ -32,8 +32,17 @@ public class Protocol {
 	}
 
 	public static class GenericError extends Exception {
-		public GenericError(String message) {
+		public String traceback;
+		
+		public GenericError(String message, String traceback) {
 			super(message);
+			this.traceback = traceback;
+		}
+		
+		public String toString()
+		{
+			return "agnos.Protocol.GenericError with remote backtrace:\n" + traceback + 
+			"\t------------------- end of remote traceback -------------------"; 
 		}
 	}
 
@@ -129,11 +138,22 @@ public class Protocol {
 			outStream.flush();
 		}
 
-		protected void send_generic_error(OutputStream outStream, Integer seq,
-				Exception exc) throws IOException {
+		protected String getExceptionTraceback(Exception exc)
+		{
+			StringWriter sw = new StringWriter();
+	        PrintWriter pw = new PrintWriter(sw, true);
+	        exc.printStackTrace(pw);
+	        pw.flush();
+	        sw.flush();
+	        return sw.toString();
+		}
+		
+		protected void send_generic_error(OutputStream outStream, Integer seq, Exception exc) throws IOException 
+		{
 			Packers.Int32.pack(new Integer(seq), outStream);
 			Packers.Int8.pack(new Byte((byte) REPLY_GENERIC_ERROR), outStream);
 			Packers.Str.pack(exc.toString(), outStream);
+			Packers.Str.pack(getExceptionTraceback(exc), outStream);
 			outStream.flush();
 		}
 
@@ -162,11 +182,11 @@ public class Protocol {
 				send_protocol_error(outStream, seq, exc);
 			} catch (PackedException exc) {
 				send_packed_exception(outStream, seq, exc);
-			} /*catch (IOException exc) {
+			} catch (IOException exc) {
 				throw exc;
 			} catch (Exception exc) {
 				send_generic_error(outStream, seq, exc);
-			}*/
+			}
 		}
 
 		protected void process_decref(InputStream inStream,
@@ -251,7 +271,8 @@ public class Protocol {
 
 		protected GenericError _load_generic_error() throws IOException {
 			String message = (String) Packers.Str.unpack(_inStream);
-			return new GenericError(message);
+			String traceback = (String) Packers.Str.unpack(_inStream);
+			return new GenericError(message, traceback);
 		}
 
 		protected Object _read_reply(Packers.IPacker packer)
@@ -269,11 +290,11 @@ public class Protocol {
 					return packer.unpack(_inStream);
 				}
 			case REPLY_PROTOCOL_ERROR:
-				throw _load_protocol_error();
+				throw (ProtocolError)(_load_protocol_error().fillInStackTrace());
 			case REPLY_PACKED_ERROR:
-				throw _load_packed_exception();
+				throw (PackedException)(_load_packed_exception().fillInStackTrace());
 			case REPLY_GENERIC_ERROR:
-				throw _load_generic_error();
+				throw (GenericError)(_load_generic_error().fillInStackTrace());
 			default:
 				throw new ProtocolError("unknown reply code: " + code);
 			}
