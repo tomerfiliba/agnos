@@ -15,11 +15,6 @@ public class myserver
 		public MyFile(String filename, String mode) throws Exception
 		{
 			_filename = filename;
-			if (mode != "r" && mode != "w") {
-				throw new UnderlyingIOError("invalid file open mode",
-						Errno.EFAULT);
-
-			}
 		}
 
 		public String get_filename() throws Exception
@@ -53,6 +48,7 @@ public class myserver
 		public void flush() throws Exception
 		{
 			System.out.println("#flush");
+			throw new UnderlyingIOError("cannot flush", Errno.EFAULT);
 		}
 	}
 
@@ -72,6 +68,7 @@ public class myserver
 
 		public IFile open(String filename, String mode) throws Exception
 		{
+			System.out.println("@open: filename = '" + filename + "', mode = '" + mode + "'");
 			return new MyFile(filename, mode);
 		}
 	}

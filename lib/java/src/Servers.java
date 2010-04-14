@@ -83,16 +83,17 @@ public class Servers
 			this.transportFactory = transportFactory;
 		}
 		
-		public void serve() throws IOException, Protocol.PackedException, Protocol.ProtocolError
+		public void serve() throws Exception
 		{
 			while (true)
 			{
 				ITransport transport = transportFactory.accept();
 				_handleClient(transport);
+				System.out.println("goodbye");
 			}
 		}
 
-		protected abstract void _handleClient(ITransport transport) throws IOException, Protocol.PackedException, Protocol.ProtocolError;
+		protected abstract void _handleClient(ITransport transport) throws Exception;
 	}
 
 	public static class SimpleServer extends BaseServer
@@ -102,7 +103,7 @@ public class Servers
 			super(processor, transportFactory);
 		}
 
-		protected void _handleClient(ITransport transport) throws IOException, Protocol.PackedException, Protocol.ProtocolError
+		protected void _handleClient(ITransport transport) throws Exception
 		{
 			InputStream inStream = transport.getInputStream();
 			OutputStream outStream = transport.getOutputStream();
@@ -118,6 +119,10 @@ public class Servers
 			{
 				// finish on EOF
 			}
+			catch (SocketException exc)
+			{
+				System.out.println("!! SocketException: " + exc);
+			}
 		}
 	}
 
@@ -128,7 +133,7 @@ public class Servers
 			super(processor, transportFactory);
 		}
 
-		protected void _handleClient(ITransport transport) throws IOException, Protocol.PackedException, Protocol.ProtocolError
+		protected void _handleClient(ITransport transport) throws Exception
 		{
 			InputStream inStream = transport.getInputStream();
 			OutputStream outStream = transport.getOutputStream();

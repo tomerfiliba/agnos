@@ -194,9 +194,13 @@ class JavaTarget(TargetBase):
             with BLOCK("public {0}({1})", rec.name, args):
                 for mem in rec.members:
                     STMT("this.{0} = {0}", mem.name)
+            SEP()
             with BLOCK("public void pack(OutputStream stream) throws IOException"):
                 STMT("Packers.Int32.pack(__record_id, stream)")
                 STMT("{0}Record.pack(this, stream)", rec.name)
+            SEP()
+            with BLOCK("public String toString()"):
+                STMT('return "{0}(" + {1} + ")"', rec.name, ' + ", " + '.join(mem.name  for mem in rec.members))
         SEP()
         
         with BLOCK("protected static class _{0}Record implements Packers.IPacker", rec.name):
@@ -211,8 +215,8 @@ class JavaTarget(TargetBase):
             with BLOCK("public Object unpack(InputStream stream) throws IOException"):
                 args = []
                 for mem in rec.members:
-                    if isinstance(mem, compiler.Enum):
-                        args.append("%s.getByValue((Integer)Packers.Int32.unpack(stream))" % (type_to_java(mem.type), type_to_packer(mem.type)))
+                    if isinstance(mem.type, compiler.Enum):
+                        args.append("%s.getByValue((Integer)Packers.Int32.unpack(stream))" % (type_to_java(mem.type),))
                     else:
                         args.append("(%s)%s.unpack(stream)" % (type_to_java(mem.type), type_to_packer(mem.type)))
                 STMT("return new {0}({1})", rec.name, ", ".join(args))
@@ -263,6 +267,9 @@ class JavaTarget(TargetBase):
                 with BLOCK("synchronized (this)"):
                     STMT("_disposed = true")
                     STMT("_client._decref(_objref)")
+            SEP()
+            with BLOCK("public String toString()"):
+                STMT('return super.toString() + "<" + _objref + ">"')
 
     def generate_class_proxy(self, module, service, cls):
         BLOCK = module.block
@@ -407,11 +414,11 @@ class JavaTarget(TargetBase):
             with BLOCK("protected Protocol.PackedException _load_packed_exception() throws IOException, Protocol.ProtocolError"):
                 STMT("int clsid = (Integer)Packers.Int32.unpack(_inStream)")
                 with BLOCK("switch (clsid)"):
-                    for mem in service.types:
+                    for mem in service.types.values():
                         if not isinstance(mem, compiler.Exception):
                             continue
                         with BLOCK("case {0}:", mem.id, prefix = None, suffix = None):
-                            STMT("return (Protocol.PackedException)(Types.{0}Record.unpack(_outStream))")
+                            STMT("return (Protocol.PackedException)(Types.{0}Record.unpack(_inStream))", mem.name)
                     with BLOCK("default:", prefix = None, suffix = None):
                         STMT('throw new Protocol.ProtocolError("unknown exception class id: " + clsid)')
             SEP()

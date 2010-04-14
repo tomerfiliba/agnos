@@ -11,11 +11,33 @@ public class Packers
 
 		public Object unpack(InputStream stream) throws IOException;
 	}
+	
+	protected static String repr(byte[] buffer)
+	{
+		StringBuilder sb = new StringBuilder(buffer.length);
+		byte b;
+		String s;
+		
+		for (int i = 0; i < buffer.length; i++) {
+			b = buffer[i];
+			if (b >= 32 && b <= 127) {
+				sb.append((char)(b & 0xFF));
+			}
+			else {
+				s = Integer.toString(b, 16);
+				if (s.length() == 1) {
+					s = "0" + s;
+				}
+				sb.append("\\x" + s);
+			}
+		}
+		return sb.toString();
+	}
 
 	protected static void _write(OutputStream stream, byte[] buffer)
 			throws IOException
 	{
-		System.out.println("W: " + Arrays.toString(buffer));
+		System.out.println("W: " + repr(buffer));
 		stream.write(buffer, 0, buffer.length);
 	}
 
@@ -33,7 +55,7 @@ public class Packers
 			}
 		}
 		
-		System.out.println("R: " + Arrays.toString(buffer));
+		System.out.println("R: " + repr(buffer));
 	}
 
 	public static class _Int8 implements IPacker

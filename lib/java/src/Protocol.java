@@ -89,10 +89,13 @@ public class Protocol {
 		protected Long store(Object obj) {
 			Long id = idGenerator.getID(obj);
 			Cell cell = cells.get(id);
-			if (cell == null)
+			if (cell == null) {
 				cell = new Cell(obj);
-			else
+				cells.put(id, cell);
+			}
+			else {
 				cell.incref();
+			}
 			return id;
 		}
 
@@ -135,7 +138,7 @@ public class Protocol {
 		}
 
 		protected void process(InputStream inStream, OutputStream outStream)
-				throws IOException {
+				throws Exception, IOException {
 			Integer seq = (Integer) (Packers.Int32.unpack(inStream));
 			int cmdid = (Byte) (Packers.Int8.unpack(inStream));
 			try {
@@ -159,11 +162,11 @@ public class Protocol {
 				send_protocol_error(outStream, seq, exc);
 			} catch (PackedException exc) {
 				send_packed_exception(outStream, seq, exc);
-			} catch (IOException exc) {
+			} /*catch (IOException exc) {
 				throw exc;
 			} catch (Exception exc) {
 				send_generic_error(outStream, seq, exc);
-			}
+			}*/
 		}
 
 		protected void process_decref(InputStream inStream,
@@ -254,10 +257,17 @@ public class Protocol {
 		protected Object _read_reply(Packers.IPacker packer)
 				throws IOException, ProtocolError, PackedException,
 				GenericError {
+			int seq = (Integer) (Packers.Int32.unpack(_inStream));
 			int code = (Byte) (Packers.Int8.unpack(_inStream));
+			
 			switch (code) {
 			case REPLY_SUCCESS:
-				return packer.unpack(_inStream);
+				if (packer == null) {
+					return null;
+				}
+				else {
+					return packer.unpack(_inStream);
+				}
 			case REPLY_PROTOCOL_ERROR:
 				throw _load_protocol_error();
 			case REPLY_PACKED_ERROR:
