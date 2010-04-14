@@ -44,31 +44,40 @@
 		<attr name="filename" type="str" set="false" />
 		<method name="stat" type="StatRes" />
 		<method name="read" type="buffer">
+			<doc>reads up to 'count' bytes from the file</doc>
 			<arg name="count" type="int32" />
 		</method>
 		<method name="write" type="void">
+			<doc>writes the given buffer to the file</doc>
 			<arg name="data" type="buffer" />
 		</method>
-		<method name="close" type="void" />
+		<method name="close" type="void" doc="closes the file" />
 		<method name="flush" type="void" />
 	</class>
 
 	<class name="Path">
 		<ctor>
-			<arg name="" type="int32" />
+			<arg name="fspath" type="str" />
 		</ctor>
 
-		<method name="read" type="buffer">
-			<arg name="count" type="int32" />
+		<method name="isDir" type="bool"
+			doc="tests whether this path points to a directory" />
+		<method name="isFile" type="bool"
+			doc="tests whether this path points to a file" />
+		<method name="append" type="Path">
+			<arg name="other" type="Path" />
 		</method>
-		<method name="write" type="void">
-			<arg name="data" type="buffer" />
-		</method>
+		<method name="up" type="Path" />
 	</class>
 
 	<func name="open" type="File">
-		<arg name="filename" type="str" />
-		<arg name="mode" type="str" />
+		<doc>this function opens the given file with the given mode
+			and returns
+			a File instance</doc>
+		<arg name="filename" type="str"
+			doc="the filename to open (either relative or absolute)" />
+		<arg name="mode" type="str"
+			doc="the opening mode: 'r' for reading, 'w' for writing" />
 	</func>
 
 	<func name="copy" type="void">

@@ -42,6 +42,7 @@ class Element(object):
     def __init__(self, attrib, members):
         self._resolved = False
         self._postprocessed = False
+        self.doc = attrib.pop("doc", "").strip()
         for name, checker in self.ATTRS.iteritems():
             value = checker(name, attrib.pop(name, None)) 
             setattr(self, name, value)
@@ -57,14 +58,19 @@ class Element(object):
     @classmethod
     def load(cls, node):
         if node.tag != cls.XML_TAG:
-            raise IDLError("expected 'service', not %r" % (node.tag,))
+            raise IDLError("expected %r, not %r" % (cls.XML_TAG, node.tag,))
 
         mapping = dict((childclass.XML_TAG, childclass) for childclass in cls.CHILDREN)
         members = []
         for child in node:
-            if child.tag not in mapping:
-                raise IDLError("invalid element %r inside %r" % (child.tag, cls)) 
-            members.append(mapping[child.tag].load(child))
+            if child.tag == "doc":
+                if "doc" in node.attrib:
+                    raise IDLError("doc for %r given more than once" % (node.tag,))
+                node.attrib["doc"] = child.text
+            elif child.tag not in mapping:
+                raise IDLError("invalid element %r inside %r" % (child.tag, cls))
+            else: 
+                members.append(mapping[child.tag].load(child))
         return cls(node.attrib, members)
     
     def resolve(self, service):
@@ -160,7 +166,6 @@ class ClassMethod(Element):
 class ClassCtor(Element):
     XML_TAG = "ctor"
     CHILDREN = [MethodArg]
-    ATTRS = dict()
 
     def build_members(self, members):
         self.args = members
@@ -195,6 +200,8 @@ class Class(Element):
             attr.resolve(service)
         for method in self.methods:
             method.resolve(service)
+        if self.ctor:
+            self.ctor.resolve(service)
     
     def _postprocess(self, service): 
         for attr in self.attrs:
@@ -206,8 +213,9 @@ class Class(Element):
         for method in self.methods:
             method.parent = self 
             self.autogen(service, method, "_%s_%s" % (self.name, method.name), method.type, ("_proxy", self), *[(arg.name, arg.type) for arg in method.args])
+        self.parent = self
         if self.ctor:
-            self.autogen(service, self, self.name, self, ("_proxy", self), *[(arg.name, arg.type) for arg in self.ctor.args])
+            self.autogen(service, self, self.name, self, *[(arg.name, arg.type) for arg in self.ctor.args])
 
 class FuncArg(Element):
     XML_TAG = "arg"
