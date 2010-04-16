@@ -4,35 +4,35 @@ from . import blocklang
 from .. import compiler
 
 
-def type_to_java(t, proxy = False, ref = False, interface = False):
+def type_to_java(t, proxy = False):
     if t == compiler.t_void:
         return "void"
     elif t == compiler.t_bool:
-        return "Boolean"
+        return "boolean"
     elif t == compiler.t_int8:
-        return "Byte"
+        return "byte"
     elif t == compiler.t_int16:
-        return "Short"
+        return "short"
     elif t == compiler.t_int32:
-        return "Integer"
+        return "int"
     elif t == compiler.t_int64:
-        return "Long"
+        return "long"
     elif t == compiler.t_float:
-        return "Double"
+        return "double"
     elif t == compiler.t_string:
-        return "String"
+        return "string"
     elif t == compiler.t_date:
-        return "Date"
+        return "date"
     elif t == compiler.t_buffer:
         return "byte[]"
     elif t == compiler.t_objref:
         return "Long" 
     elif isinstance(t, compiler.TList):
-        return "List<%s>" % (type_to_java(t.oftype, proxy = proxy, ref = ref, interface = interface),)
+        return "List<%s>" % (type_to_java(t.oftype, proxy = proxy),)
     elif isinstance(t, compiler.TMap):
         return "Map<%s, %s>" % (
-            type_to_java(t.keytype, proxy = proxy, ref = ref, interface = interface), 
-            type_to_java(t.valtype, proxy = proxy, ref = ref, interface = interface))
+            type_to_java(t.keytype, proxy = proxy), 
+            type_to_java(t.valtype, proxy = proxy))
     elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
         return "Types.%s" % (t.name,)
     elif isinstance(t, compiler.Class):

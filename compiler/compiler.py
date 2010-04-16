@@ -305,6 +305,7 @@ class Service(Element):
     }
     
     def build_members(self, members):
+        self.members = members
         self.types = {}
         self.funcs = {}
         self.consts = {}
@@ -379,9 +380,12 @@ class Service(Element):
             mem.postprocess(self)
 
 
-def compile(filename, target):
+def load_spec(filename):
     service = Service.from_file(filename)
     service.resolve()
+
+def compile(filename, target):
+    service = load_spec(filename)
     target.generate(service)
 
 

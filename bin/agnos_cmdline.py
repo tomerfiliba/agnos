@@ -8,7 +8,7 @@ where LANG is one of
 """
 import os
 import sys
-sys.path.insert(0, "..")
+sys.path.insert(0, os.path.abspath(".."))
 
 from optparse import OptionParser
 from compiler import compile, IDLError, JavaTarget, PythonTarget, CPPTarget, CSharpTarget
