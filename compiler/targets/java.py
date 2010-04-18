@@ -178,10 +178,8 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         if isinstance(rec, compiler.Exception):
-            isexc = True
             extends = "extends Protocol.PackedException"
         else:
-            isexc = False
             extends = ""
         with BLOCK("public static class {0} {1}", rec.name, extends):
             STMT("protected final static Integer __record_id = new Integer({0})", rec.id)
@@ -237,7 +235,7 @@ class JavaTarget(TargetBase):
                 if attr.set:
                     STMT("void set_{1}({0} value) throws Exception", attr.name, type_to_java(attr.type))
             SEP()
-            if cls.attrs:
+            if cls.methods:
                 DOC("methods")
             for method in cls.methods:
                 args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) for arg in method.args)

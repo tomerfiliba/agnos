@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from .base import TargetBase
-from ..langs.clike import Module
+from ..langs import clike
 from .. import compiler
 
 
