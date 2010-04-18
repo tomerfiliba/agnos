@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from .base import TargetBase
-from . import pylang
+from ..langs.python import Module
 from .. import compiler
 
 
@@ -44,7 +44,7 @@ class PythonTarget(TargetBase):
 
     @contextmanager
     def new_module(self, filename):
-        mod = pylang.Module()
+        mod = Module()
         yield mod
         with self.open(filename, "w") as f:
             f.write(mod.render())

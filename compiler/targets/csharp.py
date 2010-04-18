@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from .base import TargetBase
-from . import blocklang
+from ..langs import clike
 from .. import compiler
 
 
@@ -99,7 +99,7 @@ class CSharpTarget(TargetBase):
 
     @contextmanager
     def new_module(self, filename):
-        mod = blocklang.Module()
+        mod = clike.Module()
         yield mod
         with self.open(filename, "w") as f:
             f.write(mod.render())

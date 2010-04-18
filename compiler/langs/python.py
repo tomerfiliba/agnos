@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 
+
 class Stmt(object):
     def __init__(self, text, *args):
         if args:

@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from .base import TargetBase
-from . import blocklang
+from ..langs.clike import Module
 from .. import compiler
 
 
