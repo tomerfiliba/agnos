@@ -5,13 +5,16 @@ from contextlib import contextmanager
 class HtmlText(object):
     MAPPINGS = {
         "&" : "&amp;",
-        "'" : "apos;",
+        "'" : "&apos;",
         '"' : "&quot;",
         "<" : "&lt;",
         ">" : "&gt;",
     }
-    def __init__(self, text):
-        self.text = str(text)
+    def __init__(self, text, *args):
+        text = str(text)
+        if args:
+            text = text.format(*args)
+        self.text = text
     @classmethod
     def escape(cls, text):
         return "".join(cls.MAPPINGS.get(ch, ch) for ch in text)
@@ -34,8 +37,8 @@ class HtmlBlock(object):
         self._get_head().attrs[name.lower()] = str(value)
     def delattr(self, name):
         del self._get_head().attrs[name.lower()]
-    def text(self, text):
-        self._get_head().children.append(HtmlText(text))
+    def text(self, text, *args):
+        self._get_head().children.append(HtmlText(text, *args))
 
     @contextmanager
     def block(self, *args, **kwargs):
@@ -78,7 +81,7 @@ if __name__ == "__main__":
     
     with BLOCK("head"):
         with BLOCK("title"):
-            TEXT("hello world")
+            TEXT("hello {0}", "world")
     with BLOCK("body"):
         with BLOCK("table", width = 15):
             ATTR("border", 2)

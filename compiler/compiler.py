@@ -383,6 +383,7 @@ class Service(Element):
 def load_spec(filename):
     service = Service.from_file(filename)
     service.resolve()
+    return service
 
 def compile(filename, target):
     service = load_spec(filename)

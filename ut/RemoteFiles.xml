@@ -1,4 +1,10 @@
 <service name="RemoteFiles">
+	<doc>
+		The RemoteFiles example is used as the unit test of agnos. It exposes
+		a class that represents a remote file instance, which allows all kinds
+		of IO operations. It also exposes the methods open and copy.
+	</doc>
+	
 	<enum name="Errno">
 		<member name="EACCES" />
 		<member name="EBADF" />
@@ -30,6 +36,7 @@
 	<typedef name="st_mode" type="int32" />
 
 	<record name="StatRes">
+		<doc>represents the result of the POSIX stat operation</doc>
 		<attr name="inode" type="int32" />
 		<attr name="mode" type="st_mode" />
 		<attr name="size" type="int32" />
