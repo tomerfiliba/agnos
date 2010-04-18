@@ -103,15 +103,12 @@ public class Packers
 
 		public void pack(Object obj, OutputStream stream) throws IOException
 		{
-			if (obj == null) {
-				buffer[0] = 0;
-				buffer[1] = 0;
+			short val = 0;
+			if (obj != null) {
+				val = ((Number)obj).shortValue();
 			}
-			else {
-				short val = ((Number)obj).shortValue();
-				buffer[0] = (byte) ((val >> 8) & 0xff);
-				buffer[1] = (byte) ((val) & 0xFF);
-			}
+			buffer[0] = (byte) ((val >> 8) & 0xff);
+			buffer[1] = (byte) ((val) & 0xFF);
 			_write(stream, buffer);
 		}
 
@@ -130,19 +127,15 @@ public class Packers
 
 		public void pack(Object obj, OutputStream stream) throws IOException
 		{
-			if (obj == null) {
-				buffer[0] = 0;
-				buffer[1] = 0;
-				buffer[2] = 0;
-				buffer[3] = 0;
+			int val = 0;
+			
+			if (obj != null) {
+				val = ((Number)obj).intValue();
 			}
-			else {
-				int val = ((Number)obj).intValue();
-				buffer[0] = (byte) ((val >> 24) & 0xff);
-				buffer[1] = (byte) ((val >> 16) & 0xff);
-				buffer[2] = (byte) ((val >> 8) & 0xff);
-				buffer[3] = (byte) ((val) & 0xFF);
-			}
+			buffer[0] = (byte) ((val >> 24) & 0xff);
+			buffer[1] = (byte) ((val >> 16) & 0xff);
+			buffer[2] = (byte) ((val >> 8) & 0xff);
+			buffer[3] = (byte) ((val) & 0xFF);
 			_write(stream, buffer);
 		}
 
@@ -162,27 +155,19 @@ public class Packers
 
 		public void pack(Object obj, OutputStream stream) throws IOException
 		{
-			if (obj == null) {
-				buffer[0] = 0;
-				buffer[1] = 0;
-				buffer[2] = 0;
-				buffer[3] = 0;
-				buffer[4] = 0;
-				buffer[5] = 0;
-				buffer[6] = 0;
-				buffer[7] = 0;
+			long val = 0;
+			
+			if (obj != null) {
+				val = ((Number)obj).longValue();
 			}
-			else {
-				long val = ((Number)obj).longValue();
-				buffer[0] = (byte) ((val >> 56) & 0xff);
-				buffer[1] = (byte) ((val >> 48) & 0xff);
-				buffer[2] = (byte) ((val >> 40) & 0xff);
-				buffer[3] = (byte) ((val >> 32) & 0xff);
-				buffer[4] = (byte) ((val >> 24) & 0xff);
-				buffer[5] = (byte) ((val >> 16) & 0xff);
-				buffer[6] = (byte) ((val >> 8) & 0xff);
-				buffer[7] = (byte) ((val) & 0xFF);
-			}
+			buffer[0] = (byte) ((val >> 56) & 0xff);
+			buffer[1] = (byte) ((val >> 48) & 0xff);
+			buffer[2] = (byte) ((val >> 40) & 0xff);
+			buffer[3] = (byte) ((val >> 32) & 0xff);
+			buffer[4] = (byte) ((val >> 24) & 0xff);
+			buffer[5] = (byte) ((val >> 16) & 0xff);
+			buffer[6] = (byte) ((val >> 8) & 0xff);
+			buffer[7] = (byte) ((val) & 0xFF);
 			_write(stream, buffer);
 		}
 

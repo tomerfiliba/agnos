@@ -78,17 +78,18 @@ class BaseProcessor(object):
             Int8.pack(REPLY_PACKED_ERROR, outstream)
             exc.pack(outstream)
     
-    def send_generic_error(self, outstream, seq, exc):
+    def send_generic_error(self, outstream, seq, exc, tb):
         with outstream.transaction():
             Int32.pack(seq, outstream)
             Int8.pack(REPLY_GENERIC_ERROR, outstream)
+            Str.pack(repr(exc), outstream)
             Str.pack(repr(exc), outstream)
     
     def send_protocol_error(self, outstream, seq, exc):
         with outstream.transaction():
             Int32.pack(seq, outstream)
             Int8.pack(REPLY_PROTOCOL_ERROR, outstream)
-            Str.pack(repr(exc), outstream)
+            Str.pack(tb, outstream)
     
     def process(self, instream, outstream):
         seq = Int32.unpack(instream)
@@ -108,8 +109,11 @@ class BaseProcessor(object):
             self.send_protocol_error(outstream, seq, ex)
         except PackedException, ex:
             self.send_packed_exception(outstream, seq, ex)
+        except (OSError, IOError):
+            raise
         except Exception, ex:
-            self.send_generic_error(outstream, seq, ex)
+            tb = "".join(traceback.format_exception(*sys.exc_info()))
+            self.send_generic_error(outstream, seq, ex, tb)
 
     def process_ping(self, seq, instream, outstream):
         with outstream.transaction():
@@ -195,7 +199,8 @@ class BaseClient(object):
 
     def _load_generic_error(self):
         msg = Str.unpack(self._instream)
-        return GenericError(msg)
+        tb = Str.unpack(self._instream)
+        return GenericError(msg, tb)
 
     def _read_reply(self, packer):
         seq = Int32.unpack(self._instream)

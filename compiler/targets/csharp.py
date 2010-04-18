@@ -129,7 +129,8 @@ class CSharpTarget(TargetBase):
 
                 DOC("consts", spacer = True)
                 for member in service.consts.values():
-                    STMT("public static const {0} {1} = {2}", type_to_cs(member.type), member.name, const_to_cs(member.type, member.value))
+                    STMT("public static const {0} {1} = {2}", type_to_cs(member.type), 
+                        member.name, const_to_cs(member.type, member.value))
                 SEP()
                 
                 DOC("classes", spacer = True)

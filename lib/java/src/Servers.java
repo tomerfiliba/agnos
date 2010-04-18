@@ -73,8 +73,8 @@ public class Servers
 	
 	public abstract static class BaseServer
 	{
-		Protocol.BaseProcessor processor;
-		ITransportFactory transportFactory;
+		protected Protocol.BaseProcessor processor;
+		protected ITransportFactory transportFactory;
 		
 		public BaseServer(Protocol.BaseProcessor processor, ITransportFactory transportFactory)
 		{
