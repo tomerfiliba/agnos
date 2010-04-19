@@ -1,25 +1,31 @@
 from contextlib import contextmanager
 
 
+MAPPINGS = {
+    "&" : "&amp;",
+    "'" : "&apos;",
+    '"' : "&quot;",
+    "<" : "&lt;",
+    ">" : "&gt;",
+}
+
+def html_escape(text):
+    return "".join(MAPPINGS.get(ch, ch) for ch in text)
 
 class HtmlText(object):
-    MAPPINGS = {
-        "&" : "&amp;",
-        "'" : "&apos;",
-        '"' : "&quot;",
-        "<" : "&lt;",
-        ">" : "&gt;",
-    }
-    def __init__(self, text, *args):
+    def __init__(self, text, *args, **kwargs):
         text = str(text)
         if args:
             text = text.format(*args)
         self.text = text
-    @classmethod
-    def escape(cls, text):
-        return "".join(cls.MAPPINGS.get(ch, ch) for ch in text)
+        self.escape = kwargs.pop("escape", True)
+        if kwargs:
+            raise TypeError("invalid keyword argument(s): %r" % (kwargs.keys(),))
     def render(self):
-        return [self.escape(self.text)]
+        if self.escape:
+            return [html_escape(self.text)]
+        else:
+            return [self.text]
 
 class HtmlBlock(object):
     def __init__(self, _tag, **attrs):
@@ -37,8 +43,8 @@ class HtmlBlock(object):
         self._get_head().attrs[name.lower()] = str(value)
     def delattr(self, name):
         del self._get_head().attrs[name.lower()]
-    def text(self, text, *args):
-        self._get_head().children.append(HtmlText(text, *args))
+    def text(self, *args, **kwargs):
+        self._get_head().children.append(HtmlText(*args, **kwargs))
 
     @contextmanager
     def block(self, *args, **kwargs):
@@ -49,7 +55,7 @@ class HtmlBlock(object):
         self.stack.pop(-1)
     
     def render(self):
-        attrs = " ".join('%s="%s"' % (k, HtmlText.escape(v)) 
+        attrs = " ".join('%s="%s"' % (k, html_escape(v)) 
             for k, v in sorted(self.attrs.iteritems()))
         if attrs:
             attrs = " " + attrs
@@ -87,7 +93,7 @@ if __name__ == "__main__":
             ATTR("border", 2)
             with BLOCK("tr"):
                 with BLOCK("td"):
-                    TEXT("hi there")
+                    TEXT("<b>hi</b> there", escape = False)
     
     print doc.render()
 
