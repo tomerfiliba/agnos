@@ -42,15 +42,15 @@ namespace Agnos
 	
 	public static class Protocol
 	{
-		internal const int CMD_PING = 0;
-		internal const int CMD_INVOKE = 1;
-		internal const int CMD_QUIT = 2;
-		internal const int CMD_DECREF = 3;
+		public const int CMD_PING = 0;
+		public const int CMD_INVOKE = 1;
+		public const int CMD_QUIT = 2;
+		public const int CMD_DECREF = 3;
 	
-		internal const int REPLY_SUCCESS = 0;
-		internal const int REPLY_PROTOCOL_ERROR = 1;
-		internal const int REPLY_PACKED_ERROR = 2;
-		internal const int REPLY_GENERIC_ERROR = 3;
+		public const int REPLY_SUCCESS = 0;
+		public const int REPLY_PROTOCOL_ERROR = 1;
+		public const int REPLY_PACKED_ERROR = 2;
+		public const int REPLY_GENERIC_ERROR = 3;
 
 		public abstract class BaseProcessor
 		{
@@ -198,7 +198,7 @@ namespace Agnos
 				_seq = 0;
 			}
 	
-			public BaseClient(Servers.ITransport transport) : 
+			public BaseClient(Transports.ITransport transport) : 
 				this(transport.getInputStream(), transport.getOutputStream())
 			{
 			}

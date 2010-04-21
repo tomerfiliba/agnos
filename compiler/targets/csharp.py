@@ -112,48 +112,49 @@ class CSharpTarget(TargetBase):
             DOC = module.doc
             
             STMT("using System")
+            STMT("using System.IO")
             STMT("using System.Collections.Generic")
             STMT("using Agnos")
             SEP()
-            with BLOCK("namespace {0}", service.name):
-                DOC("enums", spacer = True)
-                for member in service.types.values():
-                    if isinstance(member, compiler.Enum):
-                        self.generate_enum(module, member)
-                        SEP()
-                
-                DOC("records", spacer = True)
-                for member in service.types.values():
-                    if isinstance(member, compiler.Record):
-                        self.generate_record(module, member)
-                        SEP()
-
-                DOC("consts", spacer = True)
-                with BLOCK("Consts"):
+            with BLOCK("namespace {0}Stub", service.name):
+                with BLOCK("public static class {0}", service.name):
+                    DOC("enums", spacer = True)
+                    for member in service.types.values():
+                        if isinstance(member, compiler.Enum):
+                            self.generate_enum(module, member)
+                            SEP()
+                    
+                    DOC("records", spacer = True)
+                    for member in service.types.values():
+                        if isinstance(member, compiler.Record):
+                            self.generate_record(module, member)
+                            SEP()
+    
+                    DOC("consts", spacer = True)
                     for member in service.consts.values():
                         STMT("public const {0} {1} = {2}", type_to_cs(member.type), 
                             member.name, const_to_cs(member.type, member.value))
-                SEP()
-                
-                DOC("classes", spacer = True)
-                self.generate_base_class_proxy(module, service)
-                SEP()
-                for member in service.types.values():
-                    if isinstance(member, compiler.Class):
-                        self.generate_class_interface(module, member)
-                        SEP()
-                        self.generate_class_proxy(module, service, member)
-                        SEP()
-
-                DOC("server implementation", spacer = True)
-                self.generate_handler_interface(module, service)
-                SEP()
-                self.generate_processor(module, service)
-                SEP()
-
-                DOC("client", spacer = True)
-                self.generate_client(module, service)
-                SEP()
+                    SEP()
+                    
+                    DOC("classes", spacer = True)
+                    self.generate_base_class_proxy(module, service)
+                    SEP()
+                    for member in service.types.values():
+                        if isinstance(member, compiler.Class):
+                            self.generate_class_interface(module, member)
+                            SEP()
+                            self.generate_class_proxy(module, service, member)
+                            SEP()
+    
+                    DOC("server implementation", spacer = True)
+                    self.generate_handler_interface(module, service)
+                    SEP()
+                    self.generate_processor(module, service)
+                    SEP()
+    
+                    DOC("client", spacer = True)
+                    self.generate_client(module, service)
+                    SEP()
 
     def generate_enum(self, module, enum):
         BLOCK = module.block
@@ -170,12 +171,9 @@ class CSharpTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
 
-        if isinstance(rec, compiler.Exception):
-            extends = ": PackedException"
-        else:
-            extends = ""
+        is_exc = isinstance(rec, compiler.Exception)
         
-        with BLOCK("public class {0} {1}", rec.name, extends):
+        with BLOCK("public class {0}{1}", rec.name, " : PackedException" if is_exc else ""):
             STMT("protected const int __record_id = {0}", rec.id)
             for mem in rec.members:
                 STMT("public {0} {1}", type_to_cs(mem.type), mem.name)
@@ -187,11 +185,11 @@ class CSharpTarget(TargetBase):
                 for mem in rec.members:
                     STMT("this.{0} = {0}", mem.name)
             SEP()
-            with BLOCK("public void pack(Stream stream)"):
+            with BLOCK("public {0}void pack(Stream stream)", "override " if is_exc else ""):
                 STMT("Packers.Int32.pack(__record_id, stream)")
                 STMT("{0}Record.pack(this, stream)", rec.name)
             SEP()
-            with BLOCK("public String toString()"):
+            with BLOCK("public override String ToString()"):
                 STMT('return "{0}(" + {1} + ")"', rec.name, ' + ", " + '.join(mem.name  for mem in rec.members))
         SEP()
 
@@ -204,7 +202,7 @@ class CSharpTarget(TargetBase):
                     #else:
                     STMT("{0}.pack(val.{1}, stream)", type_to_packer(mem.type), mem.name)
 
-            with BLOCK("public object unpack(InputStream stream) throws IOException"):
+            with BLOCK("public object unpack(Stream stream)"):
                 args = []
                 for mem in rec.members:
                     #if isinstance(mem.type, compiler.Enum):
@@ -221,11 +219,11 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
 
         with BLOCK("public abstract class BaseProxy : IDisposable"):
-            STMT("protected long _objref")
+            STMT("internal long _objref")
             STMT("protected Client _client")
             STMT("protected bool _disposed")
             SEP()
-            with BLOCK("protected BaseProxy(Service.Client client, Long objref)"):
+            with BLOCK("protected BaseProxy(Client client, long objref)"):
                 STMT("_client = client")
                 STMT("_objref = objref")
                 STMT("_disposed = false")
@@ -243,7 +241,7 @@ class CSharpTarget(TargetBase):
                     STMT("_disposed = true")
                     STMT("_client._decref(_objref)")
             SEP()
-            with BLOCK("public String ToString()"):
+            with BLOCK("public override String ToString()"):
                 STMT('return base.ToString() + "<" + _objref + ">"')
 
     def generate_class_interface(self, module, cls):
@@ -273,7 +271,7 @@ class CSharpTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
 
-        with BLOCK("public class {0}Proxy : BaseProxy implements I{0}", cls.name):
+        with BLOCK("public class {0}Proxy : BaseProxy", cls.name):
             with BLOCK("internal {0}Proxy(Client client, long objref) : base(client, objref)", cls.name):
                 pass
             SEP()
@@ -287,8 +285,8 @@ class CSharpTarget(TargetBase):
                             STMT("_client._{0}_set_{1}(this, value)", cls.name, attr.name)
             SEP()
             for method in cls.methods:
-                args = ", ".join("%s %s" % (type_to_cs(arg.type), arg.name) for arg in method.args)
-                with BLOCK("public {0} {1}({2})", type_to_cs(method.type), method.name, args):
+                args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) for arg in method.args)
+                with BLOCK("public {0} {1}({2})", type_to_cs(method.type, proxy = True), method.name, args):
                     callargs = ["this"] + [arg.name for arg in method.args]
                     if method.type == compiler.t_void:
                         STMT("_client._{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
@@ -320,7 +318,7 @@ class CSharpTarget(TargetBase):
             with BLOCK("public Processor(IHandler handler) : base()"):
                 STMT("this.handler = handler")
             SEP()
-            with BLOCK("protected void process_invoke(Stream inStream, Stream outStream, int seq)"):
+            with BLOCK("protected override void process_invoke(Stream inStream, Stream outStream, int seq)"):
                 STMT("int funcid = (int){0}.unpack(inStream)", type_to_packer(compiler.t_int32))
                 STMT("Packers.IPacker packer = null")
                 STMT("object result = null")
@@ -363,10 +361,10 @@ class CSharpTarget(TargetBase):
                                 STMT("packer = {0}", type_to_packer(func.type))
                             STMT("break")
                     with BLOCK("default:", prefix = None, suffix = None):
-                        STMT('throw new Protocol.ProtocolError("unknown function id: " + funcid)')
+                        STMT('throw new ProtocolError("unknown function id: " + funcid)')
                 SEP()
                 STMT("{0}.pack(seq, outStream)", type_to_packer(compiler.t_int32))
-                STMT("{0}.pack((byte)Protocol.REPLY_SUCCESS, outStream)", type_to_packer(compiler.t_int8))
+                STMT("{0}.pack((byte)Agnos.Protocol.REPLY_SUCCESS, outStream)", type_to_packer(compiler.t_int8))
                 with BLOCK("if (packer != null)"):
                     STMT("packer.pack(result, outStream)")
                 STMT("outStream.Flush()")
@@ -379,23 +377,23 @@ class CSharpTarget(TargetBase):
         with BLOCK("public class Client : Protocol.BaseClient"):
             with BLOCK("public Client(Stream inStream, Stream outStream) : base(inStream, outStream)"):
                 pass
-            with BLOCK("public Client(Servers.ITransport transport) : base(transport)"):
+            with BLOCK("public Client(Agnos.Transports.ITransport transport) : base(transport)"):
                 pass
-            #SEP()
-            #with BLOCK("protected void _decref(Long id)"):
-            #    # to avoid protectedness issues
-            #    STMT("super._decref(id)")
             SEP()
-            with BLOCK("protected Protocol.PackedException _load_packed_exception()"):
+            with BLOCK("internal new void _decref(long id)"):
+                # to avoid protectedness issues
+                STMT("base._decref(id)")
+            SEP()
+            with BLOCK("protected override PackedException _load_packed_exception()"):
                 STMT("int clsid = (int)Packers.Int32.unpack(_inStream)")
                 with BLOCK("switch (clsid)"):
                     for mem in service.types.values():
                         if not isinstance(mem, compiler.Exception):
                             continue
                         with BLOCK("case {0}:", mem.id, prefix = None, suffix = None):
-                            STMT("return (Protocol.PackedException)(Types.{0}Record.unpack(_inStream))", mem.name)
+                            STMT("return (PackedException)({0}Record.unpack(_inStream))", mem.name)
                     with BLOCK("default:", prefix = None, suffix = None):
-                        STMT('throw new Protocol.ProtocolError("unknown exception class id: " + clsid)')
+                        STMT('throw new ProtocolError("unknown exception class id: " + clsid)')
             SEP()
             for func in service.funcs.values():
                 if isinstance(func, compiler.Func):
@@ -413,11 +411,14 @@ class CSharpTarget(TargetBase):
                         else:
                             STMT("{0}.pack({1}, _outStream)", type_to_packer(arg.type), arg.name)
                     STMT("_outStream.Flush()")
-                    STMT("object res = _read_reply({0})", type_to_packer(func.type))
-                    if isinstance(func.type, compiler.Class):
-                        STMT("return new {0}(this, (long)res)", type_to_cs(func.type, proxy = True))
-                    elif func.type != compiler.t_void:
-                        STMT("return ({0})res", type_to_cs(func.type))
+                    if func.type == compiler.t_void:
+                        STMT("_read_reply({0})", type_to_packer(func.type))
+                    else:
+                        STMT("object res = _read_reply({0})", type_to_packer(func.type))
+                        if isinstance(func.type, compiler.Class):
+                            STMT("return new {0}(this, (long)res)", type_to_cs(func.type, proxy = True))
+                        else:
+                            STMT("return ({0})res", type_to_cs(func.type))
 
 
 

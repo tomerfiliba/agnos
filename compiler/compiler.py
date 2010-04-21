@@ -176,7 +176,7 @@ class ClassCtor(Element):
 
 class Class(Element):
     XML_TAG = "class"
-    CHILDREN = [ClassMethod, ClassAttr, ClassCtor]
+    CHILDREN = [ClassMethod, ClassAttr] # ClassCtor]
     ATTRS = dict(name = IDENTIFIER)
     
     def build_members(self, members):

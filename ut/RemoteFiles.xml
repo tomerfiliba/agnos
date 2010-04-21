@@ -63,10 +63,6 @@
 	</class>
 
 	<class name="Path">
-		<ctor>
-			<arg name="fspath" type="str" />
-		</ctor>
-
 		<method name="isDir" type="bool"
 			doc="tests whether this path points to a directory" />
 		<method name="isFile" type="bool"

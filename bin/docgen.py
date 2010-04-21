@@ -22,7 +22,7 @@ def docify_typedef(mem, doc):
     with BLOCK("a", name = mem.name):
         with BLOCK("dl"):
             with BLOCK("dt"):
-                with BLOCK("h3"):
+                with BLOCK("h3", style="background-color: #EEEECC"):
                     TEXT("Typedef {0}", mem.name)
             with BLOCK("dd"):
                 if mem.doc:
@@ -38,7 +38,7 @@ def docify_enum(mem, doc):
     with BLOCK("a", name = mem.name):
         with BLOCK("dl"):
             with BLOCK("dt"):
-                with BLOCK("h3"):
+                with BLOCK("h3", style="background-color: #EEEECC"):
                     TEXT("Enum {0}", mem.name)
             with BLOCK("dd"):
                 if mem.doc:
@@ -60,8 +60,6 @@ def docify_enum(mem, doc):
                                     TEXT(m.value)
                             with BLOCK("td"):
                                 TEXT(m.doc)
-    with BLOCK("hr"):
-        pass
 
 def docify_record(mem, doc):
     BLOCK = doc.block
@@ -70,7 +68,7 @@ def docify_record(mem, doc):
     with BLOCK("a", name = mem.name):
         with BLOCK("dl"):
             with BLOCK("dt"):
-                with BLOCK("h3"):
+                with BLOCK("h3", style="background-color: #EEEECC"):
                     TEXT("Record {0}", mem.name)
             with BLOCK("dd"):
                 if mem.doc:
@@ -89,8 +87,6 @@ def docify_record(mem, doc):
                                         TEXT(m.name)
                                 with BLOCK("dd"):
                                     TEXT(m.doc)
-    with BLOCK("hr"):
-        pass
 
 def docify_class(mem, doc):
     BLOCK = doc.block
@@ -99,7 +95,7 @@ def docify_class(mem, doc):
     with BLOCK("a", name = mem.name):
         with BLOCK("dl"):
             with BLOCK("dt"):
-                with BLOCK("h3"):
+                with BLOCK("h3", style="background-color: #EEEECC"):
                     TEXT("Class {0}", mem.name)
             with BLOCK("dd"):
                 if mem.doc:
@@ -157,8 +153,6 @@ def docify_class(mem, doc):
                                                             with BLOCK("dd"):
                                                                 TEXT(arg.doc)
 
-    with BLOCK("hr"):
-        pass
 
 def docify_const(mem, doc):
     BLOCK = doc.block
@@ -167,7 +161,7 @@ def docify_const(mem, doc):
     with BLOCK("a", name = "_const_" + mem.name):
         with BLOCK("dl"):
             with BLOCK("dt"):
-                with BLOCK("h3"):
+                with BLOCK("h3", style="background-color: #EEEECC"):
                     TEXT(mem.name)
             with BLOCK("dd"):
                 with BLOCK("p"):
@@ -187,7 +181,7 @@ def docify_func(mem, doc):
     with BLOCK("a", name = "_func_" + mem.name):
         with BLOCK("dl"):
             with BLOCK("dt"):
-                with BLOCK("h3"):
+                with BLOCK("h3", style="background-color: #EEEECC"):
                     TEXT(mem.name)
                 link_type(mem.type, doc)
                 with BLOCK("b"):
@@ -217,8 +211,6 @@ def docify_func(mem, doc):
                                             TEXT(arg.name)
                                     with BLOCK("dd"):
                                         TEXT(arg.doc)
-    with BLOCK("hr"):
-        pass
 
 def generic_tocer(mem, doc):
     BLOCK = doc.block
@@ -272,7 +264,7 @@ def docify(service):
     with BLOCK("head"):
         with BLOCK("title"):
             TEXT("{0} Documentation", service.name)
-    with BLOCK("body"):
+    with BLOCK("body", style="font-family: Arial, Helvetica, sans-serif;"):
         with BLOCK("h1"):
             TEXT("{0}", service.name)
         with BLOCK("p"):
@@ -280,7 +272,7 @@ def docify(service):
         
         with BLOCK("dl"):
             with BLOCK("dt"):
-                with BLOCK("h2"):
+                with BLOCK("h2", style="background-color: #CCCCFF"):
                     TEXT("Table of Contents")
             with BLOCK("dd"):
                 pass
@@ -300,15 +292,13 @@ def docify(service):
                         for mem in members:
                             tocer(mem, doc)
                             TEXT("&nbsp;", escape = False)
-        with BLOCK("hr"):
-            pass
         
         for title, members, docifier, tocer in elements:
             if not members:
                 continue
             with BLOCK("dl"):
                 with BLOCK("dt"):
-                    with BLOCK("h2"):
+                    with BLOCK("h2", style="background-color: #CCCCFF"):
                         TEXT(title)
                 with BLOCK("dd"):
                     for mem in members:
