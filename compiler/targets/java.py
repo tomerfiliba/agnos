@@ -34,12 +34,12 @@ def type_to_java(t, proxy = False):
             type_to_java(t.keytype, proxy = proxy), 
             type_to_java(t.valtype, proxy = proxy))
     elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
-        return "Types.%s" % (t.name,)
+        return "%s" % (t.name,)
     elif isinstance(t, compiler.Class):
         if proxy:
-            return "Types.%sProxy" % (t.name,)
+            return "%sProxy" % (t.name,)
         else:
-            return "Types.I%s" % (t.name,)
+            return "I%s" % (t.name,)
     else:
         return "%s$type" % (t,)
 
@@ -67,7 +67,7 @@ def type_to_packer(t):
     elif t == compiler.t_objref:
         return type_to_packer(compiler.t_int64) 
     if isinstance(t, (compiler.Record, compiler.Exception)):
-        return "Types.%sRecord" % (t.name,)
+        return "%sRecord" % (t.name,)
     if isinstance(t, compiler.Enum):
         return type_to_packer(compiler.t_int32)
     if isinstance(t, compiler.Class):
@@ -105,11 +105,7 @@ class JavaTarget(TargetBase):
             f.write(mod.render())
 
     def generate(self, service):
-        self.generate_types(service)
-        self.generate_service(service)
-    
-    def generate_types(self, service):
-        with self.new_module("Types.java") as module:
+        with self.new_module("%s.java" % (service.name,)) as module:
             BLOCK = module.block
             STMT = module.stmt
             SEP = module.sep
@@ -121,7 +117,7 @@ class JavaTarget(TargetBase):
             STMT("import java.io.*")
             STMT("import agnos.*")
             SEP()
-            with BLOCK("public class Types"):
+            with BLOCK("public class {0}", service.name):
                 DOC("enums", spacer = True)
                 for member in service.types.values():
                     if isinstance(member, compiler.Enum):
@@ -148,6 +144,17 @@ class JavaTarget(TargetBase):
                         SEP()
                         self.generate_class_proxy(module, service, member)
                         SEP()
+
+                DOC("server implementation", spacer = True)
+                self.generate_handler_interface(module, service)
+                SEP()
+                self.generate_processor(module, service)
+                SEP()
+
+                DOC("client", spacer = True)
+                self.generate_client(module, service)
+                SEP()
+
     
     def generate_enum(self, module, enum):
         BLOCK = module.block
@@ -248,10 +255,10 @@ class JavaTarget(TargetBase):
         DOC = module.doc
         with BLOCK("public static abstract class BaseProxy"):
             STMT("protected Long _objref")
-            STMT("protected Service.Client _client")
+            STMT("protected Client _client")
             STMT("protected boolean _disposed")
             SEP()
-            with BLOCK("protected BaseProxy(Service.Client client, Long objref)"):
+            with BLOCK("protected BaseProxy(Client client, Long objref)"):
                 STMT("_client = client")
                 STMT("_objref = objref")
                 STMT("_disposed = false")
@@ -295,7 +302,7 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         with BLOCK("public static class {0}Proxy extends BaseProxy implements I{0}", cls.name):
-            with BLOCK("protected {0}Proxy(Service.Client client, Long objref)", cls.name):
+            with BLOCK("protected {0}Proxy(Client client, Long objref)", cls.name):
                 STMT("super(client, objref)")
             SEP()
             for attr in cls.attrs:
@@ -317,30 +324,6 @@ class JavaTarget(TargetBase):
                         STMT("_client._{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
                     else:
                         STMT("return _client._{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
-
-    def generate_service(self, service):
-        with self.new_module("Service.java") as module:
-            BLOCK = module.block
-            STMT = module.stmt
-            SEP = module.sep
-            DOC = module.doc
-            
-            STMT("package {0}", service.name)
-            SEP()
-            STMT("import java.util.*")
-            STMT("import java.io.*")
-            STMT("import agnos.*")
-            SEP()
-            with BLOCK("public class Service"):
-                DOC("server implementation", spacer = True)
-                self.generate_handler_interface(module, service)
-                SEP()
-                self.generate_processor(module, service)
-                SEP()
-
-                DOC("client", spacer = True)
-                self.generate_client(module, service)
-                SEP()
 
     def generate_handler_interface(self, module, service):
         BLOCK = module.block
@@ -441,7 +424,7 @@ class JavaTarget(TargetBase):
                         if not isinstance(mem, compiler.Exception):
                             continue
                         with BLOCK("case {0}:", mem.id, prefix = None, suffix = None):
-                            STMT("return (Protocol.PackedException)(Types.{0}Record.unpack(_inStream))", mem.name)
+                            STMT("return (Protocol.PackedException)({0}Record.unpack(_inStream))", mem.name)
                     with BLOCK("default:", prefix = None, suffix = None):
                         STMT('throw new Protocol.ProtocolError("unknown exception class id: " + clsid)')
             SEP()

@@ -4,16 +4,18 @@ agnos command-line utility
 usage: 
     agnos -t <LANG> myidl.xml
 where LANG is one of
-    "python", "java", "csharp", "cpp"
+    "python", "java", "csharp", "cpp", "doc"
 """
 import os
 import sys
 sys.path.insert(0, os.path.abspath(".."))
 
 from optparse import OptionParser
-from compiler import compile, IDLError, JavaTarget, PythonTarget, CPPTarget, CSharpTarget
+from compiler import compile, IDLError
+from compiler import JavaTarget, PythonTarget, CPPTarget, CSharpTarget, DocTarget
 
 TARGET_ALIASES = {
+    "doc" : DocTarget,
     "py" : PythonTarget, 
     "python" : PythonTarget, 
     "java" : JavaTarget, 
@@ -38,7 +40,7 @@ parser.add_option("-d", "--debug",
 if __name__ == "__main__":
     options, args = parser.parse_args()
     args = ["../ut/RemoteFiles.xml"]
-    options.target = "cs"
+    options.target = "doc"
     if not args:
         parser.error("must specify agnos input file(s)")
     if not options.target:
