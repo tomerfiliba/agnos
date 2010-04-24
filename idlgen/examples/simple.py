@@ -1,23 +1,25 @@
-
 #:: @class
 class File(object):
-    #:: @ctor 
-    #::    @arg filename string
-    #::    @arg mode string
+    #:: @ctor
+    #::    @arg filename type=string
+    #::    @arg mode type=string
     def __init__(self, filename, mode):
         self.file = open(filename, mode)
 
-    #:: @attr filename type=str mode=get
+    #:: @attr filename type=str access=get
     @property
     def filename(self):
         return self.file.name
 
     #:: @method type=buffer
-    #::    @arg count type=int32
+    #::    reads up to 'count' bytes from the file
+    #::    @arg count type=int32 moshe=5
+    #::        the number of bytes to read
     def read(self, count):
         return self.file.read(count)
 
     #:: @method type=str
+    #::    writes the given buffer to the file
     #::    @arg data type=buffer
     def write(self, buffer):
         self.file.write(buffer)
@@ -30,7 +32,7 @@ class File(object):
     def flush(self):
         self.file.close()
 
-#:: @func: File
+#:: @func type=File
 #::    opens the given file in the given mode and returns a File instance
 #::    @arg filename type=str
 #::        the name of the file to open
@@ -40,11 +42,11 @@ def open(filename, mode):
     return File(filename, mode)
 
 #:: @func
-#    opens the given file in the given mode and returns a File instance
-#    @arg src type=File
-#        the name of the file to open
-#    @arg dst type=File
-#        the opening mode, either 'r' or 'w'
+#::    opens the given file in the given mode and returns a File instance
+#::    @arg src type=File
+#::        the name of the file to open
+#::    @arg dst type=File
+#::        the opening mode, either 'r' or 'w'
 def copy(src, dst):
     while True:
         buf = src.read(10000)
