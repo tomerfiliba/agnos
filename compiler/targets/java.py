@@ -301,7 +301,7 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         DOC = module.doc
-        with BLOCK("public static class {0}Proxy extends BaseProxy implements I{0}", cls.name):
+        with BLOCK("public static class {0}Proxy extends BaseProxy", cls.name):
             with BLOCK("protected {0}Proxy(Client client, Long objref)", cls.name):
                 STMT("super(client, objref)")
             SEP()
@@ -317,7 +317,7 @@ class JavaTarget(TargetBase):
             SEP()
             for method in cls.methods:
                 self.emit_func_javadoc(method, module)
-                args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) for arg in method.args)
+                args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in method.args)
                 with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(method.type), method.name, args):
                     callargs = ["this"] + [arg.name for arg in method.args]
                     if method.type == compiler.t_void:

@@ -13,7 +13,7 @@ class File(object):
 
     #:: @method type=buffer
     #::    reads up to 'count' bytes from the file
-    #::    @arg count type=int32 moshe=5
+    #::    @arg count type=int32
     #::        the number of bytes to read
     def read(self, count):
         return self.file.read(count)

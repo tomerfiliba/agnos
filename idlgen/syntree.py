@@ -175,23 +175,6 @@ class AstNode(object):
         for child in self.children:
             child.display(level + 1)
     
-#    def toxml(self, level):
-#        ind = "\t" * level
-#        ind2 = "\t" * (level + 1)
-#        attrs = " ".join('%s="%s"' % (k, v) for k, v in sorted(self.attrs.items()))
-#        if self.children or self.doc:
-#            lines = ["%s<%s %s>" % (ind, self.TAG, attrs)]
-#            if self.doc:
-#                lines.append(ind2 + "<doc>")
-#                for l in self.doc:
-#                    lines.append(ind2 + l)
-#                lines.append(ind2 + "</doc>")
-#            for child in self.children:
-#                lines.append(child.toxml(level + 1))
-#            lines.append("%s</%s>" % (ind, self.TAG,))
-#        else:
-#            lines = ["%s<%s %s/>" % (ind, self.TAG, attrs)]
-#        return "\n".join(lines)
 
 class ClassAttrNode(AstNode):
     TAG = "attr"
