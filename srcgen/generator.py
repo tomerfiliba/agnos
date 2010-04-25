@@ -18,15 +18,26 @@ class IdlGenerator(object):
                 self.TEXT(line)
     
     def visit_RootNode(self, node):
+        self.auto_generated_ctors = []
+        self.service_name = None
         for child in node.children:
             child.accept(self)
-        if "name" not in self.doc.attrs:
+        if not self.service_name:
             raise SourceError(None, "service tag must appear once per project")
+        
+        self.ATTR("name", self.service_name)
+        
+        for node in self.auto_generated_ctors:
+            with self.BLOCK("func", name = node.parent.attrs["name"], type = node.parent.attrs["name"]):
+                self.emit_doc(node)
+                for argnode in node.children:
+                    with self.BLOCK("arg", name = argnode.attrs["name"], type = argnode.attrs["type"]):
+                        self.emit_doc(argnode)
     
     def visit_ServiceNode(self, node):
-        if "name" in self.doc.attrs:
+        if self.service_name:
             raise SourceError(node.block.srcblock, "service tag appears more than once")
-        self.doc.attrs["name"] = node.attrs["name"]
+        self.service_name = node.attrs["name"]
     
     def visit_FuncNode(self, node):
         with self.BLOCK("func", name = node.attrs["name"], type = node.attrs["type"]):
@@ -57,7 +68,7 @@ class IdlGenerator(object):
                 child.accept(self)
     
     def visit_CtorNode(self, node):
-        pass
+        self.auto_generated_ctors.append(node)
     
     def visit_FuncArgNode(self, node):
         with self.BLOCK("arg", name = node.attrs["name"], type = node.attrs["type"]):
@@ -77,12 +88,17 @@ class StubGenerator(object):
     
     def visit_RootNode(self, node):
         self.STMT("import foo")
+        self.STMT("import agnos")
+        self.STMT("import agnos.servers")
         self.SEP()
-        with self.BLOCK("class Handler(object):"):
+        with self.BLOCK("class Handler(foo.IHandler):"):
             for child in node.children:
                 child.accept(self)
         if not self.service_name:
             raise SourceError(None, "service tag must appear once per project")
+        self.SEP()
+        with self.BLOCK("if __name__ == '__main__':"):
+            self.STMT("agnos.servers.server_main(foo.Processor(Handler()))")
     
     def visit_ServiceNode(self, node):
         if self.service_name:
@@ -102,7 +118,6 @@ class StubGenerator(object):
         args = ", ".join(arg.attrs["name"] for arg in node.children)
         with self.BLOCK("def {0}(_self, {1})", node.parent.attrs["name"], args):
             self.STMT("pass")
-    
 
 
 def main(filenames):

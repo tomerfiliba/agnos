@@ -23,6 +23,7 @@ namespace Agnos.Servers
 			while (true)
 			{
 				ITransport transport = transportFactory.accept();
+				System.Console.WriteLine("accepted: " + transport);
 				_handleClient(transport);
 				System.Console.WriteLine("goodbye");
 			}

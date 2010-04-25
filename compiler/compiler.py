@@ -1,3 +1,4 @@
+import re
 import xml.etree.ElementTree as etree
 import itertools
 from .idl import parse_const, parse_template, IDLError
@@ -282,6 +283,23 @@ class TMap(BuiltinType):
         return "BuiltinType(map<%r, %r>)" % (self.keytype, self.valtype)
 
 
+pattern = re.compile(' *\<INCLUDE *filename *= *"([^"]+)" */\>')
+
+def _load_file_with_includes(file):
+    if hasattr(file, "read"):
+        data = file.read()
+    else:
+        data = open(file, "r").read()
+    newlines = []
+    for line in data.splitlines():
+        mo = pattern.match(line)
+        if mo:
+            fn = mo.groups()[0]
+            newlines.extend(_load_file_with_includes(fn))
+        else:
+            newlines.append(line)
+    return "\n".join(newlines)
+
 class Service(Element):
     XML_TAG = "service"
     CHILDREN = [Typedef, Const, Enum, Record, Exception, Class, Func]
@@ -359,10 +377,7 @@ class Service(Element):
     
     @classmethod
     def from_file(cls, file):
-        if hasattr(file, "read"):
-            data = file.read()
-        else:
-            data = open(file, "r").read()
+        data = _load_file_with_includes(file)
         xml = etree.fromstring(data)
         return cls.load(xml)
     
@@ -378,6 +393,7 @@ class Service(Element):
             mem.resolve(self)
         for mem in self.types.values():
             mem.postprocess(self)
+
 
 
 def load_spec(filename):

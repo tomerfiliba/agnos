@@ -102,6 +102,7 @@ class SocketTransportFactory(TransportFactory):
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind((host, port))
         self.sock.listen(backlog)
+        self.host, self.port = self.sock.getsockname()
     def accept(self):
         return SocketTransport.from_socket(self.sock.accept()[0])
 

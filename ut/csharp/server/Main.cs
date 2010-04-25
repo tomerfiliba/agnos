@@ -100,7 +100,7 @@ namespace server_test
 		{
 			Agnos.Servers.SimpleServer server = new Agnos.Servers.SimpleServer(
 					new RemoteFiles.Processor(new MyHandler()),
-					new Agnos.Transports.SocketTransportFactory("localhost", 17735));
+					new Agnos.Transports.SocketTransportFactory(17735));
 
 			server.serve();
 		}

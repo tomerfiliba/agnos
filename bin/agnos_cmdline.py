@@ -39,7 +39,7 @@ parser.add_option("-d", "--debug",
 if __name__ == "__main__":
     options, args = parser.parse_args()
     args = ["../ut/RemoteFiles.xml"]
-    options.target = "doc"
+    options.target = "csharp"
     if not args:
         parser.error("must specify agnos input file(s)")
     if not options.target:

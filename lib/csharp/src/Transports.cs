@@ -56,16 +56,10 @@ namespace Agnos.Transports
 			this.sock = sock;
 		}
 		
-		private static Socket _ConnectSocket(string host, int port)
+		public SocketTransport(String host, int port)
 		{
-			Socket sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+			sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 			sock.Connect(host, port);
-			return sock;
-		}
-		
-		public SocketTransport(String host, int port) : 
-			this(_ConnectSocket(host, port))
-		{
 		}
 		
 		public Stream getInputStream()

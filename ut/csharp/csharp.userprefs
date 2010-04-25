@@ -1,19 +1,17 @@
 ﻿<Properties>
   <MonoDevelop.Ide.Workbench ActiveDocument="server/Main.cs" ctype="Workbench">
     <Files>
-      <File FileName="Main.cs" Line="5" Column="1" />
-      <File FileName="server/Main.cs" Line="3" Column="13" />
+      <File FileName="Main.cs" Line="14" Column="24" />
+      <File FileName="server/Main.cs" Line="104" Column="1" />
     </Files>
     <Pads>
       <Pad Id="ProjectPad">
         <State expanded="True">
-          <Node name="client" expanded="True">
+          <Node name="client" expanded="True" selected="True">
             <Node name="References" expanded="True" />
           </Node>
           <Node name="server" expanded="True">
-            <Node name="References" expanded="True">
-              <Node name="/home/tomer/workspace/agnos-compiler/lib/csharp/src/bin/Debug/Agnos.dll" selected="True" />
-            </Node>
+            <Node name="References" expanded="True" />
           </Node>
         </State>
       </Pad>

@@ -8,3 +8,9 @@
 *.dll
 *.exe
 *.suo
+*.pidb
+*.userprefs
+*.usertasks
+*.mdb
+gen-*
+*.html

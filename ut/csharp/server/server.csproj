@@ -30,10 +30,12 @@
     <Reference Include="Agnos, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\lib\csharp\src\bin\Debug\Agnos.dll</HintPath>
+      <Private>False</Private>
     </Reference>
-    <Reference Include="RemoteFiles, Version=1.0.3763.35392, Culture=neutral, PublicKeyToken=null">
+    <Reference Include="RemoteFiles, Version=1.0.3767.33368, Culture=neutral, PublicKeyToken=null">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\gen-csharp\bin\Debug\RemoteFiles.dll</HintPath>
+      <Private>False</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>

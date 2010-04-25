@@ -6,77 +6,12 @@ import java.net.*;
 
 public class Servers
 {
-	public interface ITransportFactory
-	{
-		ITransport accept() throws IOException;
-	}
-
-	public interface ITransport
-	{
-		InputStream getInputStream() throws IOException;
-		OutputStream getOutputStream() throws IOException;
-	}
-	
-	public static class SocketTransportFactory implements ITransportFactory
-	{
-		public static final int backlog = 10;
-		protected ServerSocket serverSocket;
-
-		public SocketTransportFactory(int port) throws IOException
-		{
-			this(InetAddress.getLocalHost(), port);
-		}
-
-		public SocketTransportFactory(String host, int port) throws IOException
-		{
-			this(InetAddress.getByName(host), port);
-		}
-
-		public SocketTransportFactory(InetAddress addr, int port) throws IOException
-		{
-			serverSocket = new ServerSocket(port, backlog, addr);
-			System.out.println("listening on " + addr + ":" + port );
-		}
-		
-		public ITransport accept() throws IOException
-		{
-			System.out.println("accepting...");
-			return new SocketTransport(serverSocket.accept());
-		}
-	}
-	
-	public static class SocketTransport implements ITransport
-	{
-		protected Socket sock;
-		public static final int bufsize = 8000;
-		
-		public SocketTransport(Socket sock)
-		{
-			this.sock = sock;
-		}
-		
-		public SocketTransport(String host, int port) throws IOException, UnknownHostException
-		{
-			this(new Socket(host, port));
-		}
-		
-		public InputStream getInputStream() throws IOException
-		{
-			return new BufferedInputStream(sock.getInputStream(), bufsize);
-		}
-
-		public OutputStream getOutputStream() throws IOException
-		{
-			return new BufferedOutputStream(sock.getOutputStream(), bufsize);
-		}
-	}
-	
 	public abstract static class BaseServer
 	{
 		protected Protocol.BaseProcessor processor;
 		protected ITransportFactory transportFactory;
 		
-		public BaseServer(Protocol.BaseProcessor processor, ITransportFactory transportFactory)
+		public BaseServer(Protocol.BaseProcessor processor, Transports.ITransportFactory transportFactory)
 		{
 			this.processor = processor;
 			this.transportFactory = transportFactory;
@@ -97,7 +32,7 @@ public class Servers
 
 	public static class SimpleServer extends BaseServer
 	{
-		public SimpleServer(Protocol.BaseProcessor processor, ITransportFactory transportFactory)
+		public SimpleServer(Protocol.BaseProcessor processor, Transports.ITransportFactory transportFactory)
 		{
 			super(processor, transportFactory);
 		}
@@ -127,7 +62,7 @@ public class Servers
 
 	public static class ThreadedServer extends BaseServer
 	{
-		public ThreadedServer(Protocol.BaseProcessor processor, ITransportFactory transportFactory)
+		public ThreadedServer(Protocol.BaseProcessor processor, Transports.ITransportFactory transportFactory)
 		{
 			super(processor, transportFactory);
 		}
@@ -139,7 +74,7 @@ public class Servers
 		}
 	}
 	
-	public abstract static class ChildServer
+	/*public abstract static class ChildServer
 	{
 		protected Process proc;
 		public Protocol.BaseClient client;
@@ -166,7 +101,7 @@ public class Servers
 			proc.waitFor();
 		}
 		
-	}
+	}*/
 }
 
 

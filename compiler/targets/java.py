@@ -410,7 +410,7 @@ class JavaTarget(TargetBase):
         with BLOCK("public static class Client extends Protocol.BaseClient"):
             with BLOCK("public Client(InputStream inStream, OutputStream outStream)"):
                 STMT("super(inStream, outStream)")
-            with BLOCK("public Client(Servers.ITransport transport) throws IOException"):
+            with BLOCK("public Client(Transports.ITransport transport) throws IOException"):
                 STMT("super(transport)")
             SEP()
             with BLOCK("protected void _decref(Long id)"):

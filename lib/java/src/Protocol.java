@@ -224,7 +224,7 @@ public class Protocol {
 			_seq = 0;
 		}
 
-		public BaseClient(Servers.ITransport transport) throws IOException {
+		public BaseClient(Transports.ITransport transport) throws IOException {
 			this(transport.getInputStream(), transport.getOutputStream());
 		}
 
