@@ -61,6 +61,12 @@ namespace Agnos.Transports
 			sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 			sock.Connect(host, port);
 		}
+
+		public SocketTransport(IPAddress addr, int port)
+		{
+			sock = new Socket(addr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+			sock.Connect(addr, port);
+		}
 		
 		public Stream getInputStream()
 		{

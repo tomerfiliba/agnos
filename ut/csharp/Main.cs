@@ -15,31 +15,31 @@ namespace client_test
 			{
 				RemoteFiles.FileProxy f = c.open("/tmp/foo", "w");
 				System.Console.WriteLine("f = {0}", f);
-				/*f.write(Text."hello world".getBytes());
+				f.write(new System.Text.ASCIIEncoding().GetBytes("hello world"));
 
-				System.out.println("filename = " + f.get_filename());
-				System.out.println("stat = " + f.stat());
+				System.Console.WriteLine("filename = {0}", f.filename);
+				System.Console.WriteLine("stat = {0}", f.stat());
 				
-				boolean got_exc = false;
+				/*bool got_exc = false;
 				try {
 					f.flush();
 				} catch (UnderlyingIOError exc) {
 					got_exc = true;
 					System.out.println("matched: " + exc);
 				}
-				assert(got_exc);
+				assert(got_exc);*/
 				
 				try {
 					// should cause NullPointer, since opened for writing
 					f.read(10); 
 				}
-				catch (agnos.Protocol.GenericError exc) {
-					System.out.println("matched: " + exc);
+				catch (Agnos.GenericError exc) {
+					System.Console.WriteLine("matched: " + exc);
 				}
 				
 				f.close();
 
-				FileProxy f1 = c.open("/tmp/foo", "r");
+				/*FileProxy f1 = c.open("/tmp/foo", "r");
 				FileProxy f2 = c.open("/tmp/foo2", "w");
 				c.copy(f1, f2);
 				f1.close();
@@ -47,7 +47,7 @@ namespace client_test
 
 				f2 = c.open("/tmp/foo2", "r");
 				byte[] data = f2.read(100);
-				System.out.println("copy = " + new String(data));*/
+				System.Console.WriteLine("copy = {0}", new System.Text.ASCIIEncoding().GetString(data));*/
 				
 				System.Console.WriteLine("client finished successfully");
 			}

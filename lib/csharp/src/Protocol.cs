@@ -246,7 +246,7 @@ namespace Agnos
 			{
 				int seq = _get_seq();
 				Packers.Int32.pack(seq, _outStream);
-				Packers.Int8.pack(CMD_INVOKE, _outStream);
+				Packers.Int8.pack((byte)CMD_INVOKE, _outStream);
 				Packers.Int32.pack(funcid, _outStream);
 				return seq;
 			}

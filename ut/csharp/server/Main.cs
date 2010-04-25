@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Net;
 using Agnos;
 using RemoteFilesStub;
 
@@ -36,8 +37,7 @@ namespace server_test
 
 		public RemoteFiles.StatRes stat()
 		{
-			return new RemoteFiles.StatRes(15, 12345, 17772, 1001, 1002, DateTime.FromFileTime(23877129612), 
-			                   DateTime.FromFileTime(238771222232), DateTime.FromFileTime(238771219882));
+			return new RemoteFiles.StatRes(15, 12345, 17772, 1001, 1002, DateTime.Now, DateTime.Now, DateTime.Now);
 		}
 
 		public byte[] read(int count)
@@ -100,9 +100,10 @@ namespace server_test
 		{
 			Agnos.Servers.SimpleServer server = new Agnos.Servers.SimpleServer(
 					new RemoteFiles.Processor(new MyHandler()),
-					new Agnos.Transports.SocketTransportFactory(17735));
+					new Agnos.Transports.SocketTransportFactory(IPAddress.Loopback, 17735));
 
 			server.serve();
 		}
 	}
 }
+
