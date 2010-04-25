@@ -1,3 +1,8 @@
+#:: hello aaaa 
+#:: @service lala
+#::   hello bbb 
+#:: hello ccc 
+
 #:: @class
 class File(object):
     #:: @ctor

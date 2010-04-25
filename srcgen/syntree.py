@@ -6,8 +6,9 @@ class SourceError(Exception):
         self.msg = msg
     
     def display(self):
-        print "Error at %s(%d)" % (self.blk.fileinfo.filename, self.blk.lineno)
-        print "    %r" % (self.blk.text)
+        if self.blk:
+            print "Error at %s(%d)" % (self.blk.fileinfo.filename, self.blk.lineno)
+            print "    %s" % (self.blk.text)
         print self.msg
 
 
@@ -117,7 +118,7 @@ class TokenizedBlock(object):
                 children.append(cls.tokenize_block(child))
             else:
                 doc.append(child.text)
-        return cls("service", dict(name="foo"), doc, children, blk)
+        return cls("root", {}, doc, children, blk)
 
 
 #===============================================================================
@@ -146,67 +147,81 @@ def arg_default(default):
         return blk.args.get(argname, default)
     return wrapper
 
+NOOP = lambda node: None
+
 class AstNode(object):
     TAG = None
     CHILDREN = []
     ATTRS = {}
     
-    def __init__(self, block):
-        assert block.tag == self.TAG
-        self.block = block
-        self.doc = block.doc
+    def __init__(self, parent = None):
+        self.parent = parent
+        self.block = None
+        self.doc = []
         self.attrs = {}
         self.children = []
-        for k, v in self.ATTRS.iteritems():
-            self.attrs[k] = v(k, block)
+    
+    @classmethod
+    def parse(cls, block, parent = None):
+        assert block.tag == cls.TAG, (block.tag, cls.TAG)
+        node = cls(parent)
+        node.doc = block.doc
+        for k, v in cls.ATTRS.iteritems():
+            node.attrs[k] = v(k, block)
         for arg in block.args.keys():
-            if arg not in self.ATTRS:
-                raise SourceError(self.block.srcblock, "invalid argument %r", arg)
-        mapping = dict((cls.TAG, cls) for cls in self.CHILDREN)
+            if arg not in cls.ATTRS:
+                raise SourceError(node.block.srcblock, "invalid argument %r", arg)
+        mapping = dict((cls2.TAG, cls2) for cls2 in cls.CHILDREN)
         for child in block.children:
             try:
-                cls = mapping[child.tag]
+                cls2 = mapping[child.tag]
             except KeyError:
-                raise SourceError(self.block.srcblock, "tag %r is invalid in this context", child.tag)
-            self.children.append(cls(child))
-    
-    def display(self, level = 0):
-        print "%s%s %s" % ("  " * level, self.TAG, self.attrs)
-        for child in self.children:
-            child.display(level + 1)
-    
+                raise SourceError(node.block.srcblock, "tag %r is invalid in this context", child.tag)
+            node.children.append(cls2.parse(child, node))
+        return node
+
+    def accept(self, visitor):
+        func = getattr(visitor, "visit_%s" % (self.__class__.__name__,), NOOP)
+        return func(self)
 
 class ClassAttrNode(AstNode):
     TAG = "attr"
     ATTRS = dict(name = arg_value, type = arg_value, access = arg_default("get,set"))
 
-class ArgNode(AstNode):
+class MethodArgNode(AstNode):
     TAG = "arg"
     ATTRS = dict(name = arg_value, type = arg_value)
 
 class MethodNode(AstNode):
     TAG = "method"
     ATTRS = dict(name = auto_fill_name, type = arg_default("void"))
-    CHILDREN = [ArgNode]
+    CHILDREN = [MethodArgNode]
 
 class CtorNode(AstNode):
     TAG = "ctor"
-    CHILDREN = [ArgNode]
+    CHILDREN = [MethodArgNode]
 
 class ClassNode(AstNode):
     TAG = "class"
     ATTRS = dict(name = auto_fill_name)
     CHILDREN = [ClassAttrNode, CtorNode, MethodNode]
 
+class FuncArgNode(AstNode):
+    TAG = "arg"
+    ATTRS = dict(name = arg_value, type = arg_value)
+
 class FuncNode(AstNode):
     TAG = "func"
     ATTRS = dict(name = auto_fill_name, type = arg_default("void"))
-    CHILDREN = [ArgNode]
+    CHILDREN = [FuncArgNode]
 
 class ServiceNode(AstNode):
     TAG = "service"
     ATTRS = dict(name = arg_value)
-    CHILDREN = [ClassNode, FuncNode]
+
+class RootNode(AstNode):
+    TAG = "root"
+    CHILDREN = [ClassNode, FuncNode, ServiceNode]
 
 
 #===============================================================================
@@ -216,7 +231,42 @@ def parse_source_file(filename):
     fileinf = FileInfo(filename)
     source_root = SourceBlock.blockify_source(fileinf)
     tokenized_root = TokenizedBlock.tokenize_root(source_root)
-    ast_root = ServiceNode(tokenized_root)
+    ast_root = RootNode.parse(tokenized_root)
     return ast_root
+
+def merge_ast_roots(roots):
+    if len(roots) == 1:
+        return roots[0]
+    new_root = RootNode()
+    for root in roots:
+        new_root.doc.extend(root.doc)
+        new_root.children.extend(root.children)    
+    return new_root
+
+def parse_source_files(filenames):
+    roots = []
+    for fn in filenames:
+        ast = parse_source_file(fn)
+        roots.append(ast)
+    return merge_ast_roots(roots) 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

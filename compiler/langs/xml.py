@@ -9,10 +9,10 @@ MAPPINGS = {
     ">" : "&gt;",
 }
 
-def html_escape(text):
+def xml_escape(text):
     return "".join(MAPPINGS.get(ch, ch) for ch in text)
 
-class HtmlText(object):
+class XmlText(object):
     def __init__(self, text, *args, **kwargs):
         text = str(text)
         if args:
@@ -23,11 +23,11 @@ class HtmlText(object):
             raise TypeError("invalid keyword argument(s): %r" % (kwargs.keys(),))
     def render(self):
         if self.escape:
-            return [html_escape(self.text)]
+            return [xml_escape(self.text)]
         else:
             return [self.text]
 
-class HtmlBlock(object):
+class XmlBlock(object):
     def __init__(self, _tag, **attrs):
         self.tag = _tag.lower()
         self.attrs = {}
@@ -44,18 +44,18 @@ class HtmlBlock(object):
     def delattr(self, name):
         del self._get_head().attrs[name.lower()]
     def text(self, *args, **kwargs):
-        self._get_head().children.append(HtmlText(*args, **kwargs))
+        self._get_head().children.append(XmlText(*args, **kwargs))
 
     @contextmanager
     def block(self, *args, **kwargs):
-        blk = HtmlBlock(*args, **kwargs)
+        blk = XmlBlock(*args, **kwargs)
         self._get_head().children.append(blk)
         self.stack.append(blk)
         yield blk
         self.stack.pop(-1)
     
     def render(self):
-        attrs = " ".join('%s="%s"' % (k, html_escape(v)) 
+        attrs = " ".join('%s="%s"' % (k, xml_escape(v)) 
             for k, v in sorted(self.attrs.iteritems()))
         if attrs:
             attrs = " " + attrs
@@ -69,14 +69,22 @@ class HtmlBlock(object):
         return lines
 
 
-class HtmlDoc(HtmlBlock):
+class XmlDoc(XmlBlock):
+    ENCODING = '<?xml version="1.0" encoding="UTF-8"?>'
+
+    def render(self):
+        text = self.ENCODING + "\n" + "\n".join(XmlBlock.render(self))
+        return text.encode("utf-8") 
+
+
+class HtmlDoc(XmlBlock):
     DOCTYPE = ('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" '
         '"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">')
 
     def __init__(self):
-        HtmlBlock.__init__(self, "html", xmlns = "http://www.w3.org/1999/xhtml")
+        XmlBlock.__init__(self, "html", xmlns = "http://www.w3.org/1999/xhtml")
     def render(self):
-        return self.DOCTYPE + "\n" + "\n".join(HtmlBlock.render(self))
+        return self.DOCTYPE + "\n" + "\n".join(XmlBlock.render(self))
 
 
 if __name__ == "__main__":
@@ -96,6 +104,20 @@ if __name__ == "__main__":
                     TEXT("<b>hi</b> there", escape = False)
     
     print doc.render()
+    
+    doc = XmlDoc("service", name = "moshe")
+    BLOCK = doc.block
+    TEXT = doc.text
+
+    with BLOCK("func", name = "open", type="File"):
+        with BLOCK("doc"):
+            TEXT("this is function opens the given file")
+        with BLOCK("arg", name="filename", type="str"):
+            with BLOCK("doc"):
+                TEXT("this is the filename to open")
+    
+    print doc.render()
+    
 
 
 

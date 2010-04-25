@@ -1,5 +1,5 @@
 from .base import TargetBase
-from ..langs import html
+from ..langs import xml as html
 from .. import compiler
  
 
