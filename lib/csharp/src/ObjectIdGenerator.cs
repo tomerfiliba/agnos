@@ -79,11 +79,9 @@ namespace Agnos
 						return true;
 					}
 				}
-				return false;
 			}
-			else {
-				return false;
-			}
+            val = default(TValue);
+			return false;
 		}
 		
 		public void Compact()

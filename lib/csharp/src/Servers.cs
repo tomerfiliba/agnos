@@ -55,10 +55,6 @@ namespace Agnos.Servers
 			{
 				// finish on EOF
 			}
-			catch (SocketException exc)
-			{
-				System.Console.WriteLine("!! SocketException: " + exc);
-			}
 		}
 	}
 

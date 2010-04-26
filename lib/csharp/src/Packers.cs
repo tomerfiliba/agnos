@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Net;
+using System.Net.Sockets;
 using System.IO;
 
 
@@ -17,22 +18,46 @@ namespace Agnos
 
 		internal static void _write(Stream stream, byte[] buf)
 		{
-			stream.Write(buf, 0, buf.Length);
-		}
+            try
+            {
+			    stream.Write(buf, 0, buf.Length);
+            }
+            catch (IOException ex)
+            {
+                throw new EndOfStreamException("write error", ex);
+            }
+            catch (SocketException ex)
+            {
+                throw new EndOfStreamException("write error", ex);
+            }
+        }
 
 		internal static void _read(Stream stream, byte[] buf)
 		{
 			int total_got = 0;
 			int got;
-	
-			while (total_got < buf.Length) {
-				got = stream.Read(buf, total_got, buf.Length - total_got);
-				total_got += got;
-				if (got <= 0 && total_got < buf.Length) {
-					throw new EndOfStreamException("premature end of stream detected");
-				}
-			}
-		}
+
+            try
+            {
+                while (total_got < buf.Length)
+                {
+                    got = stream.Read(buf, total_got, buf.Length - total_got);
+                    total_got += got;
+                    if (got <= 0 && total_got < buf.Length)
+                    {
+                        throw new EndOfStreamException("premature end of stream detected");
+                    }
+                }
+            }
+            catch (IOException ex)
+            {
+                throw new EndOfStreamException("read error", ex);
+            }
+            catch (SocketException ex)
+            {
+                throw new EndOfStreamException("read error", ex);
+            }
+        }
 		
 		public class _Int8 : IPacker
 		{

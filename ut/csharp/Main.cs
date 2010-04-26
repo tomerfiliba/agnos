@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 using Agnos;
-using RemoteFilesStub;
+using RemoteFilesAutogen;
 
 
 namespace client_test
@@ -13,22 +13,24 @@ namespace client_test
 			using (RemoteFiles.Client c = new RemoteFiles.Client(
 					new Agnos.Transports.SocketTransport("localhost", 17735)))
 			{
-				RemoteFiles.FileProxy f = c.open("/tmp/foo", "w");
+				RemoteFiles.FileProxy f = c.open("foo", "w");
 				System.Console.WriteLine("f = {0}", f);
 				f.write(new System.Text.ASCIIEncoding().GetBytes("hello world"));
 
 				System.Console.WriteLine("filename = {0}", f.filename);
 				System.Console.WriteLine("stat = {0}", f.stat());
 				
-				/*bool got_exc = false;
+				bool got_exc = false;
 				try {
 					f.flush();
-				} catch (UnderlyingIOError exc) {
+				} catch (RemoteFiles.UnderlyingIOError exc) {
 					got_exc = true;
-					System.out.println("matched: " + exc);
+					System.Console.WriteLine("matched: " + exc);
 				}
-				assert(got_exc);*/
-				
+			    if (!got_exc) {
+                    throw new Exception("did not throw exception!");
+                }
+
 				try {
 					// should cause NullPointer, since opened for writing
 					f.read(10); 
@@ -39,15 +41,15 @@ namespace client_test
 				
 				f.close();
 
-				/*FileProxy f1 = c.open("/tmp/foo", "r");
-				FileProxy f2 = c.open("/tmp/foo2", "w");
+                RemoteFiles.FileProxy f1 = c.open("foo", "r");
+                RemoteFiles.FileProxy f2 = c.open("foo2", "w");
 				c.copy(f1, f2);
 				f1.close();
 				f2.close();
 
-				f2 = c.open("/tmp/foo2", "r");
+				f2 = c.open("foo2", "r");
 				byte[] data = f2.read(100);
-				System.Console.WriteLine("copy = {0}", new System.Text.ASCIIEncoding().GetString(data));*/
+				System.Console.WriteLine("copy = {0}", new System.Text.ASCIIEncoding().GetString(data));
 				
 				System.Console.WriteLine("client finished successfully");
 			}

@@ -9,6 +9,8 @@
 *.exe
 *.suo
 *.pidb
+*.pdb
+*.user
 *.userprefs
 *.usertasks
 *.mdb

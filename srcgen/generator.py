@@ -75,7 +75,7 @@ class IdlGenerator(object):
             self.emit_doc(node)
 
 
-class StubGenerator(object):
+class BindingGenerator(object):
     def __init__(self):
         self.doc = python.Module()
         self.BLOCK = self.doc.block
@@ -91,13 +91,13 @@ class StubGenerator(object):
         self.STMT("import agnos")
         self.STMT("import agnos.servers")
         self.SEP()
-        with self.BLOCK("class Handler(foo.IHandler):"):
+        with self.BLOCK("class Handler(foo.IHandler)"):
             for child in node.children:
                 child.accept(self)
         if not self.service_name:
             raise SourceError(None, "service tag must appear once per project")
         self.SEP()
-        with self.BLOCK("if __name__ == '__main__':"):
+        with self.BLOCK("if __name__ == '__main__'"):
             self.STMT("agnos.servers.server_main(foo.Processor(Handler()))")
     
     def visit_ServiceNode(self, node):
@@ -123,14 +123,14 @@ class StubGenerator(object):
 def main(filenames):
     try:
         ast_root = parse_source_files(filenames)
-        visitor = IdlGenerator()
+        #visitor = IdlGenerator()
+        #visitor.visit(ast_root)
+        #print visitor.doc.render()
+        
+        visitor = BindingGenerator()
         visitor.visit(ast_root)
         print visitor.doc.render()
-        
-        visitor = StubGenerator()
-        visitor.visit(ast_root)
-        print visitor.doc.render()
-        
+    
     except SourceError, ex:
         ex.display()
 

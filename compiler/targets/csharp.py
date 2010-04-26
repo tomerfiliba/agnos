@@ -116,7 +116,7 @@ class CSharpTarget(TargetBase):
             STMT("using System.Collections.Generic")
             STMT("using Agnos")
             SEP()
-            with BLOCK("namespace {0}Stub", service.name):
+            with BLOCK("namespace {0}Autogen", service.name):
                 with BLOCK("public static class {0}", service.name):
                     DOC("enums", spacer = True)
                     for member in service.types.values():

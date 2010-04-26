@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Net;
 using Agnos;
-using RemoteFilesStub;
+using RemoteFilesAutogen;
 
 
 namespace server_test
