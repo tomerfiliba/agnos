@@ -29,7 +29,7 @@ namespace Agnos
 		
 		private Dictionary<int, List<Pair>> dict;
 		
-		public WeakKeyDict(): this(1000) 
+		public WeakKeyDict(): this(8000) 
 		{
 		}
 		public WeakKeyDict(int capacity)

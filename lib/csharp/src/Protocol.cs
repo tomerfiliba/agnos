@@ -74,6 +74,8 @@ namespace Agnos
 
 			private Dictionary<long, Cell> cells;
 			private ObjectIDGenerator idGenerator;
+            private int compacting_counter = 0;
+            private const int COMPACTING_THRESHOLD = 2000;
 			
 			public BaseProcessor()
 			{
@@ -102,8 +104,13 @@ namespace Agnos
 				if (cells.TryGetValue(id, out cell)) {
 					if (cell.decref()) {
 						cells.Remove(id);
-						//idGenerator.Compact();
+                        compacting_counter += 1;
 					}
+                    if (compacting_counter > COMPACTING_THRESHOLD)
+                    {
+                        compacting_counter = 0;
+                        idGenerator.Compact();
+                    }
 				}
 			}
 	
