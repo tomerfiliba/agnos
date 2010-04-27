@@ -1,0 +1,3 @@
+* srcgen
+	* bindings
+* idl: sub-package for functions and methods

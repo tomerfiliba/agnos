@@ -95,7 +95,7 @@ def const_to_cs(typ, val):
 
 
 class CSharpTarget(TargetBase):
-    DEFAULT_TARGET_DIR = "gen-csharp"
+    DEFAULT_TARGET_DIR = "."
 
     @contextmanager
     def new_module(self, filename):
@@ -105,7 +105,7 @@ class CSharpTarget(TargetBase):
             f.write(mod.render())
 
     def generate(self, service):
-        with self.new_module("%s.cs" % (service.name,)) as module:
+        with self.new_module("%sBindings.cs" % (service.name,)) as module:
             BLOCK = module.block
             STMT = module.stmt
             SEP = module.sep
@@ -116,7 +116,7 @@ class CSharpTarget(TargetBase):
             STMT("using System.Collections.Generic")
             STMT("using Agnos")
             SEP()
-            with BLOCK("namespace {0}Autogen", service.name):
+            with BLOCK("namespace {0}Bindings", service.name):
                 with BLOCK("public static class {0}", service.name):
                     DOC("enums", spacer = True)
                     for member in service.types.values():

@@ -1,5 +1,5 @@
-#:: hello aaaa 
-#:: @service lala
+#:: @module simple export=baba
+#:: @service simple
 #::   hello bbb 
 #:: hello ccc 
 

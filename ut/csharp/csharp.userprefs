@@ -1,19 +1,13 @@
 ﻿<Properties>
-  <MonoDevelop.Ide.Workbench ActiveDocument="server/Main.cs" ctype="Workbench">
+  <MonoDevelop.Ide.Workbench ActiveDocument="../RemoteFilesBindings.cs" ctype="Workbench">
     <Files>
-      <File FileName="Main.cs" Line="14" Column="24" />
-      <File FileName="server/Main.cs" Line="104" Column="1" />
+      <File FileName="server/Main.cs" Line="5" Column="26" />
+      <File FileName="Main.cs" Line="11" Column="15" />
+      <File FileName="../RemoteFilesBindings.cs" Line="17" Column="24" />
     </Files>
     <Pads>
       <Pad Id="ProjectPad">
-        <State expanded="True">
-          <Node name="client" expanded="True" selected="True">
-            <Node name="References" expanded="True" />
-          </Node>
-          <Node name="server" expanded="True">
-            <Node name="References" expanded="True" />
-          </Node>
-        </State>
+        <State expanded="True" />
       </Pad>
       <Pad Id="ClassPad">
         <State expanded="True" selected="True" />

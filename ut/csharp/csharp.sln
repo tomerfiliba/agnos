@@ -13,7 +13,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "server", "server\server.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Agnos", "..\..\lib\csharp\src\Agnos.csproj", "{8D5457D1-288E-4517-BC0A-DC1EFD36EA78}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteFiles", "..\gen-csharp\RemoteFiles.csproj", "{EC4E24A4-1D19-4D4D-8C13-7E5D7E139025}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteFiles", "RemoteFiles\RemoteFiles.csproj", "{EC4E24A4-1D19-4D4D-8C13-7E5D7E139025}"
 	ProjectSection(ProjectDependencies) = postProject
 		{8D5457D1-288E-4517-BC0A-DC1EFD36EA78} = {8D5457D1-288E-4517-BC0A-DC1EFD36EA78}
 	EndProjectSection

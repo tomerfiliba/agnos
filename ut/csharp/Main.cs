@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 using Agnos;
-using RemoteFilesAutogen;
+using RemoteFilesBindings;
 
 
 namespace client_test

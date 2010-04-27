@@ -1,5 +1,5 @@
 import sys
-sys.path.append("../gen-py")
+sys.path.append("..")
 
 import os
 import errno
@@ -7,7 +7,7 @@ from datetime import datetime
 
 from agnos import SocketTransportFactory 
 from agnos.servers import SimpleServer
-import RemoteFiles
+import RemoteFiles_bindings as RemoteFiles
 
 
 class FileImp(object):

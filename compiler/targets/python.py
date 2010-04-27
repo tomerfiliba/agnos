@@ -40,7 +40,7 @@ def const_to_python(value):
 
 
 class PythonTarget(TargetBase):
-    DEFAULT_TARGET_DIR = "gen-py"
+    DEFAULT_TARGET_DIR = "."
 
     @contextmanager
     def new_module(self, filename):
@@ -50,7 +50,7 @@ class PythonTarget(TargetBase):
             f.write(mod.render())
 
     def generate(self, service):
-        with self.new_module("%s.py" % (service.name,)) as module:
+        with self.new_module("%s_bindings.py" % (service.name,)) as module:
             BLOCK = module.block
             STMT = module.stmt
             SEP = module.sep

@@ -1,8 +1,8 @@
 import sys
-sys.path.append("../gen-py")
+sys.path.append("..")
 
 import agnos 
-import RemoteFiles
+import RemoteFiles_bindings as RemoteFiles
 
 
 c = RemoteFiles.Client.connect("localhost", 17731)

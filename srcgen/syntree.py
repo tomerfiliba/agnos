@@ -1,3 +1,6 @@
+import os
+
+
 class SourceError(Exception):
     def __init__(self, blk, msg, *args):
         self.blk = blk
@@ -118,7 +121,7 @@ class TokenizedBlock(object):
                 children.append(cls.tokenize_block(child))
             else:
                 doc.append(child.text)
-        return cls("root", {}, doc, children, blk)
+        return cls("#module-root#", {}, doc, children, blk)
 
 
 #===============================================================================
@@ -126,15 +129,17 @@ class TokenizedBlock(object):
 #===============================================================================
 def auto_fill_name(argname, blk):
     assert argname == "name"
+    blk.src_name = None
+    for i in range(blk.srcblock.lineno, len(blk.srcblock.fileinfo.lines)):
+        l = blk.srcblock.fileinfo.lines[i].strip()
+        if l.startswith("def ") or l.startswith("class "):
+            name = l.split()[1].split("(")[0]
+            blk.src_name = name
+            break
     if "name" not in blk.args:
-        for i in range(blk.srcblock.lineno, len(blk.srcblock.fileinfo.lines)):
-            l = blk.srcblock.fileinfo.lines[i].strip()
-            if l.startswith("def ") or l.startswith("class "):
-                name = l.split()[1].split("(")[0]
-                blk.args["name"] = name
-                break
-    if "name" not in blk.args:
-        raise SourceError(blk.srcblock, "required argument 'name' missing and cannot be deduced")
+        if not blk.src_name:
+            raise SourceError(blk.srcblock, "required argument 'name' missing and cannot be deduced")
+        blk.args["name"] = blk.src_name
     return blk.args["name"]
 
 def arg_value(argname, blk):
@@ -154,31 +159,30 @@ class AstNode(object):
     CHILDREN = []
     ATTRS = {}
     
-    def __init__(self, parent = None):
+    def __init__(self, block, parent = None):
+        assert block.tag == self.TAG, (block.tag, self.TAG)
         self.parent = parent
-        self.block = None
-        self.doc = []
+        self.block = block
+        self.doc = block.doc
         self.attrs = {}
         self.children = []
-    
-    @classmethod
-    def parse(cls, block, parent = None):
-        assert block.tag == cls.TAG, (block.tag, cls.TAG)
-        node = cls(parent)
-        node.doc = block.doc
-        for k, v in cls.ATTRS.iteritems():
-            node.attrs[k] = v(k, block)
+        self.doc = block.doc
+        for k, v in self.ATTRS.iteritems():
+            self.attrs[k] = v(k, block)
         for arg in block.args.keys():
-            if arg not in cls.ATTRS:
-                raise SourceError(node.block.srcblock, "invalid argument %r", arg)
-        mapping = dict((cls2.TAG, cls2) for cls2 in cls.CHILDREN)
+            if arg not in self.ATTRS:
+                raise SourceError(self.block.srcblock, "invalid argument %r", arg)
+        mapping = dict((cls2.TAG, cls2) for cls2 in self.CHILDREN)
         for child in block.children:
             try:
                 cls2 = mapping[child.tag]
             except KeyError:
-                raise SourceError(node.block.srcblock, "tag %r is invalid in this context", child.tag)
-            node.children.append(cls2.parse(child, node))
-        return node
+                raise SourceError(self.block.srcblock, "tag %r is invalid in this context", child.tag)
+            self.children.append(cls2(child, self))
+    
+    def postprcess(self):
+        for child in self.children:
+            child.postprcess()
 
     def accept(self, visitor):
         func = getattr(visitor, "visit_%s" % (self.__class__.__name__,), NOOP)
@@ -219,10 +223,62 @@ class ServiceNode(AstNode):
     TAG = "service"
     ATTRS = dict(name = arg_value)
 
-class RootNode(AstNode):
-    TAG = "root"
-    CHILDREN = [ClassNode, FuncNode, ServiceNode]
+class ConstNode(AstNode):
+    TAG = "const"
+    ATTRS = dict(name = arg_value, type = arg_value, value = arg_value)
 
+class StructAttrNode(AstNode):
+    TAG = "attr"
+    ATTRS = dict(name = arg_value, type = arg_value)
+
+class StructNode(AstNode):
+    TAG = "struct"
+    ATTRS = dict(name = auto_fill_name)
+    CHILDREN = [StructAttrNode]
+
+class ModuleInfoNode(AstNode):
+    TAG = "module"
+    ATTRS = dict(name = arg_value, export = arg_default(None))
+
+class ModuleNode(AstNode):
+    TAG = "#module-root#"
+    CHILDREN = [ClassNode, StructNode, ConstNode, FuncNode, ServiceNode, ModuleInfoNode]
+    
+    def postprcess(self):
+        if not self.children:
+            return
+        services = [child for child in self.children if isinstance(child, ServiceNode)]
+        if not services:
+            self.service = None
+        elif len(services) == 1:
+            self.service = services[0]
+        else:
+            raise SourceError(services[1].block.srcblock, "tag @service must appear at most once per project")
+        modinfos = [child for child in self.children if isinstance(child, ModuleInfoNode)]
+        if not modinfos:
+            raise SourceError(self.children[0].block.srcblock, "tag @module must appear once per module")
+        elif len(modinfos) == 1:
+            self.modinfo = modinfos[0]
+        else:
+            raise SourceError(modinfos[1].block.srcblock, "tag @module must appear once per module")
+        AstNode.postprcess(self)
+
+class RootNode(object):
+    def __init__(self, modules):
+        self.service_name = None
+        for module in modules:
+            if module.service:
+                if self.service_name:
+                    raise SourceError(module.service.block.srcblock, "tag @service appears more than once per project")
+                else:
+                    self.service_name = module.service.attrs["name"]
+        if not self.service_name:
+            raise SourceError(None, "tag @service does not appear in project")
+        self.children = modules
+
+    def accept(self, visitor):
+        func = getattr(visitor, "visit_%s" % (self.__class__.__name__,), NOOP)
+        return func(self)
 
 #===============================================================================
 # API
@@ -231,24 +287,17 @@ def parse_source_file(filename):
     fileinf = FileInfo(filename)
     source_root = SourceBlock.blockify_source(fileinf)
     tokenized_root = TokenizedBlock.tokenize_root(source_root)
-    ast_root = RootNode.parse(tokenized_root)
+    ast_root = ModuleNode(tokenized_root)
+    ast_root.postprcess()
     return ast_root
 
-def merge_ast_roots(roots):
-    if len(roots) == 1:
-        return roots[0]
-    new_root = RootNode()
-    for root in roots:
-        new_root.doc.extend(root.doc)
-        new_root.children.extend(root.children)    
-    return new_root
-
 def parse_source_files(filenames):
-    roots = []
+    modules = []
     for fn in filenames:
         ast = parse_source_file(fn)
-        roots.append(ast)
-    return merge_ast_roots(roots) 
+        if ast.children:
+            modules.append(ast)
+    return RootNode(modules)
 
 
 

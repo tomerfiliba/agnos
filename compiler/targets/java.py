@@ -95,7 +95,7 @@ def const_to_java(typ, val):
 
 
 class JavaTarget(TargetBase):
-    DEFAULT_TARGET_DIR = "gen-java"
+    DEFAULT_TARGET_DIR = "."
     
     @contextmanager
     def new_module(self, filename):
@@ -105,13 +105,13 @@ class JavaTarget(TargetBase):
             f.write(mod.render())
 
     def generate(self, service):
-        with self.new_module("%s.java" % (service.name,)) as module:
+        with self.new_module("%sBindings.java" % (service.name,)) as module:
             BLOCK = module.block
             STMT = module.stmt
             SEP = module.sep
             DOC = module.doc
             
-            STMT("package {0}", service.name)
+            STMT("package {0}Bindings", service.name)
             SEP()
             STMT("import java.util.*")
             STMT("import java.io.*")

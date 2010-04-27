@@ -177,7 +177,7 @@ class ClassCtor(Element):
 
 class Class(Element):
     XML_TAG = "class"
-    CHILDREN = [ClassMethod, ClassAttr] # ClassCtor]
+    CHILDREN = [ClassMethod, ClassAttr]
     ATTRS = dict(name = IDENTIFIER)
     
     def build_members(self, members):
@@ -225,7 +225,7 @@ class FuncArg(Element):
 class Func(Element):
     XML_TAG = "func"
     CHILDREN = [FuncArg]
-    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER)
+    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER, package = DEFAULT(None))
 
     def build_members(self, members):
         self.args = members
@@ -333,7 +333,7 @@ class Service(Element):
                 if mem.name in self.funcs:
                     raise IDLError("func %r already defined" % (mem.name,))
                 self.funcs[mem.name] = mem
-            if isinstance(mem, Const):
+            elif isinstance(mem, Const):
                 if mem.name in self.consts:
                     raise IDLError("const %r already defined" % (mem.name,))
                 self.consts[mem.name] = mem

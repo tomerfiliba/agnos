@@ -33,14 +33,15 @@ class XmlBlock(object):
         self.attrs = {}
         self.children = []
         self.stack = []
-        for k, v in attrs.iteritems():
-            self.attr(k, v)
+        self.attr(**attrs)
     
     def _get_head(self):
         return self.stack[-1] if self.stack else self
 
-    def attr(self, name, value):
-        self._get_head().attrs[name.lower()] = str(value)
+    def attr(self, **kwargs):
+        head = self._get_head()
+        for k, v in kwargs.iteritems():
+            head.attrs[k.lower()] = str(v)
     def delattr(self, name):
         del self._get_head().attrs[name.lower()]
     def text(self, *args, **kwargs):

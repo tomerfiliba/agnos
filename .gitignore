@@ -14,5 +14,6 @@
 *.userprefs
 *.usertasks
 *.mdb
-gen-*
 *.html
+*Bindings.*
+*_bindings.py

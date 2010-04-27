@@ -2,7 +2,6 @@
 
 	<path id="classpath">
 		<fileset dir="../../lib/java/build/jars" includes="*.jar" />
-		<fileset dir="../gen-java/build/jars" includes="*.jar" />
 	</path>
 
 	<target name="clean">
@@ -11,7 +10,12 @@
 
 	<target name="compile">
 		<mkdir dir="build/classes" />
-		<javac srcdir="." destdir="build/classes" debug="true"
+		<javac srcdir=".." destdir="build/classes" debug="true"
+			includeAntRuntime="no" classpathref="classpath">
+			<!-- compilerarg value="-Xlint"/-->
+		</javac>
+		<mkdir dir="build/RemoteFiles" />
+		<javac srcdir="." destdir="build/RemoteFiles" debug="true"
 			includeAntRuntime="no" classpathref="classpath">
 			<!-- compilerarg value="-Xlint"/-->
 		</javac>
@@ -20,6 +24,7 @@
 	<target name="jar" depends="compile">
 		<mkdir dir="build/jars" />
 		<jar destfile="build/jars/test.jar" basedir="build/classes" />
+		<jar destfile="build/jars/RemoteFiles.jar" basedir="build/RemoteFiles" />
 	</target>
 
 	<target name="run-server" depends="jar">
@@ -27,6 +32,7 @@
 			<classpath>
 				<path refid="classpath" />
 				<path location="build/jars/test.jar" />
+				<path location="build/jars/RemoteFiles.jar" />
 			</classpath>
 		</java>
 	</target>
@@ -34,8 +40,9 @@
     <target name="run-client" depends="jar">
         <java fork="true" classname="myclient">
             <classpath>
-                <path refid="classpath" />
-                <path location="build/jars/test.jar" />
+				<path refid="classpath" />
+				<path location="build/jars/test.jar" />
+				<path location="build/jars/RemoteFiles.jar" />
             </classpath>
         </java>
     </target>
