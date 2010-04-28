@@ -35,6 +35,18 @@ def IDENTIFIER(name, v):
             raise IDLError("invalid identifier %r assigned to %r" % (v, name))
     return v
 
+def TYPENAME(name, v):
+    if not v:
+        raise IDLError("required attribute %r missing" % (name,))
+    first = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+    rest = first + "0123456789[]"
+    if v[0] not in first:
+        raise IDLError("invalid identifier %r assigned to %r" % (v, name))
+    for ch in v[1:]:
+        if ch not in rest:
+            raise IDLError("invalid identifier %r assigned to %r" % (v, name))
+    return v
+
 class Element(object):
     XML_TAG = None
     CHILDREN = []
@@ -117,11 +129,11 @@ class Enum(Element):
 
 class Typedef(Element):
     XML_TAG = "typedef"
-    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER)
+    ATTRS = dict(name = IDENTIFIER, type = TYPENAME)
 
 class Const(Element):
     XML_TAG = "const"
-    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER, value = REQUIRED)
+    ATTRS = dict(name = IDENTIFIER, type = TYPENAME, value = REQUIRED)
     
     def _resolve(self, service):
         Element._resolve(self, service)
@@ -129,7 +141,7 @@ class Const(Element):
 
 class RecordMember(Element):
     XML_TAG = "attr"
-    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER)
+    ATTRS = dict(name = IDENTIFIER, type = TYPENAME)
 
 class Record(Element):
     XML_TAG = "record"
@@ -145,33 +157,22 @@ class Exception(Record):
 
 class ClassAttr(Element):
     XML_TAG = "attr"
-    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER, get = STR_TO_BOOL(True), set = STR_TO_BOOL(True))
+    ATTRS = dict(name = IDENTIFIER, type = TYPENAME, get = STR_TO_BOOL(True), set = STR_TO_BOOL(True))
 
 class MethodArg(Element):
     XML_TAG = "arg"
-    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER)
+    ATTRS = dict(name = IDENTIFIER, type = TYPENAME)
 
 class ClassMethod(Element):
     XML_TAG = "method"
     CHILDREN = [MethodArg]
-    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER)
+    ATTRS = dict(name = IDENTIFIER, type = TYPENAME)
 
     def build_members(self, members):
         self.args = members
     
     def _resolve(self, service):
         self.type = service.get_type(self.type)
-        for arg in self.args:
-            arg.resolve(service)
-
-class ClassCtor(Element):
-    XML_TAG = "ctor"
-    CHILDREN = [MethodArg]
-
-    def build_members(self, members):
-        self.args = members
-    
-    def _resolve(self, service):
         for arg in self.args:
             arg.resolve(service)
 
@@ -183,13 +184,6 @@ class Class(Element):
     def build_members(self, members):
         self.attrs = [mem for mem in members if isinstance(mem, ClassAttr)]
         self.methods = [mem for mem in members if isinstance(mem, ClassMethod)]
-        ctors = [mem for mem in members if isinstance(mem, ClassCtor)]
-        if not ctors:
-            self.ctor = None
-        elif len(ctors) == 1:
-            self.ctor = ctors[0]
-        else:
-            raise IDLError("only one class constructor for %r may be defined" % (self.name,))
     
     def autogen(self, service, origin, name, type, *args):
         if name in service.funcs:
@@ -201,8 +195,6 @@ class Class(Element):
             attr.resolve(service)
         for method in self.methods:
             method.resolve(service)
-        if self.ctor:
-            self.ctor.resolve(service)
     
     def _postprocess(self, service): 
         for attr in self.attrs:
@@ -215,17 +207,15 @@ class Class(Element):
             method.parent = self 
             self.autogen(service, method, "_%s_%s" % (self.name, method.name), method.type, ("_proxy", self), *[(arg.name, arg.type) for arg in method.args])
         self.parent = self
-        if self.ctor:
-            self.autogen(service, self, self.name, self, *[(arg.name, arg.type) for arg in self.ctor.args])
 
 class FuncArg(Element):
     XML_TAG = "arg"
-    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER)
+    ATTRS = dict(name = IDENTIFIER, type = TYPENAME)
 
 class Func(Element):
     XML_TAG = "func"
     CHILDREN = [FuncArg]
-    ATTRS = dict(name = IDENTIFIER, type = IDENTIFIER, package = DEFAULT(None))
+    ATTRS = dict(name = IDENTIFIER, type = TYPENAME, package = DEFAULT(None))
 
     def build_members(self, members):
         self.args = members
@@ -324,6 +314,7 @@ class Service(Element):
     
     def build_members(self, members):
         self.members = members
+        self.all_types = []
         self.types = {}
         self.funcs = {}
         self.consts = {}
@@ -346,7 +337,10 @@ class Service(Element):
     
     def get_type(self, text):
         head, children = parse_template(text)
-        return self._get_type(head, children)
+        tp = self._get_type(head, children)
+        if tp not in self.all_types:
+            self.all_types.append(tp)
+        return tp
     
     def _get_type(self, head, children):
         if head == "list":

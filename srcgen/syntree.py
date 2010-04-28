@@ -10,7 +10,7 @@ class SourceError(Exception):
     
     def display(self):
         if self.blk:
-            print "Error at %s(%d)" % (self.blk.fileinfo.filename, self.blk.lineno)
+            print "Error at %s(%s)" % (self.blk.fileinfo.filename, self.blk.lineno)
             print "    %s" % (self.blk.text)
         print self.msg
 
@@ -227,22 +227,37 @@ class ConstNode(AstNode):
     TAG = "const"
     ATTRS = dict(name = arg_value, type = arg_value, value = arg_value)
 
-class StructAttrNode(AstNode):
+class RecordAttrNode(AstNode):
     TAG = "attr"
     ATTRS = dict(name = arg_value, type = arg_value)
 
-class StructNode(AstNode):
-    TAG = "struct"
+class RecordNode(AstNode):
+    TAG = "record"
     ATTRS = dict(name = auto_fill_name)
-    CHILDREN = [StructAttrNode]
+    CHILDREN = [RecordAttrNode]
+
+class ExceptionNode(AstNode):
+    TAG = "exception"
+    ATTRS = dict(name = auto_fill_name)
+    CHILDREN = [RecordAttrNode]
+
+class EnumAttrNode(AstNode):
+    TAG = "member"
+    ATTRS = dict(name = arg_value, value = arg_default(None))
+
+class EnumNode(AstNode):
+    TAG = "enum"
+    ATTRS = dict(name = arg_value)
+    CHILDREN = [EnumAttrNode]
 
 class ModuleInfoNode(AstNode):
     TAG = "module"
-    ATTRS = dict(name = arg_value, export = arg_default(None))
+    ATTRS = dict(name = arg_value, namespace = arg_default(None))
 
 class ModuleNode(AstNode):
     TAG = "#module-root#"
-    CHILDREN = [ClassNode, StructNode, ConstNode, FuncNode, ServiceNode, ModuleInfoNode]
+    CHILDREN = [ClassNode, RecordNode, ExceptionNode, ConstNode, FuncNode, 
+        EnumNode, ServiceNode, ModuleInfoNode]
     
     def postprcess(self):
         if not self.children:

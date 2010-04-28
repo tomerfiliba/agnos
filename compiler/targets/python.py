@@ -1,3 +1,4 @@
+import itertools
 from contextlib import contextmanager
 from .base import TargetBase
 from ..langs.python import Module
@@ -7,37 +8,40 @@ from .. import compiler
 def type_to_packer(t):
     if t == compiler.t_void:
         return "None"
-    if t == compiler.t_bool:
+    elif t == compiler.t_bool:
         return "packers.Bool"
-    if t == compiler.t_int8:
+    elif t == compiler.t_int8:
         return "packers.Int8"
-    if t == compiler.t_int16:
+    elif t == compiler.t_int16:
         return "packers.Int16"
-    if t == compiler.t_int32:
+    elif t == compiler.t_int32:
         return "packers.Int32"
-    if t == compiler.t_int64:
+    elif t == compiler.t_int64:
         return "packers.Int64"
-    if t == compiler.t_float:
+    elif t == compiler.t_float:
         return "packers.Float"
-    if t == compiler.t_date:
+    elif t == compiler.t_date:
         return "packers.Date"
-    if t == compiler.t_buffer:
+    elif t == compiler.t_buffer:
         return "packers.Buffer"
-    if t == compiler.t_string:
+    elif t == compiler.t_string:
         return "packers.Str"
     elif t == compiler.t_objref:
         return type_to_packer(compiler.t_int64) 
-    if isinstance(t, (compiler.Record, compiler.Exception)):
+    elif isinstance(t, (compiler.TList, compiler.TMap)):
+        return t._templated_packer
+    elif isinstance(t, (compiler.Record, compiler.Exception)):
         return "%sRecord" % (t.name,)
-    if isinstance(t, compiler.Enum):
+    elif isinstance(t, compiler.Enum):
         return t.name
-    if isinstance(t, compiler.Class):
+    elif isinstance(t, compiler.Class):
         return type_to_packer(compiler.t_objref)
     return "%r$packer" % (t,)
 
 def const_to_python(value):
     return repr(value)
 
+temp_counter = itertools.count(7081)
 
 class PythonTarget(TargetBase):
     DEFAULT_TARGET_DIR = "."
@@ -58,6 +62,10 @@ class PythonTarget(TargetBase):
             
             STMT("import agnos")
             STMT("from agnos import packers")
+            SEP()
+
+            DOC("templated packers", spacer = True)
+            self.generate_templated_packer(module, service)
             SEP()
             
             DOC("enums", spacer = True)
@@ -94,6 +102,31 @@ class PythonTarget(TargetBase):
             DOC("client", spacer = True)
             self.generate_client(module, service)
             SEP()
+
+    def _generate_templated_packer_for_type(self, tp):
+        if isinstance(tp, compiler.TList):
+            return "packers.ListOf(%s)" % (self._generate_templated_packer_for_type(tp.oftype),)
+        elif isinstance(tp, compiler.TList):
+            return "packers.MapOf(%s, %s)" % (self._generate_templated_packer_for_type(tp.keytype),
+                self._generate_templated_packer_for_type(tp.valtype))
+        else:
+            return type_to_packer(tp)
+
+    def generate_templated_packer(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        
+        mapping = {}
+        for tp in service.all_types:
+            if isinstance(tp, (compiler.TList, compiler.TMap)):
+                definition = self._generate_templated_packer_for_type(tp)
+                if definition in mapping:
+                    tp._templated_packer = mapping[definition]
+                else:
+                    tp._templated_packer = "_templated_packer_%s" % (temp_counter.next(),)
+                    STMT("{0} = {1}", tp._templated_packer, definition)
+                    mapping[definition] = tp._templated_packer
     
     def generate_enum(self, module, enum):
         BLOCK = module.block

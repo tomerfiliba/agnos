@@ -1,3 +1,4 @@
+import itertools
 from contextlib import contextmanager
 from .base import TargetBase
 from ..langs import clike
@@ -46,40 +47,42 @@ def type_to_cs(t, proxy = False):
 def type_to_packer(t):
     if t == compiler.t_void:
         return "null"
-    if t == compiler.t_bool:
+    elif t == compiler.t_bool:
         return "Packers.Bool"
-    if t == compiler.t_int8:
+    elif t == compiler.t_int8:
         return "Packers.Int8"
-    if t == compiler.t_int16:
+    elif t == compiler.t_int16:
         return "Packers.Int16"
-    if t == compiler.t_int32:
+    elif t == compiler.t_int32:
         return "Packers.Int32"
-    if t == compiler.t_int64:
+    elif t == compiler.t_int64:
         return "Packers.Int64"
-    if t == compiler.t_float:
+    elif t == compiler.t_float:
         return "Packers.Float"
-    if t == compiler.t_date:
+    elif t == compiler.t_date:
         return "Packers.Date"
-    if t == compiler.t_buffer:
+    elif t == compiler.t_buffer:
         return "Packers.Buffer"
-    if t == compiler.t_string:
+    elif t == compiler.t_string:
         return "Packers.Str"
     elif t == compiler.t_objref:
         return type_to_packer(compiler.t_int64) 
-    if isinstance(t, (compiler.Record, compiler.Exception)):
+    elif isinstance(t, (compiler.TList, compiler.TMap)):
+        return t._templated_packer
+    elif isinstance(t, (compiler.Record, compiler.Exception)):
         return "%sRecord" % (t.name,)
-    if isinstance(t, compiler.Enum):
+    elif isinstance(t, compiler.Enum):
         return type_to_packer(compiler.t_int32)
-    if isinstance(t, compiler.Class):
+    elif isinstance(t, compiler.Class):
         return type_to_packer(compiler.t_objref)
     return "%r$packer" % (t,)
 
 def const_to_cs(typ, val):
     if val is None:
         return "null"
-    if val is True:
+    elif val is True:
         return "true"
-    if val is False:
+    elif val is False:
         return "false"
     elif isinstance(val, (int, long, float)):
         return str(val)
@@ -92,6 +95,8 @@ def const_to_cs(typ, val):
         return "$const-map"
     else:
         raise IDLError("%r cannot be converted to a cs const" % (val,))
+
+temp_counter = itertools.count(7081)
 
 
 class CSharpTarget(TargetBase):
@@ -118,6 +123,10 @@ class CSharpTarget(TargetBase):
             SEP()
             with BLOCK("namespace {0}Bindings", service.name):
                 with BLOCK("public static class {0}", service.name):
+                    DOC("templated packers", spacer = True)
+                    self.generate_templated_packer(module, service)
+                    SEP()
+
                     DOC("enums", spacer = True)
                     for member in service.types.values():
                         if isinstance(member, compiler.Enum):
@@ -155,6 +164,31 @@ class CSharpTarget(TargetBase):
                     DOC("client", spacer = True)
                     self.generate_client(module, service)
                     SEP()
+
+    def _generate_templated_packer_for_type(self, tp):
+        if isinstance(tp, compiler.TList):
+            return "new Packers.ListOf(%s)" % (self._generate_templated_packer_for_type(tp.oftype),)
+        elif isinstance(tp, compiler.TList):
+            return "new Packers.MapOf(%s, %s)" % (self._generate_templated_packer_for_type(tp.keytype),
+                self._generate_templated_packer_for_type(tp.valtype))
+        else:
+            return type_to_packer(tp)
+
+    def generate_templated_packer(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        
+        mapping = {}
+        for tp in service.all_types:
+            if isinstance(tp, (compiler.TList, compiler.TMap)):
+                definition = self._generate_templated_packer_for_type(tp)
+                if definition in mapping:
+                    tp._templated_packer = mapping[definition]
+                else:
+                    tp._templated_packer = "_templated_packer_%s" % (temp_counter.next(),)
+                    STMT("private static Packers.IPacker {0} = {1}", tp._templated_packer, definition)
+                    mapping[definition] = tp._templated_packer
 
     def generate_enum(self, module, enum):
         BLOCK = module.block

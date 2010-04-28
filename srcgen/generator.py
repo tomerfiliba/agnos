@@ -29,8 +29,8 @@ class IdlGenerator(object):
         
         for node in self.auto_generated_ctors:
             with self.BLOCK("func", name = node.parent.attrs["name"], type = node.parent.attrs["name"]):
-                if node.parent.parent.modinfo.attrs["export"]:
-                    self.ATTR(package = node.parent.parent.modinfo.attrs["export"])
+                if node.parent.parent.modinfo.attrs["namespace"]:
+                    self.ATTR(namespace = node.parent.parent.modinfo.attrs["namespace"])
                 self.emit_doc(node)
                 for argnode in node.children:
                     with self.BLOCK("arg", name = argnode.attrs["name"], type = argnode.attrs["type"]):
@@ -42,8 +42,8 @@ class IdlGenerator(object):
     
     def visit_FuncNode(self, node):
         with self.BLOCK("func", name = node.attrs["name"], type = node.attrs["type"]):
-            if node.parent.modinfo.attrs["export"]:
-                self.ATTR(package = node.parent.modinfo.attrs["export"])
+            if node.parent.modinfo.attrs["namespace"]:
+                self.ATTR(namespace = node.parent.modinfo.attrs["namespace"])
             self.emit_doc(node)
             for child in node.children:
                 child.accept(self)
@@ -77,18 +77,36 @@ class IdlGenerator(object):
         with self.BLOCK("arg", name = node.attrs["name"], type = node.attrs["type"]):
             self.emit_doc(node)
 
-    def visit_StructNode(self, node):
-        with self.BLOCK("struct", name = node.attrs["name"]):
+    def visit_RecordNode(self, node):
+        with self.BLOCK("record", name = node.attrs["name"]):
+            self.emit_doc(node)
+            for child in node.children:
+                child.accept(self)
+
+    def visit_ExceptionNode(self, node):
+        with self.BLOCK("exception", name = node.attrs["name"]):
             self.emit_doc(node)
             for child in node.children:
                 child.accept(self)
     
-    def visit_StructAttrNode(self, node):
+    def visit_RecordAttrNode(self, node):
         with self.BLOCK("attr", name = node.attrs["name"], type = node.attrs["type"]):
             self.emit_doc(node)
 
     def visit_ConstAttrNode(self, node):
         with self.BLOCK("const", name = node.attrs["name"], type = node.attrs["type"], value = node.attrs["value"]):
+            self.emit_doc(node)
+
+    def visit_EnumNode(self, node):
+        with self.BLOCK("enum", name = node.attrs["name"]):
+            self.emit_doc(node)
+            for child in node.children:
+                child.accept(self)
+    
+    def visit_EnumAttrNode(self, node):
+        with self.BLOCK("member", name = node.attrs["name"]):
+            if node.attrs["value"]:
+                self.ATTR(value = node.attrs["value"])
             self.emit_doc(node)
 
 
@@ -114,12 +132,13 @@ class BindingGenerator(object):
         self.STMT("import {0}_bindings", node.service_name)
 
         self.SEP()
-        with self.BLOCK("class Handler({0}_bindings .IHandler)", node.service_name):
+        with self.BLOCK("class Handler({0}_bindings.IHandler)", node.service_name):
             for child in node.children:
                 child.accept(self)
         self.SEP()
         with self.BLOCK("if __name__ == '__main__'"):
             self.STMT("agnos.servers.server_main({0}_bindings.Processor(Handler()))", node.service_name)
+        self.SEP()
     
     def visit_FuncNode(self, node):
         args = ", ".join(arg.attrs["name"] for arg in node.children)

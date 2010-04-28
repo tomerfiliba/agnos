@@ -4,5 +4,5 @@ from agnos_compiler.srcgen.generator import main
 
 
 if __name__ == "__main__":
-    main("../srcgen/examples")
+    main("../srcgen/examples/mextra")
 

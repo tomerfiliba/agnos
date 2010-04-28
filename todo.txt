@@ -1,3 +1,5 @@
 * srcgen
 	* bindings
 * idl: sub-package for functions and methods
+* list and map packers!!
+* c#: enums?

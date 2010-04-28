@@ -17,3 +17,6 @@
 *.html
 *Bindings.*
 *_bindings.py
+bin
+obj
+build

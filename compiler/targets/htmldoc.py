@@ -117,10 +117,21 @@ class DocTarget(TargetBase):
         BLOCK = doc.block
         TEXT = doc.text
         
-        if isinstance(tp, compiler.BuiltinType):
-            TEXT("<code>{0}</code>", tp.name, escape = False)
-        else:
-            TEXT('<a href="#{0}"><code>{0}</code></a>', tp.name, escape = False)
+        with BLOCK("code"):
+            if isinstance(tp, compiler.TList):
+                TEXT("List<")
+                cls.link_type(tp.oftype, doc)
+                TEXT(">")
+            elif isinstance(tp, compiler.TMap):
+                TEXT("Map<")
+                cls.link_type(tp.keytype, doc)
+                TEXT(",")
+                cls.link_type(tp.valtype, doc)
+                TEXT(">")
+            elif isinstance(tp, compiler.BuiltinType):
+                TEXT(tp.name)
+            else:
+                TEXT('<a href="#{0}">{0}</a>', tp.name, escape = False)
     
     def docify_typedef(self, mem, doc):
         BLOCK = doc.block
