@@ -123,6 +123,9 @@ class CSharpTarget(TargetBase):
             SEP()
             with BLOCK("namespace {0}Bindings", service.name):
                 with BLOCK("public static class {0}", service.name):
+                    STMT('private const string _IDL_MAGIC = "{0}"', service.digest)
+                    SEP()
+
                     DOC("templated packers", spacer = True)
                     self.generate_templated_packer(module, service)
                     SEP()

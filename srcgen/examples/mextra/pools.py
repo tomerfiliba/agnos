@@ -1,4 +1,3 @@
-#:: @module mextra.pools
 from .volumes import Volume
 from .utils import round_size, VOL_SIZE_DIVISOR
 

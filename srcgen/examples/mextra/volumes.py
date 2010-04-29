@@ -1,4 +1,3 @@
-#:: @module mextra.volumes
 from .utils import round_size
 
 

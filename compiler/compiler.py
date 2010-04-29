@@ -1,10 +1,11 @@
 import re
+import hashlib
 import xml.etree.ElementTree as etree
 import itertools
 from .idl import parse_const, parse_template, IDLError
 
 
-ID_GENERATOR = itertools.count(1337)
+ID_GENERATOR = itertools.count(900000)
 
 def DEFAULT(default):
     def checker(name, v):
@@ -56,13 +57,16 @@ class Element(object):
         self._resolved = False
         self._postprocessed = False
         self.doc = attrib.pop("doc", "").strip()
+        if "id" in attrib:
+            self.id = int(attrib.pop("id"))
+        else:
+            self.id = ID_GENERATOR.next()
         for name, checker in self.ATTRS.iteritems():
             value = checker(name, attrib.pop(name, None)) 
             setattr(self, name, value)
         if attrib:
             raise IDLError("unknown attributes: %r" % (attrib.keys(),))
         self.build_members(members)
-        self.id = ID_GENERATOR.next()
     
     def build_members(self, members):
         if self.CHILDREN:
@@ -372,8 +376,11 @@ class Service(Element):
     @classmethod
     def from_file(cls, file):
         data = _load_file_with_includes(file)
+        sha1 = hashlib.sha1(data)
         xml = etree.fromstring(data)
-        return cls.load(xml)
+        inst = cls.load(xml)
+        inst.digest = sha1.hexdigest()
+        return inst
     
     def resolve(self):
         if self._resolved:
@@ -387,7 +394,6 @@ class Service(Element):
             mem.resolve(self)
         for mem in self.types.values():
             mem.postprocess(self)
-
 
 
 def load_spec(filename):

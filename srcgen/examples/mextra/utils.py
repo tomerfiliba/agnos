@@ -1,4 +1,3 @@
-#:: @module mextra.utils
 #:: @const name=VOL_SIZE_DIVISOR value=17000 type=int64
 VOL_SIZE_DIVISOR = 17000
 

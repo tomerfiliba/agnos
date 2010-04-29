@@ -271,11 +271,12 @@ class ModuleNode(AstNode):
             raise SourceError(services[1].block.srcblock, "tag @service must appear at most once per project")
         modinfos = [child for child in self.children if isinstance(child, ModuleInfoNode)]
         if not modinfos:
-            raise SourceError(self.children[0].block.srcblock, "tag @module must appear once per module")
+            self.modinfo = None
+            #raise SourceError(self.children[0].block.srcblock, "tag @module must appear once per module")
         elif len(modinfos) == 1:
             self.modinfo = modinfos[0]
         else:
-            raise SourceError(modinfos[1].block.srcblock, "tag @module must appear once per module")
+            raise SourceError(modinfos[1].block.srcblock, "tag @module must appear at most once per module")
         AstNode.postprcess(self)
 
 class RootNode(object):
@@ -306,13 +307,21 @@ def parse_source_file(filename):
     ast_root.postprcess()
     return ast_root
 
-def parse_source_files(filenames):
+def parse_source_files(rootdir, filenames):
     modules = []
     for fn in filenames:
         ast = parse_source_file(fn)
-        if ast.children:
-            modules.append(ast)
+        if not ast.children:
+            continue
+        if not ast.modinfo:
+            relative_name = fn[len(rootdir):][:-3]
+            package = os.path.basename(rootdir)
+            modname = relative_name.replace("/", ".").replace("\\", ".").strip(".")
+            ast.modinfo = ModuleInfoNode.__new__(ModuleInfoNode)
+            ast.modinfo.attrs = dict(name = package + "." + modname, namespace = None)
+        modules.append(ast)
     return RootNode(modules)
+
 
 
 

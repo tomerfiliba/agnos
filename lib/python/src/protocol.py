@@ -49,8 +49,9 @@ class BaseProxy(object):
 
 
 class BaseProcessor(object):
-    def __init__(self, func_mapping):
+    def __init__(self, func_mapping, exception_map):
         self.cells = {}
+        self.exception_map = exception_map
         self.func_mapping = func_mapping
     
     def store(self, obj):
@@ -96,7 +97,14 @@ class BaseProcessor(object):
         cmd = Int8.unpack(instream)
         try:
             if cmd == CMD_INVOKE:
-                self.process_invoke(seq, instream, outstream)
+                try:
+                    self.process_invoke(seq, instream, outstream)
+                except Exception, ex:
+                    if type(ex) not in self.exception_map:
+                        raise
+                    packed = self.exception_map[type(ex)]
+                    pex = packed()
+                    raise pex
             elif cmd == CMD_PING:
                 self.process_ping(seq, instream, outstream)
             elif cmd == CMD_DECREF:

@@ -1,13 +1,16 @@
 import os
+import itertools
 from .syntree import parse_source_files, SourceError
 from agnos_compiler.compiler.langs import python, xml
 from agnos_compiler.compiler import compile
 from agnos_compiler.compiler.targets import PythonTarget
 
 
+ID_GENERATOR = itertools.count(200000)
+
 class IdlGenerator(object):
     def __init__(self):
-        pass
+        self.doc = xml.XmlDoc("service")
     def visit(self, root):
         root.accept(self)
     def emit_doc(self, node):
@@ -17,23 +20,30 @@ class IdlGenerator(object):
             for line in node.doc:
                 self.TEXT(line)
     
+    def BLOCK(self, *args, **kwargs):
+        kwargs["id"] = ID_GENERATOR.next()
+        return self.doc.block(*args, **kwargs)
+    def ATTR(self, *args, **kwargs):
+        return self.doc.attr(*args, **kwargs)
+    def TEXT(self, *args, **kwargs):
+        return self.doc.text(*args, **kwargs)
+    
     def visit_RootNode(self, node):
-        self.doc = xml.XmlDoc("service", name = node.service_name)
-        self.ATTR = self.doc.attr
-        self.BLOCK = self.doc.block
-        self.TEXT = self.doc.text
+        self.ATTR(name = node.service_name)
         self.auto_generated_ctors = []
         self.service_name = None
         for child in node.children:
             child.accept(self)
         
         for node in self.auto_generated_ctors:
-            with self.BLOCK("func", name = node.parent.attrs["name"], type = node.parent.attrs["name"]):
+            with self.BLOCK("func", name = node.parent.attrs["name"], 
+                    type = node.parent.attrs["name"]):
                 if node.parent.parent.modinfo.attrs["namespace"]:
                     self.ATTR(namespace = node.parent.parent.modinfo.attrs["namespace"])
                 self.emit_doc(node)
                 for argnode in node.children:
-                    with self.BLOCK("arg", name = argnode.attrs["name"], type = argnode.attrs["type"]):
+                    with self.BLOCK("arg", name = argnode.attrs["name"], 
+                            type = argnode.attrs["type"]):
                         self.emit_doc(argnode)
 
     def visit_ModuleNode(self, node):
@@ -94,7 +104,8 @@ class IdlGenerator(object):
             self.emit_doc(node)
 
     def visit_ConstAttrNode(self, node):
-        with self.BLOCK("const", name = node.attrs["name"], type = node.attrs["type"], value = node.attrs["value"]):
+        with self.BLOCK("const", name = node.attrs["name"], type = node.attrs["type"]):
+            self.ATTR(value = node.attrs["value"]) 
             self.emit_doc(node)
 
     def visit_EnumNode(self, node):
@@ -126,24 +137,45 @@ class BindingGenerator(object):
             child.accept(self)
     
     def visit_RootNode(self, node):
-        for child in node.children:
-            self.STMT("import {0}", child.modinfo.attrs["name"])
         self.STMT("import agnos.servers")
         self.STMT("import {0}_bindings", node.service_name)
-
         self.SEP()
+        
+        self.exception_map = {}
+        self.required_modules = set()
         with self.BLOCK("class Handler({0}_bindings.IHandler)", node.service_name):
             for child in node.children:
                 child.accept(self)
         self.SEP()
+        
+        self.DOC("required modules")
+        for modname in self.required_modules:
+            self.STMT("import {0}", modname)
+        self.SEP()
+        
+        self.DOC("exception map")
+        self.STMT("exception_map = {}")
+        for (modname, excname), idlexc in self.exception_map.iteritems():
+            self.STMT("exception_map[{0}.{1}] = {2}_bindings.{3}",
+                modname, excname, node.service_name, idlexc)
+        self.SEP()
+        
         with self.BLOCK("if __name__ == '__main__'"):
-            self.STMT("agnos.servers.server_main({0}_bindings.Processor(Handler()))", node.service_name)
+            self.STMT("agnos.servers.server_main({0}_bindings.Processor(Handler(), exception_map))", 
+                node.service_name)
         self.SEP()
     
     def visit_FuncNode(self, node):
         args = ", ".join(arg.attrs["name"] for arg in node.children)
         with self.BLOCK("def {0}(_self, {1})", node.attrs["name"], args):
-            self.STMT("return {0}.{1}({2})", node.parent.modinfo.attrs["name"], node.block.src_name, args)
+            self.required_modules.add(node.parent.modinfo.attrs["name"])
+            self.STMT("return {0}.{1}({2})", node.parent.modinfo.attrs["name"], 
+                node.block.src_name, args)
+    
+    def visit_ExceptionNode(self, node):
+        modname = node.parent.modinfo.attrs["name"]
+        self.required_modules.add(modname)
+        self.exception_map[(modname, node.block.src_name)] = node.attrs["name"]
     
     def visit_ClassNode(self, node):
         for child in node.children:
@@ -152,22 +184,28 @@ class BindingGenerator(object):
     def visit_CtorNode(self, node):
         args = ", ".join(arg.attrs["name"] for arg in node.children)
         with self.BLOCK("def {0}(_self, {1})", node.parent.attrs["name"], args):
-            self.STMT("return {0}.{1}({2})", node.parent.parent.modinfo.attrs["name"], node.parent.block.src_name, args)
+            self.required_modules.add(node.parent.modinfo.attrs["name"])
+            self.STMT("return {0}.{1}({2})", node.parent.parent.modinfo.attrs["name"], 
+                node.parent.block.src_name, args)
 
 
-def get_filenames(rootdir):
-    filenames = []
-    for dirpath, dirnames, fns in os.walk(rootdir):
-        for fn in fns:
-            if fn.endswith(".py"):
-                filenames.append(os.path.join(dirpath, fn))
-    return filenames
+def get_filenames(rootdir, suffix = ".py"):
+    if os.path.isfile(rootdir):
+        filenames = [rootdir]
+        rootdir = os.path.dirname(rootdir)
+    else:
+        filenames = []
+        for dirpath, dirnames, fns in os.walk(rootdir):
+            for fn in fns:
+                if fn.endswith(suffix):
+                    filenames.append(os.path.join(dirpath, fn))
+    return filenames, rootdir
 
 
 def main(rootdir, outdir = None, idlfile = None, serverfile = None):
-    filenames = get_filenames(rootdir)
+    filenames, rootdir = get_filenames(rootdir)
     try:
-        ast_root = parse_source_files(filenames)
+        ast_root = parse_source_files(rootdir, filenames)
     except SourceError, ex:
         ex.display()
         raise

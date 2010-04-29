@@ -63,6 +63,9 @@ class PythonTarget(TargetBase):
             STMT("import agnos")
             STMT("from agnos import packers")
             SEP()
+            
+            STMT("_IDL_MAGIC = '{0}'", service.digest)
+            SEP()
 
             DOC("templated packers", spacer = True)
             self.generate_templated_packer(module, service)
@@ -217,7 +220,7 @@ class PythonTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         with BLOCK("class Processor(agnos.BaseProcessor)"):
-            with BLOCK("def __init__(self, handler)"):
+            with BLOCK("def __init__(self, handler, exception_map = {})"):
                 STMT("self.handler = handler")
                 STMT("func_mapping = {}")
                 for func in service.funcs.values():
@@ -226,7 +229,7 @@ class PythonTarget(TargetBase):
                     else: 
                         packer = "self._pack_%s" % (func.id,)
                     STMT("func_mapping[{0}] = (self._func_{0}, self._unpack_{0}, {1})", func.id, packer)
-                STMT("agnos.BaseProcessor.__init__(self, func_mapping)")
+                STMT("agnos.BaseProcessor.__init__(self, func_mapping, exception_map)")
             SEP()
             for func in service.funcs.values():
                 if isinstance(func, compiler.Func):

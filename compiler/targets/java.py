@@ -123,6 +123,9 @@ class JavaTarget(TargetBase):
             STMT("import agnos.*")
             SEP()
             with BLOCK("public class {0}", service.name):
+                STMT('private const string _IDL_MAGIC = "{0}"', service.digest)
+                SEP()
+                
                 DOC("templated packers", spacer = True)
                 self.generate_templated_packer(module, service)
                 SEP()

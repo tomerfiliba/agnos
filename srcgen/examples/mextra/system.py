@@ -1,5 +1,4 @@
 #:: @service mextra
-#:: @module mextra.system
 from .pools import Pool
 from .hardware import Rack
 from .utils import round_size
