@@ -137,6 +137,7 @@ class BindingGenerator(object):
             child.accept(self)
     
     def visit_RootNode(self, node):
+        self.STMT("#!/usr/bin/env python")
         self.STMT("import agnos.servers")
         self.STMT("import {0}_bindings", node.service_name)
         self.SEP()

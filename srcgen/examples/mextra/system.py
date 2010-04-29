@@ -1,7 +1,7 @@
 #:: @service mextra
 from .pools import Pool
-from .hardware import Rack
-from .utils import round_size
+from .hardware import Rack, ComponentID
+from .utils import round_size, VOL_SIZE_DIVISOR
 
 
 #:: @class

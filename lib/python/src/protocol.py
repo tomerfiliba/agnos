@@ -1,5 +1,8 @@
-from .packers import Int8, Int32, Int64, Str
+import sys
 import itertools
+import traceback
+from subprocess import Popen, PIPE
+from .packers import Int8, Int32, Int64, Str
 from . import transports
 
 
@@ -26,9 +29,16 @@ class PackedException(Exception):
     message = property(_get_message, _set_message)
 
 class GenericError(Exception):
-    pass
+    def __init__(self, msg, traceback):
+        self.msg = msg
+        self.traceback = traceback
+    def __str__(self):
+        return "\n---------------- Remote Traceback ----------------\n" + self.traceback
 
 class ProtocolError(Exception):
+    pass
+
+class ChildServerError(Exception):
     pass
 
 
@@ -84,7 +94,7 @@ class BaseProcessor(object):
             Int32.pack(seq, outstream)
             Int8.pack(REPLY_GENERIC_ERROR, outstream)
             Str.pack(repr(exc), outstream)
-            Str.pack(repr(exc), outstream)
+            Str.pack(tb, outstream)
     
     def send_protocol_error(self, outstream, seq, exc):
         with outstream.transaction():
@@ -169,6 +179,15 @@ class BaseClient(object):
     @classmethod
     def connect(cls, host, port):
         return cls.from_transport(transports.SocketTransport.connect(host, port))
+    
+    @classmethod
+    def connect_child(cls, proc):
+        if not hasattr(proc, "stdout"):
+            proc = Popen([proc, "-m", "child"], stdin = PIPE, stdout = PIPE) #, stderr = PIPE)
+        hostname = proc.stdout.readline().strip()
+        port = int(proc.stdout.readline().strip())
+        proc.stdout.close()
+        return cls.connect(hostname, port)
     
     def close(self):
         if self._instream:

@@ -1,3 +1,5 @@
+import sys
+import os
 import socket
 from select import select
 from contextlib import contextmanager
@@ -62,7 +64,7 @@ class InStream(object):
             data2 = self._read(req)
             data = self.buffer + data2[:req]
             self.buffer = data2[req:]
-        #print "R", repr(data)
+        print >>sys.stderr, "%05d  R %r" % (os.getpid(), data)
         return data
 
 class OutStream(object):
@@ -80,7 +82,7 @@ class OutStream(object):
     def write(self, data):
         assert self.in_transaction
         self.buffer += data
-        #print "W", repr(data)
+        print >>sys.stderr, "%05d  W %r" % (os.getpid(), data)
         if len(self.buffer) > self.bufsize:
             self.flush()
     

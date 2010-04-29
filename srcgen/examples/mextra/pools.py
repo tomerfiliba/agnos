@@ -28,7 +28,7 @@ class Pool(object):
     def create_volume(self, name, size):
         size = round_size(size)
         self.alloc(size)
-        v = Volume(pool, name, size)
+        v = Volume(self, name, size)
         self.volumes.append(v)
         return v
 

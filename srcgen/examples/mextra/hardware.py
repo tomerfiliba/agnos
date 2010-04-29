@@ -7,7 +7,7 @@ class ComponentID(object):
     #:: @attr module type=int32
     #:: @attr slot type=int32
     
-    def __init__(self, rack, comptype, module, slot = 0):
+    def __init__(self, rack, comptype, module = 0, slot = 0):
         self.rack = rack
         self.comptype = comptype
         self.module = module

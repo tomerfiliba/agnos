@@ -238,7 +238,13 @@ class PythonTarget(TargetBase):
                 else:
                     with BLOCK("def _func_{0}(self, args)", func.id):
                         STMT("obj = args.pop(0)")
-                        STMT("return obj.{0}(*args)", func.origin.name)
+                        if isinstance(func.origin, compiler.ClassAttr):
+                            if "_get_" in func.name:
+                                STMT("return obj.{0}", func.origin.name)
+                            else:
+                                STMT("obj.{0} = args[0]", func.origin.name)
+                        else:
+                            STMT("return obj.{0}(*args)", func.origin.name)
                 with BLOCK("def _unpack_{0}(self, stream)", func.id):
                     unpackers = []
                     for arg in func.args:
