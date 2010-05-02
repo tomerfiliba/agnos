@@ -103,7 +103,7 @@ class IdlGenerator(object):
         with self.BLOCK("attr", name = node.attrs["name"], type = node.attrs["type"]):
             self.emit_doc(node)
 
-    def visit_ConstAttrNode(self, node):
+    def visit_ConstNode(self, node):
         with self.BLOCK("const", name = node.attrs["name"], type = node.attrs["type"]):
             self.ATTR(value = node.attrs["value"]) 
             self.emit_doc(node)

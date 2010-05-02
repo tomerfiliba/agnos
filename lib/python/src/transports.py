@@ -64,33 +64,30 @@ class InStream(object):
             data2 = self._read(req)
             data = self.buffer + data2[:req]
             self.buffer = data2[req:]
-        print >>sys.stderr, "%05d  R %r" % (os.getpid(), data)
+        #print >>sys.stderr, "%05d  R %s" % (os.getpid(), data.encode("hex"))
         return data
 
 class OutStream(object):
-    def __init__(self, file, bufsize = 8000):
+    def __init__(self, file):
         self.file = file
-        self.bufsize = bufsize
-        self.buffer = ""
+        self.buffer = []
         self.in_transaction = False
     def close(self):
         self.file.close()
-    def flush(self):
-        if self.buffer:
-            self.file.write(self.buffer)
-            self.buffer = ""
     def write(self, data):
         assert self.in_transaction
-        self.buffer += data
-        print >>sys.stderr, "%05d  W %r" % (os.getpid(), data)
-        if len(self.buffer) > self.bufsize:
-            self.flush()
+        self.buffer.append(data)
+        #print >>sys.stderr, "%05d  W %s" % (os.getpid(), data.encode("hex"))
+    def flush(self):
+        if not self.buffer:
+            return
+        data = "".join(self.buffer)
+        self.file.write(data)
+        del self.buffer[:]
     
     @contextmanager
     def transaction(self):
-        if self.in_transaction:
-            yield
-            return
+        assert not self.in_transaction
         self.in_transaction = True
         try:
             yield

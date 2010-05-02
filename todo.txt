@@ -1,5 +1,21 @@
-* srcgen
-	* bindings
-* idl: sub-package for functions and methods
-* list and map packers!!
-* c#: enums?
+* 1.0:
+	* add namespaces
+		* static methods
+	* [bug] list and map packers!!
+	* [bug] C# enum packers?
+	* [bug] mapped exception parameters 
+* 1.1:
+	* c++
+* 1.5:
+	* perl?
+	* php?
+	* javascript?
+	* shell? - what to do with proxies?
+	* cmdline util? reads commands from stdin? then why not python interpreter?
+* 2.0:
+	* inheritance
+	* async invocation
+	* custom templates
+	* complex consts
+
+

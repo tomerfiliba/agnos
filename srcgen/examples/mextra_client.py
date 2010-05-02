@@ -1,10 +1,9 @@
-from subprocess import Popen, PIPE
 import mextra_bindings
-from agnos.protocol import GenericError
+#from agnos.protocol import GenericException
 
 
-c = mextra_bindings.Client.connect_child("./mextra_server.py")
-s = c.get_system()
-print "---"
-print s.total_size
+c = mextra_bindings.Client.connect_subproc("./mextra_server.py")
+#s = c.get_system()
+#print s.total_size
+#print s.pools
 

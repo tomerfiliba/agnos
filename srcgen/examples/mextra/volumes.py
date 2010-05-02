@@ -22,11 +22,12 @@ class Volume(object):
         pass
     
     #:: @method
+    #::    @arg newsize type=int64
     def resize(self, newsize):
         newsize = round_size(newsize)
         if newsize < self.size:
             raise VolSizeError("cannot shrink volume")
-        delta = self.size - newsize
+        delta = newsize - self.size
         self.pool.alloc(delta)
         self.size = newsize
 

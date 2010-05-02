@@ -33,6 +33,7 @@ class Pool(object):
         return v
 
     def alloc(self, size):
+        assert size > 0
         assert size % VOL_SIZE_DIVISOR == 0
         remaining = self.total_size - self.used_size
         if size > remaining:

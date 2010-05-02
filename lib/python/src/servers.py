@@ -12,10 +12,10 @@ class BaseServer(object):
     
     def serve(self):
         while True:
-            print >>sys.stderr, "!!accepting"
+            #print >>sys.stderr, "!!accepting"
             trans = self.transport_factory.accept()
             self._handle_client(trans)
-            print >>sys.stderr, "!!goodbye"
+            #print >>sys.stderr, "!!goodbye"
 
     def _handle_client(self, transport):
         instream = transport.get_input_stream()
@@ -44,10 +44,10 @@ class ChildServer(BaseServer):
         sys.stdout.flush()
         sys.stdout.close()
         os.close(1)
-        print >>sys.stderr, "!!accepting"
+        #print >>sys.stderr, "!!accepting"
         trans = self.transport_factory.accept()
         self._handle_client(trans)
-        print >>sys.stderr, "!!goodbye"
+        #print >>sys.stderr, "!!goodbye"
 
 
 def server_main(processor):

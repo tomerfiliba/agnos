@@ -1,9 +1,19 @@
 #:: @module mextra.hardware
 
+
+#:: @enum
+class ComponentTypes(object):
+    #:: @member RACK value=1
+    RACK = 1
+    #:: @member MODULE value=2
+    MODULE = 2
+    #:: @member DISK value=3
+    DISK = 3
+
 #:: @record
 class ComponentID(object):
     #:: @attr rack type=int32
-    #:: @attr comptype type=int32
+    #:: @attr comptype type=ComponentTypes
     #:: @attr module type=int32
     #:: @attr slot type=int32
     
@@ -15,11 +25,11 @@ class ComponentID(object):
     
     def __repr__(self):
         if self.slot:
-            return "%d:%s:%d:%d" % (self.rack, self.comptype, self.module, self.slot)
+            return "%d:%d:%d:%d" % (self.rack, self.comptype, self.module, self.slot)
         elif self.module:
-            return "%d:%s:%d" % (self.rack, self.comptype, self.module)
+            return "%d:%d:%d" % (self.rack, self.comptype, self.module)
         else:
-            return "%d:%s" % (self.rack, self.comptype)
+            return "%d:%d" % (self.rack, self.comptype)
 
 #:: @enum ComponentStatus
 class ComponentStatus(object):
@@ -52,13 +62,13 @@ class Disk(object):
 #:: @class
 class HWModule(object):
     #:: @attr compid type=ComponentID access=get 
-    #:: @attr disks type=Disk access=get
+    #:: @attr disks type=list[Disk] access=get
      
     def __init__(self, rack, compid):
         self.rack = rack
         self.compid = compid
         self.disks = [
-            Disk(self, ComponentID(compid.rack, "disk", compid.module, i))
+            Disk(self, ComponentID(compid.rack, ComponentTypes.DISK, compid.module, i))
             for i in range(1, 13)
             ]
     
@@ -69,13 +79,13 @@ class HWModule(object):
 #:: @class
 class Rack(object):
     #:: @attr compid type=ComponentID access=get 
-    #:: @attr modules type=HWModule access=get
+    #:: @attr modules type=list[HWModule] access=get
     
     def __init__(self, system, compid):
         self.system = system
         self.compid = compid
         self.modules = [
-            HWModule(self, ComponentID(compid.rack, "module", i))
+            HWModule(self, ComponentID(compid.rack, ComponentTypes.MODULE, i))
             for i in range(1, 16)
             ]
     

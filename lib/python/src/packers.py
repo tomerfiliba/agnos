@@ -14,7 +14,14 @@ class PrimitivePacker(Packer):
     def __init__(self, fmt):
         self.struct = _Struct(fmt)
     def pack(self, obj, stream):
-        stream.write(self.struct.pack(obj))
+        if obj is None:
+            obj = 0
+        try:
+            stream.write(self.struct.pack(obj))
+        except Exception, ex:
+            import sys
+            print >>sys.stderr, "$$ %r, fmt = %r, obj = %r" % (ex, self.struct.format, obj)
+            raise
     def unpack(self, stream):
         return self.struct.unpack(stream.read(self.struct.size))[0]
 
@@ -35,7 +42,10 @@ class Bool(Packer):
 class Date(Packer):
     @classmethod
     def pack(cls, obj, stream):
-        ts = time.mktime(obj.timetuple()) + (obj.microsecond/1000000.0)
+        if obj is None:
+            ts = 0
+        else:
+            ts = time.mktime(obj.timetuple()) + (obj.microsecond/1000000.0)
         Int64.pack(int(ts * 1000), stream)
     @classmethod
     def unpack(cls, stream):
@@ -45,6 +55,8 @@ class Date(Packer):
 class Buffer(Packer):
     @classmethod
     def pack(cls, obj, stream):
+        if obj is None:
+            obj = ()
         Int32.pack(len(obj), stream)
         stream.write(obj)
     @classmethod
@@ -55,15 +67,19 @@ class Buffer(Packer):
 class Str(Packer):
     @classmethod
     def pack(cls, obj, stream):
+        if obj is None:
+            obj = ""
         Buffer.pack(obj.encode("utf-8"), stream)
     @classmethod
     def unpack(cls, stream):
-        return Buffer.unpack(stream).decode("utf-8")
+        return str(Buffer.unpack(stream).decode("utf-8"))
 
 class ListOf(Packer):
     def __init__(self, type):
         self.type = type
     def pack(self, obj, stream):
+        if obj is None:
+            obj = ()
         Int32.pack(len(obj), stream)
         for item in obj:
             self.type.pack(item, stream)
@@ -79,6 +95,8 @@ class MapOf(Packer):
         self.keytype = keytype
         self.valtype = valtype
     def pack(self, obj, stream):
+        if obj is None:
+            obj = {}
         Int32.pack(len(obj), stream)
         for key, val in obj.iteritems():
             self.keytype.pack(key, stream)

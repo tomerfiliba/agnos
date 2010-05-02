@@ -28,11 +28,12 @@ class Doc(object):
 
 class Block(object):
     def __init__(self, text, *args, **kwargs):
-        colon = kwargs.pop("colon", True)
+        self.prefix = kwargs.pop("prefix", ":")
+        self.suffix = kwargs.pop("suffix", None)
         if kwargs:
             raise TypeError("invalid keyword arguments %r" % (kwargs.keys(),))
         if text is not None:
-            self.title = Stmt(text + (":" if colon else ""), *args)
+            self.title = Stmt(text + (self.prefix if self.prefix else ""), *args)
         self.children = []
         self.stack = []
     
@@ -61,6 +62,8 @@ class Block(object):
         lines = self.title.render()
         for child in self.children:
             lines.extend("    " + l for l in child.render())
+        if self.suffix:
+            lines.append(self.suffix)
         return lines
 
 

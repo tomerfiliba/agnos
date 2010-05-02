@@ -190,7 +190,7 @@ class AstNode(object):
 
 class ClassAttrNode(AstNode):
     TAG = "attr"
-    ATTRS = dict(name = arg_value, type = arg_value, access = arg_default("get,set"))
+    ATTRS = dict(name = auto_fill_name, type = arg_value, access = arg_default("get,set"))
 
 class MethodArgNode(AstNode):
     TAG = "arg"
@@ -247,7 +247,7 @@ class EnumAttrNode(AstNode):
 
 class EnumNode(AstNode):
     TAG = "enum"
-    ATTRS = dict(name = arg_value)
+    ATTRS = dict(name = auto_fill_name)
     CHILDREN = [EnumAttrNode]
 
 class ModuleInfoNode(AstNode):
