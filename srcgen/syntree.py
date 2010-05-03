@@ -127,15 +127,18 @@ class TokenizedBlock(object):
 #===============================================================================
 # AST
 #===============================================================================
-def auto_fill_name(argname, blk):
-    assert argname == "name"
-    blk.src_name = None
+def _get_src_name(blk):
+    if blk.srcblock.lineno is None:
+        return None
     for i in range(blk.srcblock.lineno, len(blk.srcblock.fileinfo.lines)):
         l = blk.srcblock.fileinfo.lines[i].strip()
         if l.startswith("def ") or l.startswith("class "):
             name = l.split()[1].split("(")[0]
-            blk.src_name = name
-            break
+            return  name
+    return None
+
+def auto_fill_name(argname, blk):
+    assert argname == "name"
     if "name" not in blk.args:
         if not blk.src_name:
             raise SourceError(blk.srcblock, "required argument 'name' missing and cannot be deduced")
@@ -167,6 +170,14 @@ class AstNode(object):
         self.attrs = {}
         self.children = []
         self.doc = block.doc
+        
+        if "srcname" in block.args:
+            self.block.src_name = block.args.pop("srcname")
+        elif "src_name" in block.args:
+            self.block.src_name = block.args.pop("src_name")
+        else:
+            self.block.src_name = _get_src_name(block)
+        
         for k, v in self.ATTRS.iteritems():
             self.attrs[k] = v(k, block)
         for arg in block.args.keys():
@@ -201,6 +212,11 @@ class MethodNode(AstNode):
     ATTRS = dict(name = auto_fill_name, type = arg_default("void"))
     CHILDREN = [MethodArgNode]
 
+class StaticMethodNode(AstNode):
+    TAG = "staticmethod"
+    ATTRS = dict(name = auto_fill_name, type = arg_default("void"))
+    CHILDREN = [MethodArgNode]
+
 class CtorNode(AstNode):
     TAG = "ctor"
     CHILDREN = [MethodArgNode]
@@ -208,7 +224,7 @@ class CtorNode(AstNode):
 class ClassNode(AstNode):
     TAG = "class"
     ATTRS = dict(name = auto_fill_name)
-    CHILDREN = [ClassAttrNode, CtorNode, MethodNode]
+    CHILDREN = [ClassAttrNode, CtorNode, MethodNode, StaticMethodNode]
 
 class FuncArgNode(AstNode):
     TAG = "arg"
@@ -307,7 +323,7 @@ def parse_source_file(filename):
     ast_root.postprcess()
     return ast_root
 
-def parse_source_files(rootdir, filenames):
+def parse_source_files(rootdir, filenames, rootpackage):
     modules = []
     for fn in filenames:
         ast = parse_source_file(fn)
@@ -315,10 +331,9 @@ def parse_source_files(rootdir, filenames):
             continue
         if not ast.modinfo:
             relative_name = fn[len(rootdir):][:-3]
-            package = os.path.basename(rootdir)
             modname = relative_name.replace("/", ".").replace("\\", ".").strip(".")
             ast.modinfo = ModuleInfoNode.__new__(ModuleInfoNode)
-            ast.modinfo.attrs = dict(name = package + "." + modname, namespace = None)
+            ast.modinfo.attrs = dict(name = rootpackage + "." + modname, namespace = None)
         modules.append(ast)
     return RootNode(modules)
 

@@ -66,6 +66,9 @@ class InStream(object):
             self.buffer = data2[req:]
         #print >>sys.stderr, "%05d  R %s" % (os.getpid(), data.encode("hex"))
         return data
+    def poll(self, timeout):
+        rl, _, _ = select([self.file], [], [], timeout)
+        return bool(rl)  
 
 class OutStream(object):
     def __init__(self, file):

@@ -30,6 +30,16 @@ class Volume(object):
         delta = newsize - self.size
         self.pool.alloc(delta)
         self.size = newsize
+    
+    #:: @staticmethod type=Volume
+    #::    @arg pool type=Pool
+    #::    @arg name type=string
+    #::    @arg size type=int64
+    @classmethod
+    def create_volume(cls, pool, name, size):
+        v = Volume(pool, name, size)
+        pool.volumes.append(v)
+        return v
 
 
 

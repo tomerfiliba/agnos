@@ -8,6 +8,15 @@ from agnos_compiler.compiler.targets import PythonTarget
 
 ID_GENERATOR = itertools.count(200000)
 
+class FuncInfo(object):
+    def __init__(self, name, type, args, namespace = None, doc = None):
+        self.name = name
+        self.type = type
+        self.args = args
+        self.namespace = namespace
+        self.doc = None
+
+
 class IdlGenerator(object):
     def __init__(self):
         self.doc = xml.XmlDoc("service")
@@ -30,21 +39,20 @@ class IdlGenerator(object):
     
     def visit_RootNode(self, node):
         self.ATTR(name = node.service_name)
-        self.auto_generated_ctors = []
+        self.auto_generated_funcs = []
         self.service_name = None
         for child in node.children:
             child.accept(self)
         
-        for node in self.auto_generated_ctors:
-            with self.BLOCK("func", name = node.parent.attrs["name"], 
-                    type = node.parent.attrs["name"]):
-                if node.parent.parent.modinfo.attrs["namespace"]:
-                    self.ATTR(namespace = node.parent.parent.modinfo.attrs["namespace"])
-                self.emit_doc(node)
-                for argnode in node.children:
-                    with self.BLOCK("arg", name = argnode.attrs["name"], 
-                            type = argnode.attrs["type"]):
-                        self.emit_doc(argnode)
+        for info in self.auto_generated_funcs:
+            with self.BLOCK("func", name = info.name, type = info.type):
+                if info.namespace:
+                    self.ATTR(namespace = info.namespace)
+                self.emit_doc(info)
+                for arginfo in info.args:
+                    with self.BLOCK("arg", name = arginfo.attrs["name"], 
+                            type = arginfo.attrs["type"]):
+                        self.emit_doc(arginfo)
 
     def visit_ModuleNode(self, node):
         for child in node.children:
@@ -79,9 +87,24 @@ class IdlGenerator(object):
             self.emit_doc(node)
             for child in node.children:
                 child.accept(self)
+
+    def visit_StaticMethodNode(self, node):
+        self.auto_generated_funcs.append(FuncInfo(
+            name = node.attrs["name"], 
+            type = node.attrs["type"],
+            args = node.children,
+            namespace = node.parent.attrs["name"],
+            doc = node.doc
+            ))
     
     def visit_CtorNode(self, node):
-        self.auto_generated_ctors.append(node)
+        self.auto_generated_funcs.append(FuncInfo(
+            name = "ctor", 
+            type = node.parent.attrs["name"],
+            args = node.children,
+            namespace = node.parent.attrs["name"],
+            doc = node.doc
+            ))
     
     def visit_FuncArgNode(self, node):
         with self.BLOCK("arg", name = node.attrs["name"], type = node.attrs["type"]):
@@ -168,7 +191,11 @@ class BindingGenerator(object):
     
     def visit_FuncNode(self, node):
         args = ", ".join(arg.attrs["name"] for arg in node.children)
-        with self.BLOCK("def {0}(_self, {1})", node.attrs["name"], args):
+        if "namespace" in node.attrs:
+            name = node.attrs["namespace"].replace(".", "_") + "_" + node.attrs["name"]
+        else:
+            name = node.attrs["name"]
+        with self.BLOCK("def {0}(_self, {1})", name, args):
             self.required_modules.add(node.parent.modinfo.attrs["name"])
             self.STMT("return {0}.{1}({2})", node.parent.modinfo.attrs["name"], 
                 node.block.src_name, args)
@@ -184,10 +211,17 @@ class BindingGenerator(object):
     
     def visit_CtorNode(self, node):
         args = ", ".join(arg.attrs["name"] for arg in node.children)
-        with self.BLOCK("def {0}(_self, {1})", node.parent.attrs["name"], args):
+        with self.BLOCK("def {0}_create(_self, {1})", node.parent.attrs["name"], args):
             self.required_modules.add(node.parent.modinfo.attrs["name"])
             self.STMT("return {0}.{1}({2})", node.parent.parent.modinfo.attrs["name"], 
                 node.parent.block.src_name, args)
+
+    def visit_StaticMethodNode(self, node):
+        args = ", ".join(arg.attrs["name"] for arg in node.children)
+        with self.BLOCK("def {0}_{1}(_self, {2})", node.parent.attrs["name"], node.attrs["name"], args):
+            self.required_modules.add(node.parent.parent.modinfo.attrs["name"])
+            self.STMT("return {0}.{1}.{2}({3})", node.parent.parent.modinfo.attrs["name"], 
+                node.parent.block.src_name, node.block.src_name, args)
 
 
 def get_filenames(rootdir, suffix = ".py"):
@@ -203,10 +237,12 @@ def get_filenames(rootdir, suffix = ".py"):
     return filenames, rootdir
 
 
-def main(rootdir, outdir = None, idlfile = None, serverfile = None):
+def main(rootdir, outdir = None, idlfile = None, serverfile = None, rootpackage = None):
     filenames, rootdir = get_filenames(rootdir)
+    if not rootpackage:
+        rootpackage = os.path.basename(rootdir)
     try:
-        ast_root = parse_source_files(rootdir, filenames)
+        ast_root = parse_source_files(rootdir, filenames, rootpackage)
     except SourceError, ex:
         ex.display()
         raise

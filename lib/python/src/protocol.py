@@ -1,6 +1,7 @@
 import sys
 import itertools
 import traceback
+import weakref
 from subprocess import Popen, PIPE
 from .packers import Int8, Int32, Int64, Str
 from . import transports
@@ -43,9 +44,9 @@ class ChildServerError(Exception):
 
 
 class BaseProxy(object):
-    __slots__ = ["_client", "_objref"]
+    __slots__ = ["_client", "_objref", "__weakref__"]
     def __init__(self, client, objref):
-        self._client = client
+        self._client = weakref.proxy(client)
         self._objref = objref
     def __del__(self):
         self.dispose()
@@ -54,13 +55,13 @@ class BaseProxy(object):
             return "<%s instance (disposed)>" % (self.__class__.__name__,)
         else:
             return "<%s instance @ %s>" % (self.__class__.__name__, self._objref)
-    def __eq__(self, other):
-        if not isinstance(other, BaseProxy):
-            return NotImplemented
-        else:
-            return self._client == other._client and self._objref == other._objref
-    def __ne__(self, other):
-        return not (self == other)
+#    def __eq__(self, other):
+#        if not isinstance(other, BaseProxy):
+#            return NotImplemented
+#        else:
+#            return self._client == other._client and self._objref == other._objref
+#    def __ne__(self, other):
+#        return not (self == other)
 
     def dispose(self):
         if self._client is None:
@@ -170,6 +171,19 @@ class BaseProcessor(object):
             pack_res(res, outstream)
 
 
+class Namespace(object):
+    def __setitem__(self, name, obj):
+        parts = name.split(".")
+        ns = self
+        for part in parts[:-1]:
+            if not hasattr(ns, part):
+                setattr(ns, part, Namespace())
+            ns = getattr(ns, part)
+            if not isinstance(ns, Namespace):
+                raise TypeError("%r is not a namespace" % (name,))
+        setattr(ns, parts[-1], obj)
+
+
 class BaseClient(object):
     REPLY_SLOT_EMPTY = 0
     REPLY_SLOT_SUCCESS = 1
@@ -181,6 +195,10 @@ class BaseClient(object):
         self._outstream = outstream 
         self._seq = itertools.count()
         self._replies = {}
+        self._proxy_cache = weakref.WeakValueDictionary()
+    
+    def __del__(self):
+        self.close()
     
     @classmethod
     def from_transport(cls, transport):
@@ -215,6 +233,14 @@ class BaseClient(object):
                 Int64.pack(oid, self._outstream)
         except Exception:
             pass
+    
+    def _get_proxy(self, cls, objref):
+        if objref in self._proxy_cache:
+            return self._proxy_cache[objref]
+        else:
+            proxy = cls(self, objref)
+            self._proxy_cache[objref] = proxy
+            return proxy
 
     def _invoke_command(self, funcid, reply_packer):
         seq = self._seq.next()
@@ -241,11 +267,14 @@ class BaseClient(object):
         tb = Str.unpack(self._instream)
         return GenericException(msg, tb)
 
-    def _process_incoming(self):
+    def _process_incoming(self, timeout):
+        if not self._instream.poll(timeout):
+            return
         seq = Int32.unpack(self._instream)
         code = Int8.unpack(self._instream)
-        tp, packer = self._replies[seq]
-        assert tp == self.REPLY_SLOT_EMPTY
+        tp, packer = self._replies.get(seq, (None, None))
+        if tp != self.REPLY_SLOT_EMPTY:
+            raise ProtocolError("invalid sequence number %d" % (seq,))
         
         if code == REPLY_SUCCESS:
             if packer:
@@ -264,10 +293,16 @@ class BaseClient(object):
         else:
             raise ProtocolError("unknown reply code: %d" % (code,));
     
+    def _reply_ready(self, seq):
+        return self._replies[seq][0] != self.REPLY_SLOT_EMPTY
+    
+    def _wait_reply(self, seq, timeout = None):
+        while not self._reply_ready(seq):
+            self._process_incoming(timeout)
+        return self._replies.pop(seq)
+    
     def _get_reply(self, seq):
-        while self._replies[seq][0] == self.REPLY_SLOT_EMPTY:
-            self._process_incoming()
-        type, obj = self._replies.pop(seq)
+        type, obj = self._wait_reply(seq)
         if type == self.REPLY_SLOT_SUCCESS:
             return obj
         elif type == self.REPLY_SLOT_ERROR:

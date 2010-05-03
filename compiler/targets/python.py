@@ -223,7 +223,11 @@ class PythonTarget(TargetBase):
             for member in service.funcs.values():
                 if isinstance(member, compiler.Func):
                     args = ", ".join(arg.name for arg in member.args)
-                    with BLOCK("def {0}(self, {1})", member.name, args):
+                    if member.namespace:
+                        name = "%s_%s" % (member.namespace.replace(".", "_"), member.name)
+                    else:
+                        name = member.name
+                    with BLOCK("def {0}(self, {1})", name, args):
                         STMT("raise NotImplementedError()")
 
     def generate_processor(self, module, service):
@@ -254,8 +258,12 @@ class PythonTarget(TargetBase):
         SEP = module.sep
         
         if isinstance(func, compiler.Func):
+            if func.namespace:
+                name = func.namespace.replace(".", "_") + "_" + func.name
+            else:
+                name = func.name
             with BLOCK("def _func_{0}(self, args)", func.id):
-                STMT("return self.handler.{0}(*args)", func.name)
+                STMT("return self.handler.{0}(*args)", name) 
         else:
             with BLOCK("def _func_{0}(self, args)", func.id):
                 STMT("obj = args.pop(0)")
@@ -330,7 +338,26 @@ class PythonTarget(TargetBase):
                 STMT("{0}.pack({1}(res), stream)", type_to_packer(func.type), storer)
             else:
                 STMT("{0}.pack(res, stream)", type_to_packer(func.type))
-    
+
+    def _client_idl_loader(self, idltype):
+        if isinstance(idltype, compiler.TList):
+            return "(lambda obj: [%s(item) for item in obj])" % (
+                self._client_idl_loader(idltype.oftype),)
+        elif isinstance(idltype, compiler.TMap):
+            return "(lambda obj: dict((%s(k), %s(v)) for k, v in obj.iteritems()))" % (
+                self._client_idl_loader(idltype.keytype),
+                self._client_idl_loader(idltype.valtype))
+        elif isinstance(idltype, compiler.Class):
+            return "(lambda obj: _self._get_proxy(%sProxy, obj))" % (idltype.name,)
+        elif isinstance(idltype, compiler.Record):
+            loaders = [
+                "%s(obj.%s)" % (self._client_idl_loader(mem.type), mem.name)
+                    if is_complex_type(mem.type) else "obj.%s" % (mem.name,) 
+                for mem in idltype.members]
+            return "(lambda obj: %s(%s))" % (idltype.name, ", ".join(loaders))
+        else:
+            return "(lambda obj: obj)"
+
     def generate_client(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
@@ -342,9 +369,26 @@ class PythonTarget(TargetBase):
                     if isinstance(mem, compiler.Exception):
                         STMT("{0} : {1},", mem.id, type_to_packer(mem))
             SEP()
+            with BLOCK("def __init__(self, instream, outstream)"):
+                STMT("agnos.BaseClient.__init__(self, instream, outstream)")
+                for func in service.funcs.values():
+                    if not func.namespace:
+                        continue
+                    STMT("self.{0} = agnos.Namespace()", func.namespace.split(".")[0])
+                for func in service.funcs.values():
+                    if not func.namespace:
+                        continue
+                    head, tail = (func.namespace + "." + func.name).split(".", 1)
+                    decorated = "_autogen_%s_%s" % (func.namespace.replace(".", "_"), func.name)
+                    STMT("self.{0}['{1}'] = self.{2}", head, tail, decorated)
+            SEP()
             for func in service.funcs.values():
                 args = ", ".join(arg.name for arg in func.args)
-                with BLOCK("def {0}(_self, {1})", func.name, args):
+                if func.namespace:
+                    name = "_autogen_%s_%s" % (func.namespace.replace(".", "_"), func.name)
+                else:
+                    name = func.name
+                with BLOCK("def {0}(_self, {1})", name, args):
                     with BLOCK("with _self._outstream.transaction()"):
                         STMT("seq = _self._invoke_command({0}, {1})", func.id, type_to_packer(func.type))
                         for arg in func.args:
@@ -354,32 +398,16 @@ class PythonTarget(TargetBase):
                                 STMT("{0}.pack({1}, _self._outstream)", type_to_packer(arg.type), arg.name)
                     STMT("res = _self._get_reply(seq)")
                     if isinstance(func.type, compiler.Class):
-                        STMT("return {0}Proxy(_self, res)", func.type.name)
+                        STMT("return _self._get_proxy({0}Proxy, res)", func.type.name)
                     elif is_complex_type(func.type):
                         loader = self._client_idl_loader(func.type)
                         STMT("return {0}(res)", loader)
                     else:
                         STMT("return res")
                 SEP()
+            
     
-    def _client_idl_loader(self, idltype):
-        if isinstance(idltype, compiler.TList):
-            return "(lambda obj: [%s(item) for item in obj])" % (
-                self._client_idl_loader(idltype.oftype),)
-        elif isinstance(idltype, compiler.TMap):
-            return "(lambda obj: dict((%s(k), %s(v)) for k, v in obj.iteritems()))" % (
-                self._client_idl_loader(idltype.keytype),
-                self._client_idl_loader(idltype.valtype))
-        elif isinstance(idltype, compiler.Class):
-            return "(lambda obj: %sProxy(_self, obj))" % (idltype.name,)
-        elif isinstance(idltype, compiler.Record):
-            loaders = [
-                "%s(obj.%s)" % (self._client_idl_loader(mem.type), mem.name)
-                    if is_complex_type(mem.type) else "obj.%s" % (mem.name,) 
-                for mem in idltype.members]
-            return "(lambda obj: %s(%s))" % (idltype.name, ", ".join(loaders))
-        else:
-            return "(lambda obj: obj)"
+
     
 
 
