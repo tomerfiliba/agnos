@@ -5,61 +5,52 @@ import time
 
 
 class Packer(object):
-    def pack(self, obj, stream):
+    def __init__(self, processor):
+        self.instream = instream
+        self.outstream = outstream
+    def pack(self, obj):
         raise NotImplementedError()
-    def unpack(self, stream):
+    def server_unpack(self):
+        raise NotImplementedError()
+    def client_unpack(self):
         raise NotImplementedError()
 
 class PrimitivePacker(Packer):
-    def __init__(self, fmt):
+    def __init__(self, instream, outstream, fmt):
+        Packer.__init__(self, instream, outstream)
         self.struct = _Struct(fmt)
     def pack(self, obj, stream):
         if obj is None:
             obj = 0
-        try:
-            stream.write(self.struct.pack(obj))
-        except Exception, ex:
-            import sys
-            print >>sys.stderr, "$$ %r, fmt = %r, obj = %r" % (ex, self.struct.format, obj)
-            raise
-    def unpack(self, stream):
-        return self.struct.unpack(stream.read(self.struct.size))[0]
-
-Int8 = PrimitivePacker("!b")
-Int16 = PrimitivePacker("!h")
-Int32 = PrimitivePacker("!l")
-Int64 = PrimitivePacker("!q")
-Float = PrimitivePacker("!d")
+        self.outstream.write(self.struct.pack(obj))
+    def unpack(self):
+        return self.struct.unpack(self.instream.read(self.struct.size))[0]
 
 class Bool(Packer):
-    @classmethod
-    def pack(cls, obj, stream):
-        Int8.pack(int(obj), stream)
-    @classmethod
-    def unpack(cls, stream):
+    def __init__(self, instream, outstream):
+        self.packer = Int8(instream, outstream)
+    def pack(self, obj):
+        self.packer.pack(int(obj))
+    def unpack(self):
         return bool(Int8.unpack(stream))
 
 class Date(Packer):
-    @classmethod
     def pack(cls, obj, stream):
         if obj is None:
             ts = 0
         else:
             ts = time.mktime(obj.timetuple()) + (obj.microsecond/1000000.0)
         Int64.pack(int(ts * 1000), stream)
-    @classmethod
     def unpack(cls, stream):
         ts = Int64.unpack(stream)
         return datetime.fromtimestamp(ts / 1000.0)
 
 class Buffer(Packer):
-    @classmethod
     def pack(cls, obj, stream):
         if obj is None:
             obj = ()
         Int32.pack(len(obj), stream)
         stream.write(obj)
-    @classmethod
     def unpack(cls, stream):
         length = Int32.unpack(stream)
         return stream.read(length)

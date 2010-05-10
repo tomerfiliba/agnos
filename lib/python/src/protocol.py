@@ -55,13 +55,6 @@ class BaseProxy(object):
             return "<%s instance (disposed)>" % (self.__class__.__name__,)
         else:
             return "<%s instance @ %s>" % (self.__class__.__name__, self._objref)
-#    def __eq__(self, other):
-#        if not isinstance(other, BaseProxy):
-#            return NotImplemented
-#        else:
-#            return self._client == other._client and self._objref == other._objref
-#    def __ne__(self, other):
-#        return not (self == other)
 
     def dispose(self):
         if self._client is None:
@@ -72,8 +65,10 @@ class BaseProxy(object):
 
 
 class BaseProcessor(object):
-    def __init__(self, func_mapping, exception_map):
+    def __init__(self, instream, outstream, func_mapping, exception_map):
         self.cells = {}
+        self.instream = instream
+        self.outstream = outstream
         self.exception_map = exception_map
         self.func_mapping = func_mapping
     
@@ -96,64 +91,64 @@ class BaseProcessor(object):
         else:
             self.cells[oid] = (ref - 1, obj)
     
-    def send_packed_exception(self, outstream, seq, exc):
-        Int32.pack(seq, outstream)
-        Int8.pack(REPLY_PACKED_EXCEPTION, outstream)
-        exc.pack(outstream)
+    def send_packed_exception(self, seq, exc):
+        self.pack_int32(seq)
+        self.pack_int8(REPLY_PACKED_EXCEPTION)
+        exc.pack(self.outstream) # !!!!
     
-    def send_generic_exception(self, outstream, seq, exc):
-        Int32.pack(seq, outstream)
-        Int8.pack(REPLY_GENERIC_EXCEPTION, outstream)
-        Str.pack(exc.msg, outstream)
-        Str.pack(exc.traceback, outstream)
+    def send_generic_exception(self, seq, exc):
+        self.pack_int32(seq)
+        self.pack_int8(REPLY_GENERIC_EXCEPTION)
+        self.pack_str(exc.msg)
+        self.pack_str(exc.traceback)
     
-    def send_protocol_error(self, outstream, seq, exc):
-        Int32.pack(seq, outstream)
-        Int8.pack(REPLY_PROTOCOL_ERROR, outstream)
-        Str.pack(tb, outstream)
+    def send_protocol_error(self, seq, exc):
+        self.pack_int32(seq)
+        self.pack_int8(REPLY_PROTOCOL_ERROR)
+        self.pack_str(tb)
     
-    def process(self, instream, outstream):
-        seq = Int32.unpack(instream)
-        cmd = Int8.unpack(instream)
-        with outstream.transaction():
+    def process(self):
+        seq = self.unpack_int32()
+        cmd = self.unpack_int8()
+        with self.outstream.transaction():
             try:
                 if cmd == CMD_INVOKE:
-                    self.process_invoke(seq, instream, outstream)
+                    self.process_invoke(seq)
                 elif cmd == CMD_PING:
-                    self.process_ping(seq, instream, outstream)
+                    self.process_ping(seq)
                 elif cmd == CMD_DECREF:
-                    self.process_decref(seq, instream, outstream)
+                    self.process_decref(seq)
                 elif cmd == CMD_QUIT:
-                    self.process_quit(seq, instream, outstream)
+                    self.process_quit(seq)
                 else:
                     raise ProtocolError("unknown command code: %d" % (cmd,))
             except ProtocolError, ex:
-                self.send_protocol_error(outstream, seq, ex)
+                self.send_protocol_error(seq, ex)
             except PackedException, ex:
-                self.send_packed_exception(outstream, seq, ex)
+                self.send_packed_exception(seq, ex)
             except GenericException, ex:
-                self.send_generic_exception(outstream, seq, ex)
+                self.send_generic_exception(seq, ex)
 
-    def process_ping(self, seq, instream, outstream):
-        msg = Str.unpack(instream)
-        Int32.pack(seq, outstream)
-        Int8.pack(REPLY_SUCCESS, outstream)
-        Str.pack(msg, outstream)
+    def process_ping(self, seq):
+        msg = self.unpack_str()
+        self.pack_int32(seq)
+        self.pack_int8(REPLY_SUCCESS)
+        self.pack_str(msg)
 
-    def process_decref(self, seq, instream, outstream):
-        oid = Int64.unpack(instream)
+    def process_decref(self, seq):
+        oid = self.unpack_int64()
         self.decref(oid)
 
-    def process_quit(self, seq, instream, outstream):
+    def process_quit(self, seq):
         raise KeyboardInterrupt()
 
-    def process_invoke(self, seq, instream, outstream):
-        funcid = Int32.unpack(instream)
+    def process_invoke(self, seq):
+        funcid = self.unpack_int32()
         try:
             func, unpack_args, pack_res = self.func_mapping[funcid]
         except KeyError:
             raise ProtocolError("unknown function id: %d" % (funcid,))
-        args = unpack_args(instream)
+        args = unpack_args()
         try:
             res = func(args)
         except PackedException, ex:
@@ -165,10 +160,101 @@ class BaseProcessor(object):
             else:
                 tb = "".join(traceback.format_exception(*sys.exc_info()))
                 raise GenericException(repr(ex), tb)
-        Int32.pack(seq, outstream)
-        Int8.pack(REPLY_SUCCESS, outstream)
+        self.pack_int32(seq)
+        self.pack_int8(REPLY_SUCCESS)
         if pack_res:
-            pack_res(res, outstream)
+            pack_res(res)
+    
+    #
+    # packers
+    #
+    _INT8  = _Struct("!b")
+    _INT16 = _Struct("!h")
+    _INT32 = _Struct("!l")
+    _INT64 = _Struct("!q")
+    _FLOAT = _Struct("!d")
+    
+    def pack_int8(self, obj):
+        if obj is None:
+            obj = 0
+        self.outstream.write(self._INT8.pack(obj))
+    def unpack_int8(self):
+        return self._INT8.unpack(self.instream.read(1))[0]
+
+    def pack_bool(self, obj):
+        if obj is None:
+            obj = False
+        self.pack_int8(int(obj))
+    def unpack_bool(self):
+        self.unpack_int8()
+    
+    def pack_int16(self, obj):
+        if obj is None:
+            obj = 0
+        self.outstream.write(self._INT16.pack(obj))
+    def unpack_int16(self):
+        return self._INT16.unpack(self.instream.read(2))[0]
+    
+    def pack_int32(self, obj):
+        if obj is None:
+            obj = 0
+        self.outstream.write(self._INT32.pack(obj))
+    def unpack_int32(self):
+        return self._INT32.unpack(self.instream.read(4))[0]
+    
+    def pack_int64(self, obj):
+        if obj is None:
+            obj = 0
+        self.outstream.write(self._INT64.pack(obj))
+    def unpack_int64(self):
+        return self._INT64.unpack(self.instream.read(8))[0]
+    
+    def pack_float(self, obj):
+        if obj is None:
+            obj = 0
+        self.outstream.write(self._INT8.pack(obj))
+    def unpack_int8(self):
+        return self._INT8.unpack(self.instream.read(8))[0]
+
+    def pack_date(self, obj):
+        self.pack_int64(0)
+    def unpack_date(self):
+        return self.pack_int64()
+
+    def pack_object(self, obj):
+        self.pack_int64(self.store(obj))
+    def unpack_object(self):
+        return self.load(self.pack_int64())
+
+    def pack_buffer(self, obj):
+        if obj is None:
+            obj = ""
+        self.pack_int32(len(obj))
+        self.outstream.write(obj)
+    def unpack_buffer(self):
+        length = self.unpack_int32()
+        return self.instream.read(length)
+
+    def pack_str(self, obj):
+        if obj is None:
+            obj = ""
+        self.pack_buffer(obj.encode("utf-8"))
+    def unpack_buffer(self):
+        return str(self.unpack_buffer().decode("utf-8"))
+    
+    def pack_list(self, value_packer, obj):
+        if obj is None:
+            obj = ()
+        self.pack_int32(len(obj))
+        for item in obj:
+            value_packer(obj)
+    def unpack_list(self, value_unpacker):
+        length = self.unpack_int32(len(obj))
+        items = []
+        for i in xrange(length):
+            items.append(value_unpacker())
+        return items
+
 
 
 class Namespace(object):

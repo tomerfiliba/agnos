@@ -2,6 +2,7 @@
 	* unit test
 		* ctors
 	* update java and c# according to python
+		* namespaces
 		* list and map recursive packers
 		* enum packers?
 	* mapped exception parameters 
@@ -16,6 +17,7 @@
 	* perl?
 	* php?
 	* javascript?
+	* powershell
 	* shell? - what to do with proxies?
 	* cmdline util? reads commands from stdin? then why not python interpreter?
 

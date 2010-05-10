@@ -2,9 +2,11 @@
 """
 agnos command-line utility
 usage: 
-    agnos -t <LANG> myidl.xml
+    agnosc -t <LANG> myidl.xml
 where LANG is one of
     "python", "java", "csharp", "cpp", "doc"
+example:
+    agnosc -t java myidl.xml
 """
 import os
 import sys
@@ -30,7 +32,7 @@ parser.add_option("-o", "--outdir", dest="outdir", default=None,
                   help="generate output into OUTDIR; the default directory used is that of the input file",  
                   metavar="OUTDIR")
 parser.add_option("-t", "--target", dest="target",
-                  help="specify the target output language (python, java, and csharp)", 
+                  help="specify the target output language ('python', 'java', 'csharp', 'cpp', or 'doc')", 
                   metavar="TARGET")
 parser.add_option("-d", "--debug",
                   action="store_true", dest="debug", default=False,
@@ -38,8 +40,8 @@ parser.add_option("-d", "--debug",
 
 if __name__ == "__main__":
     options, args = parser.parse_args()
-    #args = ["../ut/RemoteFiles.xml"]
-    args = ["../srcgen/examples/mextra/mextra.xml"]
+    args = ["../ut/RemoteFiles.xml"]
+    #args = ["../srcgen/examples/mextra/mextra.xml"]
     options.target = "doc"
     if not args:
         parser.error("must specify agnos input file(s)")
