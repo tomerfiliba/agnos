@@ -126,10 +126,6 @@ class JavaTarget(TargetBase):
                 STMT('private const string _IDL_MAGIC = "{0}"', service.digest)
                 SEP()
                 
-                DOC("templated packers", spacer = True)
-                self.generate_templated_packer(module, service)
-                SEP()
-
                 DOC("enums", spacer = True)
                 for member in service.types.values():
                     if isinstance(member, compiler.Enum):
@@ -170,9 +166,20 @@ class JavaTarget(TargetBase):
     def _generate_templated_packer_for_type(self, tp):
         if isinstance(tp, compiler.TList):
             return "new Packers.ListOf(%s)" % (self._generate_templated_packer_for_type(tp.oftype),)
-        elif isinstance(tp, compiler.TList):
+        elif isinstance(tp, compiler.TMap):
             return "new Packers.MapOf(%s, %s)" % (self._generate_templated_packer_for_type(tp.keytype),
                 self._generate_templated_packer_for_type(tp.valtype))
+        elif isinstance(tp, compiler.Enum):
+            return """new Packers.IPacker() {
+                    public void pack(Object obj, OutputStream stream)
+                    {
+                        Packers.Int32.pack(((%s)obj).value);
+                    }
+                    public Object unpack(InputStream stream)
+                    {
+                        return %s.getByValue((Integer)Packers.Int32.unpack(stream));
+                    }
+                }""" % (tp.name, tp.name)
         else:
             return type_to_packer(tp)
 
@@ -189,7 +196,7 @@ class JavaTarget(TargetBase):
                     tp._templated_packer = mapping[definition]
                 else:
                     tp._templated_packer = "_templated_packer_%s" % (temp_counter.next(),)
-                    STMT("private static Packers.IPacker {0} = {1}", tp._templated_packer, definition)
+                    STMT("private Packers.IPacker {0} = {1}", tp._templated_packer, definition)
                     mapping[definition] = tp._templated_packer
     
     def generate_enum(self, module, enum):
@@ -205,16 +212,11 @@ class JavaTarget(TargetBase):
             with BLOCK("private static final Map<Integer, {0}> _BY_VALUE = new HashMap<Integer, {0}>()", enum.name, prefix = "{{", suffix = "}};"):
                 with BLOCK("for({0} member : {0}.values())", enum.name):
                     STMT("put(member.value, member)")
-            with BLOCK("private static final Map<String, {0}> _BY_NAME = new HashMap<String, {0}>()", enum.name, prefix = "{{", suffix = "}};"):
-                with BLOCK("for({0} member : {0}.values())", enum.name):
-                    STMT("put(member.toString(), member)")
             SEP()
             with BLOCK("private {0}(int v)", enum.name):
                 STMT("value = new Integer(v)")
             with BLOCK("public static {0} getByValue(Integer val)", enum.name):
                 STMT("return _BY_VALUE.get(val)")
-            with BLOCK("public static {0} getByName(String name)", enum.name):
-                STMT("return _BY_NAME.get(name)")
     
     def generate_record(self, module, rec):
         BLOCK = module.block
@@ -225,7 +227,6 @@ class JavaTarget(TargetBase):
         else:
             extends = ""
         with BLOCK("public static class {0} {1}", rec.name, extends):
-            STMT("protected final static Integer __record_id = new Integer({0})", rec.id)
             for mem in rec.members:
                 STMT("public {0} {1}", type_to_java(mem.type), mem.name)
             SEP()
@@ -236,8 +237,8 @@ class JavaTarget(TargetBase):
                 for mem in rec.members:
                     STMT("this.{0} = {0}", mem.name)
             SEP()
-            with BLOCK("public void pack(OutputStream stream) throws IOException"):
-                STMT("Packers.Int32.pack(__record_id, stream)")
+            with BLOCK("protected void pack(OutputStream stream) throws IOException"):
+                STMT("Packers.Int32.pack(new Integer({0}), stream)", rec.id)
                 STMT("{0}Record.pack(this, stream)", rec.name)
             SEP()
             with BLOCK("public String toString()"):
@@ -248,21 +249,13 @@ class JavaTarget(TargetBase):
             with BLOCK("public void pack(Object obj, OutputStream stream) throws IOException"):
                 STMT("{0} val = ({0})obj", rec.name)
                 for mem in rec.members:
-                    if isinstance(mem.type, compiler.Enum):
-                        STMT("Packers.Int32.pack(val.{0}.value, stream)", mem.name)
-                    else:
-                        STMT("{0}.pack(val.{1}, stream)", type_to_packer(mem.type), mem.name)
+                    STMT("{0}.pack(val.{1}, stream)", type_to_packer(mem.type), mem.name)
 
             with BLOCK("public Object unpack(InputStream stream) throws IOException"):
                 args = []
-                for mem in rec.members:
-                    if isinstance(mem.type, compiler.Enum):
-                        args.append("%s.getByValue((Integer)Packers.Int32.unpack(stream))" % (type_to_java(mem.type),))
-                    else:
-                        args.append("(%s)%s.unpack(stream)" % (type_to_java(mem.type), type_to_packer(mem.type)))
-                STMT("return new {0}({1})", rec.name, ", ".join(args))
-        SEP()
-        STMT("protected static _{0}Record {0}Record = new _{0}Record()", rec.name)
+                with BLOCK("return new {0}", rec.name, prefix = "(", suffix = ");"):
+                    for mem in rec.members:
+                        STMT("({0}){1}.unpack(stream)", type_to_java(mem.type), type_to_packer(mem.type))
 
     def generate_class_interface(self, module, cls):
         BLOCK = module.block
@@ -277,7 +270,8 @@ class JavaTarget(TargetBase):
                     STMT("{0} get_{1}() throws Exception", type_to_java(attr.type), attr.name)
                 if attr.set:
                     STMT("void set_{1}({0} value) throws Exception", attr.name, type_to_java(attr.type))
-            SEP()
+            if cls.attrs:
+                SEP()
             if cls.methods:
                 DOC("methods")
             for method in cls.methods:
@@ -371,6 +365,23 @@ class JavaTarget(TargetBase):
                     args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) for arg in member.args)
                     STMT("{0} {1}({2}) throws Exception", type_to_java(member.type), member.name, args)
 
+    def generate_processor_packers(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        
+        mapping = {}
+        for tp in service.all_types:
+            if isinstance(tp, (compiler.TList, compiler.TMap)):
+                definition = self._generate_templated_packer_for_type(tp)
+                if definition in mapping:
+                    tp._templated_packer = mapping[definition]
+                else:
+                    tp._templated_packer = "_templated_packer_%s" % (temp_counter.next(),)
+                    STMT("private Packers.IPacker {0} = {1}", tp._templated_packer, definition)
+                    mapping[definition] = tp._templated_packer
+
+
     def generate_processor(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
@@ -380,6 +391,8 @@ class JavaTarget(TargetBase):
 
         with BLOCK("public static class Processor extends Protocol.BaseProcessor"):
             STMT("protected IHandler handler")
+            SEP()
+            self.generate_processor_packers()
             SEP()
             with BLOCK("public Processor(IHandler handler)"):
                 STMT("super()")

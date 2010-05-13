@@ -3,16 +3,18 @@ package agnos;
 import java.io.*;
 import java.util.*;
 
-public class Protocol {
+public class Protocol 
+{
 	public static final int CMD_PING = 0;
 	public static final int CMD_INVOKE = 1;
 	public static final int CMD_QUIT = 2;
 	public static final int CMD_DECREF = 3;
+	public static final int CMD_INCREF = 4;
 
 	public static final int REPLY_SUCCESS = 0;
 	public static final int REPLY_PROTOCOL_ERROR = 1;
 	public static final int REPLY_PACKED_ERROR = 2;
-	public static final int REPLY_GENERIC_ERROR = 3;
+	public static final int REPLY_GENERIC_EXCEPTION = 3;
 
 	public abstract static class PackedException extends Exception {
 		public PackedException() {
@@ -22,7 +24,7 @@ public class Protocol {
 			super(message);
 		}
 
-		public abstract void pack(OutputStream stream) throws IOException;
+		public abstract void pack(OutputStream stream, Packers.ISerializer serializer) throws IOException;
 	}
 
 	public static class ProtocolError extends Exception {
@@ -31,7 +33,7 @@ public class Protocol {
 		}
 	}
 
-	public static class GenericError extends Exception {
+	public static class GenericException extends Exception {
 		public String traceback;
 		
 		public GenericError(String message, String traceback) {
@@ -41,7 +43,7 @@ public class Protocol {
 		
 		public String toString()
 		{
-			return "agnos.Protocol.GenericError with remote backtrace:\n" + traceback + 
+			return "agnos.Protocol.GenericException with remote backtrace:\n" + traceback + 
 			"\t------------------- end of remote traceback -------------------"; 
 		}
 	}
@@ -86,13 +88,26 @@ public class Protocol {
 		}
 	}
 
-	public static abstract class BaseProcessor {
+	protected static String getExceptionTraceback(Exception exc)
+	{
+		StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw, true);
+        exc.printStackTrace(pw);
+        pw.flush();
+        sw.flush();
+        return sw.toString();
+	}	
+	
+	public static abstract class BaseProcessor implements ISerializer 
+	{
 		protected Map<Long, Cell> cells;
 		protected ObjectIDGenerator idGenerator;
+		protected ByteArrayOutputStream sendBuffer;
 
 		public BaseProcessor() {
 			cells = new HashMap<Long, Cell>();
 			idGenerator = new ObjectIDGenerator();
+			sendBuffer = new ByteArrayOutputStream(128 * 1024);
 		}
 
 		protected Long store(Object obj) {
@@ -113,6 +128,13 @@ public class Protocol {
 			return cell.obj;
 		}
 
+		protected void incref(Long id) {
+			Cell cell = cells.get(id);
+			if (cell != null) {
+				cell.incref();
+			}
+		}
+		
 		protected void decref(Long id) {
 			Cell cell = cells.get(id);
 			if (cell != null) {
@@ -122,113 +144,133 @@ public class Protocol {
 			}
 		}
 
-		protected void send_packed_exception(OutputStream outStream,
-				Integer seq, PackedException exc) throws IOException {
+		protected void send_packed_exception(OutputStream outStream, Integer seq, PackedException exc) throws IOException 
+		{
 			Packers.Int32.pack(new Integer(seq), outStream);
 			Packers.Int8.pack(new Byte((byte) REPLY_PACKED_ERROR), outStream);
 			exc.pack(outStream);
-			outStream.flush();
 		}
 
-		protected void send_protocol_error(OutputStream outStream, Integer seq,
-				ProtocolError exc) throws IOException {
+		protected void send_protocol_error(OutputStream outStream, Integer seq, ProtocolError exc) throws IOException {
 			Packers.Int32.pack(new Integer(seq), outStream);
 			Packers.Int8.pack(new Byte((byte) REPLY_PROTOCOL_ERROR), outStream);
 			Packers.Str.pack(exc.toString(), outStream);
-			outStream.flush();
 		}
 
-		protected String getExceptionTraceback(Exception exc)
-		{
-			StringWriter sw = new StringWriter();
-	        PrintWriter pw = new PrintWriter(sw, true);
-	        exc.printStackTrace(pw);
-	        pw.flush();
-	        sw.flush();
-	        return sw.toString();
-		}
-		
-		protected void send_generic_error(OutputStream outStream, Integer seq, Exception exc) throws IOException 
+		protected void send_generic_exception(OutputStream outStream, Integer seq, Exception exc) throws IOException 
 		{
 			Packers.Int32.pack(new Integer(seq), outStream);
-			Packers.Int8.pack(new Byte((byte) REPLY_GENERIC_ERROR), outStream);
-			Packers.Str.pack(exc.toString(), outStream);
-			Packers.Str.pack(getExceptionTraceback(exc), outStream);
-			outStream.flush();
+			Packers.Int8.pack(new Byte((byte) REPLY_GENERIC_EXCEPTION), outStream);
+			Packers.Str.pack(exc.message, outStream);
+			Packers.Str.pack(exc.traceback, outStream);
 		}
 
-		protected void process(InputStream inStream, OutputStream outStream)
-				throws Exception, IOException {
+		protected void process(InputStream inStream, OutputStream outStream) throws Exception
+		{
 			Integer seq = (Integer) (Packers.Int32.unpack(inStream));
 			int cmdid = (Byte) (Packers.Int8.unpack(inStream));
+
+			sendBuffer.reset();
 			try {
 				switch (cmdid) {
 				case CMD_INVOKE:
-					process_invoke(inStream, outStream, seq);
+					process_invoke(inStream, sendBuffer, seq);
 					break;
 				case CMD_DECREF:
-					process_decref(inStream, outStream, seq);
+					process_decref(inStream, sendBuffer, seq);
+					break;
+				case CMD_INCREF:
+					process_incref(inStream, sendBuffer, seq);
 					break;
 				case CMD_QUIT:
-					process_quit(inStream, outStream, seq);
+					process_quit(inStream, sendBuffer, seq);
 					break;
 				case CMD_PING:
-					process_ping(inStream, outStream, seq);
+					process_ping(inStream, sendBuffer, seq);
 					break;
 				default:
 					throw new ProtocolError("unknown command code: " + cmdid);
 				}
 			} catch (ProtocolError exc) {
-				send_protocol_error(outStream, seq, exc);
+				send_protocol_error(sendBuffer, seq, exc);
 			} catch (PackedException exc) {
-				send_packed_exception(outStream, seq, exc);
-			} catch (IOException exc) {
-				throw exc;
-			} catch (Exception exc) {
-				send_generic_error(outStream, seq, exc);
+				send_packed_exception(sendBuffer, seq, exc);
+			} catch (GenericException exc) {
+				send_generic_exception(sendBuffer, seq, exc);
 			}
+			
+			sendBuffer.writeTo(outStream);
 		}
 
-		protected void process_decref(InputStream inStream,
-				OutputStream outStream, Integer seq) throws IOException {
+		protected void process_decref(InputStream inStream, OutputStream outStream, Integer seq) throws IOException 
+		{
 			Long id = (Long) (Packers.Int64.unpack(inStream));
 			decref(id);
 		}
 
-		protected void process_quit(InputStream inStream,
-				OutputStream outStream, Integer seq) throws IOException {
+		protected void process_incref(InputStream inStream, OutputStream outStream, Integer seq) throws IOException 
+		{
+			Long id = (Long) (Packers.Int64.unpack(inStream));
+			incref(id);
 		}
 
-		protected void process_ping(InputStream inStream,
-				OutputStream outStream, Integer seq) throws IOException {
+		protected void process_quit(InputStream inStream, OutputStream outStream, Integer seq) throws IOException 
+		{
+		}
+
+		protected void process_ping(InputStream inStream, OutputStream outStream, Integer seq) throws IOException 
+		{
 			String message = (String) (Packers.Str.unpack(inStream));
 			Packers.Int32.pack(seq, outStream);
 			Packers.Int8.pack(REPLY_SUCCESS, outStream);
 			Packers.Str.pack(message, outStream);
-			outStream.flush();
 		}
 
-		abstract protected void process_invoke(InputStream inStream,
-				OutputStream outStream, int seq) throws Exception, IOException,
-				PackedException, ProtocolError, GenericError;
+		abstract protected void process_invoke(InputStream inStream, OutputStream outStream, int seq) throws Exception;
 	}
 
+	protected static class ReplySlot
+	{
+		public const int SLOT_EMPTY = 1;
+		public const int SLOT_DISCARDED = 2;
+		public const int SLOT_VALUE = 3;
+		public const int SLOT_EXCEPTION = 4;
+		
+		public int type;
+		public Object value;
+		
+		public ReplySlot(Packers.IPacker packer)
+		{
+			type = SLOT_EMPTY;
+			value = packer;
+		}
+	}
+	
 	public static abstract class BaseClient {
 		protected InputStream _inStream;
 		protected OutputStream _outStream;
+		protected ByteArrayOutputStream _sendBuffer;
 		protected int _seq;
+		protected Map<Integer, ReplySlot> _replies;
+		protected Map<Long, WeakReference> _proxies;
 
-		public BaseClient(InputStream inStream, OutputStream outStream) {
+		public BaseClient(InputStream inStream, OutputStream outStream) 
+		{
 			_inStream = inStream;
 			_outStream = outStream;
+			_sendBuffer = new ByteArrayOutputStream(128 * 1024);
 			_seq = 0;
+			_replies = HashMap<Integer, ReplySlot>(128);
+			_proxies = HashMap<Long, WeakReference>();
 		}
 
-		public BaseClient(Transports.ITransport transport) throws IOException {
+		public BaseClient(Transports.ITransport transport) throws IOException 
+		{
 			this(transport.getInputStream(), transport.getOutputStream());
 		}
 
-		public void close() throws IOException {
+		public void close() throws IOException 
+		{
 			if (_inStream != null) {
 				_inStream.close();
 				_outStream.close();
@@ -237,12 +279,28 @@ public class Protocol {
 			}
 		}
 
-		protected synchronized int _get_seq() {
+		protected synchronized int _get_seq() 
+		{
 			_seq += 1;
 			return _seq;
 		}
+		
+		protected Object _get_proxy(Long objref)
+		{
+			WeakReference weak = _proxies.get(objref);
+			if (weak == null) {
+				return null;
+			}
+			Object proxy = proxy.get();
+			if (proxy == null) {
+				_proxies.remove(objref);
+				return null;
+			}
+			return proxy;
+		}
 
-		protected void _decref(Long id) {
+		protected void _decref(Long id) 
+		{
 			int seq = _get_seq();
 			try {
 				Packers.Int32.pack(new Integer(seq), _outStream);
@@ -253,52 +311,116 @@ public class Protocol {
 			}
 		}
 
-		protected int _cmd_invoke(int funcid) throws IOException {
+		protected int _send_invocation(int funcid, OutputStream stream) throws IOException 
+		{
 			int seq = _get_seq();
-			Packers.Int32.pack(new Integer(seq), _outStream);
-			Packers.Int8.pack(new Integer(CMD_INVOKE), _outStream);
-			Packers.Int32.pack(new Integer(funcid), _outStream);
+			Packers.Int32.pack(new Integer(seq), stream);
+			Packers.Int8.pack(new Integer(CMD_INVOKE), stream);
+			Packers.Int32.pack(new Integer(funcid), stream);
 			return seq;
 		}
 
-		protected abstract PackedException _load_packed_exception()
-				throws IOException, ProtocolError;
+		protected abstract PackedException _load_packed_exception() throws Exception;
 
-		protected ProtocolError _load_protocol_error() throws IOException {
+		protected ProtocolError _load_protocol_error() throws IOException 
+		{
 			String message = (String) Packers.Str.unpack(_inStream);
 			return new ProtocolError(message);
 		}
 
-		protected GenericError _load_generic_error() throws IOException {
+		protected GenericError _load_generic_exception() throws IOException 
+		{
 			String message = (String) Packers.Str.unpack(_inStream);
 			String traceback = (String) Packers.Str.unpack(_inStream);
 			return new GenericError(message, traceback);
 		}
 
-		protected Object _read_reply(Packers.IPacker packer)
-				throws IOException, ProtocolError, PackedException,
-				GenericError {
+		protected boolean _process_incoming(int timeout_msecs) throws Exception
+		{
 			int seq = (Integer) (Packers.Int32.unpack(_inStream));
 			int code = (Byte) (Packers.Int8.unpack(_inStream));
+			
+			ReplySlot slot = _replies.get(seq);
+			if (slot == null || (slot.type != slot.SLOT_EMPTY && slot.type != slot.SLOT_DISCARDED) {
+				throw new ProtocolError("invalid reply sequence: " + seq);
+			}
+			Packers.IPacker packer = (Packers.IPacker)slot.value;
 			
 			switch (code) {
 			case REPLY_SUCCESS:
 				if (packer == null) {
-					return null;
+					slot.value = null;
 				}
 				else {
-					return packer.unpack(_inStream);
+					slot.value = packer.unpack(_inStream);
 				}
+				slot.type = slot.SLOT_VALUE;
+				break;
 			case REPLY_PROTOCOL_ERROR:
 				throw (ProtocolError)(_load_protocol_error().fillInStackTrace());
+				break;
 			case REPLY_PACKED_ERROR:
-				throw (PackedException)(_load_packed_exception().fillInStackTrace());
-			case REPLY_GENERIC_ERROR:
-				throw (GenericError)(_load_generic_error().fillInStackTrace());
+				slot.type = slot.SLOT_EXCEPTION;
+				slot.value = _load_packed_exception();
+				break;
+			case REPLY_GENERIC_EXCEPTION:
+				slot.type = slot.SLOT_EXCEPTION;
+				slot.value = _load_generic_exception();
+				break;
 			default:
 				throw new ProtocolError("unknown reply code: " + code);
 			}
+			
+			return true;
+		}
+		
+		protected boolean _is_reply_ready(int seq)
+		{
+			ReplySlot slot = _replies.get(seq);
+			return slot.type == SLOT_VALUE || slot.type == SLOT_EXCEPTION;
+		}
+		
+		protected ReplySlot _wait_reply(int seq, int timeout_msecs) throws Exception
+		{
+			while (!_is_reply_ready(seq, timeout_msecs)) {
+				_process_incoming(timeout_msecs);
+			}
+			return _replies.remove(seq);
+		}
+		
+		protected Object _get_reply(int seq, int timeout_msecs) throws Exception
+		{
+			ReplySlot slot = _wait_reply(seq, timeout_msecs);
+			if (slot.type == slot.SLOT_VALUE) {
+				return slot.value;
+			}
+			else if (slot.type != slot.SLOT_VALUE) {
+				slot.value.fillInStackTrace()
+				throw slot.value;
+			}
+			else {
+				throw new Exception("invalid slot type: " + slot.type);
+			}
+		}
+
+		protected Object _get_reply(int seq, int timeout_msecs) throws Exception
+		{
+			return _get_reply(seq, -1);
 		}
 	}
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+

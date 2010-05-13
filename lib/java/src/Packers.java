@@ -5,11 +5,16 @@ import java.util.*;
 
 public class Packers
 {
+	public interface ISerializer
+	{
+		Long store(Object obj);
+		Object load(Long id);
+	}
+	
 	public interface IPacker
 	{
-		public void pack(Object obj, OutputStream stream) throws IOException;
-
-		public Object unpack(InputStream stream) throws IOException;
+		void pack(Object obj, OutputStream stream) throws IOException;
+		Object unpack(InputStream stream) throws IOException;
 	}
 	
 	/*private static String repr(byte[] buffer)
@@ -58,6 +63,8 @@ public class Packers
 		//System.out.println("R: " + repr(buffer));
 	}
 
+	//////////////////////////////////////////////////////////////////////////
+
 	public static class _Int8 implements IPacker
 	{
 		private byte[]	buffer	= new byte[1];
@@ -80,7 +87,9 @@ public class Packers
 		}
 	}
 
-	public static _Int8	Int8	= new _Int8();
+	public static _Int8	Int8 = new _Int8();
+
+	//////////////////////////////////////////////////////////////////////////
 
 	public static class _Bool implements IPacker
 	{
@@ -95,7 +104,9 @@ public class Packers
 		}
 	}
 
-	public static _Bool	Bool	= new _Bool();
+	public static _Bool	Bool	 = new _Bool();
+
+	//////////////////////////////////////////////////////////////////////////
 
 	public static class _Int16 implements IPacker
 	{
@@ -119,7 +130,9 @@ public class Packers
 		}
 	}
 
-	public static _Int16	Int16	= new _Int16();
+	public static _Int16 Int16 = new _Int16();
+
+	//////////////////////////////////////////////////////////////////////////
 
 	public static class _Int32 implements IPacker
 	{
@@ -147,7 +160,9 @@ public class Packers
 		}
 	}
 
-	public static _Int32	Int32	= new _Int32();
+	public static _Int32 Int32 = new _Int32();
+
+	//////////////////////////////////////////////////////////////////////////
 
 	public static class _Int64 implements IPacker
 	{
@@ -182,9 +197,34 @@ public class Packers
 		}
 	}
 
-	public static _Int64	Int64	= new _Int64();
-	public static _Int64	ObjRef	= Int64;
+	public static _Int64 Int64 = new _Int64();
 
+	//////////////////////////////////////////////////////////////////////////
+
+	public static class _ObjRef implements IPacker
+	{
+		protected ISerializer serializer;
+		
+		public _ObjRef(ISerializer serializer)
+		{
+			this.serializer = serializer
+		}
+
+		public void pack(Object obj, OutputStream stream) throws IOException
+		{
+			Long obj2 = serializer.store(obj);
+			Int64.pack(obj2, stream);
+		}
+
+		public Object unpack(InputStream stream) throws IOException
+		{
+			Long obj = Int64.unpack(stream);
+			return serializer.load(obj);
+		}
+	}
+	
+	//////////////////////////////////////////////////////////////////////////
+	
 	public static class _Float implements IPacker
 	{
 		public void pack(Object obj, OutputStream stream) throws IOException
@@ -199,12 +239,13 @@ public class Packers
 
 		public Object unpack(InputStream stream) throws IOException
 		{
-			return new Double(Double.longBitsToDouble((Long) (Int64
-					.unpack(stream))));
+			return new Double(Double.longBitsToDouble((Long) (Int64.unpack(stream))));
 		}
 	}
 
 	public static _Float	Float	= new _Float();
+
+	//////////////////////////////////////////////////////////////////////////
 
 	public static class _Buffer implements IPacker
 	{
@@ -231,6 +272,8 @@ public class Packers
 
 	public static _Buffer	Buffer	= new _Buffer();
 
+	//////////////////////////////////////////////////////////////////////////
+
 	public static class _Date implements IPacker
 	{
 		public void pack(Object obj, OutputStream stream) throws IOException
@@ -245,6 +288,8 @@ public class Packers
 	}
 
 	public static _Date	Date	= new _Date();
+
+	//////////////////////////////////////////////////////////////////////////
 
 	public static class _Str implements IPacker
 	{
@@ -269,10 +314,12 @@ public class Packers
 
 	public static _Str	Str	= new _Str();
 
+	//////////////////////////////////////////////////////////////////////////
+
 	public static class ListOf implements IPacker
 	{
 		private IPacker	type;
-
+		
 		public ListOf(IPacker type)
 		{
 			this.type = type;
@@ -303,6 +350,8 @@ public class Packers
 			return arr;
 		}
 	}
+
+	//////////////////////////////////////////////////////////////////////////
 
 	public static class MapOf implements IPacker
 	{

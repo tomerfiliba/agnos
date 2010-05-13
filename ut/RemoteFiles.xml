@@ -88,6 +88,10 @@
 		<arg name="dst" type="File" />
 	</func>
 
+	<func name="pathToList" type="list[string]">
+		<arg name="path" type="Path" />
+	</func>
+
 </service>
 
 

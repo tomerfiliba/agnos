@@ -94,7 +94,7 @@ class BaseProcessor(object):
     def send_packed_exception(self, seq, exc):
         self.pack_int32(seq)
         self.pack_int8(REPLY_PACKED_EXCEPTION)
-        exc.pack(self.outstream) # !!!!
+        exc.pack(self.outstream)
     
     def send_generic_exception(self, seq, exc):
         self.pack_int32(seq)
@@ -164,97 +164,6 @@ class BaseProcessor(object):
         self.pack_int8(REPLY_SUCCESS)
         if pack_res:
             pack_res(res)
-    
-    #
-    # packers
-    #
-    _INT8  = _Struct("!b")
-    _INT16 = _Struct("!h")
-    _INT32 = _Struct("!l")
-    _INT64 = _Struct("!q")
-    _FLOAT = _Struct("!d")
-    
-    def pack_int8(self, obj):
-        if obj is None:
-            obj = 0
-        self.outstream.write(self._INT8.pack(obj))
-    def unpack_int8(self):
-        return self._INT8.unpack(self.instream.read(1))[0]
-
-    def pack_bool(self, obj):
-        if obj is None:
-            obj = False
-        self.pack_int8(int(obj))
-    def unpack_bool(self):
-        self.unpack_int8()
-    
-    def pack_int16(self, obj):
-        if obj is None:
-            obj = 0
-        self.outstream.write(self._INT16.pack(obj))
-    def unpack_int16(self):
-        return self._INT16.unpack(self.instream.read(2))[0]
-    
-    def pack_int32(self, obj):
-        if obj is None:
-            obj = 0
-        self.outstream.write(self._INT32.pack(obj))
-    def unpack_int32(self):
-        return self._INT32.unpack(self.instream.read(4))[0]
-    
-    def pack_int64(self, obj):
-        if obj is None:
-            obj = 0
-        self.outstream.write(self._INT64.pack(obj))
-    def unpack_int64(self):
-        return self._INT64.unpack(self.instream.read(8))[0]
-    
-    def pack_float(self, obj):
-        if obj is None:
-            obj = 0
-        self.outstream.write(self._INT8.pack(obj))
-    def unpack_int8(self):
-        return self._INT8.unpack(self.instream.read(8))[0]
-
-    def pack_date(self, obj):
-        self.pack_int64(0)
-    def unpack_date(self):
-        return self.pack_int64()
-
-    def pack_object(self, obj):
-        self.pack_int64(self.store(obj))
-    def unpack_object(self):
-        return self.load(self.pack_int64())
-
-    def pack_buffer(self, obj):
-        if obj is None:
-            obj = ""
-        self.pack_int32(len(obj))
-        self.outstream.write(obj)
-    def unpack_buffer(self):
-        length = self.unpack_int32()
-        return self.instream.read(length)
-
-    def pack_str(self, obj):
-        if obj is None:
-            obj = ""
-        self.pack_buffer(obj.encode("utf-8"))
-    def unpack_buffer(self):
-        return str(self.unpack_buffer().decode("utf-8"))
-    
-    def pack_list(self, value_packer, obj):
-        if obj is None:
-            obj = ()
-        self.pack_int32(len(obj))
-        for item in obj:
-            value_packer(obj)
-    def unpack_list(self, value_unpacker):
-        length = self.unpack_int32(len(obj))
-        items = []
-        for i in xrange(length):
-            items.append(value_unpacker())
-        return items
-
 
 
 class Namespace(object):
