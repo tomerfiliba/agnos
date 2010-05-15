@@ -1,0 +1,23 @@
+<project>
+    <path id="classpath">
+        <fileset dir="../lib/java/build/jars" includes="*.jar"/>
+    </path>
+    
+    <target name="clean">
+        <delete dir="build" />
+    </target>
+
+    <target name="compile">
+        <mkdir dir="build/classes" />
+        <javac srcdir="." destdir="build/classes" debug="true" includeAntRuntime="no" classpathref="classpath">
+            <include name="RemoteFilesBindings.java"/>
+            <!-- compilerarg value="-Xlint"/-->   
+        </javac>
+    </target>
+
+    <target name="jar" depends="compile">
+        <mkdir dir="build/jars" />
+        <jar destfile="build/jars/RemoteFilesBindings.jar" basedir="build/classes" />
+    </target>
+
+</project>

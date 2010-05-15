@@ -1,6 +1,6 @@
 import itertools
 from contextlib import contextmanager
-from .base import TargetBase
+from .base import TargetBase, is_complex_type
 from ..langs.python import Module
 from .. import compiler
 
@@ -38,17 +38,6 @@ def type_to_packer(t):
         return type_to_packer(compiler.t_objref)
     return "%r$packer" % (t,)
 
-def is_complex_type(idltype):
-    if isinstance(idltype, compiler.TList):
-        return is_complex_type(idltype.oftype)
-    elif isinstance(idltype, compiler.TList):
-        return is_complex_type(idltype.keytype) or is_complex_type(idltype.valtype)
-    elif isinstance(idltype, compiler.Class):
-        return True
-    elif isinstance(idltype, compiler.Record):
-        return any(is_complex_type(mem.type) for mem in idltype.members)
-    else:
-        return False
 
 def const_to_python(value):
     return repr(value)

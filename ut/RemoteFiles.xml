@@ -72,6 +72,11 @@
 		</method>
 		<method name="up" type="Path" />
 	</class>
+	
+	<record name="Moshe">
+	   <attr name="foo" type="int32"/>
+       <attr name="bar" type="Path"/>
+	</record>
 
 	<func name="open" type="File">
 		<doc>this function opens the given file with the given mode
@@ -90,6 +95,10 @@
 
 	<func name="pathToList" type="list[string]">
 		<arg name="path" type="Path" />
+		<arg name="spam" type="list[File]" />
+        <arg name="bacon" type="list[Path]" />
+        <arg name="eggs" type="list[Moshe]" />
+        <arg name="maps" type="list[Path]" />
 	</func>
 
 </service>

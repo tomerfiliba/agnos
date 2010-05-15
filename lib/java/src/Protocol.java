@@ -2,6 +2,8 @@ package agnos;
 
 import java.io.*;
 import java.util.*;
+import java.lang.ref.*;
+
 
 public class Protocol 
 {
@@ -13,31 +15,29 @@ public class Protocol
 
 	public static final int REPLY_SUCCESS = 0;
 	public static final int REPLY_PROTOCOL_ERROR = 1;
-	public static final int REPLY_PACKED_ERROR = 2;
+	public static final int REPLY_PACKED_EXCEPTION = 2;
 	public static final int REPLY_GENERIC_EXCEPTION = 3;
 
-	public abstract static class PackedException extends Exception {
+	public abstract static class PackedException extends Exception 
+	{
 		public PackedException() {
 		}
-
-		public PackedException(String message) {
-			super(message);
-		}
-
-		public abstract void pack(OutputStream stream, Packers.ISerializer serializer) throws IOException;
 	}
 
-	public static class ProtocolError extends Exception {
+	public static class ProtocolError extends Exception 
+	{
 		public ProtocolError(String message) {
 			super(message);
 		}
 	}
 
-	public static class GenericException extends Exception {
+	public static class GenericException extends Exception 
+	{
+		public String message;
 		public String traceback;
 		
-		public GenericError(String message, String traceback) {
-			super(message);
+		public GenericException(String message, String traceback) {
+			this.message = message;
 			this.traceback = traceback;
 		}
 		
@@ -88,17 +88,7 @@ public class Protocol
 		}
 	}
 
-	protected static String getExceptionTraceback(Exception exc)
-	{
-		StringWriter sw = new StringWriter();
-        PrintWriter pw = new PrintWriter(sw, true);
-        exc.printStackTrace(pw);
-        pw.flush();
-        sw.flush();
-        return sw.toString();
-	}	
-	
-	public static abstract class BaseProcessor implements ISerializer 
+	public static abstract class BaseProcessor implements Packers.ISerializer
 	{
 		protected Map<Long, Cell> cells;
 		protected ObjectIDGenerator idGenerator;
@@ -110,7 +100,10 @@ public class Protocol
 			sendBuffer = new ByteArrayOutputStream(128 * 1024);
 		}
 
-		protected Long store(Object obj) {
+		public Long store(Object obj) {
+			if (obj == null) {
+				return new Long(-1);
+			}
 			Long id = idGenerator.getID(obj);
 			Cell cell = cells.get(id);
 			if (cell == null) {
@@ -123,7 +116,10 @@ public class Protocol
 			return id;
 		}
 
-		protected Object load(Long id) {
+		public Object load(Long id) {
+			if (id < 0) {
+				return null;
+			}
 			Cell cell = cells.get(id);
 			return cell.obj;
 		}
@@ -144,11 +140,14 @@ public class Protocol
 			}
 		}
 
-		protected void send_packed_exception(OutputStream outStream, Integer seq, PackedException exc) throws IOException 
+		protected static String getExceptionTraceback(Exception exc)
 		{
-			Packers.Int32.pack(new Integer(seq), outStream);
-			Packers.Int8.pack(new Byte((byte) REPLY_PACKED_ERROR), outStream);
-			exc.pack(outStream);
+			StringWriter sw = new StringWriter();
+	        PrintWriter pw = new PrintWriter(sw, true);
+	        exc.printStackTrace(pw);
+	        pw.flush();
+	        sw.flush();
+	        return sw.toString();
 		}
 
 		protected void send_protocol_error(OutputStream outStream, Integer seq, ProtocolError exc) throws IOException {
@@ -157,7 +156,7 @@ public class Protocol
 			Packers.Str.pack(exc.toString(), outStream);
 		}
 
-		protected void send_generic_exception(OutputStream outStream, Integer seq, Exception exc) throws IOException 
+		protected void send_generic_exception(OutputStream outStream, Integer seq, GenericException exc) throws IOException 
 		{
 			Packers.Int32.pack(new Integer(seq), outStream);
 			Packers.Int8.pack(new Byte((byte) REPLY_GENERIC_EXCEPTION), outStream);
@@ -191,15 +190,18 @@ public class Protocol
 				default:
 					throw new ProtocolError("unknown command code: " + cmdid);
 				}
-			} catch (ProtocolError exc) {
+			} 
+			catch (ProtocolError exc) {
+				sendBuffer.reset();
 				send_protocol_error(sendBuffer, seq, exc);
-			} catch (PackedException exc) {
-				send_packed_exception(sendBuffer, seq, exc);
-			} catch (GenericException exc) {
+			} 
+			catch (GenericException exc) {
+				sendBuffer.reset();
 				send_generic_exception(sendBuffer, seq, exc);
 			}
 			
 			sendBuffer.writeTo(outStream);
+			outStream.flush();
 		}
 
 		protected void process_decref(InputStream inStream, OutputStream outStream, Integer seq) throws IOException 
@@ -229,19 +231,22 @@ public class Protocol
 		abstract protected void process_invoke(InputStream inStream, OutputStream outStream, int seq) throws Exception;
 	}
 
+	protected enum ReplySlotType
+	{
+		SLOT_EMPTY,
+		SLOT_DISCARDED,
+		SLOT_VALUE,
+		SLOT_EXCEPTION
+	}
+	
 	protected static class ReplySlot
 	{
-		public const int SLOT_EMPTY = 1;
-		public const int SLOT_DISCARDED = 2;
-		public const int SLOT_VALUE = 3;
-		public const int SLOT_EXCEPTION = 4;
-		
-		public int type;
+		public ReplySlotType type;
 		public Object value;
 		
 		public ReplySlot(Packers.IPacker packer)
 		{
-			type = SLOT_EMPTY;
+			type = ReplySlotType.SLOT_EMPTY;
 			value = packer;
 		}
 	}
@@ -260,8 +265,8 @@ public class Protocol
 			_outStream = outStream;
 			_sendBuffer = new ByteArrayOutputStream(128 * 1024);
 			_seq = 0;
-			_replies = HashMap<Integer, ReplySlot>(128);
-			_proxies = HashMap<Long, WeakReference>();
+			_replies = new HashMap<Integer, ReplySlot>(128);
+			_proxies = new HashMap<Long, WeakReference>();
 		}
 
 		public BaseClient(Transports.ITransport transport) throws IOException 
@@ -291,7 +296,7 @@ public class Protocol
 			if (weak == null) {
 				return null;
 			}
-			Object proxy = proxy.get();
+			Object proxy = weak.get();
 			if (proxy == null) {
 				_proxies.remove(objref);
 				return null;
@@ -311,12 +316,13 @@ public class Protocol
 			}
 		}
 
-		protected int _send_invocation(int funcid, OutputStream stream) throws IOException 
+		protected int _send_invocation(OutputStream stream, int funcid, Packers.IPacker packer) throws IOException 
 		{
 			int seq = _get_seq();
 			Packers.Int32.pack(new Integer(seq), stream);
 			Packers.Int8.pack(new Integer(CMD_INVOKE), stream);
 			Packers.Int32.pack(new Integer(funcid), stream);
+			_replies.put(seq, new ReplySlot(packer));
 			return seq;
 		}
 
@@ -328,11 +334,11 @@ public class Protocol
 			return new ProtocolError(message);
 		}
 
-		protected GenericError _load_generic_exception() throws IOException 
+		protected GenericException _load_generic_exception() throws IOException 
 		{
 			String message = (String) Packers.Str.unpack(_inStream);
 			String traceback = (String) Packers.Str.unpack(_inStream);
-			return new GenericError(message, traceback);
+			return new GenericException(message, traceback);
 		}
 
 		protected boolean _process_incoming(int timeout_msecs) throws Exception
@@ -341,7 +347,7 @@ public class Protocol
 			int code = (Byte) (Packers.Int8.unpack(_inStream));
 			
 			ReplySlot slot = _replies.get(seq);
-			if (slot == null || (slot.type != slot.SLOT_EMPTY && slot.type != slot.SLOT_DISCARDED) {
+			if (slot == null || (slot.type != ReplySlotType.SLOT_EMPTY && slot.type != ReplySlotType.SLOT_DISCARDED)) {
 				throw new ProtocolError("invalid reply sequence: " + seq);
 			}
 			Packers.IPacker packer = (Packers.IPacker)slot.value;
@@ -354,17 +360,16 @@ public class Protocol
 				else {
 					slot.value = packer.unpack(_inStream);
 				}
-				slot.type = slot.SLOT_VALUE;
+				slot.type = ReplySlotType.SLOT_VALUE;
 				break;
 			case REPLY_PROTOCOL_ERROR:
 				throw (ProtocolError)(_load_protocol_error().fillInStackTrace());
-				break;
-			case REPLY_PACKED_ERROR:
-				slot.type = slot.SLOT_EXCEPTION;
+			case REPLY_PACKED_EXCEPTION:
+				slot.type = ReplySlotType.SLOT_EXCEPTION;
 				slot.value = _load_packed_exception();
 				break;
 			case REPLY_GENERIC_EXCEPTION:
-				slot.type = slot.SLOT_EXCEPTION;
+				slot.type = ReplySlotType.SLOT_EXCEPTION;
 				slot.value = _load_generic_exception();
 				break;
 			default:
@@ -377,12 +382,12 @@ public class Protocol
 		protected boolean _is_reply_ready(int seq)
 		{
 			ReplySlot slot = _replies.get(seq);
-			return slot.type == SLOT_VALUE || slot.type == SLOT_EXCEPTION;
+			return slot.type == ReplySlotType.SLOT_VALUE || slot.type == ReplySlotType.SLOT_EXCEPTION;
 		}
 		
 		protected ReplySlot _wait_reply(int seq, int timeout_msecs) throws Exception
 		{
-			while (!_is_reply_ready(seq, timeout_msecs)) {
+			while (!_is_reply_ready(seq)) {
 				_process_incoming(timeout_msecs);
 			}
 			return _replies.remove(seq);
@@ -391,19 +396,19 @@ public class Protocol
 		protected Object _get_reply(int seq, int timeout_msecs) throws Exception
 		{
 			ReplySlot slot = _wait_reply(seq, timeout_msecs);
-			if (slot.type == slot.SLOT_VALUE) {
+			if (slot.type == ReplySlotType.SLOT_VALUE) {
 				return slot.value;
 			}
-			else if (slot.type != slot.SLOT_VALUE) {
-				slot.value.fillInStackTrace()
-				throw slot.value;
+			else if (slot.type == ReplySlotType.SLOT_EXCEPTION) {
+				((Exception)slot.value).fillInStackTrace();
+				throw (Exception)slot.value;
 			}
 			else {
 				throw new Exception("invalid slot type: " + slot.type);
 			}
 		}
 
-		protected Object _get_reply(int seq, int timeout_msecs) throws Exception
+		protected Object _get_reply(int seq) throws Exception
 		{
 			return _get_reply(seq, -1);
 		}

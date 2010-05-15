@@ -1,18 +1,18 @@
 import java.util.*;
 import java.io.*;
-import RemoteFiles.Types.*;
-import RemoteFiles.Service.*;
+import RemoteFilesBindings.*;
+
 
 public class myclient
 {
 	public static void main(String[] args)
 	{
 		try {
-			Client c = new Client(
-					new agnos.Servers.SocketTransport("localhost", 17732));
+			RemoteFilesBindings.Client c = new RemoteFilesBindings.Client(
+					new agnos.Transports.SocketTransport("localhost", 17732));
 			
 			try {
-				FileProxy f = c.open("/tmp/foo", "w");
+				RemoteFilesBindings.FileProxy f = c.open("/tmp/foo", "w");
 				System.out.println("f = " + f);
 				f.write("hello world".getBytes());
 
@@ -22,7 +22,7 @@ public class myclient
 				boolean got_exc = false;
 				try {
 					f.flush();
-				} catch (UnderlyingIOError exc) {
+				} catch (RemoteFilesBindings.UnderlyingIOError exc) {
 					got_exc = true;
 					System.out.println("matched: " + exc);
 				}
@@ -32,14 +32,14 @@ public class myclient
 					// should cause NullPointer, since opened for writing
 					f.read(10); 
 				}
-				catch (agnos.Protocol.GenericError exc) {
+				catch (agnos.Protocol.GenericException exc) {
 					System.out.println("matched: " + exc);
 				}
 				
 				f.close();
 
-				FileProxy f1 = c.open("/tmp/foo", "r");
-				FileProxy f2 = c.open("/tmp/foo2", "w");
+				RemoteFilesBindings.FileProxy f1 = c.open("/tmp/foo", "r");
+				RemoteFilesBindings.FileProxy f2 = c.open("/tmp/foo2", "w");
 				c.copy(f1, f2);
 				f1.close();
 				f2.close();
@@ -49,11 +49,12 @@ public class myclient
 				System.out.println("copy = " + new String(data));
 				
 				System.out.println("client finished successfully");
-
-			} finally {
+			} 
+			finally {
 				c.close();
 			}
-		} catch (Exception ex) {
+		} 
+		catch (Exception ex) {
 			ex.printStackTrace();
 		}
 	}

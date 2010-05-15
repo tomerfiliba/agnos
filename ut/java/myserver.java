@@ -1,13 +1,11 @@
 import java.util.*;
 import java.io.*;
-//import agnos.*;
-import RemoteFiles.Service.*;
-import RemoteFiles.Types.*;
+import RemoteFilesBindings.*;
 
 
 public class myserver
 {
-	public static class MyFile implements IFile
+	public static class MyFile implements RemoteFilesBindings.IFile
 	{
 		protected String	_filename;
 		protected OutputStream fout;
@@ -23,7 +21,7 @@ public class myserver
 				fout = new FileOutputStream(filename);
 			}
 			else {
-				throw new UnderlyingIOError("invalid mode: " + mode, Errno.EFAULT);
+				throw new RemoteFilesBindings.UnderlyingIOError("invalid mode: " + mode, RemoteFilesBindings.Errno.EFAULT);
 			}
 		}
 
@@ -32,9 +30,9 @@ public class myserver
 			return _filename;
 		}
 
-		public StatRes stat() throws Exception
+		public RemoteFilesBindings.StatRes stat() throws Exception
 		{
-			return new StatRes(new Integer(15), new Integer(12345),
+			return new RemoteFilesBindings.StatRes(new Integer(15), new Integer(12345),
 					new Integer(17772), new Integer(1001), new Integer(1002),
 					new Date(278346812), new Date(286621112), new Date(181775244));
 		}
@@ -66,13 +64,13 @@ public class myserver
 
 		public void flush() throws Exception
 		{
-			throw new UnderlyingIOError("cannot flush", Errno.EFAULT);
+			throw new RemoteFilesBindings.UnderlyingIOError("cannot flush", RemoteFilesBindings.Errno.EFAULT);
 		}
 	}
 
-	public static class MyHandler implements IHandler
+	public static class MyHandler implements RemoteFilesBindings.IHandler
 	{
-		public void copy(IFile src, IFile dst) throws Exception
+		public void copy(RemoteFilesBindings.IFile src, RemoteFilesBindings.IFile dst) throws Exception
 		{
 			System.out.println("@copy: src= " + src + ", dst = " + dst);
 			byte[] buf;
@@ -84,19 +82,28 @@ public class myserver
 			}
 		}
 
-		public IFile open(String filename, String mode) throws Exception
+		public RemoteFilesBindings.IFile open(String filename, String mode) throws Exception
 		{
 			System.out.println("@open: filename = '" + filename + "', mode = '" + mode + "'");
 			return new MyFile(filename, mode);
 		}
+
+        public List<String> pathToList(RemoteFilesBindings.IPath path, List<RemoteFilesBindings.IFile> spam, List<RemoteFilesBindings.IPath> bacon, List<RemoteFilesBindings.Moshe> eggs, List<RemoteFilesBindings.IPath> maps) throws Exception
+        {
+        	List<String> arr = new ArrayList<String>();
+        	arr.add("hello");
+        	arr.add("world");
+        	return arr;
+        }
+
 	}
 
 	public static void main(String[] args)
 	{
 		try {
 			agnos.Servers.SimpleServer server = new agnos.Servers.SimpleServer(
-					new Processor(new MyHandler()),
-					new agnos.Servers.SocketTransportFactory("localhost", 17732));
+					new RemoteFilesBindings.Processor(new MyHandler()),
+					new agnos.Transports.SocketTransportFactory("localhost", 17732));
 
 			server.serve();
 		} catch (Exception ex) {

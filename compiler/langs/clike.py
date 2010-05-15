@@ -3,7 +3,7 @@ from contextlib import contextmanager
 
 class Stmt(object):
     def __init__(self, text, *args, **kwargs):
-        self.colon = kwargs.pop("colon", True)
+        self.suffix = kwargs.pop("suffix", ";")
         if kwargs:
             raise TypeError("invalid keyword arguments %r" % (kwargs.keys(),))
         if args:
@@ -11,9 +11,9 @@ class Stmt(object):
         self.text = text
     
     def render(self):
-        return [self.text + (";" if self.colon else "")]
+        return [self.text + self.suffix]
 
-EmptyStmt = Stmt("", colon = False)
+EmptyStmt = Stmt("", suffix = "")
 
 class Doc(object):
     def __init__(self, text, box = False, spacer = False):
@@ -38,7 +38,7 @@ class Block(object):
         self.suffix = kwargs.pop("suffix", "}")
         if kwargs:
             raise TypeError("invalid keyword arguments %r" % (kwargs.keys(),))
-        self.title = Stmt(text, *args, colon = False)
+        self.title = Stmt(text, *args, suffix = "")
         self.children = []
         self.stack = []
     

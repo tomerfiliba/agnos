@@ -5,19 +5,13 @@ import java.util.*;
 
 public class Packers
 {
-	public interface ISerializer
-	{
-		Long store(Object obj);
-		Object load(Long id);
-	}
-	
 	public interface IPacker
 	{
 		void pack(Object obj, OutputStream stream) throws IOException;
 		Object unpack(InputStream stream) throws IOException;
 	}
 	
-	/*private static String repr(byte[] buffer)
+	private static String repr(byte[] buffer)
 	{
 		StringBuilder sb = new StringBuilder(buffer.length);
 		int b;
@@ -37,12 +31,12 @@ public class Packers
 			}
 		}
 		return sb.toString();
-	}*/
+	}
 
 	protected static void _write(OutputStream stream, byte[] buffer)
 			throws IOException
 	{
-		//System.out.println("W: " + repr(buffer));
+		System.out.println("W: " + repr(buffer));
 		stream.write(buffer, 0, buffer.length);
 	}
 
@@ -60,7 +54,7 @@ public class Packers
 			}
 		}
 		
-		//System.out.println("R: " + repr(buffer));
+		System.out.println("R: " + repr(buffer));
 	}
 
 	//////////////////////////////////////////////////////////////////////////
@@ -200,14 +194,19 @@ public class Packers
 	public static _Int64 Int64 = new _Int64();
 
 	//////////////////////////////////////////////////////////////////////////
-
-	public static class _ObjRef implements IPacker
+	public interface ISerializer
+	{
+		Long store(Object obj);
+		Object load(Long id);
+	}
+	
+	public static class ObjRef implements IPacker
 	{
 		protected ISerializer serializer;
 		
-		public _ObjRef(ISerializer serializer)
+		public ObjRef(ISerializer serializer)
 		{
-			this.serializer = serializer
+			this.serializer = serializer;
 		}
 
 		public void pack(Object obj, OutputStream stream) throws IOException
@@ -218,7 +217,7 @@ public class Packers
 
 		public Object unpack(InputStream stream) throws IOException
 		{
-			Long obj = Int64.unpack(stream);
+			Long obj = (Long)Int64.unpack(stream);
 			return serializer.load(obj);
 		}
 	}

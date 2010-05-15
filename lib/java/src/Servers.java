@@ -9,7 +9,7 @@ public class Servers
 	public abstract static class BaseServer
 	{
 		protected Protocol.BaseProcessor processor;
-		protected ITransportFactory transportFactory;
+		protected Transports.ITransportFactory transportFactory;
 		
 		public BaseServer(Protocol.BaseProcessor processor, Transports.ITransportFactory transportFactory)
 		{
@@ -21,13 +21,13 @@ public class Servers
 		{
 			while (true)
 			{
-				ITransport transport = transportFactory.accept();
+				Transports.ITransport transport = transportFactory.accept();
 				_handleClient(transport);
 				System.out.println("goodbye");
 			}
 		}
 
-		protected abstract void _handleClient(ITransport transport) throws Exception;
+		protected abstract void _handleClient(Transports.ITransport transport) throws Exception;
 	}
 
 	public static class SimpleServer extends BaseServer
@@ -37,7 +37,7 @@ public class Servers
 			super(processor, transportFactory);
 		}
 
-		protected void _handleClient(ITransport transport) throws Exception
+		protected void _handleClient(Transports.ITransport transport) throws Exception
 		{
 			InputStream inStream = transport.getInputStream();
 			OutputStream outStream = transport.getOutputStream();
@@ -67,7 +67,7 @@ public class Servers
 			super(processor, transportFactory);
 		}
 
-		protected void _handleClient(ITransport transport) throws Exception
+		protected void _handleClient(Transports.ITransport transport) throws Exception
 		{
 			InputStream inStream = transport.getInputStream();
 			OutputStream outStream = transport.getOutputStream();
