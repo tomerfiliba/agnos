@@ -1,6 +1,6 @@
 import itertools
 from contextlib import contextmanager
-from .base import TargetBase, is_complex_type
+from .base import TargetBase, is_complex_type, NOOP
 from ..langs import clike
 from .. import compiler
 
@@ -99,13 +99,6 @@ def const_to_java(typ, val):
     else:
         raise IDLError("%r cannot be converted to a java const" % (val,))
 
-
-class NOOP(object):
-    def __enter__(self):
-        pass
-    def __exit__(self, *args):
-        pass
-NOOP = NOOP()
 
 class JavaTarget(TargetBase):
     DEFAULT_TARGET_DIR = "."
@@ -414,6 +407,41 @@ class JavaTarget(TargetBase):
             SEP()
             self.generate_process_invoke(module, service)
     
+    def generate_process_invoke(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+
+        with BLOCK("protected void process_invoke(InputStream inStream, OutputStream outStream, int seq) throws Exception"):
+            STMT("int funcid = (Integer){0}.unpack(inStream)", type_to_packer(compiler.t_int32))
+            STMT("Packers.IPacker packer = null")
+            STMT("Object result = null")
+            STMT("Object inst = null")
+            STMT("Object[] args = null")
+            packed_exceptions = [tp for tp in service.types.values() if isinstance(tp, compiler.Exception)]
+
+            with BLOCK("try") if packed_exceptions else NOOP:
+                with BLOCK("switch (funcid)"):
+                    for func in service.funcs.values():
+                        with BLOCK("case {0}:", func.id, prefix = None, suffix = None):
+                            self.generate_invocation_case(module, func)
+                            if func.type != compiler.t_void:
+                                STMT("packer = {0}", type_to_packer(func.type))
+                            STMT("break")
+                    with BLOCK("default:", prefix = None, suffix = None):
+                        STMT('throw new Protocol.ProtocolError("unknown function id: " + funcid)')
+                SEP()
+                STMT("{0}.pack(new Integer(seq), outStream)", type_to_packer(compiler.t_int32))
+                STMT("{0}.pack(new Byte((byte)Protocol.REPLY_SUCCESS), outStream)", type_to_packer(compiler.t_int8))
+                with BLOCK("if (packer != null)"):
+                    STMT("packer.pack(result, outStream)")
+            for tp in packed_exceptions:
+                with BLOCK("catch ({0} ex)", tp.name):
+                    STMT("{0}.pack(new Integer(seq), outStream)", type_to_packer(compiler.t_int32))
+                    STMT("{0}.pack(new Byte((byte)Protocol.REPLY_PACKED_EXCEPTION), outStream)", type_to_packer(compiler.t_int8))
+                    STMT("{0}.pack(ex.__recid, outStream)", type_to_packer(compiler.t_int32))
+                    STMT("{0}.pack(ex, outStream)", type_to_packer(tp))
+
     def generate_invocation_case(self, module, func):
         BLOCK = module.block
         STMT = module.stmt
@@ -462,42 +490,7 @@ class JavaTarget(TargetBase):
             STMT("throw ex")
         with BLOCK("catch (Exception ex) {0}", "{", prefix = ""):
             STMT("throw new Protocol.GenericException(ex.toString(), getExceptionTraceback(ex))")
-    
-    def generate_process_invoke(self, module, service):
-        BLOCK = module.block
-        STMT = module.stmt
-        SEP = module.sep
-
-        with BLOCK("protected void process_invoke(InputStream inStream, OutputStream outStream, int seq) throws Exception"):
-            STMT("int funcid = (Integer){0}.unpack(inStream)", type_to_packer(compiler.t_int32))
-            STMT("Packers.IPacker packer = null")
-            STMT("Object result = null")
-            STMT("Object inst = null")
-            STMT("Object[] args = null")
-            packed_exceptions = [tp for tp in service.types.values() if isinstance(tp, compiler.Exception)]
-
-            with BLOCK("try") if packed_exceptions else NOOP:
-                with BLOCK("switch (funcid)"):
-                    for func in service.funcs.values():
-                        with BLOCK("case {0}:", func.id, prefix = None, suffix = None):
-                            self.generate_invocation_case(module, func)
-                            if func.type != compiler.t_void:
-                                STMT("packer = {0}", type_to_packer(func.type))
-                            STMT("break")
-                    with BLOCK("default:", prefix = None, suffix = None):
-                        STMT('throw new Protocol.ProtocolError("unknown function id: " + funcid)')
-                SEP()
-                STMT("{0}.pack(new Integer(seq), outStream)", type_to_packer(compiler.t_int32))
-                STMT("{0}.pack(new Byte((byte)Protocol.REPLY_SUCCESS), outStream)", type_to_packer(compiler.t_int8))
-                with BLOCK("if (packer != null)"):
-                    STMT("packer.pack(result, outStream)")
-            for tp in packed_exceptions:
-                with BLOCK("catch ({0} ex)", tp.name):
-                    STMT("{0}.pack(new Integer(seq), outStream)", type_to_packer(compiler.t_int32))
-                    STMT("{0}.pack(new Byte((byte)Protocol.REPLY_PACKED_EXCEPTION), outStream)", type_to_packer(compiler.t_int8))
-                    STMT("{0}.pack(ex.__recid, outStream)", type_to_packer(compiler.t_int32))
-                    STMT("{0}.pack(ex, outStream)", type_to_packer(tp))
-    
+        
     def generate_client_namespaces(self, module, service):
         nsid = itertools.count(0)
         root = {"__id__" : nsid.next()}
@@ -552,54 +545,8 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         with BLOCK("public static class Client extends Protocol.BaseClient"):
-            for tp in service.types.values():
-                if isinstance(tp, compiler.Class):
-                    STMT("protected Packers.ObjRef {0}ObjRef", tp.name)
+            self.generate_client_packers(module, service)
             SEP()
-            generated_records = []
-            for member in service.types.values():
-                if isinstance(member, compiler.Record):
-                    if is_complex_type(member):
-                        self.generate_record_packer(module, member, static = False)
-                        generated_records.append(member)
-                        SEP()
-            self.generate_templated_packers(module, service)
-            SEP()
-            with BLOCK("protected abstract class ClientSerializer implements Packers.ISerializer"):
-                with BLOCK("public Long store(Object obj)"):
-                    with BLOCK("if (obj == null)"):
-                        STMT("return new Long(-1)")
-                    STMT("return ((BaseProxy)obj)._objref")
-                SEP()
-                with BLOCK("public Object load(Long id)"):
-                    with BLOCK("if (id < 0)"):
-                        STMT("return null")
-                    STMT("return _get_proxy(id)")
-                SEP()
-                STMT("protected abstract Object _get_proxy(Long id)")
-            SEP()
-            namespaces = self.generate_client_namespaces(module, service)
-            SEP()
-            with BLOCK("public Client(InputStream inStream, OutputStream outStream)"):
-                STMT("super(inStream, outStream)")
-                STMT("final Client the_client = this")
-                for tp in service.types.values():
-                    if isinstance(tp, compiler.Class):
-                        with BLOCK("{0}ObjRef = new Packers.ObjRef(new ClientSerializer() {1}", 
-                                tp.name, "{", prefix = "", suffix = "});"):
-                            with BLOCK("protected Object _get_proxy(Long id)"):
-                                STMT("Object proxy = the_client._get_proxy(id)")
-                                with BLOCK("if (proxy == null)"):
-                                    STMT("proxy = new {0}(the_client, id)", type_to_java(tp, proxy = True))
-                                STMT("return proxy")
-                if generated_records:
-                    SEP()
-                    for rec in generated_records:
-                        STMT("{0}Packer = new _{0}Packer()", rec.name)
-                if namespaces:
-                    SEP()
-                    for name, id in namespaces:
-                        STMT("{0} = new _Namespace{1}(this)", name, id)
             with BLOCK("public Client(Transports.ITransport transport) throws IOException"):
                 STMT("super(transport)")
             SEP()
@@ -618,30 +565,92 @@ class JavaTarget(TargetBase):
                     with BLOCK("default:", prefix = None, suffix = None):
                         STMT('throw new Protocol.ProtocolError("unknown exception class id: " + clsid)')
             SEP()
-            for func in service.funcs.values():
-                if isinstance(func, compiler.Func) and not func.namespace:
-                    access = "public"
-                else:
-                    access = "protected"
+            self.generate_client_funcs(module, service)
+    
+    def generate_client_packers(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        DOC = module.doc
+        for tp in service.types.values():
+            if isinstance(tp, compiler.Class):
+                STMT("protected Packers.ObjRef {0}ObjRef", tp.name)
+        SEP()
+        generated_records = []
+        for member in service.types.values():
+            if isinstance(member, compiler.Record):
+                if is_complex_type(member):
+                    self.generate_record_packer(module, member, static = False)
+                    generated_records.append(member)
+                    SEP()
+        self.generate_templated_packers(module, service)
+        SEP()
+        with BLOCK("protected abstract class ClientSerializer implements Packers.ISerializer"):
+            with BLOCK("public Long store(Object obj)"):
+                with BLOCK("if (obj == null)"):
+                    STMT("return new Long(-1)")
+                STMT("return ((BaseProxy)obj)._objref")
+            SEP()
+            with BLOCK("public Object load(Long id)"):
+                with BLOCK("if (id < 0)"):
+                    STMT("return null")
+                STMT("return _get_proxy(id)")
+            SEP()
+            STMT("protected abstract Object _get_proxy(Long id)")
+        SEP()
+        namespaces = self.generate_client_namespaces(module, service)
+        SEP()
+        with BLOCK("public Client(InputStream inStream, OutputStream outStream)"):
+            STMT("super(inStream, outStream)")
+            STMT("final Client the_client = this")
+            for tp in service.types.values():
+                if isinstance(tp, compiler.Class):
+                    with BLOCK("{0}ObjRef = new Packers.ObjRef(new ClientSerializer() {1}", 
+                            tp.name, "{", prefix = "", suffix = "});"):
+                        with BLOCK("protected Object _get_proxy(Long id)"):
+                            STMT("Object proxy = the_client._get_proxy(id)")
+                            with BLOCK("if (proxy == null)"):
+                                STMT("proxy = new {0}(the_client, id)", type_to_java(tp, proxy = True))
+                            STMT("return proxy")
+            if generated_records:
+                SEP()
+                for rec in generated_records:
+                    STMT("{0}Packer = new _{0}Packer()", rec.name)
+            if namespaces:
+                SEP()
+                for name, id in namespaces:
+                    STMT("{0} = new _Namespace{1}(this)", name, id)    
+    
+    def generate_client_funcs(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        DOC = module.doc
+        for func in service.funcs.values():
+            if isinstance(func, compiler.Func) and not func.namespace:
+                access = "public"
+            else:
+                access = "protected"
 
-                args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in func.args)
-                with BLOCK("protected int {0}_send({1}) throws Exception", func.fullname, args):
-                    STMT("_sendBuffer.reset()")
-                    STMT("int seq = _send_invocation(_sendBuffer, {0}, {1})", func.id, type_to_packer(func.type))
-                    for arg in func.args:
-                        STMT("{0}.pack({1}, _sendBuffer)", type_to_packer(arg.type), arg.name)
-                    STMT("_sendBuffer.writeTo(_outStream)")
-                    STMT("return seq")
-                SEP()
-                if access == "public":
-                    self.emit_func_javadoc(func, module)
-                with BLOCK("{0} {1} {2}({3}) throws Exception", access, type_to_java(func.type, proxy = True), func.fullname, args):
-                    STMT("int seq = {0}_send({1})", func.fullname, ", ".join(arg.name for arg in func.args))
-                    STMT("Object res = _get_reply(seq)")
-                    if func.type != compiler.t_void:
-                        STMT("return ({0})res", type_to_java(func.type, proxy = True))
-                SEP()
-                # timed and async
+            args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in func.args)
+            with BLOCK("protected int {0}_send({1}) throws Exception", func.fullname, args):
+                STMT("_sendBuffer.reset()")
+                STMT("int seq = _send_invocation(_sendBuffer, {0}, {1})", func.id, type_to_packer(func.type))
+                for arg in func.args:
+                    STMT("{0}.pack({1}, _sendBuffer)", type_to_packer(arg.type), arg.name)
+                STMT("_sendBuffer.writeTo(_outStream)")
+                STMT("_sendBuffer.flush()")
+                STMT("return seq")
+            SEP()
+            if access == "public":
+                self.emit_func_javadoc(func, module)
+            with BLOCK("{0} {1} {2}({3}) throws Exception", access, type_to_java(func.type, proxy = True), func.fullname, args):
+                STMT("int seq = {0}_send({1})", func.fullname, ", ".join(arg.name for arg in func.args))
+                STMT("Object res = _get_reply(seq)")
+                if func.type != compiler.t_void:
+                    STMT("return ({0})res", type_to_java(func.type, proxy = True))
+            SEP()
+            # timed and async
 
 
 

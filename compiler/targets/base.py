@@ -2,6 +2,14 @@ import os
 from .. import compiler
 
 
+class NOOP(object):
+    def __enter__(self):
+        pass
+    def __exit__(self, *args):
+        pass
+NOOP = NOOP()
+
+
 def is_complex_type(idltype):
     if isinstance(idltype, compiler.TList):
         return is_complex_type(idltype.oftype)

@@ -110,9 +110,9 @@ public class Protocol
 				cell = new Cell(obj);
 				cells.put(id, cell);
 			}
-			else {
-				cell.incref();
-			}
+			//else {
+			//	cell.incref();
+			//}
 			return id;
 		}
 

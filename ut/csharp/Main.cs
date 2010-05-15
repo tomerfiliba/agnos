@@ -35,7 +35,7 @@ namespace client_test
 					// should cause NullPointer, since opened for writing
 					f.read(10); 
 				}
-				catch (Agnos.GenericError exc) {
+				catch (Agnos.GenericException exc) {
 					System.Console.WriteLine("matched: " + exc);
 				}
 				

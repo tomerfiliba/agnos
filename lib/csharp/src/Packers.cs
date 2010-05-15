@@ -58,7 +58,9 @@ namespace Agnos
                 throw new EndOfStreamException("read error", ex);
             }
         }
-		
+
+        /////////////////////////////////////////////////////////////////////
+
 		public class _Int8 : IPacker
 		{
 			private byte[] buffer = new byte[1];
@@ -84,8 +86,9 @@ namespace Agnos
 		}
 
 		public static _Int8 Int8 = new _Int8();
+
+        /////////////////////////////////////////////////////////////////////
 	
-			
 		public class _Bool : IPacker
 		{
 			internal _Bool(){}
@@ -102,7 +105,9 @@ namespace Agnos
 		}
 	
 		public static _Bool	Bool	= new _Bool();
-	
+
+        /////////////////////////////////////////////////////////////////////
+
 		public class _Int16 : IPacker
 		{
 			private byte[]	buffer	= new byte[2];
@@ -128,7 +133,9 @@ namespace Agnos
 		}
 	
 		public static _Int16	Int16 = new _Int16();
-	
+
+        /////////////////////////////////////////////////////////////////////
+
 		public class _Int32 : IPacker
 		{
 			private byte[]	buffer	= new byte[4];
@@ -157,7 +164,9 @@ namespace Agnos
 		}
 	
 		public static _Int32	Int32 = new _Int32();
-	
+
+        /////////////////////////////////////////////////////////////////////
+
 		public class _Int64 : IPacker
 		{
 			private byte[]	buffer	= new byte[8];
@@ -193,9 +202,39 @@ namespace Agnos
 		}
 	
 		public static _Int64	Int64	= new _Int64();
-		public static _Int64	ObjRef	= Int64;
-	
-		public class _Float : IPacker
+
+        /////////////////////////////////////////////////////////////////////
+        
+        public interface ISerializer
+        {
+            long store(object obj);
+            object load(long id);
+        }
+
+        public class ObjRef : IPacker
+        {
+            private byte[] buffer = new byte[8];
+            ISerializer serializer;
+
+            public ObjRef(ISerializer serializer) 
+            {
+                this.serializer = serializer;
+            }
+
+            public void pack(object obj, Stream stream)
+            {
+                Int64.pack(serializer.store(obj), stream);
+            }
+
+            public object unpack(Stream stream)
+            {
+                return serializer.load((long)Int64.unpack(stream));
+            }
+        }
+
+        /////////////////////////////////////////////////////////////////////
+
+        public class _Float : IPacker
 		{
 			internal _Float(){}
 
@@ -215,8 +254,10 @@ namespace Agnos
 		}
 	
 		public static _Float	Float	= new _Float();
-	
-		public class _Buffer : IPacker
+
+        /////////////////////////////////////////////////////////////////////
+
+        public class _Buffer : IPacker
 		{
 			internal _Buffer(){}
 
@@ -242,8 +283,10 @@ namespace Agnos
 		}
 	
 		public static _Buffer	Buffer	= new _Buffer();
-	
-		public class _Date : IPacker
+
+        /////////////////////////////////////////////////////////////////////
+
+        public class _Date : IPacker
 		{
 			private static DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
@@ -264,8 +307,10 @@ namespace Agnos
 		}
 	
 		public static _Date	Date	= new _Date();
-	
-		public class _Str : IPacker
+
+        /////////////////////////////////////////////////////////////////////
+
+        public class _Str : IPacker
 		{
 			private static UTF8Encoding utf8 = new UTF8Encoding();
 			
@@ -289,8 +334,10 @@ namespace Agnos
 		}
 	
 		public static _Str	Str	= new _Str();
-	
-		public class ListOf : IPacker
+
+        /////////////////////////////////////////////////////////////////////
+
+        public class ListOf : IPacker
 		{
 			private IPacker	type;
 	
@@ -323,8 +370,10 @@ namespace Agnos
 				return arr;
 			}
 		}
-	
-		public class MapOf : IPacker
+
+        /////////////////////////////////////////////////////////////////////
+
+        public class MapOf : IPacker
 		{
 			private IPacker	keytype;
 			private IPacker	valtype;
