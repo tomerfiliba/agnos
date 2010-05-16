@@ -534,7 +534,8 @@ class CSharpTarget(TargetBase):
         with BLOCK("public class Client : Protocol.BaseClient"):
             self.generate_client_packers(module, service)
             SEP()
-            with BLOCK("public Client(Agnos.Transports.ITransport transport) : base(transport)"):
+            with BLOCK("public Client(Agnos.Transports.ITransport transport) : " +
+                    "this(transport.getInputStream(), transport.getOutputStream())"):
                 pass
             SEP()
             with BLOCK("internal new void _decref(long id)"):

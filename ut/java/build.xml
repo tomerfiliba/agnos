@@ -1,5 +1,9 @@
 <project>
 
+	<path id="classpath2">
+		<fileset dir="../../lib/java/build/jars" includes="*.jar" />
+	</path>
+
 	<path id="classpath">
 		<fileset dir="../../lib/java/build/jars" includes="*.jar" />
         <fileset dir="build/jars" includes="*.jar" />
@@ -12,12 +16,13 @@
     <target name="compile-RemoteFilesBindings">
         <mkdir dir="build/RemoteFilesBindings" />
         <javac srcdir=".." destdir="build/RemoteFilesBindings" debug="true"
-            includeAntRuntime="no" classpathref="classpath">
+            includeAntRuntime="no" classpathref="classpath2">
             <include name="RemoteFilesBindings.java" />
         </javac>
     </target>
 
 	<target name="jar-RemoteFilesBindings" depends="compile-RemoteFilesBindings">
+		<mkdir dir="build/jars" />
         <jar destfile="build/jars/RemoteFilesBindings.jar" basedir="build/RemoteFilesBindings" />
 	</target>
 

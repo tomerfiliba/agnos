@@ -21,6 +21,7 @@ public class Servers
 		{
 			while (true)
 			{
+				System.out.println("accepting...");
 				Transports.ITransport transport = transportFactory.accept();
 				_handleClient(transport);
 				System.out.println("goodbye");

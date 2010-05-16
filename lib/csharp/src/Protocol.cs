@@ -272,11 +272,6 @@ namespace Agnos
                 _proxies = new Dictionary<long, WeakReference>();
             }
 
-            public BaseClient(Transports.ITransport transport) :
-                this(transport.getInputStream(), transport.getOutputStream())
-            {
-            }
-
             ~BaseClient()
             {
                 Dispose();

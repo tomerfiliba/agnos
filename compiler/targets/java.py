@@ -548,7 +548,7 @@ class JavaTarget(TargetBase):
             self.generate_client_packers(module, service)
             SEP()
             with BLOCK("public Client(Transports.ITransport transport) throws IOException"):
-                STMT("super(transport)")
+                STMT("this(transport.getInputStream(), transport.getOutputStream())")
             SEP()
             with BLOCK("protected void _decref(Long id)"):
                 # to avoid protectedness issues
@@ -639,7 +639,7 @@ class JavaTarget(TargetBase):
                 for arg in func.args:
                     STMT("{0}.pack({1}, _sendBuffer)", type_to_packer(arg.type), arg.name)
                 STMT("_sendBuffer.writeTo(_outStream)")
-                STMT("_sendBuffer.flush()")
+                STMT("_outStream.flush()")
                 STMT("return seq")
             SEP()
             if access == "public":

@@ -269,11 +269,6 @@ public class Protocol
 			_proxies = new HashMap<Long, WeakReference>();
 		}
 
-		public BaseClient(Transports.ITransport transport) throws IOException 
-		{
-			this(transport.getInputStream(), transport.getOutputStream());
-		}
-
 		public void close() throws IOException 
 		{
 			if (_inStream != null) {
@@ -311,6 +306,7 @@ public class Protocol
 				Packers.Int32.pack(new Integer(seq), _outStream);
 				Packers.Int8.pack(new Integer(CMD_DECREF), _outStream);
 				Packers.Int64.pack(id, _outStream);
+				_outStream.flush();
 			} catch (Exception ignored) {
 				// ignored
 			}
@@ -351,7 +347,10 @@ public class Protocol
 				throw new ProtocolError("invalid reply sequence: " + seq);
 			}
 			Packers.IPacker packer = (Packers.IPacker)slot.value;
-			
+
+			//System.out.println("C: got reply " + seq + " code = " + code);
+			//System.out.println("C: packer = " + packer);
+
 			switch (code) {
 			case REPLY_SUCCESS:
 				if (packer == null) {
@@ -360,6 +359,7 @@ public class Protocol
 				else {
 					slot.value = packer.unpack(_inStream);
 				}
+				//System.out.println("C: slot.value = " + slot.value);
 				slot.type = ReplySlotType.SLOT_VALUE;
 				break;
 			case REPLY_PROTOCOL_ERROR:

@@ -11,7 +11,7 @@ public class Packers
 		Object unpack(InputStream stream) throws IOException;
 	}
 	
-	private static String repr(byte[] buffer)
+	/*private static String repr(byte[] buffer)
 	{
 		StringBuilder sb = new StringBuilder(buffer.length);
 		int b;
@@ -31,12 +31,12 @@ public class Packers
 			}
 		}
 		return sb.toString();
-	}
+	}*/
 
 	protected static void _write(OutputStream stream, byte[] buffer)
 			throws IOException
 	{
-		System.out.println("W: " + repr(buffer));
+		//System.out.println("W: " + repr(buffer));
 		stream.write(buffer, 0, buffer.length);
 	}
 
@@ -54,7 +54,7 @@ public class Packers
 			}
 		}
 		
-		System.out.println("R: " + repr(buffer));
+		//System.out.println("R: " + repr(buffer));
 	}
 
 	//////////////////////////////////////////////////////////////////////////
