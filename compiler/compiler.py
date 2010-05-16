@@ -7,6 +7,20 @@ from .idl import parse_const, parse_template, IDLError
 
 ID_GENERATOR = itertools.count(900000)
 
+
+def is_complex_type(idltype):
+    if isinstance(idltype, TList):
+        return is_complex_type(idltype.oftype)
+    elif isinstance(idltype, TList):
+        return is_complex_type(idltype.keytype) or is_complex_type(idltype.valtype)
+    elif isinstance(idltype, Class):
+        return True
+    elif isinstance(idltype, Record):
+        return any(is_complex_type(mem.type) for mem in idltype.members)
+    else:
+        return False
+
+
 def DEFAULT(default):
     def checker(name, v):
         return v if v else default
@@ -160,6 +174,11 @@ class Record(Element):
 
     def stringify(self):
         return self.name
+
+    def get_complex_types(self):
+        return sorted(
+            set(mem.type for mem in self.members if is_complex_type(mem.type)),
+            key = lambda tp: tp.name)
 
     def _resolve(self, service):
         for mem in self.members:

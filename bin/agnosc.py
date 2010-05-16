@@ -42,7 +42,7 @@ if __name__ == "__main__":
     options, args = parser.parse_args()
     args = ["../ut/RemoteFiles.xml"]
     #args = ["../srcgen/examples/mextra.xml"]
-    options.target = "java"
+    options.target = "cs"
     if not args:
         parser.error("must specify agnos input file(s)")
     if not options.target:

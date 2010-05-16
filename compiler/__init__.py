@@ -1,4 +1,3 @@
-from .compiler import compile, load_spec, IDLError
-#from .targets import JavaTarget, PythonTarget, CSharpTarget, CPPTarget, DocTarget
+from .compiler import compile, load_spec, IDLError, is_complex_type
 
 

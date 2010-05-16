@@ -213,7 +213,6 @@ namespace Agnos
 
         public class ObjRef : IPacker
         {
-            private byte[] buffer = new byte[8];
             ISerializer serializer;
 
             public ObjRef(ISerializer serializer) 

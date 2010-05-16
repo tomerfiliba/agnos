@@ -1,5 +1,5 @@
 import os
-from .. import compiler
+from .. import compiler, is_complex_type
 
 
 class NOOP(object):
@@ -8,19 +8,6 @@ class NOOP(object):
     def __exit__(self, *args):
         pass
 NOOP = NOOP()
-
-
-def is_complex_type(idltype):
-    if isinstance(idltype, compiler.TList):
-        return is_complex_type(idltype.oftype)
-    elif isinstance(idltype, compiler.TList):
-        return is_complex_type(idltype.keytype) or is_complex_type(idltype.valtype)
-    elif isinstance(idltype, compiler.Class):
-        return True
-    elif isinstance(idltype, compiler.Record):
-        return any(is_complex_type(mem.type) for mem in idltype.members)
-    else:
-        return False
 
 
 class TargetBase(object):

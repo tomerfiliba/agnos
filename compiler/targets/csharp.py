@@ -250,6 +250,15 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
 
         with BLOCK("internal class _{0}Packer : Packers.IPacker", rec.name):
+            if not static:
+                complex_types = rec.get_complex_types()
+                for tp in complex_types:
+                    STMT("protected Packers.IPacker {0}", type_to_packer(tp))
+                args =  ", ".join("Packers.IPacker %s" % (type_to_packer(tp),) for tp in complex_types)
+                with BLOCK("public _{0}Packer({1})", rec.name, args):
+                    for tp in complex_types:
+                        STMT("this.{0} = {0}", type_to_packer(tp))
+                SEP()
             with BLOCK("public void pack(object obj, Stream stream)"):
                 STMT("{0} val = ({0})obj", rec.name)
                 for mem in rec.members:
@@ -388,7 +397,8 @@ class CSharpTarget(TargetBase):
                     if isinstance(tp, compiler.Class):
                         STMT("{0}ObjRef = new Packers.ObjRef(this)", tp.name)
                 for rec in generated_records:
-                    STMT("{0}Packer = new _{0}Packer()", rec.name)
+                    complex_types = rec.get_complex_types()
+                    STMT("{0}Packer = new _{0}Packer({1})", rec.name, ", ".join(type_to_packer(tp) for tp in complex_types))
                 self.generate_templated_packers_impl(module, service)
             SEP()
             self.generate_process_invoke(module, service)
@@ -611,7 +621,8 @@ class CSharpTarget(TargetBase):
             if generated_records:
                 SEP()
                 for rec in generated_records:
-                    STMT("{0}Packer = new _{0}Packer()", rec.name)
+                    complex_types = rec.get_complex_types()
+                    STMT("{0}Packer = new _{0}Packer({1})", rec.name, ", ".join(type_to_packer(tp) for tp in complex_types))
             if namespaces:
                 SEP()
                 for name, id in namespaces:
@@ -644,9 +655,10 @@ class CSharpTarget(TargetBase):
             #    self.emit_func_javadoc(func, module)
             with BLOCK("{0} {1} {2}({3})", access, type_to_cs(func.type, proxy = True), func.fullname, args):
                 STMT("int seq = {0}_send({1})", func.fullname, ", ".join(arg.name for arg in func.args))
-                STMT("object res = _get_reply(seq)")
-                if func.type != compiler.t_void:
-                    STMT("return ({0})res", type_to_cs(func.type, proxy = True))
+                if func.type == compiler.t_void:
+                    STMT("_get_reply(seq)")
+                else:
+                    STMT("return ({0})_get_reply(seq)", type_to_cs(func.type, proxy = True))
             SEP()
             # timed and async
 
