@@ -485,7 +485,7 @@ class CSharpTarget(TargetBase):
         with BLOCK("catch (PackedException ex) {0}", "{", prefix = ""):
             STMT("throw ex")
         with BLOCK("catch (Exception ex) {0}", "{", prefix = ""):
-            STMT("throw new GenericException(ex.ToString(), ex.StackTrace)")
+            STMT("throw new GenericException(ex.Message, ex.StackTrace)")
 
     def generate_client_namespaces(self, module, service):
         nsid = itertools.count(0)

@@ -33,10 +33,11 @@ namespace Agnos
             this.Traceback = traceback;
         }
 
-        public String toString()
+        public override String ToString()
         {
-            return "Agnos.GenericException with remote backtrace:\n" + Traceback +
-            "\t------------------- end of remote traceback -------------------";
+            return "Agnos.GenericException with remote backtrace:\n " + 
+				Message + "\n" + Traceback + 
+            	"\n  ------------------- end of remote traceback -------------------";
         }
     }
 
@@ -155,7 +156,7 @@ namespace Agnos
             {
                 Packers.Int32.pack(seq, outStream);
                 Packers.Int8.pack((byte)REPLY_GENERIC_EXCEPTION, outStream);
-                Packers.Str.pack(exc.ToString(), outStream);
+                Packers.Str.pack(exc.Message, outStream);
                 Packers.Str.pack(exc.Traceback, outStream);
             }
 
@@ -325,6 +326,7 @@ namespace Agnos
                     Packers.Int32.pack(seq, _outStream);
                     Packers.Int8.pack(CMD_DECREF, _outStream);
                     Packers.Int64.pack(id, _outStream);
+					_outStream.Flush();
                 }
                 catch (Exception)
                 {
@@ -336,7 +338,7 @@ namespace Agnos
             {
                 int seq = _get_seq();
                 Packers.Int32.pack(seq, stream);
-                Packers.Int8.pack(CMD_INVOKE, stream);
+                Packers.Int8.pack((byte)CMD_INVOKE, stream);
                 Packers.Int32.pack(funcid, stream);
                 _replies.Add(seq, new ReplySlot(packer));
                 return seq;

@@ -3,6 +3,7 @@ using System.IO;
 using System.Net;
 using Agnos;
 using RemoteFilesBindings;
+using System.Collections.Generic;
 
 
 namespace server_test
@@ -91,6 +92,11 @@ namespace server_test
 		{
 			System.Console.WriteLine("@open: filename = {0}, mode={1}", filename, mode);
 			return new MyFile(filename, mode);
+		}
+		
+        public List<string> pathToList(RemoteFiles.IPath path, List<RemoteFiles.IFile> spam, List<RemoteFiles.IPath> bacon, List<RemoteFiles.Moshe> eggs, List<RemoteFiles.IPath> maps)
+		{
+			return new List<string> {"hello", "world"};
 		}
 	}
 

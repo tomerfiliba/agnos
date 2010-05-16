@@ -301,7 +301,8 @@ namespace Agnos
 			public object unpack(Stream stream)
 			{
 				long timestamp = (long)Int64.unpack(stream);
-				return new DateTime(timestamp * 10000, DateTimeKind.Local);
+				return DateTime.Now;
+				//return new DateTime(timestamp * 10000, DateTimeKind.Local);
 			}
 		}
 	
