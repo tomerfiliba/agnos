@@ -1,11 +1,7 @@
 * 1.0:
 	* unit test
-		* ctors
-	* update java and c# according to python
-		* namespaces
-		* list and map recursive packers
-		* enum packers?
-	* mapped exception parameters 
+	* mapped exception parameters
+	* python: bring up to match c# and java 
 * 1.1:
 	* c++
 * 1.5:

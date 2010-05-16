@@ -11,6 +11,7 @@ CMD_PING = 0
 CMD_INVOKE = 1
 CMD_QUIT = 2
 CMD_DECREF = 3
+CMD_INCREF = 4
 
 REPLY_SUCCESS = 0
 REPLY_PROTOCOL_ERROR = 1
@@ -22,7 +23,7 @@ class PackedException(Exception):
         raise NotImplementedError()
     def __str__(self):
         return repr(self)
-    # to overcome python's stupid warnings
+    # to override python (>= 2.6) stupid warnings
     def _get_message(self):
         return self._message
     def _set_message(self, val):
@@ -73,6 +74,8 @@ class BaseProcessor(object):
         self.func_mapping = func_mapping
     
     def store(self, obj):
+        if obj is None:
+            return -1
         oid = id(obj)
         if oid in self.cells:
             ref = self.cells[oid][0]
@@ -81,6 +84,8 @@ class BaseProcessor(object):
         self.cells[oid] = (ref + 1, obj)
         return oid
     def load(self, oid):
+        if oid < 0:
+            return None
         return self.cells[oid][1]
     def decref(self, oid):
         if oid not in self.cells:

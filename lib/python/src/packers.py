@@ -5,52 +5,57 @@ import time
 
 
 class Packer(object):
-    def __init__(self, processor):
-        self.instream = instream
-        self.outstream = outstream
-    def pack(self, obj):
+    def pack(self, obj, stream):
         raise NotImplementedError()
-    def server_unpack(self):
-        raise NotImplementedError()
-    def client_unpack(self):
+    def unpack(self, stream):
         raise NotImplementedError()
 
 class PrimitivePacker(Packer):
-    def __init__(self, instream, outstream, fmt):
-        Packer.__init__(self, instream, outstream)
+    def __init__(self, fmt):
         self.struct = _Struct(fmt)
     def pack(self, obj, stream):
-        if obj is None:
-            obj = 0
-        self.outstream.write(self.struct.pack(obj))
-    def unpack(self):
-        return self.struct.unpack(self.instream.read(self.struct.size))[0]
+        stream.write(self.struct.pack(obj))
+    def unpack(self, stream):
+        return self.struct.unpack(stream.read(self.struct.size))[0]
+
+Int8 = PrimitivePacker("!b")
+Int16 = PrimitivePacker("!h")
+Int32 = PrimitivePacker("!l")
+Int64 = PrimitivePacker("!q")
+Float = PrimitivePacker("!d")
 
 class Bool(Packer):
-    def __init__(self, instream, outstream):
-        self.packer = Int8(instream, outstream)
-    def pack(self, obj):
-        self.packer.pack(int(obj))
-    def unpack(self):
+    @classmethod
+    def pack(cls, obj, stream):
+        Int8.pack(int(obj), stream)
+    @classmethod
+    def unpack(cls, stream):
         return bool(Int8.unpack(stream))
 
+class ObjRef(Packer):
+    def __init__(self, serializer):
+        self.serializer = serializer
+    def pack(self, obj, stream):
+        Int64.pack(self.serializer.store(obj), stream)
+    def unpack(self, stream):
+        return self.serializer.load(Int64.unpack(stream))
+
 class Date(Packer):
+    @classmethod
     def pack(cls, obj, stream):
-        if obj is None:
-            ts = 0
-        else:
-            ts = time.mktime(obj.timetuple()) + (obj.microsecond/1000000.0)
+        ts = time.mktime(obj.timetuple()) + (obj.microsecond/1000000.0)
         Int64.pack(int(ts * 1000), stream)
+    @classmethod
     def unpack(cls, stream):
         ts = Int64.unpack(stream)
         return datetime.fromtimestamp(ts / 1000.0)
 
 class Buffer(Packer):
+    @classmethod
     def pack(cls, obj, stream):
-        if obj is None:
-            obj = ()
         Int32.pack(len(obj), stream)
         stream.write(obj)
+    @classmethod
     def unpack(cls, stream):
         length = Int32.unpack(stream)
         return stream.read(length)
@@ -58,19 +63,15 @@ class Buffer(Packer):
 class Str(Packer):
     @classmethod
     def pack(cls, obj, stream):
-        if obj is None:
-            obj = ""
         Buffer.pack(obj.encode("utf-8"), stream)
     @classmethod
     def unpack(cls, stream):
-        return str(Buffer.unpack(stream).decode("utf-8"))
+        return Buffer.unpack(stream).decode("utf-8")
 
 class ListOf(Packer):
     def __init__(self, type):
         self.type = type
     def pack(self, obj, stream):
-        if obj is None:
-            obj = ()
         Int32.pack(len(obj), stream)
         for item in obj:
             self.type.pack(item, stream)
@@ -86,8 +87,6 @@ class MapOf(Packer):
         self.keytype = keytype
         self.valtype = valtype
     def pack(self, obj, stream):
-        if obj is None:
-            obj = {}
         Int32.pack(len(obj), stream)
         for key, val in obj.iteritems():
             self.keytype.pack(key, stream)
@@ -100,13 +99,4 @@ class MapOf(Packer):
             v = self.valtype.unpack(stream)
             obj[k] = v
         return obj
-
-
-
-
-
-
-
-
-
 

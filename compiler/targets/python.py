@@ -7,7 +7,7 @@ from .. import compiler
 
 def type_to_packer(t):
     if t == compiler.t_void:
-        return "None"
+        return "null"
     elif t == compiler.t_bool:
         return "packers.Bool"
     elif t == compiler.t_int8:
@@ -26,21 +26,39 @@ def type_to_packer(t):
         return "packers.Buffer"
     elif t == compiler.t_string:
         return "packers.Str"
-    elif t == compiler.t_objref:
-        return type_to_packer(compiler.t_int64) 
     elif isinstance(t, (compiler.TList, compiler.TMap)):
-        return t._templated_packer
-    elif isinstance(t, (compiler.Record, compiler.Exception)):
-        return "%sRecord" % (t.name,)
-    elif isinstance(t, compiler.Enum):
-        return t.name
+        return "_%s" % (t.stringify(),)
+    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
+        return "%sPacker" % (t.name,)
     elif isinstance(t, compiler.Class):
-        return type_to_packer(compiler.t_objref)
-    return "%r$packer" % (t,)
+        return "%sObjRef" % (t.name,)
+    return "%r$$$packer" % (t,)
 
-
-def const_to_python(value):
-    return repr(value)
+def const_to_python(typ, val):
+    if val is None:
+        return "None"
+    elif typ == compiler.t_bool:
+        if val:
+            return "True"
+        else:
+            return "False"
+    elif typ == compiler.t_int8:
+        return repr(val)
+    elif typ == compiler.t_int16:
+        return repr(val)
+    elif typ == compiler.t_int32:
+        return repr(val)
+    elif typ == compiler.t_int64:
+        return repr(val)
+    elif typ == compiler.t_float:
+        return repr(val)
+    elif typ == compiler.t_string:
+        return repr(val)
+    elif isinstance(typ, compiler.TList):
+        return "[%s]" % (", ".join(const_to_cs(typ.oftype, item) for item in val),)
+    else:
+        raise IDLError("%r cannot be converted to a c# const" % (val,))
+    
 
 temp_counter = itertools.count(7081)
 
