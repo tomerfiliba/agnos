@@ -19,6 +19,8 @@ class SocketFile(object):
         self.sock.close()
     def fileno(self):
         return self.sock.fileno()
+    def flush(self):
+        pass
     def read(self, count):
         select([self.sock], [], [])
         return self.sock.recv(min(count, self.CHUNK))
@@ -70,33 +72,39 @@ class InStream(object):
         rl, _, _ = select([self.file], [], [], timeout)
         return bool(rl)  
 
+class TransactionCanceled(Exception):
+    pass
+
+class OutStreamTransaction(object):
+    def __init__(self, stream):
+        self.stream = stream
+        self.buffer = []
+    def clear(self):
+        del self.stream.buffer[:]
+    def cancel(self):
+        raise TransactionCanceled()
+    def write(self, data):
+        self.buffer.append(data)
+    def flush(self):
+        self.stream.write("".join(self.buffer))
+
 class OutStream(object):
     def __init__(self, file):
         self.file = file
-        self.buffer = []
-        self.in_transaction = False
     def close(self):
         self.file.close()
     def write(self, data):
-        assert self.in_transaction
-        self.buffer.append(data)
-        #print >>sys.stderr, "%05d  W %s" % (os.getpid(), data.encode("hex"))
-    def flush(self):
-        if not self.buffer:
-            return
-        data = "".join(self.buffer)
         self.file.write(data)
-        del self.buffer[:]
+        self.file.flush()
     
     @contextmanager
     def transaction(self):
-        assert not self.in_transaction
-        self.in_transaction = True
         try:
-            yield
-            self.flush()
-        finally:
-            self.in_transaction = False
+            trans = OutStreamTransaction(self)
+            yield trans
+            trans.flush()
+        except TransactionCanceled:
+            pass
 
 class SocketTransportFactory(TransportFactory):
     def __init__(self, port, host = "0.0.0.0", backlog = 10):

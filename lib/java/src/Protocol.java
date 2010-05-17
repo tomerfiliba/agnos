@@ -142,12 +142,19 @@ public class Protocol
 
 		protected static String getExceptionTraceback(Exception exc)
 		{
-			StringWriter sw = new StringWriter();
+			StringWriter sw = new StringWriter(2000);
 	        PrintWriter pw = new PrintWriter(sw, true);
 	        exc.printStackTrace(pw);
 	        pw.flush();
 	        sw.flush();
-	        return sw.toString();
+	        String[] lines = sw.toString().split("\r\n|\r|\n");
+			StringWriter sw2 = new StringWriter(2000);
+	        // drop first line, it's the message, not traceback
+	        for (int i = 1; i < lines.length; i++) {
+	        		sw2.write(lines[i]);
+	        		sw2.write("\n");
+	        }
+	        return sw2.toString();
 		}
 
 		protected void send_protocol_error(OutputStream outStream, Integer seq, ProtocolError exc) throws IOException {

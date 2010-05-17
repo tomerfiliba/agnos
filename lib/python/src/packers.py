@@ -5,12 +5,14 @@ import time
 
 
 class Packer(object):
+    __slots__ = []
     def pack(self, obj, stream):
         raise NotImplementedError()
     def unpack(self, stream):
         raise NotImplementedError()
 
 class PrimitivePacker(Packer):
+    __slots__ = ["struct"]
     def __init__(self, fmt):
         self.struct = _Struct(fmt)
     def pack(self, obj, stream):
@@ -25,6 +27,7 @@ Int64 = PrimitivePacker("!q")
 Float = PrimitivePacker("!d")
 
 class Bool(Packer):
+    __slots__ = []
     @classmethod
     def pack(cls, obj, stream):
         Int8.pack(int(obj), stream)
@@ -33,14 +36,17 @@ class Bool(Packer):
         return bool(Int8.unpack(stream))
 
 class ObjRef(Packer):
-    def __init__(self, serializer):
-        self.serializer = serializer
+    __slots__ = ["storer", "loader"]
+    def __init__(self, storer, loader):
+        self.storer = storer
+        self.loader = loader
     def pack(self, obj, stream):
-        Int64.pack(self.serializer.store(obj), stream)
+        Int64.pack(self.storer(obj), stream)
     def unpack(self, stream):
-        return self.serializer.load(Int64.unpack(stream))
+        return self.loader(Int64.unpack(stream))
 
 class Date(Packer):
+    __slots__ = []
     @classmethod
     def pack(cls, obj, stream):
         ts = time.mktime(obj.timetuple()) + (obj.microsecond/1000000.0)
@@ -51,6 +57,7 @@ class Date(Packer):
         return datetime.fromtimestamp(ts / 1000.0)
 
 class Buffer(Packer):
+    __slots__ = []
     @classmethod
     def pack(cls, obj, stream):
         Int32.pack(len(obj), stream)
@@ -61,6 +68,7 @@ class Buffer(Packer):
         return stream.read(length)
 
 class Str(Packer):
+    __slots__ = []
     @classmethod
     def pack(cls, obj, stream):
         Buffer.pack(obj.encode("utf-8"), stream)
@@ -69,6 +77,7 @@ class Str(Packer):
         return Buffer.unpack(stream).decode("utf-8")
 
 class ListOf(Packer):
+    __slots__ = ["type"]
     def __init__(self, type):
         self.type = type
     def pack(self, obj, stream):
@@ -83,6 +92,7 @@ class ListOf(Packer):
         return obj
 
 class MapOf(Packer):
+    __slots__ = ["keytype", "valtype"]
     def __init__(self, keytype, valtype):
         self.keytype = keytype
         self.valtype = valtype

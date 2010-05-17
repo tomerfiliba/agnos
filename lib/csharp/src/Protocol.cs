@@ -35,9 +35,9 @@ namespace Agnos
 
         public override String ToString()
         {
-            return "Agnos.GenericException with remote backtrace:\n " + 
-				Message + "\n" + Traceback + 
-            	"\n  ------------------- end of remote traceback -------------------";
+            return String.Format("Agnos.GenericException with remote backtrace:\n{0}\n{1}" +
+			                     "\n------------------- end of remote traceback -------------------\n{2}",
+			                     Message, Traceback, StackTrace);
         }
     }
 

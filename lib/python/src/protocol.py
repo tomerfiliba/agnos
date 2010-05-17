@@ -35,7 +35,8 @@ class GenericException(Exception):
         self.msg = msg
         self.traceback = traceback
     def __str__(self):
-        return "\n---------------- Remote Traceback ----------------\n" + self.traceback
+        return "%s\n---------------- Remote Traceback ----------------\n%s" % (
+            self.msg, self.traceback)
 
 class ProtocolError(Exception):
     pass
@@ -66,10 +67,8 @@ class BaseProxy(object):
 
 
 class BaseProcessor(object):
-    def __init__(self, instream, outstream, func_mapping, exception_map):
+    def __init__(self, unc_mapping, exception_map):
         self.cells = {}
-        self.instream = instream
-        self.outstream = outstream
         self.exception_map = exception_map
         self.func_mapping = func_mapping
     
@@ -95,62 +94,65 @@ class BaseProcessor(object):
             del self.cells[oid]
         else:
             self.cells[oid] = (ref - 1, obj)
+
+    def send_protocol_error(self, stream, seq, exc):
+        packers.Int32.pack(seq, stream);
+        packers.Int8.pack(REPLY_PROTOCOL_ERROR, stream);
+        packers.Str.pack(str(exc), stream);
     
-    def send_packed_exception(self, seq, exc):
-        self.pack_int32(seq)
-        self.pack_int8(REPLY_PACKED_EXCEPTION)
-        exc.pack(self.outstream)
+    def send_generic_exception(self, stream, seq, exc): 
+        packers.Int32.pack(seq, stream);
+        packers.Int8.pack(REPLY_GENERIC_EXCEPTION, stream);
+        packers.Str.pack(exc.msg, stream);
+        packers.Str.pack(exc.traceback, stream);
     
-    def send_generic_exception(self, seq, exc):
-        self.pack_int32(seq)
-        self.pack_int8(REPLY_GENERIC_EXCEPTION)
-        self.pack_str(exc.msg)
-        self.pack_str(exc.traceback)
-    
-    def send_protocol_error(self, seq, exc):
-        self.pack_int32(seq)
-        self.pack_int8(REPLY_PROTOCOL_ERROR)
-        self.pack_str(tb)
-    
-    def process(self):
-        seq = self.unpack_int32()
-        cmd = self.unpack_int8()
-        with self.outstream.transaction():
+    def process(self, instream, outstream):
+        seq = packers.Int32.unpack(self.instream)
+        cmd = packers.Int32.unpack(self.instream)
+        
+        with self.outstream.transaction() as trans:
             try:
                 if cmd == CMD_INVOKE:
-                    self.process_invoke(seq)
+                    self.process_invoke(instream, trans, seq)
                 elif cmd == CMD_PING:
-                    self.process_ping(seq)
+                    self.process_ping(instream, trans, seq)
                 elif cmd == CMD_DECREF:
-                    self.process_decref(seq)
+                    self.process_decref(instream, trans, seq)
                 elif cmd == CMD_QUIT:
-                    self.process_quit(seq)
+                    self.process_quit(instream, trans, seq)
                 else:
                     raise ProtocolError("unknown command code: %d" % (cmd,))
             except ProtocolError, ex:
-                self.send_protocol_error(seq, ex)
-            except PackedException, ex:
-                self.send_packed_exception(seq, ex)
+                trans.clear()
+                self.send_protocol_error(trans, seq, ex)
             except GenericException, ex:
-                self.send_generic_exception(seq, ex)
+                trans.clear()
+                self.send_generic_exception(trans, seq, ex)
+            #except PackedException, ex:
+            #    trans.clear()
+            #    self.send_packed_exception(trans, seq, ex)
 
-    def process_ping(self, seq):
-        msg = self.unpack_str()
-        self.pack_int32(seq)
-        self.pack_int8(REPLY_SUCCESS)
-        self.pack_str(msg)
+    def process_ping(self, instream, outstream, seq):
+        msg = packers.Str.unpack(instream)
+        packers.Int32.pack(seq, outstream)
+        packers.Int8.pack(REPLY_SUCCESS, outstream)
+        packers.Str.pack(msg, outstream)
 
-    def process_decref(self, seq):
-        oid = self.unpack_int64()
+    def process_decref(self, instream, outstream, seq):
+        oid = packers.Int64.unpack(instream)
         self.decref(oid)
 
-    def process_quit(self, seq):
+    def process_incref(self, instream, outstream, seq):
+        oid = packers.Int64.unpack(instream)
+        self.incref(oid)
+
+    def process_quit(self, instream, outstream, seq):
         raise KeyboardInterrupt()
 
-    def process_invoke(self, seq):
-        funcid = self.unpack_int32()
+    def process_invoke(self, instream, outstream, seq):
+        funcid = packers.Int32.unpack(instream)
         try:
-            func, unpack_args, pack_res = self.func_mapping[funcid]
+            func, unpack_args, res_packer = self.func_mapping[funcid]
         except KeyError:
             raise ProtocolError("unknown function id: %d" % (funcid,))
         args = unpack_args()
@@ -159,16 +161,28 @@ class BaseProcessor(object):
         except PackedException, ex:
             raise
         except Exception, ex:
-            if type(ex) in self.exception_map:
-                packed = self.exception_map[type(ex)]
-                raise packed()
-            else:
-                tb = "".join(traceback.format_exception(*sys.exc_info()))
-                raise GenericException(repr(ex), tb)
-        self.pack_int32(seq)
-        self.pack_int8(REPLY_SUCCESS)
-        if pack_res:
-            pack_res(res)
+            raise self.pack_exception(*sys.exc_info())
+        else:
+            packers.Int32.pack(seq, outstream)
+            packers.Int8.pack(REPLY_SUCCESS, outstream)
+            if res_packer:
+                res_packer.pack(res, outstream)
+    
+    def pack_exception(self, typ, val, tb):
+        if typ not in self.exception_map:
+            tbtext = "".join(traceback.format_exception(typ, val, tb))
+            return GenericException(repr(val), tbtext)
+        
+        packed_type = self.exception_map[typ]
+        attrs = {}
+        for name in packed_type._ATTRS:
+            if hasattr(val, name):
+                attrs[name] = getattr(val, name)
+        for v, name in zip(val, packed_type._ATTRS):
+            if name not in attrs:
+                attrs[name] = v
+        ex2 = packed_type(**attrs)
+        return ex2
 
 
 class Namespace(object):
@@ -185,9 +199,10 @@ class Namespace(object):
 
 
 class BaseClient(object):
-    REPLY_SLOT_EMPTY = 0
-    REPLY_SLOT_SUCCESS = 1
-    REPLY_SLOT_ERROR = 2
+    REPLY_SLOT_EMPTY = 1
+    REPLY_SLOT_SUCCESS = 2
+    REPLY_SLOT_ERROR = 3
+    REPLY_SLOT_DISCARDED = 4
     PACKED_EXCEPTIONS = {}
     
     def __init__(self, instream, outstream):
@@ -242,11 +257,11 @@ class BaseClient(object):
             self._proxy_cache[objref] = proxy
             return proxy
 
-    def _invoke_command(self, funcid, reply_packer):
+    def _send_invocation(self, stream, funcid, reply_packer):
         seq = self._seq.next()
-        Int32.pack(seq, self._outstream)
-        Int8.pack(CMD_INVOKE, self._outstream)
-        Int32.pack(funcid, self._outstream)
+        Int32.pack(seq, stream)
+        Int8.pack(CMD_INVOKE, stream)
+        Int32.pack(funcid, stream)
         self._replies[seq] = (self.REPLY_SLOT_EMPTY, reply_packer)
         return seq
 
@@ -273,7 +288,7 @@ class BaseClient(object):
         seq = Int32.unpack(self._instream)
         code = Int8.unpack(self._instream)
         tp, packer = self._replies.get(seq, (None, None))
-        if tp != self.REPLY_SLOT_EMPTY:
+        if tp != self.REPLY_SLOT_EMPTY and tp != self.REPLY_SLOT_DISCARDED:
             raise ProtocolError("invalid sequence number %d" % (seq,))
         
         if code == REPLY_SUCCESS:
@@ -291,7 +306,10 @@ class BaseClient(object):
             # been corrupted, so we stop as ealry as possible 
             raise self._load_protocol_error()
         else:
-            raise ProtocolError("unknown reply code: %d" % (code,));
+            raise ProtocolError("unknown reply code: %d" % (code,))
+        
+        if tp == self.REPLY_SLOT_DISCARDED:
+            del self._replies[seq]
     
     def _reply_ready(self, seq):
         return self._replies[seq][0] != self.REPLY_SLOT_EMPTY
@@ -301,8 +319,8 @@ class BaseClient(object):
             self._process_incoming(timeout)
         return self._replies.pop(seq)
     
-    def _get_reply(self, seq):
-        type, obj = self._wait_reply(seq)
+    def _get_reply(self, seq, timeout = None):
+        type, obj = self._wait_reply(seq, timeout)
         if type == self.REPLY_SLOT_SUCCESS:
             return obj
         elif type == self.REPLY_SLOT_ERROR:

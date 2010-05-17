@@ -29,9 +29,12 @@ def type_to_packer(t):
     elif isinstance(t, (compiler.TList, compiler.TMap)):
         return "_%s" % (t.stringify(),)
     elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
-        return "%sPacker" % (t.name,)
+        if is_complex_type(t):
+            return "self.%sPacker" % (t.name,)
+        else:
+            return "%sPacker" % (t.name,)
     elif isinstance(t, compiler.Class):
-        return "%sObjRef" % (t.name,)
+        return "self.%sObjRef" % (t.name,)
     return "%r$$$packer" % (t,)
 
 def const_to_python(typ, val):
@@ -58,9 +61,7 @@ def const_to_python(typ, val):
         return "[%s]" % (", ".join(const_to_cs(typ.oftype, item) for item in val),)
     else:
         raise IDLError("%r cannot be converted to a c# const" % (val,))
-    
 
-temp_counter = itertools.count(7081)
 
 class PythonTarget(TargetBase):
     DEFAULT_TARGET_DIR = "."
@@ -86,10 +87,6 @@ class PythonTarget(TargetBase):
             STMT("_IDL_MAGIC = '{0}'", service.digest)
             SEP()
             
-            DOC("templated packers")
-            self.generate_templated_packer(module, service)
-            SEP()            
-
             DOC("enums", spacer = True)
             for member in service.types.values():
                 if isinstance(member, compiler.Enum):
@@ -99,8 +96,14 @@ class PythonTarget(TargetBase):
             DOC("records", spacer = True)
             for member in service.types.values():
                 if isinstance(member, compiler.Record):
-                    self.generate_record(module, member)
+                    self.generate_record_class(module, member)
                     SEP()
+            
+            for member in service.types.values():
+                if isinstance(member, compiler.Record):
+                    if not is_complex_type(member):
+                        self.generate_record_packer(module, member, static = True)
+                        SEP()
             
             DOC("consts", spacer = True)
             for member in service.consts.values():
@@ -125,30 +128,30 @@ class PythonTarget(TargetBase):
             self.generate_client(module, service)
             SEP()
 
-    def _generate_templated_packer_for_type(self, tp):
-        if isinstance(tp, compiler.TList):
-            return "packers.ListOf(%s)" % (self._generate_templated_packer_for_type(tp.oftype),)
-        elif isinstance(tp, compiler.TList):
-            return "packers.MapOf(%s, %s)" % (self._generate_templated_packer_for_type(tp.keytype),
-                self._generate_templated_packer_for_type(tp.valtype))
-        else:
-            return type_to_packer(tp)
-
-    def generate_templated_packer(self, module, service):
-        BLOCK = module.block
-        STMT = module.stmt
-        SEP = module.sep
-        
-        mapping = {}
-        for tp in service.all_types:
-            if isinstance(tp, (compiler.TList, compiler.TMap)):
-                definition = self._generate_templated_packer_for_type(tp)
-                if definition in mapping:
-                    tp._templated_packer = mapping[definition]
-                else:
-                    tp._templated_packer = "_templated_packer_%s" % (temp_counter.next(),)
-                    STMT("{0} = {1}", tp._templated_packer, definition)
-                    mapping[definition] = tp._templated_packer
+#    def _generate_templated_packer_for_type(self, tp):
+#        if isinstance(tp, compiler.TList):
+#            return "packers.ListOf(%s)" % (self._generate_templated_packer_for_type(tp.oftype),)
+#        elif isinstance(tp, compiler.TList):
+#            return "packers.MapOf(%s, %s)" % (self._generate_templated_packer_for_type(tp.keytype),
+#                self._generate_templated_packer_for_type(tp.valtype))
+#        else:
+#            return type_to_packer(tp)
+#
+#    def generate_templated_packer(self, module, service):
+#        BLOCK = module.block
+#        STMT = module.stmt
+#        SEP = module.sep
+#        
+#        mapping = {}
+#        for tp in service.all_types:
+#            if isinstance(tp, (compiler.TList, compiler.TMap)):
+#                definition = self._generate_templated_packer_for_type(tp)
+#                if definition in mapping:
+#                    tp._templated_packer = mapping[definition]
+#                else:
+#                    tp._templated_packer = "_templated_packer_%s" % (temp_counter.next(),)
+#                    STMT("{0} = {1}", tp._templated_packer, definition)
+#                    mapping[definition] = tp._templated_packer
 
     def generate_enum(self, module, enum):
         BLOCK = module.block
@@ -157,8 +160,15 @@ class PythonTarget(TargetBase):
         
         members = ["\n    '%s' : %s" % (m.name, m.value) for m in enum.members]
         STMT("{0} = agnos.create_enum('{0}', {{{1}}})", enum.name, ", ".join(members))
+        SEP()
+        with BLOCK("class {0}Packer(packers.IPacker)", enum.name):
+            with BLOCK("def pack(obj, stream)"):
+                STMT("packers.Int32.pack(obj.value, stream)")
+            with BLOCK("def unpack(self, stream)"):
+                STMT("{0}.get_by_value(packers.Int32.unpack(stream))", enum.name)
+        STMT("{0}Packer = {0}Packer()", enum.name)
 
-    def generate_record(self, module, rec):
+    def generate_record_class(self, module, rec):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
@@ -168,7 +178,8 @@ class PythonTarget(TargetBase):
         else:
             base = "object"
         with BLOCK("class {0}({1})", rec.name, base):
-            STMT("__record_id = {0}", rec.id)
+            STMT("__recid = {0}", rec.id)
+            STMT("_ATTRS = [{0}]", ", ".join(mem.name for mem in rec.members))
             SEP()
             args = ["%s = None" % (mem.name,) for mem in rec.members]
             with BLOCK("def __init__(self, {0})", ", ".join(args)):
@@ -179,12 +190,9 @@ class PythonTarget(TargetBase):
                 attrs = ["self.%s" % (mem.name,) for mem in rec.members]
                 STMT("attrs = [{0}]", ", ".join(attrs))
                 STMT("return '{0}(%s)' % (', '.join(repr(a) for a in attrs),)", rec.name)
-            SEP()
-            with BLOCK("def pack(self, stream)"):
-                STMT("agnos.packers.Int32.pack(self.__record_id, stream)")
-                STMT("{0}Record.pack(self, stream)", rec.name)
-        SEP()
-        with BLOCK("class {0}Record(packers.Packer)", rec.name):
+
+    def generate_record_packer(self, module, rec, static):
+        with BLOCK("class {0}Packer(packers.Packer)", rec.name):
             STMT("@classmethod")
             with BLOCK("def pack(cls, obj, stream)"):
                 for mem in rec.members:

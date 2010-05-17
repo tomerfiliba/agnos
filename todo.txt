@@ -1,7 +1,7 @@
 * 1.0:
-	* unit test
-	* mapped exception parameters
 	* python: bring up to match c# and java 
+	* unit test
+		* tau
 * 1.1:
 	* c++
 * 1.5:
@@ -10,10 +10,10 @@
 	* custom type templates
 	* complex consts
 * 2.0:
-	* perl?
-	* php?
-	* javascript?
 	* powershell
+	* perl?
+	* php??
+	* javascript??
 	* shell? - what to do with proxies?
 	* cmdline util? reads commands from stdin? then why not python interpreter?
 

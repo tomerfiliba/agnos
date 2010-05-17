@@ -1,21 +1,23 @@
 ﻿<Properties>
-  <MonoDevelop.Ide.Workbench ActiveDocument="../../lib/csharp/src/Protocol.cs" ctype="Workbench">
+  <MonoDevelop.Ide.Workbench ActiveDocument="../../lib/csharp/src/Packers.cs" ctype="Workbench">
     <Files>
       <File FileName="server/Main.cs" Line="89" Column="4" />
       <File FileName="Main.cs" Line="16" Column="39" />
       <File FileName="../RemoteFilesBindings.cs" Line="387" Column="50" />
-      <File FileName="../../lib/csharp/src/Packers.cs" Line="303" Column="38" />
-      <File FileName="../../lib/csharp/src/Protocol.cs" Line="39" Column="34" />
+      <File FileName="../../lib/csharp/src/Packers.cs" Line="303" Column="49" />
+      <File FileName="../../lib/csharp/src/Protocol.cs" Line="29" Column="1" />
     </Files>
     <Pads>
       <Pad Id="ProjectPad">
         <State expanded="True">
-          <Node name="Agnos" expanded="True" />
+          <Node name="Agnos" expanded="True">
+            <Node name="Packers.cs" selected="True" />
+          </Node>
           <Node name="client" expanded="True" />
           <Node name="RemoteFiles" expanded="True">
             <Node name="ExternalFiles" expanded="True" />
           </Node>
-          <Node name="server" expanded="True" selected="True" />
+          <Node name="server" expanded="True" />
         </State>
       </Pad>
       <Pad Id="ClassPad">
