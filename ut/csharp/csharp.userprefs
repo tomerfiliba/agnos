@@ -1,11 +1,11 @@
 ﻿<Properties>
   <MonoDevelop.Ide.Workbench ActiveDocument="../../lib/csharp/src/Packers.cs" ctype="Workbench">
     <Files>
-      <File FileName="server/Main.cs" Line="89" Column="4" />
-      <File FileName="Main.cs" Line="16" Column="39" />
-      <File FileName="../RemoteFilesBindings.cs" Line="387" Column="50" />
+      <File FileName="server/Main.cs" Line="1" Column="1" />
+      <File FileName="Main.cs" Line="1" Column="1" />
+      <File FileName="../RemoteFilesBindings.cs" Line="1" Column="1" />
       <File FileName="../../lib/csharp/src/Packers.cs" Line="303" Column="49" />
-      <File FileName="../../lib/csharp/src/Protocol.cs" Line="29" Column="1" />
+      <File FileName="../../lib/csharp/src/Protocol.cs" Line="1" Column="1" />
     </Files>
     <Pads>
       <Pad Id="ProjectPad">

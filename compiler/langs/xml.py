@@ -46,6 +46,9 @@ class XmlBlock(object):
         del self._get_head().attrs[name.lower()]
     def text(self, *args, **kwargs):
         self._get_head().children.append(XmlText(*args, **kwargs))
+    def elem(self, *args, **attrs):
+        with self.block(*args, **attrs):
+            pass
 
     @contextmanager
     def block(self, *args, **kwargs):
@@ -99,7 +102,7 @@ if __name__ == "__main__":
             TEXT("hello {0}", "world")
     with BLOCK("body"):
         with BLOCK("table", width = 15):
-            ATTR("border", 2)
+            ATTR(border = 2)
             with BLOCK("tr"):
                 with BLOCK("td"):
                     TEXT("<b>hi</b> there", escape = False)
@@ -109,6 +112,7 @@ if __name__ == "__main__":
     doc = XmlDoc("service", name = "moshe")
     BLOCK = doc.block
     TEXT = doc.text
+    ELEM = doc.elem
 
     with BLOCK("func", name = "open", type="File"):
         with BLOCK("doc"):
@@ -116,6 +120,7 @@ if __name__ == "__main__":
         with BLOCK("arg", name="filename", type="str"):
             with BLOCK("doc"):
                 TEXT("this is the filename to open")
+        ELEM("this", elem="has no children")
     
     print doc.render()
     

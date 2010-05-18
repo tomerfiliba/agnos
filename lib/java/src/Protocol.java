@@ -43,7 +43,8 @@ public class Protocol
 		
 		public String toString()
 		{
-			return "agnos.Protocol.GenericException with remote backtrace:\n" + traceback + 
+			return "agnos.Protocol.GenericException: " + message + 
+			" with remote backtrace:\n" + traceback + 
 			"\t------------------- end of remote traceback -------------------"; 
 		}
 	}
