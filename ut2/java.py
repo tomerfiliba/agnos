@@ -1,5 +1,7 @@
+import os
 import signal
-from .base import TargetTest
+import unittest
+from base import TargetTest
 
 
 class TestJava(TargetTest):
@@ -47,5 +49,9 @@ class TestJava(TargetTest):
         serverproc.send_signal(signal.SIGINT)
         self.assertTrue(serverproc.wait() == 0)
 
+
+
+if __name__ == '__main__':
+    unittest.main()
 
 

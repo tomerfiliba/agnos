@@ -35,10 +35,6 @@ class TargetTest(unittest.TestCase):
 
 
 
-if __name__ == '__main__':
-    suite = unittest.TestLoader()
-    unittest.main(suite)
-
 
 
 
