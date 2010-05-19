@@ -66,7 +66,7 @@ class InStream(object):
             data2 = self._read(req)
             data = self.buffer + data2[:req]
             self.buffer = data2[req:]
-        print >>sys.stderr, "%05d  R %r" % (os.getpid(), data)
+        #print >>sys.stderr, "%05d  R %r" % (os.getpid(), data)
         return data
     def poll(self, timeout):
         rl, _, _ = select([self.file], [], [], timeout)
@@ -86,8 +86,8 @@ class OutStreamTransaction(object):
     def write(self, data):
         self.buffer.append(data)
     def flush(self):
-        for data in self.buffer:
-            print >>sys.stderr, "%05d  W %r" % (os.getpid(), data)
+        #for data in self.buffer:
+        #    print >>sys.stderr, "%05d  W %r" % (os.getpid(), data)
         self.stream.write("".join(self.buffer))
 
 class OutStream(object):
