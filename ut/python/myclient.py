@@ -18,7 +18,7 @@ except RemoteFiles.UnderlyingIOError, ex:
 f.close()
 try:
     f.write("dlrow olleh")
-except agnos.GenericError, ex:
+except agnos.GenericException, ex:
     print ex
 
 f1 = c.open("/tmp/foo", "r")

@@ -67,10 +67,13 @@ class BaseProxy(object):
 
 
 class BaseProcessor(object):
-    def __init__(self, unc_mapping, exception_map):
+    def __init__(self):
         self.cells = {}
-        self.exception_map = exception_map
+    
+    def post_init(self, func_mapping, packed_exceptions, exception_map):
         self.func_mapping = func_mapping
+        self.packed_exceptions = packed_exceptions
+        self.exception_map = exception_map
     
     def store(self, obj):
         if obj is None:
@@ -96,21 +99,28 @@ class BaseProcessor(object):
             self.cells[oid] = (ref - 1, obj)
 
     def send_protocol_error(self, stream, seq, exc):
-        packers.Int32.pack(seq, stream);
-        packers.Int8.pack(REPLY_PROTOCOL_ERROR, stream);
-        packers.Str.pack(str(exc), stream);
+        Int32.pack(seq, stream)
+        Int8.pack(REPLY_PROTOCOL_ERROR, stream)
+        Str.pack(str(exc), stream)
     
     def send_generic_exception(self, stream, seq, exc): 
-        packers.Int32.pack(seq, stream);
-        packers.Int8.pack(REPLY_GENERIC_EXCEPTION, stream);
-        packers.Str.pack(exc.msg, stream);
-        packers.Str.pack(exc.traceback, stream);
+        Int32.pack(seq, stream)
+        Int8.pack(REPLY_GENERIC_EXCEPTION, stream)
+        Str.pack(exc.msg, stream)
+        Str.pack(exc.traceback, stream)
+
+    def send_packed_exception(self, stream, seq, exc): 
+        Int32.pack(seq, stream)
+        Int8.pack(REPLY_PACKED_EXCEPTION, stream)
+        Int32.pack(exc._recid, stream)
+        packer = self.packed_exceptions[type(exc)]
+        packer.pack(exc, stream)
     
     def process(self, instream, outstream):
-        seq = packers.Int32.unpack(self.instream)
-        cmd = packers.Int32.unpack(self.instream)
+        seq = Int32.unpack(instream)
+        cmd = Int8.unpack(instream)
         
-        with self.outstream.transaction() as trans:
+        with outstream.transaction() as trans:
             try:
                 if cmd == CMD_INVOKE:
                     self.process_invoke(instream, trans, seq)
@@ -128,49 +138,51 @@ class BaseProcessor(object):
             except GenericException, ex:
                 trans.clear()
                 self.send_generic_exception(trans, seq, ex)
-            #except PackedException, ex:
-            #    trans.clear()
-            #    self.send_packed_exception(trans, seq, ex)
+            except PackedException, ex:
+                trans.clear()
+                self.send_packed_exception(trans, seq, ex)
 
     def process_ping(self, instream, outstream, seq):
-        msg = packers.Str.unpack(instream)
-        packers.Int32.pack(seq, outstream)
-        packers.Int8.pack(REPLY_SUCCESS, outstream)
-        packers.Str.pack(msg, outstream)
+        msg = Str.unpack(instream)
+        Int32.pack(seq, outstream)
+        Int8.pack(REPLY_SUCCESS, outstream)
+        Str.pack(msg, outstream)
 
     def process_decref(self, instream, outstream, seq):
-        oid = packers.Int64.unpack(instream)
+        oid = Int64.unpack(instream)
         self.decref(oid)
 
     def process_incref(self, instream, outstream, seq):
-        oid = packers.Int64.unpack(instream)
+        oid = Int64.unpack(instream)
         self.incref(oid)
 
     def process_quit(self, instream, outstream, seq):
         raise KeyboardInterrupt()
 
     def process_invoke(self, instream, outstream, seq):
-        funcid = packers.Int32.unpack(instream)
+        funcid = Int32.unpack(instream)
         try:
             func, unpack_args, res_packer = self.func_mapping[funcid]
         except KeyError:
             raise ProtocolError("unknown function id: %d" % (funcid,))
-        args = unpack_args()
+        args = unpack_args(instream)
         try:
             res = func(args)
         except PackedException, ex:
             raise
+        except ProtocolError, ex:
+            raise
         except Exception, ex:
             raise self.pack_exception(*sys.exc_info())
         else:
-            packers.Int32.pack(seq, outstream)
-            packers.Int8.pack(REPLY_SUCCESS, outstream)
+            Int32.pack(seq, outstream)
+            Int8.pack(REPLY_SUCCESS, outstream)
             if res_packer:
                 res_packer.pack(res, outstream)
     
     def pack_exception(self, typ, val, tb):
         if typ not in self.exception_map:
-            tbtext = "".join(traceback.format_exception(typ, val, tb))
+            tbtext = "".join(traceback.format_exception(typ, val, tb)[:-1])
             return GenericException(repr(val), tbtext)
         
         packed_type = self.exception_map[typ]

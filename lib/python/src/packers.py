@@ -3,7 +3,6 @@ from datetime import datetime
 import time
 
 
-
 class Packer(object):
     __slots__ = []
     def pack(self, obj, stream):

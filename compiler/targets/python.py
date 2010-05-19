@@ -7,7 +7,7 @@ from .. import compiler
 
 def type_to_packer(t):
     if t == compiler.t_void:
-        return "null"
+        return "None"
     elif t == compiler.t_bool:
         return "packers.Bool"
     elif t == compiler.t_int8:
@@ -29,12 +29,9 @@ def type_to_packer(t):
     elif isinstance(t, (compiler.TList, compiler.TMap)):
         return "_%s" % (t.stringify(),)
     elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
-        if is_complex_type(t):
-            return "self.%sPacker" % (t.name,)
-        else:
-            return "%sPacker" % (t.name,)
+        return "%sPacker" % (t.name,)
     elif isinstance(t, compiler.Class):
-        return "self.%sObjRef" % (t.name,)
+        return "%sObjRef" % (t.name,)
     return "%r$$$packer" % (t,)
 
 def const_to_python(typ, val):
@@ -102,12 +99,12 @@ class PythonTarget(TargetBase):
             for member in service.types.values():
                 if isinstance(member, compiler.Record):
                     if not is_complex_type(member):
-                        self.generate_record_packer(module, member, static = True)
+                        self.generate_record_packer(module, member)
                         SEP()
             
             DOC("consts", spacer = True)
             for member in service.consts.values():
-                STMT("{0} = {1}", member.name, const_to_python(member.value))
+                STMT("{0} = {1}", member.name, const_to_python(member.type, member.value))
             SEP()
             
             DOC("classes", spacer = True)
@@ -128,30 +125,24 @@ class PythonTarget(TargetBase):
             self.generate_client(module, service)
             SEP()
 
-#    def _generate_templated_packer_for_type(self, tp):
-#        if isinstance(tp, compiler.TList):
-#            return "packers.ListOf(%s)" % (self._generate_templated_packer_for_type(tp.oftype),)
-#        elif isinstance(tp, compiler.TList):
-#            return "packers.MapOf(%s, %s)" % (self._generate_templated_packer_for_type(tp.keytype),
-#                self._generate_templated_packer_for_type(tp.valtype))
-#        else:
-#            return type_to_packer(tp)
-#
-#    def generate_templated_packer(self, module, service):
-#        BLOCK = module.block
-#        STMT = module.stmt
-#        SEP = module.sep
-#        
-#        mapping = {}
-#        for tp in service.all_types:
-#            if isinstance(tp, (compiler.TList, compiler.TMap)):
-#                definition = self._generate_templated_packer_for_type(tp)
-#                if definition in mapping:
-#                    tp._templated_packer = mapping[definition]
-#                else:
-#                    tp._templated_packer = "_templated_packer_%s" % (temp_counter.next(),)
-#                    STMT("{0} = {1}", tp._templated_packer, definition)
-#                    mapping[definition] = tp._templated_packer
+    def _generate_templated_packer_for_type(self, tp):
+        if isinstance(tp, compiler.TList):
+            return "packers.ListOf(%s)" % (self._generate_templated_packer_for_type(tp.oftype),)
+        elif isinstance(tp, compiler.TMap):
+            return "packers.MapOf(%s, %s)" % (self._generate_templated_packer_for_type(tp.keytype),
+                self._generate_templated_packer_for_type(tp.valtype))
+        else:
+            return type_to_packer(tp)
+
+    def generate_templated_packers(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        
+        for tp in service.all_types:
+            if isinstance(tp, (compiler.TList, compiler.TMap)):
+                definition = self._generate_templated_packer_for_type(tp)
+                STMT("_{0} = {1}", tp.stringify(), definition)
 
     def generate_enum(self, module, enum):
         BLOCK = module.block
@@ -161,12 +152,13 @@ class PythonTarget(TargetBase):
         members = ["\n    '%s' : %s" % (m.name, m.value) for m in enum.members]
         STMT("{0} = agnos.create_enum('{0}', {{{1}}})", enum.name, ", ".join(members))
         SEP()
-        with BLOCK("class {0}Packer(packers.IPacker)", enum.name):
-            with BLOCK("def pack(obj, stream)"):
+        with BLOCK("class {0}Packer(packers.Packer)", enum.name):
+            STMT("@classmethod")
+            with BLOCK("def pack(cls, obj, stream)"):
                 STMT("packers.Int32.pack(obj.value, stream)")
-            with BLOCK("def unpack(self, stream)"):
+            STMT("@classmethod")
+            with BLOCK("def unpack(cls, stream)"):
                 STMT("{0}.get_by_value(packers.Int32.unpack(stream))", enum.name)
-        STMT("{0}Packer = {0}Packer()", enum.name)
 
     def generate_record_class(self, module, rec):
         BLOCK = module.block
@@ -178,8 +170,8 @@ class PythonTarget(TargetBase):
         else:
             base = "object"
         with BLOCK("class {0}({1})", rec.name, base):
-            STMT("__recid = {0}", rec.id)
-            STMT("_ATTRS = [{0}]", ", ".join(mem.name for mem in rec.members))
+            STMT("_recid = {0}", rec.id)
+            STMT("_ATTRS = [{0}]", ", ".join(repr(mem.name) for mem in rec.members))
             SEP()
             args = ["%s = None" % (mem.name,) for mem in rec.members]
             with BLOCK("def __init__(self, {0})", ", ".join(args)):
@@ -191,7 +183,11 @@ class PythonTarget(TargetBase):
                 STMT("attrs = [{0}]", ", ".join(attrs))
                 STMT("return '{0}(%s)' % (', '.join(repr(a) for a in attrs),)", rec.name)
 
-    def generate_record_packer(self, module, rec, static):
+    def generate_record_packer(self, module, rec):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        
         with BLOCK("class {0}Packer(packers.Packer)", rec.name):
             STMT("@classmethod")
             with BLOCK("def pack(cls, obj, stream)"):
@@ -223,7 +219,8 @@ class PythonTarget(TargetBase):
                         STMT("self._client._autogen_{0}_set_{1}(self, value)", cls.name, attr.name)
                     accessors.append("_set_%s" % (attr.name,))
                 STMT("{0} = property({1})", attr.name, ", ".join(accessors))
-            SEP()
+            if cls.attrs:
+                SEP()
             for method in cls.methods:
                 args = ", ".join(arg.name for arg in method.args)
                 with BLOCK("def {0}(self, {1})", method.name, args):
@@ -235,37 +232,49 @@ class PythonTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         with BLOCK("class IHandler(object)"):
+            STMT("__slots__ = []")
             for member in service.funcs.values():
                 if isinstance(member, compiler.Func):
                     args = ", ".join(arg.name for arg in member.args)
-                    if member.namespace:
-                        name = "%s_%s" % (member.namespace.replace(".", "_"), member.name)
-                    else:
-                        name = member.name
-                    with BLOCK("def {0}(self, {1})", name, args):
+                    with BLOCK("def {0}(self, {1})", member.fullname, args):
                         STMT("raise NotImplementedError()")
 
     def generate_processor(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
-        with BLOCK("class Processor(agnos.BaseProcessor)"):
-            with BLOCK("def __init__(self, handler, exception_map = {})"):
-                STMT("self.handler = handler")
-                with BLOCK("func_mapping = ", prefix = "{", suffix = "}"):
-                    for func in service.funcs.values():
-                        if func.type == compiler.t_void:
-                            packer = "None"
-                        else: 
-                            packer = "self._pack_%s" % (func.id,)
-                        STMT("{0} : (self._func_{0}, self._unpack_{0}, {1}),", func.id, packer)
-                STMT("agnos.BaseProcessor.__init__(self, func_mapping, exception_map)")
-            SEP()
+        with BLOCK("def Processor(handler, exception_map = {})"):
             for func in service.funcs.values():
                 self._generate_processor_function(module, func)
                 self._generate_processor_unpacker(module, func)
-                self._generate_processor_packer(module, func)
-                SEP()
+            SEP()
+            STMT("proc = agnos.BaseProcessor()")
+            STMT("storer = proc.store")
+            STMT("loader = proc.load")
+            SEP()
+            for tp in service.types.values():
+                if isinstance(tp, compiler.Class):
+                    STMT("{0}ObjRef = packers.ObjRef(storer, loader)", tp.name)
+            SEP()
+            for member in service.types.values():
+                if isinstance(member, compiler.Record):
+                    if is_complex_type(member):
+                        self.generate_record_packer(module, member)
+                        SEP()
+            self.generate_templated_packers(module, service)
+            SEP()
+            with BLOCK("func_mapping = ", prefix = "{", suffix = "}"):
+                for func in service.funcs.values():
+                    STMT("{0} : (_func_{0}, _unpack_{0}, {1}),", 
+                        func.id, type_to_packer(func.type))
+            SEP()
+            with BLOCK("packed_exceptions = ", prefix = "{", suffix = "}"):
+                for mem in service.types.values():
+                    if isinstance(mem, compiler.Exception):
+                        STMT("{0} : {1},", mem.name, type_to_packer(mem))
+            SEP()
+            STMT("proc.post_init(func_mapping, packed_exceptions, exception_map)")
+            STMT("return proc")
     
     def _generate_processor_function(self, module, func):
         BLOCK = module.block
@@ -273,14 +282,10 @@ class PythonTarget(TargetBase):
         SEP = module.sep
         
         if isinstance(func, compiler.Func):
-            if func.namespace:
-                name = func.namespace.replace(".", "_") + "_" + func.name
-            else:
-                name = func.name
-            with BLOCK("def _func_{0}(self, args)", func.id):
-                STMT("return self.handler.{0}(*args)", name) 
+            with BLOCK("def _func_{0}(args)", func.id):
+                STMT("return handler.{0}(*args)", func.fullname) 
         else:
-            with BLOCK("def _func_{0}(self, args)", func.id):
+            with BLOCK("def _func_{0}(args)", func.id):
                 STMT("obj = args.pop(0)")
                 if isinstance(func.origin, compiler.ClassAttr):
                     if func.type == compiler.t_void:
@@ -292,140 +297,80 @@ class PythonTarget(TargetBase):
                 else:
                     STMT("return obj.{0}(*args)", func.origin.name)
 
-    def _processor_idl_loader(self, idltype):
-        if isinstance(idltype, compiler.TList):
-            return "(lambda obj: [%s(item) for item in obj])" % (
-                self._processor_idl_loader(idltype.oftype),)
-        elif isinstance(idltype, compiler.TMap):
-            return "(lambda obj: dict((%s(k), %s(v)) for k, v in obj.iteritems()))" % (
-                self._processor_idl_loader(idltype.keytype),
-                self._processor_idl_loader(idltype.valtype))
-        elif isinstance(idltype, compiler.Class):
-            return "(lambda obj: self.load(obj))"
-        else:
-            return "(lambda obj: obj)"
-
     def _generate_processor_unpacker(self, module, func):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
         
-        with BLOCK("def _unpack_{0}(self, stream)", func.id):
+        with BLOCK("def _unpack_{0}(stream)", func.id):
             if not func.args:
                 STMT("return []")
                 return 
-            with BLOCK("unpacked = ", prefix = "[", suffix="]"):
+            with BLOCK("return ", prefix = "[", suffix="]"):
                 for arg in func.args:
-                    if isinstance(arg.type, compiler.Class):
-                        STMT("self.load({0}.unpack(stream)),", type_to_packer(arg.type))
-                    elif is_complex_type(arg.type):
-                        loader = self._processor_idl_loader(arg.type)
-                        STMT("{0}(self.load({1}.unpack(stream))),", loader, type_to_packer(arg.type))
-                    else:
-                        STMT("{0}.unpack(stream),", type_to_packer(arg.type))
-            STMT("return unpacked")
+                    STMT("{0}.unpack(stream),", type_to_packer(arg.type))
     
-    def _processor_idl_storer(self, idltype):
-        if isinstance(idltype, compiler.TList):
-            return "(lambda obj: [%s(item) for item in obj])" % (
-                self._processor_idl_storer(idltype.oftype),)
-        elif isinstance(idltype, compiler.TMap):
-            return "(lambda obj: dict((%s(k), %s(v)) for k, v in obj.iteritems()))" % (
-                self._processor_idl_storer(idltype.keytype),
-                self._processor_idl_storer(idltype.valtype))
-        elif isinstance(idltype, compiler.Class):
-            return "(lambda obj: self.store(obj))"
-        else:
-            return "(lambda obj: obj)"
-        
-    def _generate_processor_packer(self, module, func):
-        BLOCK = module.block
-        STMT = module.stmt
-        SEP = module.sep
-
-        if func.type == compiler.t_void:
-            return 
-        with BLOCK("def _pack_{0}(self, res, stream)", func.id):
-            if isinstance(func.type, compiler.Class):
-                STMT("{0}.pack(self.store(res), stream)", type_to_packer(func.type))
-            elif is_complex_type(func.type):
-                storer = self._processor_idl_storer(func.type)
-                STMT("{0}.pack({1}(res), stream)", type_to_packer(func.type), storer)
-            else:
-                STMT("{0}.pack(res, stream)", type_to_packer(func.type))
-
-    def _client_idl_loader(self, idltype):
-        if isinstance(idltype, compiler.TList):
-            return "(lambda obj: [%s(item) for item in obj])" % (
-                self._client_idl_loader(idltype.oftype),)
-        elif isinstance(idltype, compiler.TMap):
-            return "(lambda obj: dict((%s(k), %s(v)) for k, v in obj.iteritems()))" % (
-                self._client_idl_loader(idltype.keytype),
-                self._client_idl_loader(idltype.valtype))
-        elif isinstance(idltype, compiler.Class):
-            return "(lambda obj: _self._get_proxy(%sProxy, obj))" % (idltype.name,)
-        elif isinstance(idltype, compiler.Record):
-            loaders = [
-                "%s(obj.%s)" % (self._client_idl_loader(mem.type), mem.name)
-                    if is_complex_type(mem.type) else "obj.%s" % (mem.name,) 
-                for mem in idltype.members]
-            return "(lambda obj: %s(%s))" % (idltype.name, ", ".join(loaders))
-        else:
-            return "(lambda obj: obj)"
-
     def generate_client(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
         
-        with BLOCK("class Client(agnos.BaseClient)"):
-            with BLOCK("PACKED_EXCEPTIONS = ", prefix = "{", suffix = "}"):
-                for mem in service.types.values():
-                    if isinstance(mem, compiler.Exception):
-                        STMT("{0} : {1},", mem.id, type_to_packer(mem))
-            SEP()
-            with BLOCK("def __init__(self, instream, outstream)"):
-                STMT("agnos.BaseClient.__init__(self, instream, outstream)")
-                for func in service.funcs.values():
-                    if not func.namespace:
-                        continue
-                    STMT("self.{0} = agnos.Namespace()", func.namespace.split(".")[0])
-                for func in service.funcs.values():
-                    if not func.namespace:
-                        continue
-                    head, tail = (func.namespace + "." + func.name).split(".", 1)
-                    decorated = "_autogen_%s_%s" % (func.namespace.replace(".", "_"), func.name)
-                    STMT("self.{0}['{1}'] = self.{2}", head, tail, decorated)
-            SEP()
-            for func in service.funcs.values():
-                args = ", ".join(arg.name for arg in func.args)
-                if func.namespace:
-                    name = "_autogen_%s_%s" % (func.namespace.replace(".", "_"), func.name)
-                else:
-                    name = func.name
-                with BLOCK("def {0}(_self, {1})", name, args):
-                    with BLOCK("with _self._outstream.transaction()"):
-                        STMT("seq = _self._invoke_command({0}, {1})", func.id, type_to_packer(func.type))
-                        for arg in func.args:
-                            if isinstance(arg.type, compiler.Class):
-                                STMT("{0}.pack({1}._objref, _self._outstream)", type_to_packer(arg.type), arg.name)
-                            else:
-                                STMT("{0}.pack({1}, _self._outstream)", type_to_packer(arg.type), arg.name)
-                    STMT("res = _self._get_reply(seq)")
-                    if isinstance(func.type, compiler.Class):
-                        STMT("return _self._get_proxy({0}Proxy, res)", func.type.name)
-                    elif is_complex_type(func.type):
-                        loader = self._client_idl_loader(func.type)
-                        STMT("return {0}(res)", loader)
-                    else:
-                        STMT("return res")
+        with BLOCK("def Client(instream, outstream)"):
+            with BLOCK("class ClientClass(agnos.BaseClient)"):
+                with BLOCK("PACKED_EXCEPTIONS = ", prefix = "{", suffix = "}"):
+                    for mem in service.types.values():
+                        if isinstance(mem, compiler.Exception):
+                            STMT("{0} : {1},", mem.id, type_to_packer(mem))
                 SEP()
-            
-    
-
-    
-
-
+                with BLOCK("def __init__(self, instream, outstream)"):
+                    STMT("agnos.BaseClient.__init__(self, instream, outstream)")
+                    for func in service.funcs.values():
+                        if not func.namespace:
+                            continue
+                        STMT("self.{0} = agnos.Namespace()", func.namespace.split(".")[0])
+                    for func in service.funcs.values():
+                        if not func.namespace:
+                            continue
+                        head, tail = func.fullname.split(".", 1)
+                        STMT("self.{0}['{1}'] = self._autogen_{2}", head, tail, func.fullname)
+                SEP()
+                for func in service.funcs.values():
+                    args = ", ".join(arg.name for arg in func.args)
+                    if func.namespace:
+                        name = "_autogen_%s_%s" % (func.fullname,)
+                    else:
+                        name = func.name
+                    with BLOCK("def {0}_send(_self, {1})", name, args):
+                        with BLOCK("with _self._outstream.transaction() as trans"):
+                            STMT("seq = _self._send_invocation(trans, {0}, {1})", func.id, type_to_packer(func.type))
+                            for arg in func.args:
+                                STMT("{0}.pack({1}, trans)", type_to_packer(arg.type), arg.name)
+                        STMT("return seq")
+                    with BLOCK("def {0}(_self, {1})", name, args):
+                        STMT("seq = _self.{0}_send({1})", name, args)
+                        STMT("return _self._get_reply(seq)")
+                    SEP()
+            STMT("clnt = ClientClass(instream, outstream)")
+            STMT("storer = lambda proxy: proxy._objref")
+            SEP()
+            for tp in service.types.values():
+                if isinstance(tp, compiler.Class):
+                    STMT("{0}ObjRef = packers.ObjRef(storer, lambda oid: clnt._get_proxy({0}Proxy, oid))", tp.name)
+            SEP()
+            for member in service.types.values():
+                if isinstance(member, compiler.Record):
+                    if is_complex_type(member):
+                        self.generate_record_packer(module, member)
+                        SEP()
+            self.generate_templated_packers(module, service)
+            STMT("return clnt")
+        SEP()
+        with BLOCK("def _from_transport(transport)"):
+            STMT("return Client(transport.get_input_stream(), transport.get_output_stream())")
+        STMT("Client.from_transport = _from_transport")
+        with BLOCK("def _connect(host, port)"):
+            STMT("return Client.from_transport(agnos.SocketTransport.connect(host, port))")
+        STMT("Client.connect = _connect")
 
 
 

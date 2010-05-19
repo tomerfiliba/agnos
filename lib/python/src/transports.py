@@ -66,7 +66,7 @@ class InStream(object):
             data2 = self._read(req)
             data = self.buffer + data2[:req]
             self.buffer = data2[req:]
-        #print >>sys.stderr, "%05d  R %s" % (os.getpid(), data.encode("hex"))
+        print >>sys.stderr, "%05d  R %r" % (os.getpid(), data)
         return data
     def poll(self, timeout):
         rl, _, _ = select([self.file], [], [], timeout)
@@ -80,12 +80,14 @@ class OutStreamTransaction(object):
         self.stream = stream
         self.buffer = []
     def clear(self):
-        del self.stream.buffer[:]
+        del self.buffer[:]
     def cancel(self):
         raise TransactionCanceled()
     def write(self, data):
         self.buffer.append(data)
     def flush(self):
+        for data in self.buffer:
+            print >>sys.stderr, "%05d  W %r" % (os.getpid(), data)
         self.stream.write("".join(self.buffer))
 
 class OutStream(object):
@@ -102,9 +104,10 @@ class OutStream(object):
         try:
             trans = OutStreamTransaction(self)
             yield trans
-            trans.flush()
         except TransactionCanceled:
             pass
+        else:
+            trans.flush()
 
 class SocketTransportFactory(TransportFactory):
     def __init__(self, port, host = "0.0.0.0", backlog = 10):
@@ -117,8 +120,8 @@ class SocketTransportFactory(TransportFactory):
         return SocketTransport.from_socket(self.sock.accept()[0])
 
 class SocketTransport(Transport):
-    def __init__(self, sock):
-        self.sock = sock
+    def __init__(self, sockfile):
+        self.sock = sockfile
     @classmethod
     def connect(cls, host, port):
         return cls(SocketFile.connect(host, port))

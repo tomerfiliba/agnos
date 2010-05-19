@@ -43,8 +43,9 @@ class Block(object):
         else:
             return self.stack[-1]
 
-    def sep(self):
-        self._get_head().children.append(EmptyStmt)
+    def sep(self, count = 1):
+        for i in range(count):
+            self._get_head().children.append(EmptyStmt)
     def doc(self, *args, **kwargs):
         self._get_head().children.append(Doc(*args, **kwargs))
     def stmt(self, *args, **kwargs):
