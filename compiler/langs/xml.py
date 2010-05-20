@@ -27,6 +27,15 @@ class XmlText(object):
         else:
             return [self.text]
 
+class XmlComment(object):
+    def __init__(self, text, *args):
+        text = str(text)
+        if args:
+            text = text.format(*args)
+        self.text = text
+    def render(self):
+        return ["<!-- %s -->" % (xml_escape(self.text),)]
+
 class XmlBlock(object):
     def __init__(self, _tag, **attrs):
         self.tag = _tag.lower()
@@ -46,6 +55,8 @@ class XmlBlock(object):
         del self._get_head().attrs[name.lower()]
     def text(self, *args, **kwargs):
         self._get_head().children.append(XmlText(*args, **kwargs))
+    def comment(self, *args, **kwargs):
+        self._get_head().children.append(XmlComment(*args, **kwargs))
     def elem(self, *args, **attrs):
         with self.block(*args, **attrs):
             pass
@@ -66,7 +77,7 @@ class XmlBlock(object):
         if self.children:
             lines = ["<%s%s>" % (self.tag, attrs)]
             for child in self.children:
-                lines.extend(("    " + l) for l in child.render())
+                lines.extend(("\t" + l) for l in child.render())
             lines.append("</%s>" % (self.tag,))
         else:
             lines = ["<%s%s />" % (self.tag, attrs)]
@@ -76,6 +87,10 @@ class XmlBlock(object):
 class XmlDoc(XmlBlock):
     ENCODING = '<?xml version="1.0" encoding="UTF-8"?>'
 
+    def __enter__(self):
+        return self
+    def __exit__(self, t, v, tb):
+        pass
     def render(self):
         text = self.ENCODING + "\n" + "\n".join(XmlBlock.render(self))
         return text.encode("utf-8") 
@@ -87,40 +102,41 @@ class HtmlDoc(XmlBlock):
 
     def __init__(self):
         XmlBlock.__init__(self, "html", xmlns = "http://www.w3.org/1999/xhtml")
+    def __enter__(self):
+        return self
+    def __exit__(self, t, v, tb):
+        pass
     def render(self):
         return self.DOCTYPE + "\n" + "\n".join(XmlBlock.render(self))
 
 
+
 if __name__ == "__main__":
-    doc = HtmlDoc()
-    BLOCK = doc.block
-    TEXT = doc.text
-    ATTR = doc.attr
-    
-    with BLOCK("head"):
-        with BLOCK("title"):
-            TEXT("hello {0}", "world")
-    with BLOCK("body"):
-        with BLOCK("table", width = 15):
-            ATTR(border = 2)
-            with BLOCK("tr"):
-                with BLOCK("td"):
-                    TEXT("<b>hi</b> there", escape = False)
+    with HtmlDoc() as doc:
+        BLOCK = doc.block
+        TEXT = doc.text
+        ATTR = doc.attr
+
+        with BLOCK("head"):
+            with BLOCK("title"):
+                TEXT("hello {0}", "world")
+        with BLOCK("body"):
+            with BLOCK("table", width = 15):
+                ATTR(border = 2)
+                with BLOCK("tr"):
+                    with BLOCK("td"):
+                        TEXT("<b>hi</b> there", escape = False)
     
     print doc.render()
+    print "---------"
     
-    doc = XmlDoc("service", name = "moshe")
-    BLOCK = doc.block
-    TEXT = doc.text
-    ELEM = doc.elem
-
-    with BLOCK("func", name = "open", type="File"):
-        with BLOCK("doc"):
-            TEXT("this is function opens the given file")
-        with BLOCK("arg", name="filename", type="str"):
-            with BLOCK("doc"):
-                TEXT("this is the filename to open")
-        ELEM("this", elem="has no children")
+    with XmlDoc("service", name="moshe") as doc:
+        with doc.block("doc"):
+            doc.text("this is function opens the given file")
+        with doc.block("arg", name="filename", type="str"):
+            with doc.block("doc"):
+                doc.text("this is the filename to open")
+        doc.elem("this", elem="has no children")
     
     print doc.render()
     

@@ -331,13 +331,13 @@ class PythonTarget(TargetBase):
                     for func in service.funcs.values():
                         if not func.namespace:
                             continue
-                        head, tail = func.fullname.split(".", 1)
+                        head, tail = (func.namespace + "." + func.name).split(".", 1)
                         STMT("self.{0}['{1}'] = self._autogen_{2}", head, tail, func.fullname)
                 SEP()
                 for func in service.funcs.values():
                     args = ", ".join(arg.name for arg in func.args)
                     if func.namespace:
-                        name = "_autogen_%s_%s" % (func.fullname,)
+                        name = "_autogen_%s" % (func.fullname,)
                     else:
                         name = func.name
                     with BLOCK("def {0}_send(_self, {1})", name, args):

@@ -48,8 +48,9 @@ class Block(object):
         else:
             return self.stack[-1]
 
-    def sep(self):
-        self._get_head().children.append(EmptyStmt)
+    def sep(self, count = 1):
+        for i in range(count):
+            self._get_head().children.append(EmptyStmt)
     def doc(self, *args, **kwargs):
         self._get_head().children.append(Doc(*args, **kwargs))
     def stmt(self, *args, **kwargs):
@@ -77,7 +78,10 @@ class Block(object):
 class Module(Block):
     def __init__(self):
         Block.__init__(self, None)
-    
+    def __enter__(self):
+        return self
+    def __exit__(self, t, v, tb):
+        pass
     def render(self):
         lines = []
         for child in self.children:
@@ -86,23 +90,25 @@ class Module(Block):
 
 
 if __name__ == "__main__":
-    m = Module()
-    BLOCK = m.block
-    STMT = m.stmt
-    SEP = m.sep
-    
-    STMT("using System")
-    STMT("using System.Collections")
-    STMT("using Thrift")
-    SEP()
-    with BLOCK("namespace t4"):
-        with BLOCK("public class moshe"):
-            with BLOCK("public moshe()"):
-                STMT("int x = 5")
-                STMT("int y = 6")
-            SEP()
-            with BLOCK("public ~moshe()"):
-                STMT("Dispose(false)")
+    with Module() as m:
+        BLOCK = m.block
+        STMT = m.stmt
+        SEP = m.sep
+        
+        STMT("using System")
+        STMT("using System.Collections")
+        STMT("using Thrift")
+        SEP(2)
+        with BLOCK("namespace t4"):
+            with BLOCK("public class moshe"):
+                STMT("private int x, y")
+                SEP()
+                with BLOCK("public moshe()"):
+                    STMT("int x = 5")
+                    STMT("int y = 6")
+                SEP()
+                with BLOCK("public ~moshe()"):
+                    STMT("Dispose(false)")
     
     print m.render()
 

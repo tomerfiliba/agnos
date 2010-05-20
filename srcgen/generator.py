@@ -144,7 +144,7 @@ class IdlGenerator(object):
             self.emit_doc(node)
 
 
-class BindingGenerator(object):
+class ServerGenerator(object):
     def __init__(self):
         self.doc = python.Module()
         self.BLOCK = self.doc.block
@@ -249,6 +249,8 @@ def main(rootdir, outdir = None, idlfile = None, serverfile = None, rootpackage 
 
     if not outdir:
         outdir = rootdir
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
     if not idlfile:
         idlfile = os.path.join(outdir, "%s.xml" % (ast_root.service_name,))
     if not serverfile:
@@ -261,7 +263,7 @@ def main(rootdir, outdir = None, idlfile = None, serverfile = None, rootpackage 
     
     compile(idlfile, PythonTarget(outdir))
     
-    visitor = BindingGenerator()
+    visitor = ServerGenerator()
     visitor.visit(ast_root)
     with open(serverfile, "w") as f:
         f.write(visitor.doc.render())

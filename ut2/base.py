@@ -29,7 +29,7 @@ class TargetTest(unittest.TestCase):
 
     def run_agnosc(self, target, filename, outdir):
         print "agnosc %s" % (filename,)
-        self.run_cmdline(["bin/agnosc.py", "-t", target, "-o", outdir, filename])
+        self.run_cmdline(["python", "bin/agnosc.py", "-t", target, "-o", outdir, filename])
     
     def open(self, filename, mode="r"):
         if not isinstance(filename, str):
