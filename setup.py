@@ -2,7 +2,7 @@
 from distutils.core import setup
 
 setup(name='agnos_compiler',
-    version='0.1.0',
+    version='0.9',
     description='Agnos Compiler library',
     author=['Tomer Filiba'],
     author_email=['tomerfiliba@gmail.com'],

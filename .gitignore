@@ -17,6 +17,8 @@
 *.html
 *Bindings.*
 *_bindings.py
+*.sln.cache
+*.sln.proj
 bin
 obj
 build
