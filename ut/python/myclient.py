@@ -1,5 +1,5 @@
 import sys
-sys.path.append("ut2/gen-python")
+sys.path.append("ut/gen-python")
 
 import agnos
 import RemoteFiles_bindings as RemoteFiles

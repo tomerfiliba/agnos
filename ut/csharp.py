@@ -17,8 +17,8 @@ class TestJava(TargetTest):
             self.run_cmdline([r"xbuild", sln])
     
     def runTest(self):
-        self.run_agnosc("c#", "ut2/RemoteFiles.xml", "ut2/gen-csharp")
-        self.run_msbuild("ut2/csharp/agnostest.sln")
+        self.run_agnosc("c#", "ut/RemoteFiles.xml", "ut/gen-csharp")
+        self.run_msbuild("ut/csharp/agnostest.sln")
 
 
 if __name__ == '__main__':

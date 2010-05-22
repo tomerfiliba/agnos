@@ -68,6 +68,8 @@ class IdlGenerator(object):
     
     def visit_ClassNode(self, node):
         with self.BLOCK("class", name = node.attrs["name"]):
+            if node.extends:
+                self.ATTR(extends = ",".join(node.extends))
             self.emit_doc(node)
             for child in node.children:
                 child.accept(self)

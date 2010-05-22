@@ -21,24 +21,14 @@ public class Servers
 		{
 			while (true)
 			{
-				System.out.println("accepting...");
 				Transports.ITransport transport = transportFactory.accept();
-				_handleClient(transport);
-				System.out.println("goodbye");
+				acceptClient(transport);
 			}
 		}
 
-		protected abstract void _handleClient(Transports.ITransport transport) throws Exception;
-	}
-
-	public static class SimpleServer extends BaseServer
-	{
-		public SimpleServer(Protocol.BaseProcessor processor, Transports.ITransportFactory transportFactory)
-		{
-			super(processor, transportFactory);
-		}
-
-		protected void _handleClient(Transports.ITransport transport) throws Exception
+		protected abstract void acceptClient(Transports.ITransport transport) throws Exception;
+		
+		protected static void serveClient(Protocol.BaseProcessor processor, Transports.ITransport transport) throws Exception
 		{
 			InputStream inStream = transport.getInputStream();
 			OutputStream outStream = transport.getOutputStream();
@@ -61,48 +51,85 @@ public class Servers
 		}
 	}
 
+	public static class SimpleServer extends BaseServer
+	{
+		public SimpleServer(Protocol.BaseProcessor processor, Transports.ITransportFactory transportFactory)
+		{
+			super(processor, transportFactory);
+		}
+
+		protected void acceptClient(Transports.ITransport transport) throws Exception
+		{
+			serveClient(processor, transport);
+		}
+	}
+
 	public static class ThreadedServer extends BaseServer
 	{
+		protected static class ThreadProc extends Thread 
+		{
+			protected Protocol.BaseProcessor processor;
+			protected Transports.ITransport transport;
+			
+			ThreadProc(Protocol.BaseProcessor processor, Transports.ITransport transport)
+			{
+				this.processor = processor;
+				this.transport = transport;
+	        }
+
+	        public void run()
+	        {
+	        	try {
+		        	BaseServer.serveClient(processor, transport);
+	        	}
+	        	catch (Exception ex)
+	        	{
+	        		// should log this somehow
+	        	}
+	        }
+	    }
+		
 		public ThreadedServer(Protocol.BaseProcessor processor, Transports.ITransportFactory transportFactory)
 		{
 			super(processor, transportFactory);
 		}
 
-		protected void _handleClient(Transports.ITransport transport) throws Exception
+		protected void acceptClient(Transports.ITransport transport) throws Exception
 		{
-			InputStream inStream = transport.getInputStream();
-			OutputStream outStream = transport.getOutputStream();
+			Thread t = new ThreadProc(processor, transport);
+			t.start();
 		}
 	}
+
+    public static class LibraryModeServer
+    {
+        protected ServerSocket serverSocket;
+        protected Protocol.BaseProcessor processor;
+
+        public LibraryModeServer(Protocol.BaseProcessor processor) throws IOException, UnknownHostException
+        {
+        	this(processor, InetAddress.getByName("127.0.0.1"));
+        }
+
+        public LibraryModeServer(Protocol.BaseProcessor processor, InetAddress addr) throws IOException
+        {
+            this.processor = processor;
+            serverSocket = new ServerSocket(0, 1, addr);
+        }
+
+        public void serve() throws Exception
+        {
+            System.out.println(serverSocket.getInetAddress().toString());
+            System.out.println(serverSocket.getLocalPort());
+            System.out.flush();
+            System.out.close();
+            
+            Transports.ITransport transport = new Transports.SocketTransport(serverSocket.accept());
+            serverSocket.close();
+            BaseServer.serveClient(processor, transport);
+        }
+    }	
 	
-	/*public abstract static class ChildServer
-	{
-		protected Process proc;
-		public Protocol.BaseClient client;
-		
-		public ChildServer(ProcessBuilder procBuilder) throws IOException, UnknownHostException
-		{
-			Process p = procBuilder.start();
-			InputStream stream = p.getInputStream();
-			BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
-			String hostname = reader.readLine();
-			String portstr = reader.readLine();
-			stream.close();
-			int port = Integer.parseInt(portstr);
-			ITransport trans = new SocketTransport(hostname, port);
-			client = getClient(trans);
-		}
-		
-		protected abstract Protocol.BaseClient getClient(ITransport transport);
-		
-		public void close() throws IOException, InterruptedException
-		{
-			client.close();
-			client = null;
-			proc.waitFor();
-		}
-		
-	}*/
 }
 
 

@@ -69,6 +69,54 @@ public class Transports
 		}
 	}
 	
+    public static class ProcTransport implements ITransport
+    {
+        public Process proc;
+        public ITransport transport;
+
+        public ProcTransport(Process proc, ITransport transport)
+        {
+            this.proc = proc;
+            this.transport = transport;
+        }
+
+        public InputStream getInputStream() throws IOException
+        {
+            return transport.getInputStream();
+        }
+        
+        public OutputStream getOutputStream() throws IOException
+        {
+            return transport.getOutputStream();
+        }
+
+        public static ProcTransport connect(String filename) throws Exception
+        {
+            return connect(filename, "-m", "lib");
+        }
+
+        public static ProcTransport connect(String filename, String... args) throws Exception 
+        {
+        	ArrayList<String> cmdline = new ArrayList<String>();
+        	cmdline.add(filename);
+        	cmdline.addAll(Arrays.asList(args));
+        	ProcessBuilder pb = new ProcessBuilder(cmdline);
+        	pb.redirectErrorStream(true);
+            return connect(pb);
+        }
+
+        public static ProcTransport connect(ProcessBuilder procbuilder) throws Exception
+        {
+        	Process proc = procbuilder.start();
+        	BufferedReader reader = new BufferedReader(new InputStreamReader(
+                    new BufferedInputStream(proc.getInputStream())));
+        	String hostname = reader.readLine();
+            int port = Integer.parseInt(reader.readLine());
+            
+            ITransport transport = new SocketTransport(hostname, port);
+            return new ProcTransport(proc, transport);
+        }
+    }
 }
 
 

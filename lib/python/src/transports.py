@@ -3,6 +3,7 @@ import os
 import socket
 from select import select
 from contextlib import contextmanager
+from subprocess import Popen, PIPE
 
 
 class SocketFile(object):
@@ -132,6 +133,32 @@ class SocketTransport(Transport):
         return InStream(self.sock)
     def get_output_stream(self):
         return OutStream(self.sock)
+
+class ProcTransport(Transport):
+    def __init__(self, proc, transport):
+        self.proc = proc
+        self.transport = transport
+    def get_input_stream(self):
+        return self.transport.get_input_stream()
+    def get_output_stream(self):
+        return self.transport.get_output_stream()
+    
+    @classmethod
+    def from_executable(cls, filename, args = None):
+        if args is None:
+            args = ["-m", "-lib"]
+        cmdline = [filename]
+        cmdline.extend(args)
+        proc = Popen(cmdline, shell = False, stdin = PIPE, stdout = PIPE)
+        return cls.from_proc(proc)
+
+    @classmethod
+    def from_proc(cls, proc):
+        host = proc.stdout.readline().strip()
+        port = int(proc.stdout.readline().strip())
+        proc.stdout.close()
+        transport = SocketTransport.connect(host, port)
+        return cls(proc, transport)
 
 
 

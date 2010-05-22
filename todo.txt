@@ -7,19 +7,18 @@
         * csharp
         * java
         * python
-* 1.1:
     * inheritance
-    * library-mode serving, library mode client
+    * library-mode serving, library mode client (+)
     * begin integratation with XSF
-* 1.2:
+* 1.1:
     * REST access in the meanwhile:
         can implement REST on top of agnos, by writing a small python mediator 
         program that acts as a client from one side, and exposes REST 
         web access on the other
     * powershell
-* 1.3:
+* 1.2:
     * c++
-* 1.4:
+* 1.3:
     * async invocation
     * custom type templates
     * complex consts

@@ -12,48 +12,44 @@ class BaseServer(object):
     
     def serve(self):
         while True:
-            #print >>sys.stderr, "!!accepting"
             trans = self.transport_factory.accept()
-            self._handle_client(trans)
-            #print >>sys.stderr, "!!goodbye"
+            self._accept_client(trans)
 
-    def _handle_client(self, transport):
+    def _accept_client(self, transport):
+        raise NotImplementedError()
+
+    @classmethod
+    def _serve_client(cls, processor, transport):
         instream = transport.get_input_stream()
         outstream = transport.get_output_stream()
-        
         try:
             while True:
-                self.processor.process(instream, outstream)
+                processor.process(instream, outstream)
         except EOFError:
             pass
 
-
 class SimpleServer(BaseServer):
-    pass
-
+    def _accept_client(self, transport):
+        self._serve_client(self.processor, transport)
 
 class ThreadedServer(BaseServer):
-    def _handle_client(self, transport):
-        t = threading.Thread(target = BaseServer._handle_client, args = (self, transport))
+    def _accept_client(self, transport):
+        t = threading.Thread(target = BaseServer._serve_client, args = (self.processor, transport))
         t.start()
 
-
-class ChildServer(BaseServer):
+class LibraryModeServer(BaseServer):
     def serve(self):
         sys.stdout.write("%s\n%d\n" % (self.transport_factory.host, self.transport_factory.port))
         sys.stdout.flush()
         sys.stdout.close()
-        os.close(1)
-        #print >>sys.stderr, "!!accepting"
+        os.close(sys.stdout.fileno())
         trans = self.transport_factory.accept()
         self._handle_client(trans)
-        #print >>sys.stderr, "!!goodbye"
-
 
 def server_main(processor):
     parser = OptionParser()
     parser.add_option("-m", "--mode", dest="mode", default="simple",
-                      help="server mode (simple, threaded, child)",  
+                      help="server mode (simple, threaded, library)",  
                       metavar="MODE")
     parser.add_option("-p", "--port", dest="port", default="0",
                       help="tcp port number; 0 = random port", metavar="PORT")
@@ -65,8 +61,8 @@ def server_main(processor):
     options.mode = options.mode.lower()
 
     transfactory = SocketTransportFactory(int(options.port), options.host)
-    if options.mode == "child":
-        s = ChildServer(processor, transfactory)
+    if options.mode == "lib" or options.mode == "library":
+        s = LibraryModeServer(processor, transfactory)
     elif options.mode == "simple":
         s = SimpleServer(processor, transfactory)
     elif options.mode == "threaded":

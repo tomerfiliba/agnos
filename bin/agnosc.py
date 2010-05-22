@@ -41,7 +41,6 @@ parser.add_option("-d", "--debug",
 if __name__ == "__main__":
     options, args = parser.parse_args()
     #args = ["../ut/RemoteFiles.xml"]
-    #args = ["../srcgen/examples/mextra.xml"]
     #options.target = "python"
     if not args:
         parser.error("must specify agnos input file(s)")

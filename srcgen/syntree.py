@@ -150,6 +150,11 @@ def arg_value(argname, blk):
         raise SourceError(blk.srcblock, "required argument %r missing", argname)
     return blk.args[argname]
 
+def comma_sep_arg_value(argname, blk):
+    if argname not in blk.args:
+        return []
+    return [n.strip() for n in blk.args[argname].split(",")]
+
 def arg_default(default):
     def wrapper(argname, blk):
         return blk.args.get(argname, default)
@@ -223,7 +228,7 @@ class CtorNode(AstNode):
 
 class ClassNode(AstNode):
     TAG = "class"
-    ATTRS = dict(name = auto_fill_name)
+    ATTRS = dict(name = auto_fill_name, extends = comma_sep_arg_value)
     CHILDREN = [ClassAttrNode, CtorNode, MethodNode, StaticMethodNode]
 
 class FuncArgNode(AstNode):

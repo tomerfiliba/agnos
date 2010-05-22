@@ -79,6 +79,7 @@ class PythonTarget(TargetBase):
             
             STMT("import agnos")
             STMT("from agnos import packers")
+            STMT("from agnos import utils")
             SEP()
             
             STMT("_IDL_MAGIC = '{0}'", service.digest)
@@ -150,7 +151,7 @@ class PythonTarget(TargetBase):
         SEP = module.sep
         
         members = ["\n    '%s' : %s" % (m.name, m.value) for m in enum.members]
-        STMT("{0} = agnos.create_enum('{0}', {{{1}}})", enum.name, ", ".join(members))
+        STMT("{0} = utils.create_enum('{0}', {{{1}}})", enum.name, ", ".join(members))
         SEP()
         with BLOCK("class {0}Packer(packers.Packer)", enum.name):
             STMT("@classmethod")
@@ -365,12 +366,23 @@ class PythonTarget(TargetBase):
             self.generate_templated_packers(module, service)
             STMT("return clnt")
         SEP()
-        with BLOCK("def _from_transport(transport)"):
+        STMT("@utils.make_method(Client)")
+        with BLOCK("def from_transport(transport)"):
             STMT("return Client(transport.get_input_stream(), transport.get_output_stream())")
-        STMT("Client.from_transport = _from_transport")
-        with BLOCK("def _connect(host, port)"):
+        SEP()
+        STMT("@utils.make_method(Client)")
+        with BLOCK("def connect(host, port)"):
             STMT("return Client.from_transport(agnos.SocketTransport.connect(host, port))")
-        STMT("Client.connect = _connect")
+        SEP()
+        STMT("@utils.make_method(Client)")
+        with BLOCK("def connect_executable(filename, args = None)"):
+            STMT("transport = agnos.ProcTransport.from_executable(filename, args)")
+            STMT("return Client.from_transport(transport)")
+        SEP()
+        STMT("@utils.make_method(Client)")
+        with BLOCK("def connect_proc(proc)"):
+            STMT("transport = agnos.ProcTransport.from_proc(proc)")
+            STMT("return Client.from_transport(transport)")
 
 
 

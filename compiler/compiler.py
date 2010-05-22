@@ -68,6 +68,11 @@ def TYPENAME_NONVOID(name, v):
         raise IDLError("argument or attribute type cannot be void: %r" % (name,))
     return v
 
+def TYPENAME_COMMA_SEP(name, v):
+    if not v:
+        return []
+    return [TYPENAME_NONVOID(name, tp) for tp in v.split(",")]
+
 class Element(object):
     XML_TAG = None
     CHILDREN = []
@@ -211,7 +216,7 @@ class ClassMethod(Element):
 class Class(Element):
     XML_TAG = "class"
     CHILDREN = [ClassMethod, ClassAttr]
-    ATTRS = dict(name = IDENTIFIER)
+    ATTRS = dict(name = IDENTIFIER, extends = TYPENAME_COMMA_SEP)
     
     def stringify(self):
         return self.name
@@ -230,6 +235,7 @@ class Class(Element):
             attr.resolve(service)
         for method in self.methods:
             method.resolve(service)
+        self.extends = [service.get_type(tp) for tp in self.extends]
     
     def _postprocess(self, service): 
         for attr in self.attrs:
@@ -312,7 +318,6 @@ t_date = BuiltinType("date")
 t_buffer = BuiltinType("buffer")
 t_string = BuiltinType("str")
 t_void = BuiltinType("void")
-t_objref = BuiltinType("objref")
 
 
 class TList(BuiltinType):
@@ -379,7 +384,6 @@ class Service(Element):
         "date" : t_date,
         "buffer" : t_buffer,
         "str" : t_string,
-        "objref" : t_objref,
         "string" : t_string,
         "list" : None,
         "map" : None,

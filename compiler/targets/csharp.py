@@ -26,8 +26,6 @@ def type_to_cs(t, proxy = False):
         return "DateTime"
     elif t == compiler.t_buffer:
         return "byte[]"
-    elif t == compiler.t_objref:
-        return "long" 
     elif isinstance(t, compiler.TList):
         return "List<%s>" % (type_to_cs(t.oftype, proxy = proxy),)
     elif isinstance(t, compiler.TMap):

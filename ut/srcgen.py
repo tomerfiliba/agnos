@@ -10,7 +10,7 @@ class TestPython(TargetTest):
         self.run_cmdline(["python", "bin/agnos-srcgen.py", "-o", outdir, path])
     
     def runTest(self):
-        self.run_srcgen("ut2/mextra", "ut2/gen-mextra")
+        self.run_srcgen("ut/mextra", "ut/gen-mextra")
 
 
 

@@ -36,9 +36,9 @@ class TestJava(TargetTest):
     
     def runTest(self):
         agnos_jar = self.ant_jar("lib/java")
-        self.run_agnosc("java", "ut2/RemoteFiles.xml", "ut2/gen-java")
-        remotefiles_jar = self.compile_java("ut2/gen-java", "RemoteFiles.jar", classpath = [agnos_jar])
-        test_jar = self.compile_java("ut2/javatest", "test.jar", classpath = [agnos_jar, remotefiles_jar])
+        self.run_agnosc("java", "ut/RemoteFiles.xml", "ut/gen-java")
+        remotefiles_jar = self.compile_java("ut/gen-java", "RemoteFiles.jar", classpath = [agnos_jar])
+        test_jar = self.compile_java("ut/javatest", "test.jar", classpath = [agnos_jar, remotefiles_jar])
         serverproc = self.run_java("myserver", [agnos_jar, remotefiles_jar, test_jar])
         time.sleep(1)
         clientproc = self.run_java("myclient", [agnos_jar, remotefiles_jar, test_jar])

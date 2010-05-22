@@ -46,6 +46,10 @@ def create_enum(name, members):
         cls._BY_VALUE[v] = em
     return cls
 
+def make_method(cls):
+    def deco(func):
+        setattr(cls, func.__name__, func)
+    return deco
 
 
 

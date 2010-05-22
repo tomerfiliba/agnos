@@ -227,23 +227,6 @@ class BaseClient(object):
     def __del__(self):
         self.close()
     
-    @classmethod
-    def from_transport(cls, transport):
-        return cls(transport.get_input_stream(), transport.get_output_stream())
-    
-    @classmethod
-    def connect(cls, host, port):
-        return cls.from_transport(transports.SocketTransport.connect(host, port))
-    
-    @classmethod
-    def connect_subproc(cls, proc):
-        if not hasattr(proc, "stdout"):
-            proc = Popen([proc, "-m", "child"], stdin = PIPE, stdout = PIPE) #, stderr = PIPE)
-        hostname = proc.stdout.readline().strip()
-        port = int(proc.stdout.readline().strip())
-        proc.stdout.close()
-        return cls.connect(hostname, port)
-    
     def close(self):
         if self._instream:
             self._instream.close()

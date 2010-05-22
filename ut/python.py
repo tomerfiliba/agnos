@@ -10,10 +10,10 @@ class TestPython(TargetTest):
         return self.spawn(["python", file])
     
     def runTest(self):
-        self.run_agnosc("python", "ut2/RemoteFiles.xml", "ut2/gen-python")
-        serverproc = self.run_python("ut2/python/myserver.py", ["ut2/gen-python"])
+        self.run_agnosc("python", "ut/RemoteFiles.xml", "ut/gen-python")
+        serverproc = self.run_python("ut/python/myserver.py", ["ut/gen-python"])
         time.sleep(1)
-        clientproc = self.run_python("ut2/python/myclient.py", ["ut2/gen-python"])
+        clientproc = self.run_python("ut/python/myclient.py", ["ut/gen-python"])
         #self.assertTrue(clientproc.wait() == 0)
         print "===client output==="
         print clientproc.stdout.read()

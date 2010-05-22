@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Diagnostics;
 
 
 namespace Agnos.Transports
@@ -36,12 +37,10 @@ namespace Agnos.Transports
 		{
 			listener = new TcpListener(addr, port);
 			listener.Start(backlog);
-			System.Console.WriteLine("listening on {0}:{1}", addr, port);
 		}
 		
 		public ITransport accept()
 		{
-			System.Console.WriteLine("accepting...");
 			return new SocketTransport(listener.AcceptSocket());
 		}
 	}
@@ -77,5 +76,54 @@ namespace Agnos.Transports
 		{
 			return new BufferedStream(new NetworkStream(sock), bufsize);
 		}
-	}	
+	}
+
+    public class ProcTransport : ITransport
+    {
+        public Process proc;
+        public ITransport transport;
+
+        public ProcTransport(Process proc, ITransport transport)
+        {
+            this.proc = proc;
+            this.transport = transport;
+        }
+
+        public Stream getInputStream()
+        {
+            return transport.getInputStream();
+        }
+
+        public Stream getOutputStream()
+        {
+            return transport.getOutputStream();
+        }
+
+        public static ProcTransport connect(string filename)
+        {
+            return connect(filename, "-m lib");
+        }
+
+        public static ProcTransport connect(string filename, string args)
+        {
+            Process proc = new Process();
+            proc.StartInfo.UseShellExecute = false;
+            proc.StartInfo.FileName = filename;
+            proc.StartInfo.Arguments = args;
+            proc.StartInfo.CreateNoWindow = true;
+            proc.StartInfo.RedirectStandardInput = true;
+            proc.StartInfo.RedirectStandardOutput = true;
+            proc.StartInfo.RedirectStandardError = true;
+            return connect(proc);
+        }
+
+        public static ProcTransport connect(Process proc)
+        {
+            proc.Start();
+            string hostname = proc.StandardOutput.ReadLine();
+            int port = Int16.Parse(proc.StandardOutput.ReadLine());
+            ITransport transport = new SocketTransport(hostname, port);
+            return new ProcTransport(proc, transport);
+        }
+    }
 }

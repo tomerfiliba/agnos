@@ -1,0 +1,3 @@
+"""
+generate powershell client
+"""
