@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Net;
@@ -66,15 +66,20 @@ namespace Agnos
 			private byte[] buffer = new byte[1];
 			
 			internal _Int8(){}
-			
+
 			public void pack(object obj, Stream stream)
 			{
 				if (obj == null) {
-					buffer[0] = 0;
+					pack((byte)0, stream);
 				}
 				else {
-					buffer[0] = (byte)obj;
+					pack((byte)obj, stream);
 				}
+			}
+			
+			public void pack(byte val, Stream stream)
+			{
+				buffer[0] = val;
 				_write(stream, buffer);
 			}
 	
@@ -93,11 +98,27 @@ namespace Agnos
 		{
 			internal _Bool(){}
 
+			
 			public void pack(object obj, Stream stream)
 			{
-				Int8.pack((bool)obj ? 1 : 0, stream);
+				if (obj == null) {
+					pack(false, stream);
+				}
+				else {
+					pack((bool)obj, stream);
+				}
 			}
-	
+			
+			public void pack(bool val, Stream stream)
+			{
+				if (val) {
+					Int8.pack((byte)1, stream);
+				}
+				else {
+					Int8.pack((byte)1, stream);
+				}
+			}
+
 			public object unpack(Stream stream)
 			{
 				return ((byte)Int8.unpack(stream)) != 0;
@@ -116,10 +137,16 @@ namespace Agnos
 
 			public void pack(object obj, Stream stream)
 			{
-				short val = 0;
-				if (obj != null) {
-					obj = (short)obj;
+				if (obj == null) {
+					pack((short)0, stream);
 				}
+				else {
+					pack((short)obj, stream);
+				}
+			}
+			
+			public void pack(short val, Stream stream)
+			{
 				buffer[0] = (byte) ((val >> 8) & 0xff);
 				buffer[1] = (byte) ((val) & 0xFF);
 				_write(stream, buffer);
@@ -144,10 +171,16 @@ namespace Agnos
 
 			public void pack(object obj, Stream stream)
 			{
-				int val = 0;
-				if (obj != null) {
-					val = (int)obj;
+				if (obj == null) {
+					pack((int)0, stream);
 				}
+				else {
+					pack((int)obj, stream);
+				}
+			}
+			
+			public void pack(int val, Stream stream)
+			{
 				buffer[0] = (byte) ((val >> 24) & 0xff);
 				buffer[1] = (byte) ((val >> 16) & 0xff);
 				buffer[2] = (byte) ((val >> 8) & 0xff);
@@ -172,13 +205,19 @@ namespace Agnos
 			private byte[]	buffer	= new byte[8];
 
 			internal _Int64(){}
-
+						
 			public void pack(object obj, Stream stream)
 			{
-				long val = 0;
-				if (obj != null) {
-					val = (long)obj;
+				if (obj == null) {
+					pack((long)0, stream);
 				}
+				else {
+					pack((long)obj, stream);
+				}
+			}
+			
+			public void pack(long val, Stream stream)
+			{
 				buffer[0] = (byte) ((val >> 56) & 0xff);
 				buffer[1] = (byte) ((val >> 48) & 0xff);
 				buffer[2] = (byte) ((val >> 40) & 0xff);
@@ -239,11 +278,17 @@ namespace Agnos
 
 			public void pack(object obj, Stream stream)
 			{
-				long bits = 0;
-				if (obj != null) {
-					bits = BitConverter.DoubleToInt64Bits((double)obj);
+				if (obj == null) {
+					pack(0.0, stream);
 				}
-				Int64.pack(bits, stream);
+				else {
+					pack((double)obj, stream);
+				}
+			}
+			
+			public void pack(double val, Stream stream)
+			{
+				Int64.pack(BitConverter.DoubleToInt64Bits(val), stream);
 			}
 	
 			public object unpack(Stream stream)
@@ -300,7 +345,8 @@ namespace Agnos
 	
 			public object unpack(Stream stream)
 			{
-				long timestamp = (long)Int64.unpack(stream);
+				//long timestamp = (long)Int64.unpack(stream);
+				Int64.unpack(stream);
 				return DateTime.Now;
 				//return new DateTime(timestamp * 10000, DateTimeKind.Local);
 			}

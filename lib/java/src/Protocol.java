@@ -18,6 +18,8 @@ public class Protocol
 	public static final int REPLY_PACKED_EXCEPTION = 2;
 	public static final int REPLY_GENERIC_EXCEPTION = 3;
 
+	public static final int AGNOS_MAGIC = 0x5af30cf7;
+
 	public abstract static class PackedException extends Exception 
 	{
 		public PackedException() {
@@ -31,6 +33,13 @@ public class Protocol
 		}
 	}
 
+	public static class HandshakeError extends ProtocolError 
+	{
+		public HandshakeError(String message) {
+			super(message);
+		}
+	}
+	
 	public static class GenericException extends Exception 
 	{
 		public String message;
@@ -94,11 +103,31 @@ public class Protocol
 		protected Map<Long, Cell> cells;
 		protected ObjectIDGenerator idGenerator;
 		protected ByteArrayOutputStream sendBuffer;
+		protected final String _AGNOS_VERSION;
+		protected final String _IDL_MAGIC;
 
-		public BaseProcessor() {
+		public BaseProcessor(String AGNOS_VERSION, String IDL_MAGIC) {
 			cells = new HashMap<Long, Cell>();
 			idGenerator = new ObjectIDGenerator();
 			sendBuffer = new ByteArrayOutputStream(128 * 1024);
+			_AGNOS_VERSION = AGNOS_VERSION;
+			_IDL_MAGIC = IDL_MAGIC;
+		}
+		
+		public void handshake(InputStream inStream, OutputStream outStream) throws Exception
+		{
+			Packers.Int32.pack(AGNOS_MAGIC, outStream);
+			Packers.Str.pack(_AGNOS_VERSION, outStream);
+			Packers.Str.pack(_IDL_MAGIC, outStream);
+            outStream.flush();
+            Integer magic = (Integer)Packers.Int32.unpack(inStream);
+            if (magic.intValue() != AGNOS_MAGIC) {
+            		throw new HandshakeError("wrong magic: " + magic);
+            }
+            Integer succ = (Integer)Packers.Int32.unpack(inStream);
+            if (succ.intValue() != 1) {
+            		throw new HandshakeError("rejected by client");
+            }
 		}
 
 		public Long store(Object obj) {
@@ -159,15 +188,15 @@ public class Protocol
 		}
 
 		protected void send_protocol_error(OutputStream outStream, Integer seq, ProtocolError exc) throws IOException {
-			Packers.Int32.pack(new Integer(seq), outStream);
-			Packers.Int8.pack(new Byte((byte) REPLY_PROTOCOL_ERROR), outStream);
+			Packers.Int32.pack(seq, outStream);
+			Packers.Int8.pack((byte)REPLY_PROTOCOL_ERROR, outStream);
 			Packers.Str.pack(exc.toString(), outStream);
 		}
 
 		protected void send_generic_exception(OutputStream outStream, Integer seq, GenericException exc) throws IOException 
 		{
-			Packers.Int32.pack(new Integer(seq), outStream);
-			Packers.Int8.pack(new Byte((byte) REPLY_GENERIC_EXCEPTION), outStream);
+			Packers.Int32.pack(seq, outStream);
+			Packers.Int8.pack((byte)REPLY_GENERIC_EXCEPTION, outStream);
 			Packers.Str.pack(exc.message, outStream);
 			Packers.Str.pack(exc.traceback, outStream);
 		}
@@ -266,8 +295,10 @@ public class Protocol
 		protected int _seq;
 		protected Map<Integer, ReplySlot> _replies;
 		protected Map<Long, WeakReference> _proxies;
+		protected final String _AGNOS_VERSION;
+		protected final String _IDL_MAGIC;
 
-		public BaseClient(InputStream inStream, OutputStream outStream) 
+		public BaseClient(InputStream inStream, OutputStream outStream, String AGNOS_VERSION, String IDL_MAGIC) throws Exception
 		{
 			_inStream = inStream;
 			_outStream = outStream;
@@ -275,6 +306,40 @@ public class Protocol
 			_seq = 0;
 			_replies = new HashMap<Integer, ReplySlot>(128);
 			_proxies = new HashMap<Long, WeakReference>();
+			_AGNOS_VERSION = AGNOS_VERSION;
+			_IDL_MAGIC = IDL_MAGIC;
+			_handshake();
+		}
+		
+		protected void _handshake() throws Exception
+		{
+			try {
+				Integer magic = (Integer)Packers.Int32.unpack(_inStream);
+				if (magic.intValue() != AGNOS_MAGIC) {
+					throw new HandshakeError("wrong magic: " + magic);
+				}
+				String version = (String)Packers.Str.unpack(_inStream);
+				if (!version.equals(_AGNOS_VERSION)) {
+					throw new HandshakeError("wrong version: " + version);
+				}
+				String idlmagic = (String)Packers.Str.unpack(_inStream);
+				if (!idlmagic.equals(_IDL_MAGIC)) {
+					throw new HandshakeError("wrong idl magic: " + idlmagic);
+				}
+			}
+			catch (HandshakeError exc)
+			{
+				Packers.Int32.pack(AGNOS_MAGIC, _outStream);
+				Packers.Int32.pack(-1, _outStream);
+				_outStream.flush();
+				_inStream.close();
+				_outStream.close();
+				throw exc;
+			}
+			
+			Packers.Int32.pack(AGNOS_MAGIC, _outStream);
+			Packers.Int32.pack(1, _outStream);
+			_outStream.flush();
 		}
 
 		public void close() throws IOException 
@@ -311,8 +376,8 @@ public class Protocol
 		{
 			int seq = _get_seq();
 			try {
-				Packers.Int32.pack(new Integer(seq), _outStream);
-				Packers.Int8.pack(new Integer(CMD_DECREF), _outStream);
+				Packers.Int32.pack(seq, _outStream);
+				Packers.Int8.pack(CMD_DECREF, _outStream);
 				Packers.Int64.pack(id, _outStream);
 				_outStream.flush();
 			} catch (Exception ignored) {
@@ -323,9 +388,9 @@ public class Protocol
 		protected int _send_invocation(OutputStream stream, int funcid, Packers.IPacker packer) throws IOException 
 		{
 			int seq = _get_seq();
-			Packers.Int32.pack(new Integer(seq), stream);
-			Packers.Int8.pack(new Integer(CMD_INVOKE), stream);
-			Packers.Int32.pack(new Integer(funcid), stream);
+			Packers.Int32.pack(seq, stream);
+			Packers.Int8.pack(CMD_INVOKE, stream);
+			Packers.Int32.pack(funcid, stream);
 			_replies.put(seq, new ReplySlot(packer));
 			return seq;
 		}
@@ -356,9 +421,6 @@ public class Protocol
 			}
 			Packers.IPacker packer = (Packers.IPacker)slot.value;
 
-			//System.out.println("C: got reply " + seq + " code = " + code);
-			//System.out.println("C: packer = " + packer);
-
 			switch (code) {
 			case REPLY_SUCCESS:
 				if (packer == null) {
@@ -367,7 +429,6 @@ public class Protocol
 				else {
 					slot.value = packer.unpack(_inStream);
 				}
-				//System.out.println("C: slot.value = " + slot.value);
 				slot.type = ReplySlotType.SLOT_VALUE;
 				break;
 			case REPLY_PROTOCOL_ERROR:

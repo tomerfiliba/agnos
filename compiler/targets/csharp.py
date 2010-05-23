@@ -127,7 +127,8 @@ class CSharpTarget(TargetBase):
             SEP()
             with BLOCK("namespace {0}Bindings", service.name):
                 with BLOCK("public static class {0}", service.name):
-                    STMT('private const string _IDL_MAGIC = "{0}"', service.digest)
+                    STMT('private const string AGNOS_VERSION = "Agnos 1.0"', service.digest)
+                    STMT('private const string IDL_MAGIC = "{0}"', service.digest)
                     SEP()
 
                     DOC("enums", spacer = True)
@@ -314,7 +315,12 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
 
-        with BLOCK("public interface I{0}", cls.name):
+        if cls.extends:
+            extends = " : " + ", ".join("I%s" % (c.name,) for c in cls.extends)
+        else:
+            extends = ""
+
+        with BLOCK("public interface I{0}{1}", cls.name, extends):
             if cls.attrs:
                 DOC("attributes")
             for attr in cls.attrs:
@@ -339,23 +345,23 @@ class CSharpTarget(TargetBase):
             with BLOCK("internal {0}Proxy(Client client, long objref) : base(client, objref)", cls.name):
                 pass
             SEP()
-            for attr in cls.attrs:
+            for cls2, attr in cls.flatten_attrs():
                 with BLOCK("public {0} {1}", type_to_cs(attr.type), attr.name):
                     if attr.get:
                         with BLOCK("get"):
-                            STMT("return _client._autogen_{0}_get_{1}(this)", cls.name, attr.name)
+                            STMT("return _client._autogen_{0}_get_{1}(this)", cls2.name, attr.name)
                     if attr.set:
                         with BLOCK("set"):
-                            STMT("_client._autogen_{0}_set_{1}(this, value)", cls.name, attr.name)
+                            STMT("_client._autogen_{0}_set_{1}(this, value)", cls2.name, attr.name)
             SEP()
-            for method in cls.methods:
+            for cls2, method in cls.flatten_methods():
                 args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) for arg in method.args)
                 with BLOCK("public {0} {1}({2})", type_to_cs(method.type, proxy = True), method.name, args):
                     callargs = ["this"] + [arg.name for arg in method.args]
                     if method.type == compiler.t_void:
-                        STMT("_client._autogen_{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
+                        STMT("_client._autogen_{0}_{1}({2})", cls2.name, method.name, ", ".join(callargs))
                     else:
-                        STMT("return _client._autogen_{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
+                        STMT("return _client._autogen_{0}_{1}({2})", cls2.name, method.name, ", ".join(callargs))
 
     def generate_handler_interface(self, module, service):
         BLOCK = module.block
@@ -389,7 +395,7 @@ class CSharpTarget(TargetBase):
                         SEP()
             self.generate_templated_packers_decl(module, service)
             SEP()
-            with BLOCK("public Processor(IHandler handler)"):
+            with BLOCK("public Processor(IHandler handler) : base(AGNOS_VERSION, IDL_MAGIC)"):
                 STMT("this.handler = handler")
                 for tp in service.types.values():
                     if isinstance(tp, compiler.Class):
@@ -612,7 +618,7 @@ class CSharpTarget(TargetBase):
         SEP()
         namespaces = self.generate_client_namespaces(module, service)
         SEP()
-        with BLOCK("public Client(Stream inStream, Stream outStream) : base(inStream, outStream)"):
+        with BLOCK("public Client(Stream inStream, Stream outStream) : base(inStream, outStream, AGNOS_VERSION, IDL_MAGIC)"):
             for tp in service.types.values():
                 if isinstance(tp, compiler.Class):
                     STMT("{0}ObjRef = new Packers.ObjRef(new {0}ClientSerializer(this))", tp.name) 
@@ -637,9 +643,13 @@ class CSharpTarget(TargetBase):
                 access = "public"
             else:
                 access = "internal"
+            if func.namespace:
+                funcname = "_autogen_" + func.fullname
+            else:
+                funcname = func.fullname
 
             args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) for arg in func.args)
-            with BLOCK("internal int {0}_send({1})", func.fullname, args):
+            with BLOCK("internal int {0}_send({1})", funcname, args):
                 STMT("_sendBuffer.Position = 0")
                 STMT("_sendBuffer.SetLength(0)")
                 STMT("int seq = _send_invocation(_sendBuffer, {0}, {1})", func.id, type_to_packer(func.type))
@@ -651,8 +661,8 @@ class CSharpTarget(TargetBase):
             SEP()
             #if access == "public":
             #    self.emit_func_javadoc(func, module)
-            with BLOCK("{0} {1} {2}({3})", access, type_to_cs(func.type, proxy = True), func.fullname, args):
-                STMT("int seq = {0}_send({1})", func.fullname, ", ".join(arg.name for arg in func.args))
+            with BLOCK("{0} {1} {2}({3})", access, type_to_cs(func.type, proxy = True), funcname, args):
+                STMT("int seq = {0}_send({1})", funcname, ", ".join(arg.name for arg in func.args))
                 if func.type == compiler.t_void:
                     STMT("_get_reply(seq)")
                 else:

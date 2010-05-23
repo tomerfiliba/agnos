@@ -82,7 +82,8 @@ class PythonTarget(TargetBase):
             STMT("from agnos import utils")
             SEP()
             
-            STMT("_IDL_MAGIC = '{0}'", service.digest)
+            STMT("AGNOS_VERSION = 'Agnos 1.0'")
+            STMT("IDL_MAGIC = '{0}'", service.digest)
             SEP()
             
             DOC("enums", spacer = True)
@@ -275,6 +276,7 @@ class PythonTarget(TargetBase):
                         STMT("{0} : {1},", mem.name, type_to_packer(mem))
             SEP()
             STMT("proc.post_init(func_mapping, packed_exceptions, exception_map)")
+            STMT("proc.handshake(AGNOS_VERSION, IDL_MAGIC)")
             STMT("return proc")
     
     def _generate_processor_function(self, module, func):
@@ -334,6 +336,19 @@ class PythonTarget(TargetBase):
                             continue
                         head, tail = (func.namespace + "." + func.name).split(".", 1)
                         STMT("self.{0}['{1}'] = self._autogen_{2}", head, tail, func.fullname)
+                SEP()
+                with BLOCK("def _handshake(self)"):
+                    STMT("magic = packers.Int32.unpack(self._instream)")
+                    with BLOCK("if magic != agnos.AGNOS_MAGIC"):
+                        STMT("raise agnos.HandshakeError('Wrong magic: 0x%08x' % (magic,))")
+                    STMT("version = packers.Str.unpack(self._instream)")
+                    with BLOCK("if version != AGNOS_VERSION"):
+                        STMT("raise agnos.HandshakeError('Wrong version of Agnos: %r' % (version,))")
+                    STMT("idlmagic = packers.Str.unpack(self._instream)")
+                    with BLOCK("if idlmagic != IDL_MAGIC"):
+                        STMT("raise agnos.HandshakeError('Wrong IDL magic: %r' % (idlmagic,))")
+                    with BLOCK("with self._outstream.transaction() as trans"):
+                        STMT("packers.Str.pack(trans, 'OK')")
                 SEP()
                 for func in service.funcs.values():
                     args = ", ".join(arg.name for arg in func.args)

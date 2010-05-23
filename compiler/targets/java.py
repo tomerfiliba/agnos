@@ -124,7 +124,9 @@ class JavaTarget(TargetBase):
             STMT("import agnos.*")
             SEP()
             with BLOCK("public class {0}Bindings", service.name):
-                STMT('private final String _IDL_MAGIC = "{0}"', service.digest)
+                STMT('private static final String AGNOS_VERSION = "Agnos 1.0"')
+                STMT('private static final String IDL_MAGIC = "{0}"', service.digest)
+
                 SEP()
                 
                 DOC("enums", spacer = True)
@@ -271,7 +273,11 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         DOC = module.doc
-        with BLOCK("public interface I{0}", cls.name):
+        if cls.extends:
+            extends = " extends " + ", ".join("I%s" % (c.name,) for c in cls.extends)
+        else:
+            extends = ""
+        with BLOCK("public interface I{0}{1}", cls.name, extends):
             if cls.attrs:
                 DOC("attributes")
             for attr in cls.attrs:
@@ -344,26 +350,26 @@ class JavaTarget(TargetBase):
             with BLOCK("protected {0}Proxy(Client client, Long objref)", cls.name):
                 STMT("super(client, objref)")
             SEP()
-            for attr in cls.attrs:
+            for cls2, attr in cls.flatten_attrs():
                 if attr.get:
                     self.emit_javadoc(["Getter for %s" % (attr.name,), attr.doc], module)
                     with BLOCK("public {0} get_{1}() throws Exception", type_to_java(attr.type, proxy = True), attr.name):
-                        STMT("return _client._autogen_{0}_get_{1}(this)", cls.name, attr.name)
+                        STMT("return _client._autogen_{0}_get_{1}(this)", cls2.name, attr.name)
                 if attr.set:
                     self.emit_javadoc(["Setter for %s" % (attr.name,), attr.doc], module)
                     with BLOCK("public void set_{1}({0} value) throws Exception", 
                             attr.name, type_to_java(attr.type)):
-                        STMT("_client._autogen_{0}_set_{1}(this, value)", cls.name, attr.name)
+                        STMT("_client._autogen_{0}_set_{1}(this, value)", cls2.name, attr.name)
             SEP()
-            for method in cls.methods:
+            for cls2, method in cls.flatten_methods():
                 self.emit_func_javadoc(method, module)
                 args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in method.args)
                 with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(method.type, proxy = True), method.name, args):
                     callargs = ["this"] + [arg.name for arg in method.args]
                     if method.type == compiler.t_void:
-                        STMT("_client._autogen_{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
+                        STMT("_client._autogen_{0}_{1}({2})", cls2.name, method.name, ", ".join(callargs))
                     else:
-                        STMT("return _client._autogen_{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
+                        STMT("return _client._autogen_{0}_{1}({2})", cls2.name, method.name, ", ".join(callargs))
 
     def generate_handler_interface(self, module, service):
         BLOCK = module.block
@@ -397,7 +403,7 @@ class JavaTarget(TargetBase):
             self.generate_templated_packers(module, service)
             SEP()
             with BLOCK("public Processor(IHandler handler)"):
-                STMT("super()")
+                STMT("super(AGNOS_VERSION, IDL_MAGIC)")
                 STMT("this.handler = handler")
                 for tp in service.types.values():
                     if isinstance(tp, compiler.Class):
@@ -529,9 +535,9 @@ class JavaTarget(TargetBase):
                     args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in func.args)
                     with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(func.type, proxy = True), func.name, args):
                         if func.type == compiler.t_void:
-                            STMT("client.{0}({1})", func.fullname, ", ".join(arg.name for arg in func.args))
+                            STMT("client._autogen_{0}({1})", func.fullname, ", ".join(arg.name for arg in func.args))
                         else:
-                            STMT("return client.{0}({1})", func.fullname, ", ".join(arg.name for arg in func.args))
+                            STMT("return client._autogen_{0}({1})", func.fullname, ", ".join(arg.name for arg in func.args))
             SEP()
             with BLOCK("protected _Namespace{0}(Client client)", root["__id__"]):
                 STMT("this.client = client")
@@ -547,7 +553,7 @@ class JavaTarget(TargetBase):
         with BLOCK("public static class Client extends Protocol.BaseClient"):
             self.generate_client_packers(module, service)
             SEP()
-            with BLOCK("public Client(Transports.ITransport transport) throws IOException"):
+            with BLOCK("public Client(Transports.ITransport transport) throws Exception"):
                 STMT("this(transport.getInputStream(), transport.getOutputStream())")
             SEP()
             with BLOCK("protected void _decref(Long id)"):
@@ -600,8 +606,8 @@ class JavaTarget(TargetBase):
         SEP()
         namespaces = self.generate_client_namespaces(module, service)
         SEP()
-        with BLOCK("public Client(InputStream inStream, OutputStream outStream)"):
-            STMT("super(inStream, outStream)")
+        with BLOCK("public Client(InputStream inStream, OutputStream outStream) throws Exception"):
+            STMT("super(inStream, outStream, AGNOS_VERSION, IDL_MAGIC)")
             STMT("final Client the_client = this")
             for tp in service.types.values():
                 if isinstance(tp, compiler.Class):
@@ -631,9 +637,13 @@ class JavaTarget(TargetBase):
                 access = "public"
             else:
                 access = "protected"
+            if func.namespace:
+                funcname = "_autogen_" + func.fullname
+            else:
+                funcname = func.fullname
 
             args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in func.args)
-            with BLOCK("protected int {0}_send({1}) throws Exception", func.fullname, args):
+            with BLOCK("protected int {0}_send({1}) throws Exception", funcname, args):
                 STMT("_sendBuffer.reset()")
                 STMT("int seq = _send_invocation(_sendBuffer, {0}, {1})", func.id, type_to_packer(func.type))
                 for arg in func.args:
@@ -644,8 +654,8 @@ class JavaTarget(TargetBase):
             SEP()
             if access == "public":
                 self.emit_func_javadoc(func, module)
-            with BLOCK("{0} {1} {2}({3}) throws Exception", access, type_to_java(func.type, proxy = True), func.fullname, args):
-                STMT("int seq = {0}_send({1})", func.fullname, ", ".join(arg.name for arg in func.args))
+            with BLOCK("{0} {1} {2}({3}) throws Exception", access, type_to_java(func.type, proxy = True), funcname, args):
+                STMT("int seq = {0}_send({1})", funcname, ", ".join(arg.name for arg in func.args))
                 STMT("Object res = _get_reply(seq)")
                 if func.type != compiler.t_void:
                     STMT("return ({0})res", type_to_java(func.type, proxy = True))

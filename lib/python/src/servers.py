@@ -22,11 +22,16 @@ class BaseServer(object):
     def _serve_client(cls, processor, transport):
         instream = transport.get_input_stream()
         outstream = transport.get_output_stream()
+        
         try:
+            processor.handshake(instream, outstream)
             while True:
                 processor.process(instream, outstream)
         except EOFError:
             pass
+        finally:
+            instream.close()
+            outstream.close()
 
 class SimpleServer(BaseServer):
     def _accept_client(self, transport):
@@ -44,7 +49,7 @@ class LibraryModeServer(BaseServer):
         sys.stdout.close()
         os.close(sys.stdout.fileno())
         trans = self.transport_factory.accept()
-        self._handle_client(trans)
+        self._serve_client(trans)
 
 def server_main(processor):
     parser = OptionParser()

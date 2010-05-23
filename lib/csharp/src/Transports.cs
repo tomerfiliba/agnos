@@ -15,13 +15,14 @@ namespace Agnos.Transports
 
 	public interface ITransportFactory
 	{
-		ITransport accept();
+		ITransport Accept();
+		void Close();
 	}
 
 	public class SocketTransportFactory : ITransportFactory
 	{
 		public const int backlog = 10;
-		protected TcpListener listener;
+		public TcpListener listener;
 
 		public SocketTransportFactory(int port) :
 			this(IPAddress.Any, port)
@@ -39,9 +40,14 @@ namespace Agnos.Transports
 			listener.Start(backlog);
 		}
 		
-		public ITransport accept()
+		public ITransport Accept()
 		{
 			return new SocketTransport(listener.AcceptSocket());
+		}
+		
+		public void Close()
+		{
+			listener.Stop();
 		}
 	}
 	

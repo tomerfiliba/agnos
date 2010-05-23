@@ -21,6 +21,7 @@ public class Servers
 		{
 			while (true)
 			{
+				//System.err.println("accepting...");
 				Transports.ITransport transport = transportFactory.accept();
 				acceptClient(transport);
 			}
@@ -35,6 +36,7 @@ public class Servers
 			
 			try
 			{
+				processor.handshake(inStream, outStream);
 				while (true)
 				{
 					processor.process(inStream, outStream);
@@ -46,7 +48,12 @@ public class Servers
 			}
 			catch (SocketException exc)
 			{
-				System.out.println("!! SocketException: " + exc);
+				//System.out.println("!! SocketException: " + exc);
+			}
+			finally 
+			{
+				inStream.close();
+				outStream.close();
 			}
 		}
 	}
@@ -101,35 +108,128 @@ public class Servers
 		}
 	}
 
-    public static class LibraryModeServer
+    public static class LibraryModeServer extends BaseServer
     {
-        protected ServerSocket serverSocket;
-        protected Protocol.BaseProcessor processor;
-
         public LibraryModeServer(Protocol.BaseProcessor processor) throws IOException, UnknownHostException
         {
-        	this(processor, InetAddress.getByName("127.0.0.1"));
+        		this(processor, new Transports.SocketTransportFactory("127.0.0.1", 0));
         }
 
-        public LibraryModeServer(Protocol.BaseProcessor processor, InetAddress addr) throws IOException
+        public LibraryModeServer(Protocol.BaseProcessor processor, Transports.SocketTransportFactory transportFactory) throws IOException
         {
-            this.processor = processor;
-            serverSocket = new ServerSocket(0, 1, addr);
+        		super(processor, transportFactory);
         }
 
         public void serve() throws Exception
         {
+        		ServerSocket serverSocket = ((Transports.SocketTransportFactory)transportFactory).serverSocket;
             System.out.println(serverSocket.getInetAddress().toString());
             System.out.println(serverSocket.getLocalPort());
             System.out.flush();
             System.out.close();
             
-            Transports.ITransport transport = new Transports.SocketTransport(serverSocket.accept());
-            serverSocket.close();
-            BaseServer.serveClient(processor, transport);
+            Transports.ITransport transport = transportFactory.accept();
+            transportFactory.close();
+            serveClient(processor, transport);
         }
-    }	
-	
+
+		protected void acceptClient(Transports.ITransport transport) throws Exception
+		{
+		}
+    }
+    
+    public static class SwitchException extends Exception
+    {
+    		public SwitchException(String message)
+    		{
+    			super(message);
+    		}
+    }
+
+	public static class CmdlineServer
+	{
+		protected Protocol.BaseProcessor processor;
+		
+		protected static enum ServingMode
+		{
+			SIMPLE,
+			THREADED,
+			LIB
+		}
+		
+		public CmdlineServer(Protocol.BaseProcessor processor)
+		{
+			this.processor = processor;
+		}
+		
+		public void main(String[] args) throws Exception
+		{
+			ServingMode mode = ServingMode.SIMPLE;
+			String host = "127.0.0.1";
+			int port = 0;
+			
+			for(int i = 0; i < args.length; i += 1)
+			{
+				String arg = args[i];
+				if (arg.equals("-m")) {
+					i += 1;
+					if (i >= args.length) {
+						throw new SwitchException("-m requires an argument");
+					}
+					arg = args[i].toLowerCase();
+					if (arg.equals("lib") || arg.equals("library")) {
+						mode = ServingMode.LIB;
+					}
+					else if (arg.equals("simple")) {
+						mode = ServingMode.SIMPLE;
+					}
+					else if (arg.equals("threaded")) {
+						mode = ServingMode.THREADED;
+					}
+					else {
+						throw new SwitchException("invalid mode: " + arg);
+					}
+				}
+				else if (arg.equals("-h")) {
+					i += 1;
+					if (i >= args.length) {
+						throw new SwitchException("-h requires an argument");
+					}
+					host = args[i];
+				}
+				else if (arg.equals("-p")) {
+					i += 1;
+					if (i >= args.length) {
+						throw new SwitchException("-p requires an argument");
+					}
+					port = Integer.parseInt(args[i]);					
+				}
+				else {
+					throw new SwitchException("invalid switch: " + arg);
+				}
+			}
+			
+			BaseServer server = null;
+			
+			switch (mode)
+			{
+			case SIMPLE:
+				server = new SimpleServer(processor, new Transports.SocketTransportFactory(host, port));
+				break;
+			case THREADED:
+				server = new ThreadedServer(processor, new Transports.SocketTransportFactory(host, port));
+				break;
+			case LIB:
+				server = new LibraryModeServer(processor, new Transports.SocketTransportFactory(host, port));
+				break;
+			default:
+				throw new SwitchException("invalid mode: " + mode);
+			}
+			
+			server.serve();
+		}
+	}
+    
 }
 
 

@@ -9,6 +9,7 @@ public class Transports
 	public interface ITransportFactory
 	{
 		ITransport accept() throws IOException;
+		void close() throws IOException;
 	}
 
 	public interface ITransport
@@ -20,7 +21,7 @@ public class Transports
 	public static class SocketTransportFactory implements ITransportFactory
 	{
 		public static final int backlog = 10;
-		protected ServerSocket serverSocket;
+		public ServerSocket serverSocket;
 
 		public SocketTransportFactory(int port) throws IOException
 		{
@@ -40,6 +41,11 @@ public class Transports
 		public ITransport accept() throws IOException
 		{
 			return new SocketTransport(serverSocket.accept());
+		}
+		
+		public void close() throws IOException
+		{
+			serverSocket.close();
 		}
 	}
 	

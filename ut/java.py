@@ -38,17 +38,27 @@ class TestJava(TargetTest):
         agnos_jar = self.ant_jar("lib/java")
         self.run_agnosc("java", "ut/RemoteFiles.xml", "ut/gen-java")
         remotefiles_jar = self.compile_java("ut/gen-java", "RemoteFiles.jar", classpath = [agnos_jar])
-        test_jar = self.compile_java("ut/javatest", "test.jar", classpath = [agnos_jar, remotefiles_jar])
-        serverproc = self.run_java("myserver", [agnos_jar, remotefiles_jar, test_jar])
-        time.sleep(1)
-        clientproc = self.run_java("myclient", [agnos_jar, remotefiles_jar, test_jar])
-        self.assertTrue(clientproc.wait() == 0)
-        print "===client output==="
-        print clientproc.stdout.read()
-        print "==================="
-        serverproc.send_signal(signal.SIGINT)
-        self.assertTrue(serverproc.wait() == 0)
-
+        test_jar = self.compile_java("ut/java-test", "test.jar", classpath = [agnos_jar, remotefiles_jar])
+        try:
+            serverproc = self.run_java("myserver", [agnos_jar, remotefiles_jar, test_jar])
+            time.sleep(1)
+            clientproc = self.run_java("myclient", [agnos_jar, remotefiles_jar, test_jar])
+            print "===client output==="
+            print clientproc.stdout.read()
+            print clientproc.stderr.read()
+            print "==================="
+            self.assertTrue(clientproc.wait() == 0)
+            serverproc.send_signal(signal.SIGINT)
+            serverproc.wait()
+        finally:
+            try:
+                clientproc.kill()
+            except Exception:
+                pass
+            try:
+                serverproc.kill()
+            except Exception:
+                pass
 
 
 if __name__ == '__main__':

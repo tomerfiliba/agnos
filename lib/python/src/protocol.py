@@ -18,6 +18,8 @@ REPLY_PROTOCOL_ERROR = 1
 REPLY_PACKED_EXCEPTION = 2
 REPLY_GENERIC_EXCEPTION = 3
 
+AGNOS_MAGIC = 0x5af30cf7
+
 class PackedException(Exception):
     def pack(self, stream):
         raise NotImplementedError()
@@ -41,7 +43,7 @@ class GenericException(Exception):
 class ProtocolError(Exception):
     pass
 
-class ChildServerError(Exception):
+class HandshakeError(ProtocolError):
     pass
 
 
@@ -67,6 +69,9 @@ class BaseProxy(object):
 
 
 class BaseProcessor(object):
+    AGNOS_VERSION = None
+    IDL_MAGIC = None
+    
     def __init__(self):
         self.cells = {}
     
@@ -74,6 +79,18 @@ class BaseProcessor(object):
         self.func_mapping = func_mapping
         self.packed_exceptions = packed_exceptions
         self.exception_map = exception_map
+    
+    def handshake(self, instream, outstream):
+        with outstream.transaction() as trans:
+            packers.Int32.pack(trans, AGNOS_MAGIC)
+            packers.Str.pack(trans, self.AGNOS_VERSION)
+            packers.Str.pack(trans, self.IDL_MAGIC)
+        magic = packers.Int32.unpack(trans)
+        if magic != AGNOS_MAGIC:
+            raise HandshakeError("wrong magic: %r" % (magic,))
+        succ = packers.Int32.unpack(trans)
+        if succ != 1:
+            raise HandshakeError("client rejected connection")
     
     def store(self, obj):
         if obj is None:
@@ -223,9 +240,13 @@ class BaseClient(object):
         self._seq = itertools.count()
         self._replies = {}
         self._proxy_cache = weakref.WeakValueDictionary()
+        self._handshake()
     
     def __del__(self):
         self.close()
+    
+    def _handshake(self):
+        raise NotImplementedError()
     
     def close(self):
         if self._instream:
