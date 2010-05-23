@@ -1,7 +1,6 @@
 * 1.0:
     * better unit tests
     * idl with all features
-    * inheritance (+)
     * begin integratation with XSF
 * 1.1:
     * REST access in the meanwhile:
