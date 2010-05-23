@@ -15,6 +15,8 @@ class PrimitivePacker(Packer):
     def __init__(self, fmt):
         self.struct = _Struct(fmt)
     def pack(self, obj, stream):
+        if obj is None:
+            obj = 0
         stream.write(self.struct.pack(obj))
     def unpack(self, stream):
         return self.struct.unpack(stream.read(self.struct.size))[0]
@@ -29,6 +31,8 @@ class Bool(Packer):
     __slots__ = []
     @classmethod
     def pack(cls, obj, stream):
+        if obj is None:
+            obj = 0
         Int8.pack(int(obj), stream)
     @classmethod
     def unpack(cls, stream):
@@ -59,6 +63,8 @@ class Buffer(Packer):
     __slots__ = []
     @classmethod
     def pack(cls, obj, stream):
+        if obj is None:
+            obj = []
         Int32.pack(len(obj), stream)
         stream.write(obj)
     @classmethod
@@ -70,6 +76,8 @@ class Str(Packer):
     __slots__ = []
     @classmethod
     def pack(cls, obj, stream):
+        if obj is None:
+            obj = ""
         Buffer.pack(obj.encode("utf-8"), stream)
     @classmethod
     def unpack(cls, stream):

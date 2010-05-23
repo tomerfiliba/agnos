@@ -210,7 +210,7 @@ class PythonTarget(TargetBase):
         with BLOCK("class {0}Proxy(agnos.BaseProxy)", cls.name):
             STMT("__slots__ = []")
             SEP()
-            for attr in cls.attrs:
+            for attr in cls.flatten_attrs():
                 accessors = []
                 if attr.get:
                     with BLOCK("def _get_{0}(self)", attr.name):
@@ -221,9 +221,8 @@ class PythonTarget(TargetBase):
                         STMT("self._client._autogen_{0}_set_{1}(self, value)", cls.name, attr.name)
                     accessors.append("_set_%s" % (attr.name,))
                 STMT("{0} = property({1})", attr.name, ", ".join(accessors))
-            if cls.attrs:
-                SEP()
-            for method in cls.methods:
+            SEP()
+            for method in cls.flatten_methods():
                 args = ", ".join(arg.name for arg in method.args)
                 with BLOCK("def {0}(self, {1})", method.name, args):
                     callargs = ["self"] + [arg.name for arg in method.args]
@@ -250,7 +249,7 @@ class PythonTarget(TargetBase):
                 self._generate_processor_function(module, func)
                 self._generate_processor_unpacker(module, func)
             SEP()
-            STMT("proc = agnos.BaseProcessor()")
+            STMT("proc = agnos.BaseProcessor(AGNOS_VERSION, IDL_MAGIC)")
             STMT("storer = proc.store")
             STMT("loader = proc.load")
             SEP()
@@ -276,7 +275,6 @@ class PythonTarget(TargetBase):
                         STMT("{0} : {1},", mem.name, type_to_packer(mem))
             SEP()
             STMT("proc.post_init(func_mapping, packed_exceptions, exception_map)")
-            STMT("proc.handshake(AGNOS_VERSION, IDL_MAGIC)")
             STMT("return proc")
     
     def _generate_processor_function(self, module, func):
@@ -326,7 +324,7 @@ class PythonTarget(TargetBase):
                             STMT("{0} : {1},", mem.id, type_to_packer(mem))
                 SEP()
                 with BLOCK("def __init__(self, instream, outstream)"):
-                    STMT("agnos.BaseClient.__init__(self, instream, outstream)")
+                    STMT("agnos.BaseClient.__init__(self, instream, outstream, AGNOS_VERSION, IDL_MAGIC)")
                     for func in service.funcs.values():
                         if not func.namespace:
                             continue
@@ -336,19 +334,6 @@ class PythonTarget(TargetBase):
                             continue
                         head, tail = (func.namespace + "." + func.name).split(".", 1)
                         STMT("self.{0}['{1}'] = self._autogen_{2}", head, tail, func.fullname)
-                SEP()
-                with BLOCK("def _handshake(self)"):
-                    STMT("magic = packers.Int32.unpack(self._instream)")
-                    with BLOCK("if magic != agnos.AGNOS_MAGIC"):
-                        STMT("raise agnos.HandshakeError('Wrong magic: 0x%08x' % (magic,))")
-                    STMT("version = packers.Str.unpack(self._instream)")
-                    with BLOCK("if version != AGNOS_VERSION"):
-                        STMT("raise agnos.HandshakeError('Wrong version of Agnos: %r' % (version,))")
-                    STMT("idlmagic = packers.Str.unpack(self._instream)")
-                    with BLOCK("if idlmagic != IDL_MAGIC"):
-                        STMT("raise agnos.HandshakeError('Wrong IDL magic: %r' % (idlmagic,))")
-                    with BLOCK("with self._outstream.transaction() as trans"):
-                        STMT("packers.Str.pack(trans, 'OK')")
                 SEP()
                 for func in service.funcs.values():
                     args = ", ".join(arg.name for arg in func.args)

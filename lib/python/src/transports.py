@@ -41,6 +41,8 @@ class Transport(object):
 class TransportFactory(object):
     def accept(self):
         raise NotImplementedError()
+    def close(self):
+        raise NotImplementedError()
 
 class InStream(object):
     def __init__(self, file, bufsize = 32000):
@@ -119,6 +121,8 @@ class SocketTransportFactory(TransportFactory):
         self.host, self.port = self.sock.getsockname()
     def accept(self):
         return SocketTransport.from_socket(self.sock.accept()[0])
+    def close(self):
+        self.sock.close()
 
 class SocketTransport(Transport):
     def __init__(self, sockfile):

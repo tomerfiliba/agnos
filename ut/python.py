@@ -34,6 +34,8 @@ class TestPython(TargetTest):
                 serverproc.kill()
             except Exception:
                 pass
+            print serverproc.stdout.read()
+            print serverproc.stderr.read()
 
 
 if __name__ == '__main__':

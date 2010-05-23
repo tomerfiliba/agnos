@@ -242,7 +242,7 @@ class Class(Element):
         for supercls in self.extends:
             all.update(supercls.flatten_attrs())
         for attr in self.attrs:
-            all[attr.name] = (self, attr)
+            all[attr.name] = attr
         return all.values()
 
     def flatten_methods(self):
@@ -250,11 +250,11 @@ class Class(Element):
         for supercls in self.extends:
             all.update(supercls.flatten_methods())
         for meth in self.methods:
-            all[meth.name] = (self, meth)
+            all[meth.name] = meth
         return all.values()
     
     def _postprocess(self, service): 
-        for attr in self.attrs:
+        for attr in self.flatten_attrs():
             attr.parent = self 
             if attr.get:
                 self.autogen(service, attr, "_autogen_%s_get_%s" % (self.name, attr.name), 
@@ -262,7 +262,7 @@ class Class(Element):
             if attr.set:
                 self.autogen(service, attr, "_autogen_%s_set_%s" % (self.name, attr.name), 
                     t_void, ("_proxy", self), ("value", attr.type))
-        for method in self.methods:
+        for method in self.flatten_methods():
             method.parent = self 
             self.autogen(service, method, "_autogen_%s_%s" % (self.name, method.name), 
                 method.type, ("_proxy", self), *[(arg.name, arg.type) for arg in method.args])

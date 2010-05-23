@@ -345,23 +345,23 @@ class CSharpTarget(TargetBase):
             with BLOCK("internal {0}Proxy(Client client, long objref) : base(client, objref)", cls.name):
                 pass
             SEP()
-            for cls2, attr in cls.flatten_attrs():
+            for attr in cls.flatten_attrs():
                 with BLOCK("public {0} {1}", type_to_cs(attr.type), attr.name):
                     if attr.get:
                         with BLOCK("get"):
-                            STMT("return _client._autogen_{0}_get_{1}(this)", cls2.name, attr.name)
+                            STMT("return _client._autogen_{0}_get_{1}(this)", cls.name, attr.name)
                     if attr.set:
                         with BLOCK("set"):
-                            STMT("_client._autogen_{0}_set_{1}(this, value)", cls2.name, attr.name)
+                            STMT("_client._autogen_{0}_set_{1}(this, value)", cls.name, attr.name)
             SEP()
-            for cls2, method in cls.flatten_methods():
+            for method in cls.flatten_methods():
                 args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) for arg in method.args)
                 with BLOCK("public {0} {1}({2})", type_to_cs(method.type, proxy = True), method.name, args):
                     callargs = ["this"] + [arg.name for arg in method.args]
                     if method.type == compiler.t_void:
-                        STMT("_client._autogen_{0}_{1}({2})", cls2.name, method.name, ", ".join(callargs))
+                        STMT("_client._autogen_{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
                     else:
-                        STMT("return _client._autogen_{0}_{1}({2})", cls2.name, method.name, ", ".join(callargs))
+                        STMT("return _client._autogen_{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
 
     def generate_handler_interface(self, module, service):
         BLOCK = module.block

@@ -19,24 +19,24 @@ class FileImp(object):
         try:
             return self._file.read(count)
         except IOError, ex:
-            raise RemoteFiles.UnderlyingIOError(ex.strerror, RemoteFiles.Errno.get_by_name(errno.errorcode[ex.errno]))
+            raise RemoteFiles.UnderlyingIOError(ex.strerror, RemoteFiles.Errno.ENOENT)
     def write(self, data):
         try:
             return self._file.write(data)
         except IOError, ex:
-            raise RemoteFiles.UnderlyingIOError(ex.strerror, RemoteFiles.Errno.get_by_name(errno.errorcode[ex.errno]))
+            raise RemoteFiles.UnderlyingIOError(ex.strerror, RemoteFiles.Errno.ENOENT)
     def close(self):
         self._file.close()
     def flush(self):
         try:
             self._file.flush()
         except IOError, ex:
-            raise RemoteFiles.UnderlyingIOError(ex.strerror, RemoteFiles.Errno.get_by_name(errno.errorcode[ex.errno]))
+            raise RemoteFiles.UnderlyingIOError(ex.strerror, RemoteFiles.Errno.ENOENT)
     def stat(self):
         try:
             res = os.fstat(self._file.fileno())
         except IOError, ex:
-            raise RemoteFiles.UnderlyingIOError(ex.strerror, RemoteFiles.Errno.get_by_name(errno.errorcode[ex.errno]))
+            raise RemoteFiles.UnderlyingIOError(ex.strerror, RemoteFiles.Errno.ENOENT)
         
         return RemoteFiles.StatRes(inode = res.st_ino, mode = res.st_mode,
             size = res.st_size, uid = res.st_uid, gid = res.st_gid,
