@@ -18,6 +18,9 @@
     * c
     * perl
     * php
+* think about:
+    * authentication? encryption?
+    * http streams (HAK 2.0)
 
 
 
