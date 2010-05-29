@@ -237,21 +237,29 @@ class Class(Element):
             method.resolve(service)
         self.extends = [service.get_type(tp) for tp in self.extends]
     
-    def flatten_attrs(self):
+    
+    
+    def _flatten_attrs(self):
         all = {}
         for supercls in self.extends:
-            all.update(supercls.flatten_attrs())
+            all.update(supercls._flatten_attrs())
         for attr in self.attrs:
             all[attr.name] = attr
-        return all.values()
+        return all
 
-    def flatten_methods(self):
+    def flatten_attrs(self):
+        return self._flatten_attrs().values()
+
+    def _flatten_methods(self):
         all = {}
         for supercls in self.extends:
-            all.update(supercls.flatten_methods())
+            all.update(supercls._flatten_methods())
         for meth in self.methods:
             all[meth.name] = meth
-        return all.values()
+        return all
+    
+    def flatten_methods(self):
+        return self._flatten_methods().values()
     
     def _postprocess(self, service): 
         for attr in self.flatten_attrs():

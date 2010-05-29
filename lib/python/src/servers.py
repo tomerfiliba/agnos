@@ -47,19 +47,21 @@ class LibraryModeServer(BaseServer):
         sys.stdout.write("%s\n%d\n" % (self.transport_factory.host, self.transport_factory.port))
         sys.stdout.flush()
         sys.stdout.close()
-        os.close(sys.stdout.fileno())
         trans = self.transport_factory.accept()
-        self._serve_client(trans)
+        self._serve_client(self.processor, trans)
 
 def server_main(processor):
-    parser = OptionParser()
+    parser = OptionParser(conflict_handler="resolve")
     parser.add_option("-m", "--mode", dest="mode", default="simple",
                       help="server mode (simple, threaded, library)",  
                       metavar="MODE")
     parser.add_option("-p", "--port", dest="port", default="0",
                       help="tcp port number; 0 = random port", metavar="PORT")
-    parser.add_option("--host", dest="host", default="localhost",
+    parser.add_option("-h", "--host", dest="host", default="localhost",
                       help="host to bind", metavar="HOST")
+    parser.add_option("-l", "--log", dest="logfile", default=None,
+                      help="log file to write to", metavar="FILENAME")
+
     options, args = parser.parse_args()
     if args:
         parser.error("server does not take positional arguments")
@@ -69,8 +71,12 @@ def server_main(processor):
     if options.mode == "lib" or options.mode == "library":
         s = LibraryModeServer(processor, transfactory)
     elif options.mode == "simple":
+        if int(options.port) == 0:
+            parser.error("must specify port for simple mode")
         s = SimpleServer(processor, transfactory)
     elif options.mode == "threaded":
+        if int(options.port) == 0:
+            parser.error("must specify port for threaded mode")
         s = ThreadedServer(processor, transfactory)
     else:
         parser.error("invalid mode: %r" % (options.mode,))

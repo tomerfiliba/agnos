@@ -290,6 +290,8 @@ class BaseClient(object):
             pass
     
     def _get_proxy(self, cls, objref):
+        if objref < 0:
+            return None
         if objref in self._proxy_cache:
             return self._proxy_cache[objref]
         else:

@@ -1,46 +1,60 @@
 <service name="full_ut">
 	<const name="pi" type="float" value="3.1415926535"/>
+
+    <enum name="Sex">
+        <member name="MALE" value="3"/>
+        <member name="FEMALE"/>
+    </enum>
+
+    <enum name="State">
+        <member name="TX"/>
+        <member name="IL"/>
+        <member name="CA"/>
+        <member name="NY"/>
+    </enum>
+
+    <record name="Address">
+        <attr name="state" type="State"/>
+        <attr name="city" type="str"/>
+        <attr name="street" type="str"/>
+        <attr name="num" type="int32"/>
+    </record>
+
+    <class name="Person">
+        <attr name="full_name" type="str"/>
+        <attr name="date_of_birth" type="date"/>
+        <attr name="sex" type="Sex" />
+        <attr name="address" type="Address"/>
+        
+        <attr name="father" type="Person" set="no"/>
+        <attr name="mother" type="Person" set="no"/>
+    </class>
 	
-	<enum name="Sex">
-		<member name="MALE" value="3"/>
-		<member name="FEMALE"/>
-	</enum>
-
-	<enum name="SexualOrientation">
-		<member name="MALE" />
-		<member name="FEMALE" />
-		<member name="BOTH" />
-		<member name="NONE" />
-	</enum>
-	
-	<exception name="MarriageViolation">
-		<attr name="message" type="str"/>
-		<attr name="person" type="Person"/>
-	</exception>
-
-	<class name="Person">
-		<attr name="given_name" type="str"/>
-		<attr name="surname" type="str"/>
-		<attr name="date_of_birth" type="date"/>
-		<attr name="sex" type="Sex" />
-		<attr name="orientation" type="SexualOrientation" />
-		
-		<attr name="father" type="Person" access="get"/>
-		<attr name="mother" type="Person" access="get"/>
-		<attr name="spouse" type="Person" access="get"/>
-		<attr name="children" type="list[Person]" access="get"/>
-		
-		<method name="marry" type="void">
-			<arg name="other" type="Person"/>
-		</method>
-
-		<method name="divorce" type="void">
-		</method>
-		
-		<method name="give_birth" type="Person">
-			<arg name="given_name" type="str"/>
-		</method>
+	<class name="Bank">
+	   <attr name="name" type="str" access="get" />
+	   <method name="create_account" type="BankAccount">
+	       <arg name="owner" type="Person"/>
+	   </method>
 	</class>
+	
+	<class name="BankAccount">
+	   <attr name="owner" type="Person" access="get" />
+       <attr name="debt_limit" type="int64" access="get" />
+	   <attr name="balance" type="int64" access="get" />
+	   <attr name="transactions" type="list[Transaction]" access="get"/>
+	   
+	   <method name="transfer_funds" type="Transaction">
+	       <arg name="amount" type="int64" />
+	       <arg name="dest" type="BankAccount" />
+	   </method>
+	</class>
+
+    <record name="Transaction">
+    </record>
+    
+	
+	
+	
 	
 	<class name="Asset">
 		<attr name="owner" type="Person" />
@@ -66,10 +80,17 @@
 	
 	<class name="House" extends="Asset">
 		<attr name="address" type="Address" />
+		<attr name="num_of_rooms" type="int32" />
+		
+		<method name="rent" type="void">
+		  <arg name="owner" type="Person"/>
+          <arg name="end_date" type="date"/>
+		</method>
 	</class>
 
 	<class name="Car" extends="Asset">
-		<attr name="hand" type="int32" />
+		<attr name="num_of_previous_owners" type="int32" access="get"/>
+        <attr name="mileage" type="int32" access="get" />
 	</class>
 	
 </service>

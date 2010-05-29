@@ -160,7 +160,7 @@ class PythonTarget(TargetBase):
                 STMT("packers.Int32.pack(obj.value, stream)")
             STMT("@classmethod")
             with BLOCK("def unpack(cls, stream)"):
-                STMT("{0}.get_by_value(packers.Int32.unpack(stream))", enum.name)
+                STMT("return {0}.get_by_value(packers.Int32.unpack(stream))", enum.name)
 
     def generate_record_class(self, module, rec):
         BLOCK = module.block
@@ -317,6 +317,11 @@ class PythonTarget(TargetBase):
         SEP = module.sep
         
         with BLOCK("def Client(instream, outstream)"):
+            for member in service.types.values():
+                if isinstance(member, compiler.Record):
+                    if is_complex_type(member):
+                        self.generate_record_packer(module, member)
+                        SEP()
             with BLOCK("class ClientClass(agnos.BaseClient)"):
                 with BLOCK("PACKED_EXCEPTIONS = ", prefix = "{", suffix = "}"):
                     for mem in service.types.values():
@@ -352,17 +357,12 @@ class PythonTarget(TargetBase):
                         STMT("return _self._get_reply(seq)")
                     SEP()
             STMT("clnt = ClientClass(instream, outstream)")
-            STMT("storer = lambda proxy: proxy._objref")
+            STMT("storer = storer = lambda proxy: -1 if proxy is None else proxy._objref")
             SEP()
             for tp in service.types.values():
                 if isinstance(tp, compiler.Class):
                     STMT("{0}ObjRef = packers.ObjRef(storer, lambda oid: clnt._get_proxy({0}Proxy, oid))", tp.name)
             SEP()
-            for member in service.types.values():
-                if isinstance(member, compiler.Record):
-                    if is_complex_type(member):
-                        self.generate_record_packer(module, member)
-                        SEP()
             self.generate_templated_packers(module, service)
             STMT("return clnt")
         SEP()

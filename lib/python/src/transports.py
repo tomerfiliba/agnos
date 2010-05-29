@@ -150,8 +150,11 @@ class ProcTransport(Transport):
     @classmethod
     def from_executable(cls, filename, args = None):
         if args is None:
-            args = ["-m", "-lib"]
-        cmdline = [filename]
+            args = ["-m", "lib"]
+        if isinstance(filename, str):
+            cmdline = [filename]
+        else:
+            cmdline = filename 
         cmdline.extend(args)
         proc = Popen(cmdline, shell = False, stdin = PIPE, stdout = PIPE)
         return cls.from_proc(proc)

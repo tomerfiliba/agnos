@@ -9,7 +9,7 @@ class Enum(object):
         self.name = name
         self.value = value
     def __repr__(self):
-        return "%s(%r, %r)" % (self.__class__.__name__, self.name, self.value)
+        return "%s(%r = %r)" % (self.__class__.__name__, self.name, self.value)
     def __eq__(self, other):
         if isinstance(other, Enum):
             return self.value == other.value

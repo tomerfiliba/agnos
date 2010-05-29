@@ -1,0 +1,110 @@
+<service name="NuclearFamily">
+    <const name="MOTHER_OF_ALL_ID" type="int32" value="778"/>
+    
+    <enum name="Sex">
+        <member name="MALE"/>
+        <member name="FEMALE"/>
+    </enum>
+    
+    <enum name="State">
+        <member name="TX" value="3"/>
+        <member name="NY"/>
+        <member name="IL"/>
+        <member name="CA"/>
+    </enum>
+    
+    <record name="Address">
+        <attr name="state" type="State" />
+        <attr name="city" type="str" />
+        <attr name="street" type="str" />
+        <attr name="num" type="int32" />
+    </record>
+    
+    <exception name="MartialStatusError">
+        <attr name="message" type="str"/>
+        <attr name="person" type="Person"/>
+    </exception>
+    
+    <class name="Person">
+        <attr name="id" type="int64" set="no"/>
+        <attr name="name" type="str"/>
+        <attr name="date_of_birth" type="date" set="no"/>
+        <attr name="sex" type="Sex" set="no"/>
+        <attr name="address" type="Address"/>
+        <attr name="spouse" type="Person" set="no"/>
+        <attr name="father" type="Person" set="no"/>
+        <attr name="mother" type="Person" set="no"/>
+        <attr name="children" type="list[Person]" set="no"/>
+        
+        <method name="marry" type="void">
+            <arg name="partner" type="Person"/>
+        </method>
+
+        <method name="divorce" type="void">
+        </method>
+        
+        <method name="give_birth" type="Person">
+            <arg name="father" type="Person"/>
+        </method>
+    </class>
+    
+    <class name="Asset">
+        <attr name="owner" type="Person" set="no"/>
+        <attr name="value" type="int64"/>
+        
+        <method name="sell" type="void">
+            <arg name="new_owner" type="Person"/>
+        </method>
+    </class>
+    
+    <class name="House" extends="Asset">
+        <attr name="address" type="Address" set="no"/>
+
+        <method name="rent" type="void">
+            <arg name="tenant" type="Person"/>
+        </method>
+    </class>
+
+    <enum name="Manufacturer">
+        <member name="Ford"/>
+        <member name="GMC"/>
+        <member name="Toyota"/>
+    </enum>
+
+    <class name="Car" extends="Asset">
+        <attr name="make" type="Manufacturer" set="no"/>
+        <attr name="model" type="str" set="no"/>
+        <attr name="milage" type="int32" set="no"/>
+
+        <method name="drive" type="void">
+            <arg name="distance" type="int32"/>
+        </method>
+    </class>
+    
+    <func name="get_cars" type="list[Car]">
+    </func>
+
+    <func name="get_houses" type="list[House]">
+    </func>
+
+    <func name="get_person" type="Person">
+        <arg name="id" type="int32"/>
+    </func>
+
+</service>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
