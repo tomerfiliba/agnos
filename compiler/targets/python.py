@@ -210,7 +210,7 @@ class PythonTarget(TargetBase):
         with BLOCK("class {0}Proxy(agnos.BaseProxy)", cls.name):
             STMT("__slots__ = []")
             SEP()
-            for attr in cls.flatten_attrs():
+            for attr in cls.all_attrs:
                 accessors = []
                 if attr.get:
                     with BLOCK("def _get_{0}(self)", attr.name):
@@ -222,7 +222,7 @@ class PythonTarget(TargetBase):
                     accessors.append("_set_%s" % (attr.name,))
                 STMT("{0} = property({1})", attr.name, ", ".join(accessors))
             SEP()
-            for method in cls.flatten_methods():
+            for method in cls.all_methods:
                 args = ", ".join(arg.name for arg in method.args)
                 with BLOCK("def {0}(self, {1})", method.name, args):
                     callargs = ["self"] + [arg.name for arg in method.args]
@@ -369,20 +369,24 @@ class PythonTarget(TargetBase):
         STMT("@utils.make_method(Client)")
         with BLOCK("def from_transport(transport)"):
             STMT("return Client(transport.get_input_stream(), transport.get_output_stream())")
+        STMT("del from_transport")
         SEP()
         STMT("@utils.make_method(Client)")
         with BLOCK("def connect(host, port)"):
             STMT("return Client.from_transport(agnos.SocketTransport.connect(host, port))")
+        STMT("del connect")
         SEP()
         STMT("@utils.make_method(Client)")
         with BLOCK("def connect_executable(filename, args = None)"):
             STMT("transport = agnos.ProcTransport.from_executable(filename, args)")
             STMT("return Client.from_transport(transport)")
+        STMT("del connect_executable")
         SEP()
         STMT("@utils.make_method(Client)")
         with BLOCK("def connect_proc(proc)"):
             STMT("transport = agnos.ProcTransport.from_proc(proc)")
             STMT("return Client.from_transport(transport)")
+        STMT("del connect_proc")
 
 
 

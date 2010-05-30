@@ -345,7 +345,7 @@ class CSharpTarget(TargetBase):
             with BLOCK("internal {0}Proxy(Client client, long objref) : base(client, objref)", cls.name):
                 pass
             SEP()
-            for attr in cls.flatten_attrs():
+            for attr in cls.all_attrs:
                 with BLOCK("public {0} {1}", type_to_cs(attr.type), attr.name):
                     if attr.get:
                         with BLOCK("get"):
@@ -354,7 +354,7 @@ class CSharpTarget(TargetBase):
                         with BLOCK("set"):
                             STMT("_client._autogen_{0}_set_{1}(this, value)", cls.name, attr.name)
             SEP()
-            for method in cls.flatten_methods():
+            for method in cls.all_methods:
                 args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) for arg in method.args)
                 with BLOCK("public {0} {1}({2})", type_to_cs(method.type, proxy = True), method.name, args):
                     callargs = ["this"] + [arg.name for arg in method.args]

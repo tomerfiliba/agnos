@@ -64,6 +64,8 @@ class Person(Asset):
             raise NuclearFamily.MartialStatusError("already married", self)
         if partner.spouse:
             raise NuclearFamily.MartialStatusError("already married", partner)
+        if (self.mother and self.mother == partner.mother) or (self.father and self.father == partner.father):
+            raise NuclearFamily.MartialStatusError("siblings cannot marry", partner)
         self.spouse = partner
         partner = self
     def give_birth(self, father):

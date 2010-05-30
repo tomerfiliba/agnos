@@ -350,7 +350,7 @@ class JavaTarget(TargetBase):
             with BLOCK("protected {0}Proxy(Client client, Long objref)", cls.name):
                 STMT("super(client, objref)")
             SEP()
-            for attr in cls.flatten_attrs():
+            for attr in cls.all_attrs:
                 if attr.get:
                     self.emit_javadoc(["Getter for %s" % (attr.name,), attr.doc], module)
                     with BLOCK("public {0} get_{1}() throws Exception", type_to_java(attr.type, proxy = True), attr.name):
@@ -361,7 +361,7 @@ class JavaTarget(TargetBase):
                             attr.name, type_to_java(attr.type)):
                         STMT("_client._autogen_{0}_set_{1}(this, value)", cls.name, attr.name)
             SEP()
-            for method in cls.flatten_methods():
+            for method in cls.all_methods:
                 self.emit_func_javadoc(method, module)
                 args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in method.args)
                 with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(method.type, proxy = True), method.name, args):

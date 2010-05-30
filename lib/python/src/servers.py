@@ -50,14 +50,14 @@ class LibraryModeServer(BaseServer):
         trans = self.transport_factory.accept()
         self._serve_client(self.processor, trans)
 
-def server_main(processor):
+def server_main(processor, mode = "simple", port = 0, host = "localhost"):
     parser = OptionParser(conflict_handler="resolve")
-    parser.add_option("-m", "--mode", dest="mode", default="simple",
+    parser.add_option("-m", "--mode", dest="mode", default=mode,
                       help="server mode (simple, threaded, library)",  
                       metavar="MODE")
-    parser.add_option("-p", "--port", dest="port", default="0",
+    parser.add_option("-p", "--port", dest="port", default=port,
                       help="tcp port number; 0 = random port", metavar="PORT")
-    parser.add_option("-h", "--host", dest="host", default="localhost",
+    parser.add_option("-h", "--host", dest="host", default=host,
                       help="host to bind", metavar="HOST")
     parser.add_option("-l", "--log", dest="logfile", default=None,
                       help="log file to write to", metavar="FILENAME")

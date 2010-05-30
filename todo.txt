@@ -8,6 +8,7 @@
         program that acts as a client from one side, and exposes REST 
         web access on the other
     * powershell
+    * features: by-ref list, by-ref map
 * 1.2:
     * c++
 * 1.3:

@@ -37,6 +37,12 @@
 		</method>
 	</class>
 	
+	<func name="init" namespace="Person" type="Person">
+	   <arg name="name" type="str"/>
+       <arg name="father" type="Person"/>
+       <arg name="mother" type="Person"/>
+	</func>
+	
 	<record name="Everything">
 		<attr name="some_int8" type="int8"/> 
 		<attr name="some_int16" type="int16"/> 
@@ -79,7 +85,6 @@
 	</class>
 
 	<class name="ClassB" extends="ClassA">
-		<attr name="attr2" type="float"/>
 		<attr name="attr3" type="float"/>
 		<method name="method2" type="int32">
 			<arg name="a" type="str"/>
@@ -88,12 +93,15 @@
 	</class>
 
 	<class name="ClassC" extends="ClassB">
-		<attr name="attr4" type="list[Class"/>
-		<method name="method2" type="int32">
+		<attr name="attr4" type="list[ClassA]"/>
+		<method name="method3" type="int32">
 			<arg name="a" type="str"/>
 			<arg name="b" type="bool"/>
 		</method>
 	</class>
+	
+    <func name="get_class_c" type="list[ClassC]">
+    </func>
 	
 	<record name="RecordA">
 		<attr name="ob_refcount" type="int32"/>
@@ -104,9 +112,8 @@
 		<attr name="intval" type="int64"/>
 	</record>
 	
-	<func name="get_class_c" type="ClassC">
+	<func name="get_record_b" type="RecordB">
 	</func>
-	
 </service>
 
 
