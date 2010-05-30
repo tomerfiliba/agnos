@@ -93,6 +93,10 @@ class Element(object):
             raise IDLError("unknown attributes: %r" % (attrib.keys(),))
         self.build_members(members)
     
+    def __repr__(self):
+        attrs = [getattr(self, name, None) for name in self.ATTRS.keys()]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(sorted(attrs)))
+    
     def build_members(self, members):
         if self.CHILDREN:
             self.members = members
@@ -175,7 +179,7 @@ class RecordMember(Element):
 class Record(Element):
     XML_TAG = "record"
     CHILDREN = [RecordMember]
-    ATTRS = dict(name = IDENTIFIER)
+    ATTRS = dict(name = IDENTIFIER, extends = TYPENAME_COMMA_SEP)
 
     def stringify(self):
         return self.name
@@ -186,8 +190,25 @@ class Record(Element):
             key = lambda tp: tp.name)
 
     def _resolve(self, service):
+        names = set()
+        members = []
+        
+        for rec in self.extends:
+            rec = service.get_type(rec)
+            if not isinstance(rec, Record):
+                raise IDLError("record %r extends %r, which is not a record itself" % (self.name, rec))
+            rec.resolve(service)
+            for mem in rec.members:
+                members.append(mem)
+                if mem.name in names:
+                    raise IDLError("name %r is redefined by %r" % (mem.name, rec))
+                names.add(mem.name)
         for mem in self.members:
             mem.resolve(service)
+            if mem.name in names:
+                raise IDLError("name %r is redefined by %r" % (mem.name, rec))
+            members.append(mem)
+        self.members = members
 
 class Exception(Record):
     XML_TAG = "exception"
@@ -236,8 +257,9 @@ class Class(Element):
         for method in self.methods:
             method.resolve(service)
         self.extends = [service.get_type(tp) for tp in self.extends]
-    
-    
+        for cls in self.extends:
+            if not isinstance(cls, Class):
+                raise IDLError("class %r extends %r, which is not a class itself" % (self.name, cls))
     
     def _flatten_attrs(self):
         all = {}
