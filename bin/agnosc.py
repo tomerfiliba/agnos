@@ -40,9 +40,9 @@ parser.add_option("-d", "--debug",
 
 if __name__ == "__main__":
     options, args = parser.parse_args()
-    args = ["../ut2/features.xml"]
-    options.target = "python"
-    options.debug = True
+    #args = ["../ut2/features.xml"]
+    #options.target = "python"
+    #options.debug = True
     if not args:
         parser.error("must specify agnos input file(s)")
     if not options.target:
