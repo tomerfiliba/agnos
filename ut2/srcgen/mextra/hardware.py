@@ -48,20 +48,28 @@ class ComponentStatus(object):
     #:: @member PHASED_IN value=6
     PHASED_IN = 6
 
+
 #:: @class
-class Disk(object):
-    #:: @attr compid type=ComponentID access=get 
+class BaseComponent(object):
+    #:: @attr compid type=ComponentID access=get
+    
+    #:: @method type=ComponentStatus
+    def get_status(self):
+        raise NotImplementedError()
+
+
+#:: @class
+class Disk(BaseComponent):
     def __init__(self, module, compid):
         self.module = module
         self.compid = compid
     
-    #:: @method type=ComponentStatus
     def get_status(self):
         return ComponentStatus.OK
 
+
 #:: @class
-class HWModule(object):
-    #:: @attr compid type=ComponentID access=get 
+class HWModule(BaseComponent):
     #:: @attr disks type=list[Disk] access=get
      
     def __init__(self, rack, compid):
@@ -72,13 +80,11 @@ class HWModule(object):
             for i in range(1, 13)
             ]
     
-    #:: @method type=ComponentStatus
     def get_status(self):
         return ComponentStatus.OK
 
 #:: @class
-class Rack(object):
-    #:: @attr compid type=ComponentID access=get 
+class Rack(BaseComponent):
     #:: @attr modules type=list[HWModule] access=get
     
     def __init__(self, system, compid):
@@ -89,7 +95,6 @@ class Rack(object):
             for i in range(1, 16)
             ]
     
-    #:: @method type=ComponentStatus
     def get_status(self):
         return ComponentStatus.OK
 

@@ -129,13 +129,17 @@ class TokenizedBlock(object):
 #===============================================================================
 def _get_src_name(blk):
     if blk.srcblock.lineno is None:
-        return None
+        return None, ()
     for i in range(blk.srcblock.lineno, len(blk.srcblock.fileinfo.lines)):
         l = blk.srcblock.fileinfo.lines[i].strip()
-        if l.startswith("def ") or l.startswith("class "):
+        if l.startswith("def "):
             name = l.split()[1].split("(")[0]
-            return  name
-    return None
+            return name, ()
+        elif l.startswith("class "):
+            name, args = l.split()[1].split("(", 1)
+            bases = [a.strip() for a in args.strip("): \t").split(",")]
+            return name, bases
+    return None, ()
 
 def auto_fill_name(argname, blk):
     assert argname == "name"
@@ -181,7 +185,7 @@ class AstNode(object):
         elif "src_name" in block.args:
             self.block.src_name = block.args.pop("src_name")
         else:
-            self.block.src_name = _get_src_name(block)
+            self.block.src_name, self.block.src_bases = _get_src_name(block)
         
         for k, v in self.ATTRS.iteritems():
             self.attrs[k] = v(k, block)
@@ -196,9 +200,9 @@ class AstNode(object):
                 raise SourceError(self.block.srcblock, "tag %r is invalid in this context", child.tag)
             self.children.append(cls2(child, self))
     
-    def postprcess(self):
+    def postprocess(self):
         for child in self.children:
-            child.postprcess()
+            child.postprocess()
 
     def accept(self, visitor):
         func = getattr(visitor, "visit_%s" % (self.__class__.__name__,), NOOP)
@@ -254,7 +258,7 @@ class RecordAttrNode(AstNode):
 
 class RecordNode(AstNode):
     TAG = "record"
-    ATTRS = dict(name = auto_fill_name)
+    ATTRS = dict(name = auto_fill_name, extends = comma_sep_arg_value)
     CHILDREN = [RecordAttrNode]
 
 class ExceptionNode(AstNode):
@@ -280,7 +284,7 @@ class ModuleNode(AstNode):
     CHILDREN = [ClassNode, RecordNode, ExceptionNode, ConstNode, FuncNode, 
         EnumNode, ServiceNode, ModuleInfoNode]
     
-    def postprcess(self):
+    def postprocess(self):
         if not self.children:
             return
         services = [child for child in self.children if isinstance(child, ServiceNode)]
@@ -298,7 +302,7 @@ class ModuleNode(AstNode):
             self.modinfo = modinfos[0]
         else:
             raise SourceError(modinfos[1].block.srcblock, "tag @module must appear at most once per module")
-        AstNode.postprcess(self)
+        AstNode.postprocess(self)
 
 class RootNode(object):
     def __init__(self, modules):
@@ -316,6 +320,20 @@ class RootNode(object):
     def accept(self, visitor):
         func = getattr(visitor, "visit_%s" % (self.__class__.__name__,), NOOP)
         return func(self)
+    
+    def postprocess(self):
+        classes = {}
+        for child in self.children:
+            for child2 in child.children:
+                if isinstance(child2, ClassNode):
+                    classes[child2.attrs["name"]] = child2
+        for cls in classes.values():
+            if cls.attrs["extends"]:
+                continue
+            cls.attrs["extends"] = []
+            for basename in cls.block.src_bases:
+                if basename in classes:
+                    cls.attrs["extends"].append(basename)
 
 #===============================================================================
 # API
@@ -325,7 +343,7 @@ def parse_source_file(filename):
     source_root = SourceBlock.blockify_source(fileinf)
     tokenized_root = TokenizedBlock.tokenize_root(source_root)
     ast_root = ModuleNode(tokenized_root)
-    ast_root.postprcess()
+    ast_root.postprocess()
     return ast_root
 
 def parse_source_files(rootdir, filenames, rootpackage):
@@ -340,7 +358,9 @@ def parse_source_files(rootdir, filenames, rootpackage):
             ast.modinfo = ModuleInfoNode.__new__(ModuleInfoNode)
             ast.modinfo.attrs = dict(name = rootpackage + "." + modname, namespace = None)
         modules.append(ast)
-    return RootNode(modules)
+    root = RootNode(modules)
+    root.postprocess()
+    return root
 
 
 

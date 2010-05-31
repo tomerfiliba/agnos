@@ -68,8 +68,8 @@ class IdlGenerator(object):
     
     def visit_ClassNode(self, node):
         with self.BLOCK("class", name = node.attrs["name"]):
-            if node.extends:
-                self.ATTR(extends = ",".join(node.extends))
+            if node.attrs["extends"]:
+                self.ATTR(extends = ",".join(node.attrs["extends"]))
             self.emit_doc(node)
             for child in node.children:
                 child.accept(self)
@@ -114,6 +114,8 @@ class IdlGenerator(object):
 
     def visit_RecordNode(self, node):
         with self.BLOCK("record", name = node.attrs["name"]):
+            if node.attrs["extends"]:
+                self.ATTR(extends = ",".join(node.attrs["extends"]))
             self.emit_doc(node)
             for child in node.children:
                 child.accept(self)
@@ -254,9 +256,9 @@ def main(rootdir, outdir = None, idlfile = None, serverfile = None, rootpackage 
     if not os.path.exists(outdir):
         os.makedirs(outdir)
     if not idlfile:
-        idlfile = os.path.join(outdir, "%s.xml" % (ast_root.service_name,))
+        idlfile = os.path.join(outdir, "%s_autogen.xml" % (ast_root.service_name,))
     if not serverfile:
-        serverfile = os.path.join(outdir, "%s_server.py" % (ast_root.service_name,))
+        serverfile = os.path.join(outdir, "%s_autogen_server.py" % (ast_root.service_name,))
     
     visitor = IdlGenerator()
     visitor.visit(ast_root)
