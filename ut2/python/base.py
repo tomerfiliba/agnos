@@ -1,3 +1,4 @@
+import sys
 import os
 import unittest
 from subprocess import Popen, PIPE
@@ -6,8 +7,10 @@ from subprocess import Popen, PIPE
 class TargetTest(unittest.TestCase):
     def setUp(self):
         dir = os.path.dirname(os.path.abspath(__file__))
-        self.ROOT_DIR = os.path.join(dir, "..", "..")
-        os.chdir(self.ROOT_DIR)
+        self.ROOT_DIR = os.path.normpath(os.path.join(dir, "..", ".."))
+
+    def REL(self, *args):
+        return os.path.join(self.ROOT_DIR, *args)
 
     def spawn(self, cmdline, cwd = None):
         return Popen(cmdline, shell = False, stdin = PIPE, 
@@ -29,7 +32,7 @@ class TargetTest(unittest.TestCase):
 
     def run_agnosc(self, target, filename, outdir):
         print "agnosc %s --> %s" % (filename, outdir)
-        self.run_cmdline(["xpyv", "bin/agnosc.py", "-t", target, "-o", outdir, filename])
+        self.run_cmdline(["bin/agnosc.py", "-t", target, "-o", outdir, filename], cwd = self.ROOT_DIR)
     
 
 

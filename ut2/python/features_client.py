@@ -11,7 +11,7 @@ class FeatureTestClient(TargetTest):
         global FeatureTest
         FeatureTest = FeatureTest_bindings
         
-        conn = FeatureTest.Client.connect_executable("ut2/python/features_server.py")
+        conn = FeatureTest.Client.connect_executable(self.REL("ut2/python/features_server.py"))
         
         try:
             self.mytest(conn)
