@@ -29,7 +29,7 @@ class TargetTest(unittest.TestCase):
 
     def run_agnosc(self, target, filename, outdir):
         print "agnosc %s --> %s" % (filename, outdir)
-        self.run_cmdline(["python", "bin/agnosc.py", "-t", target, "-o", outdir, filename])
+        self.run_cmdline(["xpyv", "bin/agnosc.py", "-t", target, "-o", outdir, filename])
     
 
 
