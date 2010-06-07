@@ -39,6 +39,9 @@ class Person(object):
         self.spouse.spouse = None
         self.spouse = None
     
+    def think(self, a, b):
+        return a / b
+    
     def marry(self, partner):
         if self.spouse:
             raise FeatureTest.MartialStatusError("already married", self)

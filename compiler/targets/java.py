@@ -27,11 +27,9 @@ def type_to_java(t, proxy = False):
     elif t == compiler.t_buffer:
         return "byte[]"
     elif isinstance(t, compiler.TList):
-        return "List<%s>" % (type_to_java(t.oftype, proxy = proxy),)
+        return "List"
     elif isinstance(t, compiler.TMap):
-        return "Map<%s, %s>" % (
-            type_to_java(t.keytype, proxy = proxy), 
-            type_to_java(t.valtype, proxy = proxy))
+        return "Map"
     elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
         return "%s" % (t.name,)
     elif isinstance(t, compiler.Class):
@@ -284,7 +282,7 @@ class JavaTarget(TargetBase):
                 if attr.get:
                     STMT("{0} get_{1}() throws Exception", type_to_java(attr.type), attr.name)
                 if attr.set:
-                    STMT("void set_{1}({0} value) throws Exception", attr.name, type_to_java(attr.type))
+                    STMT("void set_{0}({1} value) throws Exception", attr.name, type_to_java(attr.type))
             if cls.attrs:
                 SEP()
             if cls.methods:
@@ -346,30 +344,34 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         DOC = module.doc
-        with BLOCK("public static class {0}Proxy extends BaseProxy", cls.name):
+        with BLOCK("public static class {0}Proxy extends BaseProxy implements I{0}", cls.name):
             with BLOCK("protected {0}Proxy(Client client, Long objref)", cls.name):
                 STMT("super(client, objref)")
             SEP()
             for attr in cls.all_attrs:
                 if attr.get:
                     self.emit_javadoc(["Getter for %s" % (attr.name,), attr.doc], module)
-                    with BLOCK("public {0} get_{1}() throws Exception", type_to_java(attr.type, proxy = True), attr.name):
-                        STMT("return _client._autogen_{0}_get_{1}(this)", cls.name, attr.name)
+                    with BLOCK("public {0} get_{1}() throws Exception", type_to_java(attr.type), attr.name):
+                        STMT("return ({0})(_client._autogen_{1}_get_{2}(this))", type_to_java(attr.type), cls.name, attr.name)
                 if attr.set:
                     self.emit_javadoc(["Setter for %s" % (attr.name,), attr.doc], module)
-                    with BLOCK("public void set_{1}({0} value) throws Exception", 
+                    with BLOCK("public void set_{0}({1} value) throws Exception", 
                             attr.name, type_to_java(attr.type)):
                         STMT("_client._autogen_{0}_set_{1}(this, value)", cls.name, attr.name)
             SEP()
             for method in cls.all_methods:
                 self.emit_func_javadoc(method, module)
-                args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in method.args)
-                with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(method.type, proxy = True), method.name, args):
-                    callargs = ["this"] + [arg.name for arg in method.args]
+                args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) for arg in method.args)
+                with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(method.type), method.name, args):
+                    callargs = ["this"] + [
+                        "(%s)%s" % (type_to_java(arg.type, proxy=True), arg.name) 
+                            if isinstance(arg.type, compiler.Class) else arg.name 
+                        for arg in method.args]
                     if method.type == compiler.t_void:
                         STMT("_client._autogen_{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
                     else:
-                        STMT("return _client._autogen_{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
+                        STMT("return ({0})_client._autogen_{1}_{2}({3})", type_to_java(method.type),
+                            cls.name, method.name, ", ".join(callargs))
 
     def generate_handler_interface(self, module, service):
         BLOCK = module.block

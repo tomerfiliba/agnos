@@ -6,9 +6,9 @@ from base import TargetTest
 
 
 class TestJava(TargetTest):
-    def ant_jar(self, path, target = "jar"):
+    def ant(self, path, target = "jar"):
         print "ant %s %s" % (target, path,)
-        out, err = self.run_cmdline(["ant", "jar"], cwd=path)
+        out, err = self.run_cmdline(["ant", "jar"], cwd=self.REL(path))
         jar = None
         for line in out.splitlines():
             if line.strip().startswith("[jar] Building jar:"):
@@ -19,6 +19,7 @@ class TestJava(TargetTest):
         return os.path.abspath(jar)
     
     def compile_java(self, path, output, classpath=[]):
+        path = self.REL(path)
         self.run_cmdline(["rm", "-rf", "build"], cwd=path, rc=None)
         self.run_cmdline(["mkdir", "build"], cwd=path)
         print "javac %s" % (path,)
@@ -32,31 +33,42 @@ class TestJava(TargetTest):
         return os.path.abspath(os.path.join(path, output))
     
     def run_java(self, classname, classpath):
-        return self.spawn(["java", "-cp", ":".join(classpath), classname])
+        cmdline = ["java", "-cp", ":".join(classpath)]
+        if isinstance(classname, str):
+            classname = [classname]
+        cmdline.extend(classname)
+        return self.spawn(cmdline)
     
     def runTest(self):
-        agnos_jar = self.ant_jar("lib/java")
-        self.run_agnosc("java", "ut/RemoteFiles.xml", "ut/gen-java")
-        remotefiles_jar = self.compile_java("ut/gen-java", "RemoteFiles.jar", classpath = [agnos_jar])
-        test_jar = self.compile_java("ut/java-test", "test.jar", classpath = [agnos_jar, remotefiles_jar])
+        agnos_jar = self.ant("lib/java")
+        self.run_agnosc("java", "ut/features.xml", "ut/gen-java")
+        features_jar = self.compile_java("ut/gen-java", "Features.jar", 
+            classpath = [agnos_jar])
+        test_jar = self.compile_java("ut/java-test", "test.jar", 
+            classpath = [agnos_jar, features_jar])
+        
+        serverproc = self.run_java(["myserver", "-m", "lib"], [agnos_jar, features_jar, test_jar])
+        time.sleep(1)
+        if serverproc.poll() is not None:
+            print "server stdout: ", serverproc.stdout.read()
+            print "server stderr: ", serverproc.stderr.read()
+            self.fail("server failed to start")
+        
         try:
-            serverproc = self.run_java("myserver", [agnos_jar, remotefiles_jar, test_jar])
-            time.sleep(1)
-            clientproc = self.run_java("myclient", [agnos_jar, remotefiles_jar, test_jar])
+            host, port = serverproc.stdout.read().splitlines()[:2]
+            clientproc = self.run_java(["myclient", host, port], [agnos_jar, features_jar, test_jar])
+    
             print "===client output==="
             print clientproc.stdout.read()
             print clientproc.stderr.read()
             print "==================="
             self.assertTrue(clientproc.wait() == 0)
-            serverproc.send_signal(signal.SIGINT)
-            serverproc.wait()
         finally:
+            serverproc.send_signal(signal.SIGINT)
+            time.sleep(1)
             try:
-                clientproc.kill()
-            except Exception:
-                pass
-            try:
-                serverproc.kill()
+                if serverproc.poll() is None:
+                    serverproc.kill()
             except Exception:
                 pass
 

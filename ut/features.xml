@@ -1,97 +1,132 @@
-<service name="NuclearFamily">
-    <const name="MOTHER_OF_ALL_ID" type="int32" value="778"/>
-    
-    <enum name="Sex">
-        <member name="MALE"/>
-        <member name="FEMALE"/>
-    </enum>
-    
-    <enum name="State">
-        <member name="TX" value="3"/>
-        <member name="NY"/>
-        <member name="IL"/>
-        <member name="CA"/>
-    </enum>
-    
-    <record name="Address">
-        <attr name="state" type="State" />
-        <attr name="city" type="str" />
-        <attr name="street" type="str" />
-        <attr name="num" type="int32" />
-    </record>
-    
-    <exception name="MartialStatusError">
-        <attr name="message" type="str"/>
-        <attr name="person" type="Person"/>
-    </exception>
-    
-    <class name="Person">
-        <attr name="id" type="int64" set="no"/>
-        <attr name="name" type="str"/>
-        <attr name="date_of_birth" type="date" set="no"/>
-        <attr name="sex" type="Sex" set="no"/>
-        <attr name="address" type="Address"/>
-        <attr name="spouse" type="Person" set="no"/>
-        <attr name="father" type="Person" set="no"/>
-        <attr name="mother" type="Person" set="no"/>
-        <attr name="children" type="list[Person]" set="no"/>
-        
-        <method name="marry" type="void">
-            <arg name="partner" type="Person"/>
-        </method>
+<service name="FeatureTest">
+	<const name="pi" type="float" value="3.1415926535"/>
+	<const name="BITMASK" type="int32" value="0x400"/>
+	
+	<enum name="State">
+		<member name="TX"/>
+		<member name="NY"/>
+		<member name="IL"/>
+		<member name="CA"/>
+	</enum>
+	
+	<record name="Address">
+		<attr name="state" type="State"/>
+		<attr name="city" type="str"/>
+		<attr name="street" type="str"/>
+		<attr name="num" type="int32"/>
+	</record>
+	
+	<exception name="MartialStatusError">
+		<attr name="message" type="str"/>
+		<attr name="person" type="Person"/>
+	</exception>
+	
+	<class name="Person">
+		<attr name="name" type="str" set="no"/>
+		<attr name="date_of_birth" type="date" set="no"/>
+		<attr name="address" type="Address"/>
+		<attr name="father" type="Person" set="no"/>
+		<attr name="mother" type="Person" set="no"/>
+		<attr name="spouse" type="Person" set="no"/>
+		
+		<method name="marry" type="void">
+			<arg name="partner" type="Person"/>
+		</method>
 
-        <method name="divorce" type="void">
-        </method>
-        
-        <method name="give_birth" type="Person">
-            <arg name="father" type="Person"/>
-        </method>
-    </class>
-    
-    <class name="Asset">
-        <attr name="owner" type="Person" set="no"/>
-        <attr name="value" type="int64"/>
-        
-        <method name="sell" type="void">
-            <arg name="new_owner" type="Person"/>
-        </method>
-    </class>
-    
-    <class name="House" extends="Asset">
-        <attr name="address" type="Address" set="no"/>
+		<method name="divorce" type="void">
+		</method>
 
-        <method name="rent" type="void">
-            <arg name="tenant" type="Person"/>
-        </method>
-    </class>
+		<method name="think" type="float">
+			<arg name="a" type="float"/>
+			<arg name="b" type="float"/>
+		</method>
+	</class>
+	
+	<func name="init" namespace="Person" type="Person">
+	   <arg name="name" type="str"/>
+       <arg name="father" type="Person"/>
+       <arg name="mother" type="Person"/>
+	</func>
+	
+	<record name="Everything">
+		<attr name="some_int8" type="int8"/> 
+		<attr name="some_int16" type="int16"/> 
+		<attr name="some_int32" type="int32"/> 
+		<attr name="some_int64" type="int64"/> 
+		<attr name="some_float" type="float"/> 
+		<attr name="some_bool" type="bool"/> 
+		<attr name="some_date" type="date"/> 
+		<attr name="some_buffer" type="buffer"/> 
+		<attr name="some_string" type="str"/> 
+		<attr name="some_list" type="list[float]"/> 
+		<attr name="some_map" type="map[int32, str]"/> 
+		<attr name="some_record" type="Address"/> 
+		<attr name="some_class" type="Person"/> 
+	</record>
+	
+	<func name="func_of_everything" type="Everything">
+		<arg name="a" type="int8"/>
+		<arg name="b" type="int16"/>
+		<arg name="c" type="int32"/>
+		<arg name="d" type="int64"/>
+		<arg name="e" type="float"/>
+		<arg name="f" type="bool"/>
+		<arg name="g" type="date"/>
+		<arg name="h" type="buffer"/>
+		<arg name="i" type="str"/>
+		<arg name="j" type="list[float]"/>
+		<arg name="k" type="map[int32, str]"/>
+		<arg name="l" type="Address"/>
+		<arg name="m" type="Person"/>
+	</func>
+	
+	<class name="ClassA">
+		<attr name="attr1" type="int32"/>
+		<attr name="attr2" type="int32"/>
+		<method name="method1" type="int32">
+			<arg name="a" type="str"/>
+			<arg name="b" type="bool"/>
+		</method>
+	</class>
 
-    <enum name="Manufacturer">
-        <member name="Ford"/>
-        <member name="GMC"/>
-        <member name="Toyota"/>
-    </enum>
+	<class name="ClassB" extends="ClassA">
+		<attr name="attr3" type="float"/>
+		<method name="method2" type="int32">
+			<arg name="a" type="str"/>
+			<arg name="b" type="bool"/>
+		</method>
+	</class>
 
-    <class name="Car" extends="Asset">
-        <attr name="make" type="Manufacturer" set="no"/>
-        <attr name="model" type="str" set="no"/>
-        <attr name="milage" type="int32" set="no"/>
-
-        <method name="drive" type="void">
-            <arg name="distance" type="int32"/>
-        </method>
-    </class>
-    
-    <func name="get_cars" type="list[Car]">
+	<class name="ClassC" extends="ClassB">
+		<attr name="attr4" type="list[ClassA]" set="no"/>
+		<method name="method3" type="int32">
+			<arg name="a" type="str"/>
+			<arg name="b" type="bool"/>
+		</method>
+	</class>
+	
+    <func name="get_class_c" type="list[ClassC]">
     </func>
+	
+	<record name="RecordA">
+		<attr name="ob_refcount" type="int32"/>
+		<attr name="ob_type" type="int32"/>
+	</record>
 
-    <func name="get_houses" type="list[House]">
-    </func>
-
-    <func name="get_person" type="Person">
-        <arg name="id" type="int32"/>
-    </func>
-
+	<record name="RecordB" extends="RecordA">
+		<attr name="intval" type="int64"/>
+	</record>
+	
+	<func name="get_record_b" type="RecordB">
+	</func>
 </service>
+
+
+
+
+
+
+
 
 
 

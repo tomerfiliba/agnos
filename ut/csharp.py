@@ -1,4 +1,3 @@
-import sys
 import os
 import signal
 import unittest
@@ -6,7 +5,7 @@ import time
 from base import TargetTest
 
 
-class TestJava(TargetTest):
+class TestCSharp(TargetTest):
     def run_msbuild(self, sln):
         print "msbuild", sln
         if sys.platform == "win32":
@@ -25,7 +24,7 @@ class TestJava(TargetTest):
         return progs
     
     def runTest(self):
-        self.run_agnosc("c#", "ut/RemoteFiles.xml", "ut/gen-csharp")
+        self.run_agnosc("c#", "ut/features.xml", "ut/gen-csharp")
         self.run_msbuild("ut/csharp-test/agnostest.sln")
         server_exe = self.find_exe("ut/csharp-test/server/bin")
         client_exe = self.find_exe("ut/csharp-test/client/bin")
@@ -57,7 +56,6 @@ class TestJava(TargetTest):
                 serverproc.kill()
             except Exception:
                 pass
-
 
 if __name__ == '__main__':
     unittest.main()

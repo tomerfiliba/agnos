@@ -118,7 +118,7 @@ public class Packers
 		
 		public Object unpack(InputStream stream) throws IOException
 		{
-			return new Boolean(((Byte) Int8.unpack(stream)) != 0);
+			return new Boolean((((Byte)Int8.unpack(stream))).byteValue() != 0);
 		}
 	}
 
@@ -145,14 +145,16 @@ public class Packers
 		public void pack(short val, OutputStream stream) throws IOException
 		{
 			buffer[0] = (byte) ((val >> 8) & 0xff);
-			buffer[1] = (byte) ((val) & 0xFF);
+			buffer[1] = (byte) (val        & 0xff);
 			_write(stream, buffer);
 		}
 		
 		public Object unpack(InputStream stream) throws IOException
 		{
 			_read(stream, buffer);
-			return new Short((short) ((buffer[0] & 0xff) << 8 | (buffer[1] & 0xff)));
+			return new Short((short) (
+					((buffer[0] & 0xff) << 8) | 
+					(buffer[1] & 0xff)        ));
 		}
 	}
 
@@ -180,16 +182,19 @@ public class Packers
 		{
 			buffer[0] = (byte) ((val >> 24) & 0xff);
 			buffer[1] = (byte) ((val >> 16) & 0xff);
-			buffer[2] = (byte) ((val >> 8) & 0xff);
-			buffer[3] = (byte) ((val) & 0xFF);
+			buffer[2] = (byte) ((val >> 8)  & 0xff);
+			buffer[3] = (byte) (val         & 0xff);
 			_write(stream, buffer);
 		}
 
 		public Object unpack(InputStream stream) throws IOException
 		{
 			_read(stream, buffer);
-			return new Integer(((buffer[0] & 0xff) << 24 | (buffer[1] & 0xff) << 16
-					| (buffer[2] & 0xff) << 8 | (buffer[3] & 0xff)));
+			return new Integer(
+					((int)(buffer[0] & 0xff)  << 24) | 
+					((int)(buffer[1] & 0xff)  << 16) | 
+					((int)(buffer[2] & 0xff)  << 8)  | 
+					(int)(buffer[3] & 0xff)          );
 		}
 	}
 
@@ -221,19 +226,24 @@ public class Packers
 			buffer[3] = (byte) ((val >> 32) & 0xff);
 			buffer[4] = (byte) ((val >> 24) & 0xff);
 			buffer[5] = (byte) ((val >> 16) & 0xff);
-			buffer[6] = (byte) ((val >> 8) & 0xff);
-			buffer[7] = (byte) ((val) & 0xFF);
+			buffer[6] = (byte) ((val >> 8)  & 0xff);
+			buffer[7] = (byte) (val         & 0xff);
 			_write(stream, buffer);
 		}
 
 		public Object unpack(InputStream stream) throws IOException
 		{
 			_read(stream, buffer);
-			return new Long((long) ((buffer[0] & 0xff) << 56 | 
-					(buffer[1] & 0xff) << 48 | (buffer[2] & 0xff) << 40 | 
-					(buffer[3] & 0xff) << 32 | (buffer[4] & 0xff) << 24 |
-					(buffer[5] & 0xff) << 16 | (buffer[6] & 0xff) << 8 | 
-					(buffer[7]  & 0xff)));
+			
+			return new Long(
+					((long)(buffer[0] & 0xff) << 56) |
+					((long)(buffer[1] & 0xff) << 48) |
+					((long)(buffer[2] & 0xff) << 40) |
+					((long)(buffer[3] & 0xff) << 32) |
+					((long)(buffer[4] & 0xff) << 24) |
+					((long)(buffer[5] & 0xff) << 16) |
+					((long)(buffer[6] & 0xff) << 8)  |
+					(long)(buffer[7] & 0xff)         );
 		}
 	}
 
@@ -291,11 +301,14 @@ public class Packers
 
 		public Object unpack(InputStream stream) throws IOException
 		{
-			return new Double(Double.longBitsToDouble((Long) (Int64.unpack(stream))));
+			return new Double(
+					Double.longBitsToDouble(
+							((Long) (Int64.unpack(stream))).longValue()
+							));
 		}
 	}
 
-	public static _Float	Float	= new _Float();
+	public static _Float	 Float = new _Float();
 
 	//////////////////////////////////////////////////////////////////////////
 

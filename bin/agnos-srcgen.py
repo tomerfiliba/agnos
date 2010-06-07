@@ -29,8 +29,6 @@ parser.add_option("-r", "--rootpackage", dest="rootpackage", default=None,
 
 if __name__ == "__main__":
     options, args = parser.parse_args()
-    args = ["../ut2/srcgen/mextra"]
-    options.outdir = "../ut2/srcgen"
     if not args:
         parser.error("must specify agnos input file(s)")
     for fn in args:

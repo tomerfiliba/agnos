@@ -1,13 +1,16 @@
+import sys
 import os
 import unittest
 from subprocess import Popen, PIPE
 
 
 class TargetTest(unittest.TestCase):
-    ROOT_DIR = "../"
-    
     def setUp(self):
-        os.chdir(self.ROOT_DIR)
+        dir = os.path.dirname(os.path.abspath(__file__))
+        self.ROOT_DIR = os.path.normpath(os.path.join(dir, ".."))
+
+    def REL(self, *args):
+        return os.path.join(self.ROOT_DIR, *args)
 
     def spawn(self, cmdline, cwd = None):
         return Popen(cmdline, shell = False, stdin = PIPE, 
@@ -28,14 +31,9 @@ class TargetTest(unittest.TestCase):
         return stdout, stderr
 
     def run_agnosc(self, target, filename, outdir):
-        print "agnosc %s" % (filename,)
-        self.run_cmdline(["python", "bin/agnosc.py", "-t", target, "-o", outdir, filename])
+        print "agnosc %s --> %s" % (filename, outdir)
+        self.run_cmdline(["python", "bin/agnosc.py", "-t", target, "-o", outdir, filename], cwd = self.ROOT_DIR)
     
-    def open(self, filename, mode="r"):
-        if not isinstance(filename, str):
-            filename = os.path.join(*filename)
-        return open(filename, mode)
-
 
 
 

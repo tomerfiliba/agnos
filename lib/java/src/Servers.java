@@ -123,7 +123,7 @@ public class Servers
         public void serve() throws Exception
         {
         		ServerSocket serverSocket = ((Transports.SocketTransportFactory)transportFactory).serverSocket;
-            System.out.println(serverSocket.getInetAddress().toString());
+            System.out.println(serverSocket.getInetAddress().getHostAddress());
             System.out.println(serverSocket.getLocalPort());
             System.out.flush();
             System.out.close();
@@ -214,9 +214,15 @@ public class Servers
 			switch (mode)
 			{
 			case SIMPLE:
+				if (port == 0) {
+					throw new SwitchException("simple server requires specifying a port");
+				}
 				server = new SimpleServer(processor, new Transports.SocketTransportFactory(host, port));
 				break;
 			case THREADED:
+				if (port == 0) {
+					throw new SwitchException("threaded server requires specifying a port");
+				}
 				server = new ThreadedServer(processor, new Transports.SocketTransportFactory(host, port));
 				break;
 			case LIB:

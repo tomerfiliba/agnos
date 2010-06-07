@@ -1,56 +1,50 @@
 import java.util.*;
-import java.io.*;
-import RemoteFilesBindings.*;
+import FeatureTestBindings.*;
 
 public class myclient {
 	public static void main(String[] args) {
+		String host = args[0];
+		int port = Integer.parseInt(args[1]);
+
 		try {
-			RemoteFilesBindings.Client c = new RemoteFilesBindings.Client(
-					new agnos.Transports.SocketTransport("localhost", 17732));
-
-			try {
-				RemoteFilesBindings.FileProxy f = c.open("/tmp/foo", "w");
-				System.out.println("f = " + f);
-				f.write("hello world".getBytes());
-
-				System.out.println("filename = " + f.get_filename());
-				System.out.println("stat = " + f.stat());
-
-				boolean got_exc = false;
-				try {
-					f.flush();
-				} catch (RemoteFilesBindings.UnderlyingIOError exc) {
-					got_exc = true;
-					System.out.println("matched: " + exc);
-				}
-				assert (got_exc);
-
-				try {
-					// should cause NullPointer, since opened for writing
-					f.read(10);
-				} catch (agnos.Protocol.GenericException exc) {
-					System.out.println("exception matched");
-					exc.printStackTrace(System.out);
-				}
-
-				f.close();
-
-				RemoteFilesBindings.FileProxy f1 = c.open("/tmp/foo", "r");
-				RemoteFilesBindings.FileProxy f2 = c.open("/tmp/foo2", "w");
-				c.copy(f1, f2);
-				f1.close();
-				f2.close();
-
-				f2 = c.open("/tmp/foo2", "r");
-				byte[] data = f2.read(100);
-				System.out.println("copy = " + new String(data));
-
-				System.out.println("client finished successfully");
-			} finally {
-				c.close();
-			}
+			FeatureTestBindings.Client conn = new FeatureTestBindings.Client(
+					new agnos.Transports.SocketTransport(host, port));
+			test(conn);
 		} catch (Exception ex) {
 			ex.printStackTrace(System.out);
+			System.exit(1);
 		}
+	}
+
+	protected static void test(FeatureTestBindings.Client conn) throws Exception
+	{
+		FeatureTestBindings.PersonProxy eve = conn.Person.init("eve", null,
+				null);
+		FeatureTestBindings.PersonProxy adam = conn.Person.init("adam", null,
+				null);
+		eve.marry(adam);
+		FeatureTestBindings.PersonProxy cain = conn.Person.init("cain", adam,
+				eve);
+		if (!cain.get_name().equals("cain")) {
+			throw new Exception("cain is not the name");
+		}
+
+		try {
+			adam.marry(eve);
+		} catch (FeatureTestBindings.MartialStatusError ex) {
+			// okay
+		}
+		
+		double thought = adam.think(new Double(17), new Double(3)).doubleValue();
+        if (thought != (17/3.0)) {
+			throw new Exception("adam thinks wrong: " + thought);
+        }
+        
+        try {
+			adam.think(new Double(17), new Double(0));
+		} catch (agnos.Protocol.GenericException ex) {
+			// okay
+		}
+
 	}
 }

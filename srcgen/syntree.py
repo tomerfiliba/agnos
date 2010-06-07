@@ -348,6 +348,8 @@ def parse_source_file(filename):
 
 def parse_source_files(rootdir, filenames, rootpackage):
     modules = []
+    if not filenames:
+        raise ValueError("no source files given")
     for fn in filenames:
         ast = parse_source_file(fn)
         if not ast.children:
