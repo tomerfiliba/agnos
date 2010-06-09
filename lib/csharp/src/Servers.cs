@@ -236,10 +236,16 @@ namespace Agnos.Servers
 			switch (mode)
 			{
 				case ServingMode.SIMPLE:
+					if ((int)options["port"] == 0) {
+						throw new ArgumentException("simple mode requires specifying a port");
+					}
 					server = new SimpleServer(processor, 
 					                          new Transports.SocketTransportFactory((string)options["host"], (int)options["port"]));
 					break;
 				case ServingMode.THREADED:
+					if ((int)options["port"] == 0) {
+						throw new ArgumentException("threaded mode requires specifying a port");
+					}
 					server = new ThreadedServer(processor, 
 					                            new Transports.SocketTransportFactory((string)options["host"], (int)options["port"]));
 					break;

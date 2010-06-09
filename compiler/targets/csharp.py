@@ -27,11 +27,13 @@ def type_to_cs(t, proxy = False):
     elif t == compiler.t_buffer:
         return "byte[]"
     elif isinstance(t, compiler.TList):
-        return "List<%s>" % (type_to_cs(t.oftype, proxy = proxy),)
+        #return "List<%s>" % (type_to_cs(t.oftype, proxy = proxy),)
+        return "IList"
     elif isinstance(t, compiler.TMap):
-        return "Dictionary<%s, %s>" % (
-            type_to_cs(t.keytype, proxy = proxy), 
-            type_to_cs(t.valtype, proxy = proxy))
+        return "IDictionary"
+        #return "Dictionary<%s, %s>" % (
+        #    type_to_cs(t.keytype, proxy = proxy), 
+        #    type_to_cs(t.valtype, proxy = proxy))
     elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
         return "%s" % (t.name,)
     elif isinstance(t, compiler.Class):
@@ -122,6 +124,7 @@ class CSharpTarget(TargetBase):
             
             STMT("using System")
             STMT("using System.IO")
+            STMT("using System.Collections")
             STMT("using System.Collections.Generic")
             STMT("using Agnos")
             SEP()
@@ -341,7 +344,7 @@ class CSharpTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
 
-        with BLOCK("public class {0}Proxy : BaseProxy", cls.name):
+        with BLOCK("public class {0}Proxy : BaseProxy, I{0}", cls.name):
             with BLOCK("internal {0}Proxy(Client client, long objref) : base(client, objref)", cls.name):
                 pass
             SEP()
@@ -355,9 +358,13 @@ class CSharpTarget(TargetBase):
                             STMT("_client._autogen_{0}_set_{1}(this, value)", cls.name, attr.name)
             SEP()
             for method in cls.all_methods:
-                args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) for arg in method.args)
-                with BLOCK("public {0} {1}({2})", type_to_cs(method.type, proxy = True), method.name, args):
-                    callargs = ["this"] + [arg.name for arg in method.args]
+                args = ", ".join("%s %s" % (type_to_cs(arg.type), arg.name) for arg in method.args)
+                with BLOCK("public {0} {1}({2})", type_to_cs(method.type), method.name, args):
+                    #callargs = ["this"] + [arg.name for arg in method.args]
+                    callargs = ["this"] + [
+                        "(%s)%s" % (type_to_cs(arg.type, proxy=True), arg.name) 
+                            if isinstance(arg.type, compiler.Class) else arg.name 
+                        for arg in method.args]
                     if method.type == compiler.t_void:
                         STMT("_client._autogen_{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
                     else:
@@ -471,11 +478,12 @@ class CSharpTarget(TargetBase):
                         STMT("{0}.unpack(inStream)", type_to_packer(arg.type), suffix = ",")
                     arg = func.args[-1]
                     STMT("{0}.unpack(inStream)", type_to_packer(arg.type), suffix = ",")
-            callargs = ", ".join("(%s)args[%s]" % (type_to_cs(arg.type), i) for i, arg in enumerate(func.args[1:]))
+            callargs = ", ".join("(%s)args[%s]" % (type_to_cs(arg.type), i) 
+                for i, arg in enumerate(func.args[1:]))
             
             if isinstance(func.origin, compiler.ClassAttr):
                 if func.type == compiler.t_void:
-                    invocation = "((%s)inst).%s = args[0]" % (type_to_cs(insttype), func.origin.name)
+                    invocation = "((%s)inst).%s = (%s)args[0]" % (type_to_cs(insttype), func.origin.name, type_to_cs(func.origin.type))
                 else:
                     invocation = "result = ((%s)inst).%s" % (type_to_cs(insttype), func.origin.name)
             else:

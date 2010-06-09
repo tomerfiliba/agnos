@@ -62,9 +62,9 @@
       <Project>{8D5457D1-288E-4517-BC0A-DC1EFD36EA78}</Project>
       <Name>Agnos</Name>
     </ProjectReference>
-    <ProjectReference Include="..\RemoteFiles.csproj">
+    <ProjectReference Include="..\Features.csproj">
       <Project>{EC4E24A4-1D19-4D4D-8C13-7E5D7E139025}</Project>
-      <Name>RemoteFiles</Name>
+      <Name>Features</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

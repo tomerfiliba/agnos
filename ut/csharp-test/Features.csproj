@@ -38,7 +38,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
-    <Compile Include="..\gen-csharp\RemoteFilesBindings.cs" />
+    <Compile Include="..\gen-csharp\FeatureTestBindings.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\lib\csharp\src\Agnos.csproj">
