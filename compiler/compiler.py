@@ -11,7 +11,7 @@ ID_GENERATOR = itertools.count(900000)
 def is_complex_type(idltype):
     if isinstance(idltype, TList):
         return is_complex_type(idltype.oftype)
-    elif isinstance(idltype, TList):
+    elif isinstance(idltype, TMap):
         return is_complex_type(idltype.keytype) or is_complex_type(idltype.valtype)
     elif isinstance(idltype, Class):
         return True
@@ -191,7 +191,7 @@ class Record(Element):
     def get_complex_types(self):
         return sorted(
             set(mem.type for mem in self.members if is_complex_type(mem.type)),
-            key = lambda tp: tp.name)
+            key = lambda tp: tp.stringify())
 
     def _resolve(self, service):
         names = set()

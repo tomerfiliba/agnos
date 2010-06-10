@@ -1,115 +1,245 @@
 using System;
-using System.IO;
-using System.Net;
 using Agnos;
-using RemoteFilesBindings;
+using FeatureTestBindings;
+using System.Collections;
 using System.Collections.Generic;
 
 
-namespace server_test
+public class myserver 
 {
-	public class MyFile : RemoteFiles.IFile
-	{
-		protected String	_filename;
-		protected BinaryWriter fout;
-		protected BinaryReader fin;
+	public class ClassA : FeatureTest.IClassA {
+		private int val = 17;
 
-		public MyFile(String filename, string mode)
-		{
-			_filename = filename;
-			if (mode == "r") {
-				fin = new BinaryReader(File.Open(filename, FileMode.Open));
-			}
-			else if (mode == "w") {
-				fout = new BinaryWriter(File.Open(filename, FileMode.Create));
-			}
-			else {
-				throw new RemoteFiles.UnderlyingIOError("invalid mode: " + mode, RemoteFiles.Errno.EFAULT);
+		public int attr1 {
+			get {
+				return val;
 			}
 		}
 
-		public String filename
-		{
-			get
-			{
-				return _filename;
-			}
+		public void set_attr1(int value) {
+			val = value;
 		}
 
-		public RemoteFiles.StatRes stat()
-		{
-			return new RemoteFiles.StatRes(15, 12345, 17772, 1001, 1002, DateTime.Now, DateTime.Now, DateTime.Now);
+		public int get_attr2()  {
+			return 199;
 		}
 
-		public byte[] read(int count)
-		{
-			byte[] buf = new byte[count];
-			int size = fin.Read(buf, 0, buf.Length);			
-			if (size < 0) {
-				size = 0; // eof - return empty array
-			}
-			byte[] output = new byte[size];
-			System.Array.Copy(buf, output, size);
-			return output;
+		public void set_attr2(int value)  {
 		}
 
-		public void write(byte[] data)
-		{
-			fout.Write(data, 0, data.Length);
+		// methods
+		public int method1(string a, bool b)  {
+			int v = b ? 7 : 3;
+			return int.Parse(a) + v;
+		}
+	}
+	
+	public class ClassB : FeatureTest.IClassB {
+		private int val = 17;
+		private double val3 = new double(17.77);
+
+		public int get_attr1()  {
+			return val;
 		}
 
-		public void close()
-		{
-			if (fin != null) {
-				fin.Close();
-			}
-			if (fout != null) {
-				fout.Close();
-			}
+		public void set_attr1(int value)  {
+			val = value;
 		}
 
-		public void flush()
-		{
-			throw new RemoteFiles.UnderlyingIOError("cannot flush", RemoteFiles.Errno.EFAULT);
+		public int get_attr2()  {
+			return 211;
+		}
+
+		public void set_attr2(int value)  {
+		}
+
+		public double get_attr3()  {
+			return val3;
+		}
+
+		public void set_attr3(double value)  {
+			val3 = value;
+		}
+
+		// methods
+		public int method1(string a, bool b)  {
+			int v = b ? 7 : 3;
+			return int.Parse(a) + v;
+		}
+
+		public int method2(string a, bool b)  {
+			int v = b ? 99 : 33;
+			return int.Parse(a) + v;
 		}
 	}
 
-	public class MyHandler : RemoteFiles.IHandler
-	{
-		public void copy(RemoteFiles.IFile src, RemoteFiles.IFile dst)
-		{
-			System.Console.WriteLine("@copy: src= {0}, dst = {1}", src, dst);
-			byte[] buf;
-			while (true) {
-				buf = src.read(10000);
-				if (buf.Length == 0)
-					break;
-				dst.write(buf);
+	public class ClassC : FeatureTest.IClassC {
+		private int val = 17;
+		private double val3 = 17.77;
+
+		public int get_attr1()  {
+			return val;
+		}
+
+		public void set_attr1(int value)  {
+			val = value;
+		}
+
+		public int get_attr2()  {
+			return 399;
+		}
+
+		public void set_attr2(int value)  {
+		}
+
+		public double get_attr3()  {
+			return val3;
+		}
+
+		public void set_attr3(double value)  {
+			val3 = value;
+		}
+
+		private List<FeatureTest.IClassA> attr4 = new ArrayList<FeatureTest.IClassA>();
+
+		public List<FeatureTest.IClassA> get_attr4()  {
+			return attr4;
+		}
+
+		// methods
+		public int method1(string a, bool b)  {
+			int v = b ? 7 : 3;
+			return int.Parse(a) + v;
+		}
+
+		public int method2(string a, bool b)  {
+			int v = b ? 99 : 33;
+			return int.Parse(a) + v;
+		}
+
+		public int method3(string a, bool b)  {
+			int v = b ? 22 : -22;
+			return int.Parse(a) + v;
+		}
+	}
+
+	public class Person : FeatureTest.IPerson {
+		private string name;
+		private Person father;
+		private Person mother;
+		private Person spouse;
+		private Date date_of_birth;
+		private FeatureTest.Address address;
+
+		protected Person(string name, FeatureTest.IPerson father,
+				FeatureTest.IPerson mother) {
+			this.name = name;
+			this.father = (Person) father;
+			this.mother = (Person) mother;
+			this.address = new FeatureTest.Address(
+					FeatureTest.State.TX, "nashville", "woldorf", 1772);
+			this.date_of_birth = new Date();
+		}
+
+		// attributes
+		public string get_name()  {
+			return name;
+		}
+
+		public Date get_date_of_birth()  {
+			return date_of_birth;
+		}
+
+		public FeatureTest.Address get_address()  {
+			return address;
+		}
+
+		public void set_address(FeatureTest.Address value)
+				 {
+			address = value;
+		}
+
+		public FeatureTest.IPerson get_father()  {
+			return father;
+		}
+
+		public FeatureTest.IPerson get_mother()  {
+			return mother;
+		}
+
+		public FeatureTest.IPerson get_spouse()  {
+			return spouse;
+		}
+
+		// methods
+		public void marry(FeatureTest.IPerson partner)  {
+			if (spouse != null) {
+				throw new FeatureTest.MartialStatusError(
+						"already married", this);
 			}
+			if (partner.get_spouse() != null) {
+				throw new FeatureTest.MartialStatusError(
+						"already married", partner);
+			}
+			if ((mother != null && mother == partner.get_mother())
+					|| (father != null && father == partner.get_father())) {
+				throw new FeatureTest.MartialStatusError(
+						"siblings cannot marry", partner);
+			}
+			spouse = (Person) partner;
+			spouse.spouse = this;
 		}
 
-		public RemoteFiles.IFile open(String filename, String mode)
-		{
-			System.Console.WriteLine("@open: filename = {0}, mode={1}", filename, mode);
-			return new MyFile(filename, mode);
+		public void divorce()  {
+			if (spouse == null) {
+				throw new FeatureTest.MartialStatusError(
+						"does not have a spouse", this);
+			}
+			spouse.spouse = null;
+			spouse = null;
 		}
-		
-        public List<string> pathToList(RemoteFiles.IPath path, List<RemoteFiles.IFile> spam, List<RemoteFiles.IPath> bacon, List<RemoteFiles.Moshe> eggs, List<RemoteFiles.IPath> maps)
-		{
-			return new List<string> {"hello", "world"};
+
+		public double think(double a, double b)  {
+			return a / b;
 		}
 	}
 
-	public class MainClass
-	{
-		public static void Main(string[] args)
-		{
-			Agnos.Servers.SimpleServer server = new Agnos.Servers.SimpleServer(
-					new RemoteFiles.Processor(new MyHandler()),
-					new Agnos.Transports.SocketTransportFactory(IPAddress.Loopback, 17735));
+	public class Handler : FeatureTest.IHandler {
+		public FeatureTest.RecordB get_record_b()  {
+			return new FeatureTest.RecordB(17, 18, 19);
+		}
 
-			server.serve();
+		public FeatureTest.IPerson Person_init(string name,
+				FeatureTest.IPerson father,
+				FeatureTest.IPerson mother)  {
+			return new Person(name, father, mother);
+		}
+
+		public List<FeatureTest.IClassC> get_class_c()  {
+			ClassA[] x1 = { new ClassA(), new ClassA() };
+			ClassA[] x2 = { new ClassA() };
+
+			ArrayList<FeatureTest.IClassC> arr = new ArrayList<FeatureTest.IClassC>();
+			// arr.add(new ClassC(4, 5, 6.0, Arrays.asList(x1)));
+			// arr.add(new ClassC(33, 12, 76.2, Arrays.asList(x2)));
+
+			return arr;
+		}
+
+		public FeatureTest.Everything func_of_everything(Byte a,
+				Short b, int c, Long d, double e, bool f, Date g,
+				byte[] h, string i, List j, Map k,
+				FeatureTest.Address l, FeatureTest.IPerson m)
+				 {
+			return new FeatureTest.Everything(a, b, c, d, e, f, g, h,
+					i, j, k, l, m);
 		}
 	}
+
+	public static void Main(string[] args) {
+		agnos.Servers.CmdlineServer server = new agnos.Servers.CmdlineServer(
+				new FeatureTest.Processor(new Handler()));
+		server.main(args);
+	}
+
 }
-

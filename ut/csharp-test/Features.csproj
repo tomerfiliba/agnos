@@ -8,8 +8,8 @@
     <ProjectGuid>{EC4E24A4-1D19-4D4D-8C13-7E5D7E139025}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>RemoteFilesBindings</RootNamespace>
-    <AssemblyName>RemoteFilesBindings</AssemblyName>
+    <RootNamespace>FeatureTestBindings</RootNamespace>
+    <AssemblyName>FeatureTestBindings</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -46,7 +46,7 @@
       <Name>Agnos</Name>
     </ProjectReference>
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

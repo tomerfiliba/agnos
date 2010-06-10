@@ -194,15 +194,19 @@ class CSharpTarget(TargetBase):
         
         for tp in service.all_types:
             if isinstance(tp, (compiler.TList, compiler.TMap)):
-                STMT("internal Packers.IPacker _{0}", tp.stringify())
-
+                if is_complex_type(tp):
+                    STMT("internal Packers.IPacker _{0}", tp.stringify())
+                else:
+                    definition = self._generate_templated_packer_for_type(tp)
+                    STMT("internal static Packers.IPacker _{0} = {1}", tp.stringify(), definition)
+            
     def generate_templated_packers_impl(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
         
         for tp in service.all_types:
-            if isinstance(tp, (compiler.TList, compiler.TMap)):
+            if isinstance(tp, (compiler.TList, compiler.TMap)) and is_complex_type(tp):
                 definition = self._generate_templated_packer_for_type(tp)
                 STMT("_{0} = {1}", tp.stringify(), definition)
 
@@ -537,9 +541,9 @@ class CSharpTarget(TargetBase):
                     args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) for arg in func.args)
                     with BLOCK("public {0} {1}({2})", type_to_cs(func.type, proxy = True), func.name, args):
                         if func.type == compiler.t_void:
-                            STMT("client.{0}({1})", func.fullname, ", ".join(arg.name for arg in func.args))
+                            STMT("client._autogen_{0}({1})", func.fullname, ", ".join(arg.name for arg in func.args))
                         else:
-                            STMT("return client.{0}({1})", func.fullname, ", ".join(arg.name for arg in func.args))
+                            STMT("return client._autogen_{0}({1})", func.fullname, ", ".join(arg.name for arg in func.args))
             SEP()
             with BLOCK("internal _Namespace{0}(Client client)", root["__id__"]):
                 STMT("this.client = client")
