@@ -114,6 +114,9 @@ namespace Agnos.Servers
 			
             System.Console.Out.Write("{0}\n{1}\n", ep.Address, ep.Port);
             System.Console.Out.Flush();
+			// XXX: i can't seem to find a way to actually close the underlying
+			// filedesc, so you have to use readline() instead of read()
+			// because read() will block indefinitely
             System.Console.Out.Close();
             ITransport transport = transportFactory.Accept();
             transportFactory.Close();

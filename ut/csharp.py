@@ -1,4 +1,5 @@
 import os
+import sys
 import signal
 import unittest
 import time
@@ -25,12 +26,9 @@ class TestCSharp(TargetTest):
     
     def runTest(self):
         self.run_agnosc("c#", "ut/features.xml", "ut/gen-csharp")
-        
-        return
-        
-        self.run_msbuild("ut/csharp-test/agnostest.sln")
-        server_exe = self.find_exe("ut/csharp-test/server/bin")
-        client_exe = self.find_exe("ut/csharp-test/client/bin")
+        self.run_msbuild(self.REL("ut/csharp-test/agnostest.sln"))
+        server_exe = self.find_exe(self.REL("ut/csharp-test/server/bin"))
+        client_exe = self.find_exe(self.REL("ut/csharp-test/client/bin"))
 
         self.assertTrue(len(server_exe) == 1)
         server_exe = server_exe[0]
@@ -39,28 +37,35 @@ class TestCSharp(TargetTest):
         print "server_exe:", server_exe
         print "client_exe:", client_exe
         
-        return
+        serverproc = self.spawn([server_exe, "-m", "lib"])
+        time.sleep(1)
+        if serverproc.poll() is not None:
+            print "server stdout: ", serverproc.stdout.read()
+            print "server stderr: ", serverproc.stderr.read()
+            self.fail("server failed to start")
 
         try:
-            serverproc = self.spawn(server_exe)
-            time.sleep(1)
-            clientproc = self.spawn(client_exe)
+            host = serverproc.stdout.readline().strip()
+            port = serverproc.stdout.readline().strip()
+            serverproc.stdout.close()
+            print host, port
+            
+            clientproc = self.spawn([client_exe, host, port])
+            
             print "===client output==="
             print clientproc.stdout.read()
             print clientproc.stderr.read()
             print "==================="
             self.assertTrue(clientproc.wait() == 0)
-            serverproc.send_signal(signal.SIGINT)
-            serverproc.wait()
         finally:
+            serverproc.send_signal(signal.SIGINT)
+            time.sleep(1)
             try:
-                clientproc.kill()
+                if serverproc.poll() is None:
+                    serverproc.kill()
             except Exception:
                 pass
-            try:
-                serverproc.kill()
-            except Exception:
-                pass
+
 
 if __name__ == '__main__':
     unittest.main()

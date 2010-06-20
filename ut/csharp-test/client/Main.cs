@@ -1,58 +1,49 @@
 using System;
-using System.Text;
 using Agnos;
-using RemoteFilesBindings;
+using FeatureTestBindings;
 
 
-namespace client_test
-{
-	class MainClass
+public class myclient {
+	public static void Main(string[] args) 
 	{
-		public static void Main(string[] args)
-		{
-			using (RemoteFiles.Client c = new RemoteFiles.Client(
-					new Agnos.Transports.SocketTransport("localhost", 17735)))
-			{
-				RemoteFiles.FileProxy f = c.open("foo", "w");
-				System.Console.WriteLine("f = {0}", f);
-				f.write(new System.Text.ASCIIEncoding().GetBytes("hello world"));
+		string host = args[0];
+		int port = int.Parse(args[1]);
 
-				System.Console.WriteLine("filename = {0}", f.filename);
-				System.Console.WriteLine("stat = {0}", f.stat());
-				
-				bool got_exc = false;
-				try {
-					f.flush();
-				} catch (RemoteFiles.UnderlyingIOError exc) {
-					got_exc = true;
-					System.Console.WriteLine("matched: " + exc);
-				}
-			    if (!got_exc) {
-                    throw new Exception("did not throw exception!");
-                }
+		FeatureTest.Client conn = new FeatureTest.Client(
+				new Agnos.Transports.SocketTransport(host, port));
+		test(conn);
+	}
 
-				try {
-					// should cause NullPointer, since opened for writing
-					f.read(10); 
-				}
-				catch (Agnos.GenericException exc) {
-					System.Console.WriteLine("matched: " + exc);
-				}
-				
-				f.close();
-
-                RemoteFiles.FileProxy f1 = c.open("foo", "r");
-                RemoteFiles.FileProxy f2 = c.open("foo2", "w");
-				c.copy(f1, f2);
-				f1.close();
-				f2.close();
-
-				f2 = c.open("foo2", "r");
-				byte[] data = f2.read(100);
-				System.Console.WriteLine("copy = {0}", new System.Text.ASCIIEncoding().GetString(data));
-				
-				System.Console.WriteLine("client finished successfully");
-			}
+	protected static void test(FeatureTest.Client conn)
+	{
+		FeatureTest.PersonProxy eve = conn.Person.init("eve", null,
+				null);
+		FeatureTest.PersonProxy adam = conn.Person.init("adam", null,
+				null);
+		eve.marry(adam);
+		FeatureTest.PersonProxy cain = conn.Person.init("cain", adam,
+				eve);
+		if (cain.name != "cain") {
+			throw new Exception("cain is not the name");
 		}
+
+		try {
+			adam.marry(eve);
+		} catch (FeatureTest.MartialStatusError) {
+			// okay
+		}
+		
+		double thought = adam.think(17, 3.0);
+        if (thought != (17/3.0)) {
+			throw new Exception("adam thinks wrong: " + thought);
+        }
+        
+        try {
+			adam.think(17, 0);
+		} catch (Agnos.GenericException) {
+			// okay
+		}
+		
+		System.Console.WriteLine("test passed!");
 	}
 }

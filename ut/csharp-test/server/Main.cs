@@ -2,7 +2,6 @@ using System;
 using Agnos;
 using FeatureTestBindings;
 using System.Collections;
-using System.Collections.Generic;
 
 
 public class myserver 
@@ -14,17 +13,16 @@ public class myserver
 			get {
 				return val;
 			}
+			set {
+			}
 		}
 
-		public void set_attr1(int value) {
-			val = value;
-		}
-
-		public int get_attr2()  {
-			return 199;
-		}
-
-		public void set_attr2(int value)  {
+		public int attr2 {
+			get {
+				return 199;
+			}
+			set {
+			}
 		}
 
 		// methods
@@ -36,29 +34,32 @@ public class myserver
 	
 	public class ClassB : FeatureTest.IClassB {
 		private int val = 17;
-		private double val3 = new double(17.77);
+		private double val3 = 17.77;
 
-		public int get_attr1()  {
-			return val;
+		public int attr1 {
+			get {
+				return val;
+			}
+			set {
+				val = value;
+			}
 		}
 
-		public void set_attr1(int value)  {
-			val = value;
+		public int attr2 {
+			get {
+				return 211;
+			}
+			set {
+			}
 		}
 
-		public int get_attr2()  {
-			return 211;
-		}
-
-		public void set_attr2(int value)  {
-		}
-
-		public double get_attr3()  {
-			return val3;
-		}
-
-		public void set_attr3(double value)  {
-			val3 = value;
+		public double attr3 {
+			get {
+				return val3;
+			}
+			set {
+				val3 = value * 2;
+			}
 		}
 
 		// methods
@@ -76,34 +77,45 @@ public class myserver
 	public class ClassC : FeatureTest.IClassC {
 		private int val = 17;
 		private double val3 = 17.77;
-
-		public int get_attr1()  {
-			return val;
+		private IList _my_attr4;
+		
+		public ClassC(int a, int b, double c, IList d)
+		{
+			val = a;
+			val3 = c;
+			_my_attr4 = d;
 		}
 
-		public void set_attr1(int value)  {
-			val = value;
+		public int attr1 {
+			get {
+				return val;
+			}
+			set {
+				val = value;
+			}
 		}
 
-		public int get_attr2()  {
-			return 399;
+		public int attr2 {
+			get {
+				return 399;
+			}
+			set {
+			}
 		}
 
-		public void set_attr2(int value)  {
+		public double attr3 {
+			get {
+				return val3;
+			}
+			set {
+				val3 = value * 2;
+			}
 		}
 
-		public double get_attr3()  {
-			return val3;
-		}
-
-		public void set_attr3(double value)  {
-			val3 = value;
-		}
-
-		private List<FeatureTest.IClassA> attr4 = new ArrayList<FeatureTest.IClassA>();
-
-		public List<FeatureTest.IClassA> get_attr4()  {
-			return attr4;
+		public IList attr4 {
+			get {
+				return _my_attr4;
+			}
 		}
 
 		// methods
@@ -124,51 +136,61 @@ public class myserver
 	}
 
 	public class Person : FeatureTest.IPerson {
-		private string name;
-		private Person father;
-		private Person mother;
-		private Person spouse;
-		private Date date_of_birth;
-		private FeatureTest.Address address;
+		private string _name;
+		private Person _father;
+		private Person _mother;
+		private Person _spouse;
+		private DateTime _date_of_birth;
+		private FeatureTest.Address _address;
 
-		protected Person(string name, FeatureTest.IPerson father,
+		public Person(string name, FeatureTest.IPerson father,
 				FeatureTest.IPerson mother) {
-			this.name = name;
-			this.father = (Person) father;
-			this.mother = (Person) mother;
-			this.address = new FeatureTest.Address(
+			this._name = name;
+			this._father = (Person) father;
+			this._mother = (Person) mother;
+			this._address = new FeatureTest.Address(
 					FeatureTest.State.TX, "nashville", "woldorf", 1772);
-			this.date_of_birth = new Date();
+			this._date_of_birth = new DateTime();
 		}
 
 		// attributes
-		public string get_name()  {
-			return name;
+		public string name {
+			get {
+				return _name;
+			}
 		}
 
-		public Date get_date_of_birth()  {
-			return date_of_birth;
+		public DateTime date_of_birth {
+			get{
+				return _date_of_birth;
+			}
 		}
 
-		public FeatureTest.Address get_address()  {
-			return address;
+		public FeatureTest.Address address {
+			get{
+				return _address;
+			}
+			set {
+				_address = value;
+			}
 		}
 
-		public void set_address(FeatureTest.Address value)
-				 {
-			address = value;
+		public FeatureTest.IPerson father  {
+			get {
+				return _father;
+			}
 		}
 
-		public FeatureTest.IPerson get_father()  {
-			return father;
+		public FeatureTest.IPerson mother  {
+			get {
+				return _mother;
+			}
 		}
 
-		public FeatureTest.IPerson get_mother()  {
-			return mother;
-		}
-
-		public FeatureTest.IPerson get_spouse()  {
-			return spouse;
+		public FeatureTest.IPerson spouse {
+			get{
+				return _spouse;
+			}
 		}
 
 		// methods
@@ -177,17 +199,17 @@ public class myserver
 				throw new FeatureTest.MartialStatusError(
 						"already married", this);
 			}
-			if (partner.get_spouse() != null) {
+			if (partner.spouse != null) {
 				throw new FeatureTest.MartialStatusError(
 						"already married", partner);
 			}
-			if ((mother != null && mother == partner.get_mother())
-					|| (father != null && father == partner.get_father())) {
+			if ((mother != null && mother == partner.mother)
+					|| (father != null && father == partner.father)) {
 				throw new FeatureTest.MartialStatusError(
 						"siblings cannot marry", partner);
 			}
-			spouse = (Person) partner;
-			spouse.spouse = this;
+			_spouse = (Person) partner;
+			_spouse._spouse = this;
 		}
 
 		public void divorce()  {
@@ -195,8 +217,8 @@ public class myserver
 				throw new FeatureTest.MartialStatusError(
 						"does not have a spouse", this);
 			}
-			spouse.spouse = null;
-			spouse = null;
+			_spouse._spouse = null;
+			_spouse = null;
 		}
 
 		public double think(double a, double b)  {
@@ -205,30 +227,35 @@ public class myserver
 	}
 
 	public class Handler : FeatureTest.IHandler {
-		public FeatureTest.RecordB get_record_b()  {
+		public FeatureTest.RecordB get_record_b()  
+		{
 			return new FeatureTest.RecordB(17, 18, 19);
 		}
 
 		public FeatureTest.IPerson Person_init(string name,
 				FeatureTest.IPerson father,
-				FeatureTest.IPerson mother)  {
+				FeatureTest.IPerson mother)  
+		{
 			return new Person(name, father, mother);
 		}
 
-		public List<FeatureTest.IClassC> get_class_c()  {
-			ClassA[] x1 = { new ClassA(), new ClassA() };
-			ClassA[] x2 = { new ClassA() };
+		public IList get_class_c()  {
+			ArrayList x1 = new ArrayList();
+			x1.Add(new ClassA());
+			x1.Add(new ClassA());
+			ArrayList x2 = new ArrayList();
+			x2.Add(new ClassA());
 
-			ArrayList<FeatureTest.IClassC> arr = new ArrayList<FeatureTest.IClassC>();
-			// arr.add(new ClassC(4, 5, 6.0, Arrays.asList(x1)));
-			// arr.add(new ClassC(33, 12, 76.2, Arrays.asList(x2)));
-
+			ArrayList arr = new ArrayList();
+			arr.Add(new ClassC(4, 5, 6.0, x1));
+			arr.Add(new ClassC(33, 12, 76.2, x2));
+			
 			return arr;
 		}
 
 		public FeatureTest.Everything func_of_everything(Byte a,
-				Short b, int c, Long d, double e, bool f, Date g,
-				byte[] h, string i, List j, Map k,
+				short b, int c, long d, double e, bool f, DateTime g,
+				byte[] h, string i, IList j, IDictionary k,
 				FeatureTest.Address l, FeatureTest.IPerson m)
 				 {
 			return new FeatureTest.Everything(a, b, c, d, e, f, g, h,
@@ -237,9 +264,9 @@ public class myserver
 	}
 
 	public static void Main(string[] args) {
-		agnos.Servers.CmdlineServer server = new agnos.Servers.CmdlineServer(
+		Agnos.Servers.CmdlineServer server = new Agnos.Servers.CmdlineServer(
 				new FeatureTest.Processor(new Handler()));
-		server.main(args);
+		server.Main(args);
 	}
 
 }
