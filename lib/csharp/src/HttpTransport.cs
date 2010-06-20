@@ -38,7 +38,7 @@ namespace Agnos.Transports
 			return this;
 		}
 		
-		protected HttpWebRequest buildRequest(Uri uri)
+		protected HttpWebRequest buildRequest()
 		{
 			HttpWebRequest req = (HttpWebRequest)WebRequest.Create(uri);
 
@@ -56,10 +56,20 @@ namespace Agnos.Transports
 			return req;
 		}
 
+		public override void Close()
+		{
+			Flush();
+		}
+
 		public override void Flush ()
 		{
 			byte[] data = mstream.GetBuffer();
-			WebRequest req = buildRequest(uri);
+			
+			if (data.Length <= 0) {
+				return;
+			}
+			
+			WebRequest req = buildRequest();
 			
             req.ContentLength = data.Length;
             using (Stream s = req.GetRequestStream()) {

@@ -75,6 +75,106 @@ public class Transports
 		}
 	}
 	
+	public static class HttpClientTransport implements ITransport
+	{
+		protected URL url;
+		protected InputStream currentInputStream;
+		
+		public HttpClientTransport(String url) throws Exception
+		{
+			this.url = new URL(url);
+		}
+
+		protected HttpURLConnection buildConnection() throws IOException
+		{
+			HttpURLConnection conn = (HttpURLConnection)url.openConnection();
+			
+			conn.setDoOutput(true);
+			conn.setAllowUserInteraction(false);
+			conn.setUseCaches(false);
+			conn.setInstanceFollowRedirects(true);
+			conn.setRequestMethod("POST");
+			conn.setRequestProperty("content-type", "application/octet-stream");
+			conn.connect();
+			return conn;
+		}
+
+		public InputStream getInputStream() throws IOException
+		{
+			return new HttpClientInputStream(this);
+		}
+
+		public OutputStream getOutputStream() throws IOException
+		{
+			return new HttpClientOutputStream(this);
+		}
+	}
+	
+	protected static class HttpClientInputStream extends InputStream
+	{
+		protected HttpClientTransport transport;
+		
+		public HttpClientInputStream(HttpClientTransport transport)
+		{
+			this.transport = transport;
+		}
+
+		public int read() throws IOException
+		{
+			byte[] buffer = {0};
+			read(buffer, 0, buffer.length);
+			return buffer[0];
+		}
+
+		public int read(byte[] b, int off, int len) throws IOException
+		{
+			return this.transport.currentInputStream.read(b, off, len);
+		}
+	}
+	
+	protected static class HttpClientOutputStream extends OutputStream
+	{
+		protected HttpClientTransport transport;
+		protected ByteArrayOutputStream mstream;
+		
+		public HttpClientOutputStream(HttpClientTransport transport)
+		{
+			this.transport = transport;
+			mstream = new ByteArrayOutputStream(128 * 1024);
+		}
+		
+		public void close() throws IOException
+		{
+			flush();
+		}
+		
+		public void flush() throws IOException
+		{
+			if (mstream.size() <= 0) {
+				return;
+			}
+			
+			URLConnection conn = transport.buildConnection();
+			OutputStream outs = conn.getOutputStream();
+			mstream.writeTo(outs);
+			outs.flush();
+			outs.close();
+			mstream.reset();
+			transport.currentInputStream = new BufferedInputStream(conn.getInputStream());
+		}
+		
+		public void write(byte[] b, int off, int len) throws IOException
+		{
+			mstream.write(b, off, len);
+		}
+
+		public void write(int b) throws IOException
+		{
+			byte[] buffer = {(byte)b};
+			write(buffer);
+		}
+	}
+		
     public static class ProcTransport implements ITransport
     {
         public Process proc;
