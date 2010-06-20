@@ -83,7 +83,7 @@ namespace Agnos.Transports
 			return new BufferedStream(new NetworkStream(sock), bufsize);
 		}
 	}
-
+	
     public class ProcTransport : ITransport
     {
         public Process proc;
