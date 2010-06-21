@@ -278,14 +278,20 @@ class BaseClient(object):
             self._outstream.close()
             self._instream = None
             self._outstream = None
+    
+    def _tunnel(self, blob):
+        with self._outstream.transaction() as trans:
+            trans.write(blob)
+        with self._instream.transaction() as trans:
+            pass
 
     def _decref(self, oid):
         seq = self._seq.next()
         try:
-            with self._outstream.transaction():
-                Int32.pack(seq, self._outstream)
-                Int8.pack(CMD_DECREF, self._outstream)
-                Int64.pack(oid, self._outstream)
+            with self._outstream.transaction() as trans:
+                Int32.pack(seq, trans)
+                Int8.pack(CMD_DECREF, trans)
+                Int64.pack(oid, trans)
         except Exception:
             pass
     

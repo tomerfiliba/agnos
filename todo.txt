@@ -1,3 +1,7 @@
+* protocol changes:
+    * client needs to start handshake, not server
+    * add length field to add messages
+
 * intergrate with XSF
 
 * HAK2.0:

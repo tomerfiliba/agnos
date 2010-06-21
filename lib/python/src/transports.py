@@ -1,6 +1,8 @@
 import sys
 import os
 import socket
+import threading
+from struct import Struct
 from select import select
 from contextlib import contextmanager
 from subprocess import Popen, PIPE
@@ -31,6 +33,7 @@ class SocketFile(object):
             sent = self.sock.send(buf)
             data = data[sent:]
 
+I32 = Struct("!I")
 
 class Transport(object):
     def getInputStream(self):
@@ -44,14 +47,31 @@ class TransportFactory(object):
     def close(self):
         raise NotImplementedError()
 
+class InStreamTransaction(object):
+    def __init__(self, stream, size):
+        self.stream = stream
+        self.size = size
+        self.position = 0
+    def read(self, count):
+        if self.position + count >= self.size:
+            raise ValueError("asked to read more than remaining")
+        self.stream._read(count)
+        self.position += len(data)
+        return data
+    def skip(self):
+        pending = self.size - 1 - self.position
+        if pending > 0:
+            self.stream.read(pending)
+
 class InStream(object):
     def __init__(self, file, bufsize = 32000):
         self.file = file
         self.bufsize = bufsize
         self.buffer = ""
+        self.lock = threading.RLock()
     def close(self):
         self.file.close()
-    def _read(self, count):
+    def _read_from_file(self, count):
         bufs = []
         while count > 0:
             data = self.file.read(max(count, self.bufsize))
@@ -60,20 +80,28 @@ class InStream(object):
             bufs.append(data)
             count -= len(data)
         return "".join(bufs)
-    def read(self, count):
+    def _read(self, count):
         if len(self.buffer) >= count:
             data = self.buffer[:count]
             self.buffer = self.buffer[count:]
         else:
             req = count - len(self.buffer)
-            data2 = self._read(req)
+            data2 = self._read_from_file(req)
             data = self.buffer + data2[:req]
             self.buffer = data2[req:]
-        #print >>sys.stderr, "%05d  R %r" % (os.getpid(), data)
         return data
+
+    @contextmanager
+    def transaction(self):
+        with self.lock:
+            size, = I32.unpack(self.read(I32.size))
+            trans = InStreamTransaction(stream, size)
+            yield trans
+            trans.skip()
+    
     def poll(self, timeout):
         rl, _, _ = select([self.file], [], [], timeout)
-        return bool(rl)  
+        return bool(rl)
 
 class TransactionCanceled(Exception):
     pass
@@ -89,18 +117,20 @@ class OutStreamTransaction(object):
     def write(self, data):
         self.buffer.append(data)
     def flush(self):
-        #for data in self.buffer:
-        #    print >>sys.stderr, "%05d  W %r" % (os.getpid(), data)
-        self.stream.write("".join(self.buffer))
+        data = "".join(self.buffer)
+        header = I32.pack(len(data))
+        self.stream._write(header + data)
 
 class OutStream(object):
     def __init__(self, file):
         self.file = file
+        self.lock = threading.RLock()
     def close(self):
         self.file.close()
-    def write(self, data):
-        self.file.write(data)
-        self.file.flush()
+    def _write(self, data):
+        with self.lock:
+            self.file.write(data)
+            self.file.flush()
     
     @contextmanager
     def transaction(self):
