@@ -24,7 +24,7 @@ class BaseServer(object):
         outstream = transport.get_output_stream()
         
         try:
-            processor.handshake(instream, outstream)
+            #processor.handshake(instream, outstream)
             while True:
                 processor.process(instream, outstream)
         except EOFError:

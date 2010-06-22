@@ -114,7 +114,7 @@ public class Protocol
 			_IDL_MAGIC = IDL_MAGIC;
 		}
 		
-		public void handshake(InputStream inStream, OutputStream outStream) throws Exception
+		/*public void handshake(InputStream inStream, OutputStream outStream) throws Exception
 		{
 			Packers.Int32.pack(AGNOS_MAGIC, outStream);
 			Packers.Str.pack(_AGNOS_VERSION, outStream);
@@ -128,7 +128,7 @@ public class Protocol
             if (succ.intValue() != 1) {
             		throw new HandshakeError("rejected by client");
             }
-		}
+		}*/
 
 		public Long store(Object obj) {
 			if (obj == null) {
@@ -308,10 +308,10 @@ public class Protocol
 			_proxies = new HashMap<Long, WeakReference>();
 			_AGNOS_VERSION = AGNOS_VERSION;
 			_IDL_MAGIC = IDL_MAGIC;
-			_handshake();
+			//_handshake();
 		}
 		
-		protected void _handshake() throws Exception
+		/*protected void _handshake() throws Exception
 		{
 			try {
 				Integer magic = (Integer)Packers.Int32.unpack(_inStream);
@@ -340,7 +340,7 @@ public class Protocol
 			Packers.Int32.pack(AGNOS_MAGIC, _outStream);
 			Packers.Int32.pack(1, _outStream);
 			_outStream.flush();
-		}
+		}*/
 
 		public void close() throws IOException 
 		{

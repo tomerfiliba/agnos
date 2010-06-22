@@ -36,7 +36,7 @@ public class Servers
 			
 			try
 			{
-				processor.handshake(inStream, outStream);
+				//processor.handshake(inStream, outStream);
 				while (true)
 				{
 					processor.process(inStream, outStream);

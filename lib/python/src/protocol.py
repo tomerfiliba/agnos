@@ -79,17 +79,17 @@ class BaseProcessor(object):
         self.packed_exceptions = packed_exceptions
         self.exception_map = exception_map
     
-    def handshake(self, instream, outstream):
-        with outstream.transaction() as trans:
-            Int32.pack(AGNOS_MAGIC, trans)
-            Str.pack(self.AGNOS_VERSION, trans)
-            Str.pack(self.IDL_MAGIC, trans)
-        magic = Int32.unpack(instream)
-        if magic != AGNOS_MAGIC:
-            raise HandshakeError("wrong magic: %r" % (magic,))
-        succ = Int32.unpack(instream)
-        if succ != 1:
-            raise HandshakeError("client rejected connection")
+    #def handshake(self, instream, outstream):
+    #    with outstream.transaction() as trans:
+    #        Int32.pack(AGNOS_MAGIC, trans)
+    #        Str.pack(self.AGNOS_VERSION, trans)
+    #        Str.pack(self.IDL_MAGIC, trans)
+    #    magic = Int32.unpack(instream)
+    #    if magic != AGNOS_MAGIC:
+    #        raise HandshakeError("wrong magic: %r" % (magic,))
+    #    succ = Int32.unpack(instream)
+    #    if succ != 1:
+    #        raise HandshakeError("client rejected connection")
     
     def store(self, obj):
         if obj is None:
@@ -243,34 +243,34 @@ class BaseClient(object):
         self._proxy_cache = weakref.WeakValueDictionary()
         self.AGNOS_VERSION = AGNOS_VERSION
         self.IDL_MAGIC = IDL_MAGIC
-        self._handshake()
+        #self._handshake()
     
     def __del__(self):
         self.close()
     
-    def _handshake(self):
-        try:
-            magic = Int32.unpack(self._instream)
-            if magic != AGNOS_MAGIC:
-                raise HandshakeError("wrong magic: " + magic)
-            version = Str.unpack(self._instream)
-            if version != self.AGNOS_VERSION:
-                raise HandshakeError("wrong version: " + version)
-            idlmagic = Str.unpack(self._instream)
-            if idlmagic != self.IDL_MAGIC:
-                raise HandshakeError("wrong idl magic: " + idlmagic)
-        except HandshakeError, exc:
-            with self._outstream.transaction() as trans:
-                Int32.pack(AGNOS_MAGIC, trans)
-                Int32.pack(-1, trans)
-            
-            self._instream.close()
-            self._outstream.close()
-            raise
-        
-        with self._outstream.transaction() as trans:
-            Int32.pack(AGNOS_MAGIC, trans)
-            Int32.pack(1, trans)
+    #def _handshake(self):
+    #    try:
+    #        magic = Int32.unpack(self._instream)
+    #        if magic != AGNOS_MAGIC:
+    #            raise HandshakeError("wrong magic: " + magic)
+    #        version = Str.unpack(self._instream)
+    #        if version != self.AGNOS_VERSION:
+    #            raise HandshakeError("wrong version: " + version)
+    #        idlmagic = Str.unpack(self._instream)
+    #        if idlmagic != self.IDL_MAGIC:
+    #            raise HandshakeError("wrong idl magic: " + idlmagic)
+    #    except HandshakeError, exc:
+    #        with self._outstream.transaction() as trans:
+    #            Int32.pack(AGNOS_MAGIC, trans)
+    #            Int32.pack(-1, trans)
+    #        
+    #        self._instream.close()
+    #        self._outstream.close()
+    #        raise
+    #    
+    #    with self._outstream.transaction() as trans:
+    #        Int32.pack(AGNOS_MAGIC, trans)
+    #        Int32.pack(1, trans)
     
     def close(self):
         if self._instream:

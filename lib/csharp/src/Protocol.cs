@@ -102,7 +102,7 @@ namespace Agnos
 				_IDL_MAGIC = IDL_MAGIC;
 			}
 
-			public void handshake (Stream inStream, Stream outStream)
+			/*public void handshake (Stream inStream, Stream outStream)
 			{
 				Packers.Int32.pack (AGNOS_MAGIC, outStream);
 				Packers.Str.pack (_AGNOS_VERSION, outStream);
@@ -116,7 +116,7 @@ namespace Agnos
 				if (succ != 1) {
 					throw new HandshakeError ("rejected by client");
 				}
-			}
+			}*/
 
 			public long store (Object obj)
 			{
@@ -288,7 +288,7 @@ namespace Agnos
 				_proxies = new Dictionary<long, WeakReference> ();
 				_AGNOS_VERSION = AGNOS_VERSION;
 				_IDL_MAGIC = IDL_MAGIC;
-				_handshake();
+				//_handshake();
 			}
 
 			~BaseClient ()
@@ -296,7 +296,7 @@ namespace Agnos
 				Dispose ();
 			}
 
-		protected void _handshake()
+		/*protected void _handshake()
 		{
 			try {
 				int magic = (int)Packers.Int32.unpack(_inStream);
@@ -325,7 +325,7 @@ namespace Agnos
 			Packers.Int32.pack(AGNOS_MAGIC, _outStream);
 			Packers.Int32.pack(1, _outStream);
 			_outStream.Flush();
-		}
+		}*/
 			
 			
 			public void Close ()
