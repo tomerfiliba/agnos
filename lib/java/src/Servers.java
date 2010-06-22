@@ -4,14 +4,15 @@ import java.io.*;
 import java.util.*;
 import java.net.*;
 
+
 public class Servers
 {
 	public abstract static class BaseServer
 	{
 		protected Protocol.BaseProcessor processor;
-		protected Transports.ITransportFactory transportFactory;
+		protected TransportFactories.ITransportFactory transportFactory;
 		
-		public BaseServer(Protocol.BaseProcessor processor, Transports.ITransportFactory transportFactory)
+		public BaseServer(Protocol.BaseProcessor processor, TransportFactories.ITransportFactory transportFactory)
 		{
 			this.processor = processor;
 			this.transportFactory = transportFactory;
@@ -31,15 +32,12 @@ public class Servers
 		
 		protected static void serveClient(Protocol.BaseProcessor processor, Transports.ITransport transport) throws Exception
 		{
-			InputStream inStream = transport.getInputStream();
-			OutputStream outStream = transport.getOutputStream();
-			
 			try
 			{
 				//processor.handshake(inStream, outStream);
 				while (true)
 				{
-					processor.process(inStream, outStream);
+					processor.process(transport);
 				}
 			}
 			catch (EOFException exc)
@@ -52,15 +50,14 @@ public class Servers
 			}
 			finally 
 			{
-				inStream.close();
-				outStream.close();
+				transport.close();
 			}
 		}
 	}
 
 	public static class SimpleServer extends BaseServer
 	{
-		public SimpleServer(Protocol.BaseProcessor processor, Transports.ITransportFactory transportFactory)
+		public SimpleServer(Protocol.BaseProcessor processor, TransportFactories.ITransportFactory transportFactory)
 		{
 			super(processor, transportFactory);
 		}
@@ -96,7 +93,7 @@ public class Servers
 	        }
 	    }
 		
-		public ThreadedServer(Protocol.BaseProcessor processor, Transports.ITransportFactory transportFactory)
+		public ThreadedServer(Protocol.BaseProcessor processor, TransportFactories.ITransportFactory transportFactory)
 		{
 			super(processor, transportFactory);
 		}
@@ -112,17 +109,17 @@ public class Servers
     {
         public LibraryModeServer(Protocol.BaseProcessor processor) throws IOException, UnknownHostException
         {
-        		this(processor, new Transports.SocketTransportFactory("127.0.0.1", 0));
+        		this(processor, new TransportFactories.SocketTransportFactory("127.0.0.1", 0));
         }
 
-        public LibraryModeServer(Protocol.BaseProcessor processor, Transports.SocketTransportFactory transportFactory) throws IOException
+        public LibraryModeServer(Protocol.BaseProcessor processor, TransportFactories.SocketTransportFactory transportFactory) throws IOException
         {
         		super(processor, transportFactory);
         }
 
         public void serve() throws Exception
         {
-        		ServerSocket serverSocket = ((Transports.SocketTransportFactory)transportFactory).serverSocket;
+        		ServerSocket serverSocket = ((TransportFactories.SocketTransportFactory)transportFactory).serverSocket;
             System.out.println(serverSocket.getInetAddress().getHostAddress());
             System.out.println(serverSocket.getLocalPort());
             System.out.flush();
@@ -217,16 +214,16 @@ public class Servers
 				if (port == 0) {
 					throw new SwitchException("simple server requires specifying a port");
 				}
-				server = new SimpleServer(processor, new Transports.SocketTransportFactory(host, port));
+				server = new SimpleServer(processor, new TransportFactories.SocketTransportFactory(host, port));
 				break;
 			case THREADED:
 				if (port == 0) {
 					throw new SwitchException("threaded server requires specifying a port");
 				}
-				server = new ThreadedServer(processor, new Transports.SocketTransportFactory(host, port));
+				server = new ThreadedServer(processor, new TransportFactories.SocketTransportFactory(host, port));
 				break;
 			case LIB:
-				server = new LibraryModeServer(processor, new Transports.SocketTransportFactory(host, port));
+				server = new LibraryModeServer(processor, new TransportFactories.SocketTransportFactory(host, port));
 				break;
 			default:
 				throw new SwitchException("invalid mode: " + mode);
