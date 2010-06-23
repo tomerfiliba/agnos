@@ -23,6 +23,7 @@ public class Transports
 		public void write(byte[] data, int offset, int len) throws IOException;
 		public void reset() throws IOException;
 		public void endWrite() throws IOException;
+		public void cancelWrite() throws IOException;
 	}
 
 	protected static class TransportInputStream extends InputStream
@@ -199,6 +200,13 @@ public class Transports
 			}
 			wlock.unlock();
 		}
+
+		public synchronized void cancelWrite() throws IOException
+		{
+			assertBeganWrite();
+			buffer.reset();
+			wlock.unlock();
+		}
 	}
 
 	public static abstract class WrappedTransport
@@ -236,6 +244,9 @@ public class Transports
 			transport.reset();
 		}
 		public void endWrite() throws IOException {
+			transport.endWrite();
+		}
+		public void cancelWrite() throws IOException {
 			transport.endWrite();
 		}
 	}
