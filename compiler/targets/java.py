@@ -633,8 +633,8 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         with BLOCK("protected class _Functions"):
-            STMT("protected BaseClientUtils utils")
-            with BLOCK("public _Functions(BaseClientUtils utils)"):
+            STMT("protected Protocol.BaseClientUtils utils")
+            with BLOCK("public _Functions(Protocol.BaseClientUtils utils)"):
                 STMT("this.utils = utils")
             SEP()
             for func in service.funcs.values():
@@ -668,7 +668,7 @@ class JavaTarget(TargetBase):
             callargs = ", ".join(arg.name for arg in func.args)
             self.emit_func_javadoc(func, module)
             with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(func.type, proxy = True), func.name, args):
-                if func.type != compiler.t_void:
+                if func.type == compiler.t_void:
                     STMT("_funcs.sync_{0}({1})", func.id, callargs)
                 else:
                     STMT("return _funcs.sync_{0}({1})", func.id, callargs)
