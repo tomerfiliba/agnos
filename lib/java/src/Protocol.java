@@ -276,7 +276,17 @@ public class Protocol
 
 	protected enum ReplySlotType
 	{
-		SLOT_EMPTY, SLOT_DISCARDED, SLOT_VALUE, SLOT_EXCEPTION
+		SLOT_EMPTY(false), 
+		SLOT_DISCARDED(false), 
+		SLOT_VALUE(true), 
+		SLOT_GENERIC_EXCEPTION(true), 
+		SLOT_PACKED_EXCEPTION(true);
+		
+		public boolean ready;
+		
+		private ReplySlotType(boolean ready) {
+			this.ready = ready;
+		}
 	}
 
 	protected static class ReplySlot
@@ -379,6 +389,9 @@ public class Protocol
         {
             Integer clsid = (Integer)Packers.Int32.unpack(transport);
             Packers.BasePacker packer = packedExceptionsMap.get(clsid);
+            for (Map.Entry entry : packedExceptionsMap.entrySet()) {
+            	System.err.println("packedExceptionsMap: " + entry.getKey() + " = " + entry.getValue());
+            }
             if (packer == null) {
             	throw new Protocol.ProtocolError("unknown exception class id: " + clsid);
             }
@@ -398,7 +411,7 @@ public class Protocol
 			return new GenericException(message, traceback);
 		}
 
-		public boolean processIncoming(int timeout_msecs) throws Exception
+		public boolean processIncoming(int timeout_msecs) throws IOException, ProtocolError
 		{
 			int seq = transport.beginRead();
 
@@ -425,11 +438,11 @@ public class Protocol
 				case REPLY_PROTOCOL_ERROR:
 					throw (ProtocolError) (loadProtocolError().fillInStackTrace());
 				case REPLY_PACKED_EXCEPTION:
-					slot.type = ReplySlotType.SLOT_EXCEPTION;
+					slot.type = ReplySlotType.SLOT_PACKED_EXCEPTION;
 					slot.value = loadPackedException();
 					break;
 				case REPLY_GENERIC_EXCEPTION:
-					slot.type = ReplySlotType.SLOT_EXCEPTION;
+					slot.type = ReplySlotType.SLOT_GENERIC_EXCEPTION;
 					slot.value = loadGenericException();
 					break;
 				default:
@@ -445,12 +458,25 @@ public class Protocol
 		public boolean isReplyReady(int seq)
 		{
 			ReplySlot slot = replies.get(seq);
-			return slot.type == ReplySlotType.SLOT_VALUE
-					|| slot.type == ReplySlotType.SLOT_EXCEPTION;
+			return slot.type.ready;
 		}
 
-		public ReplySlot waitReply(int seq, int timeout_msecs)
-				throws Exception
+		public void discardReply(int seq)
+		{
+			ReplySlot slot = replies.get(seq);
+			if (slot == null) {
+				return;
+			}
+			if (slot.type.ready) {
+				replies.remove(seq);
+			}
+			else {
+				slot.type = ReplySlotType.SLOT_DISCARDED;
+			}
+		}
+
+		public ReplySlot waitReply(int seq, int timeout_msecs) 
+				throws IOException, ProtocolError
 		{
 			while (!isReplyReady(seq)) {
 				processIncoming(timeout_msecs);
@@ -458,22 +484,28 @@ public class Protocol
 			return replies.remove(seq);
 		}
 
-		public Object getReply(int seq, int timeout_msecs) throws Exception
+		public Object getReply(int seq, int timeout_msecs) 
+				throws IOException, PackedException, GenericException, ProtocolError
 		{
 			ReplySlot slot = waitReply(seq, timeout_msecs);
 			if (slot.type == ReplySlotType.SLOT_VALUE) {
 				return slot.value;
 			}
-			else if (slot.type == ReplySlotType.SLOT_EXCEPTION) {
-				((Exception) slot.value).fillInStackTrace();
-				throw (Exception) slot.value;
+			else if (slot.type == ReplySlotType.SLOT_PACKED_EXCEPTION) {
+				((PackedException) slot.value).fillInStackTrace();
+				throw (PackedException) slot.value;
+			}
+			else if (slot.type == ReplySlotType.SLOT_GENERIC_EXCEPTION) {
+				((GenericException) slot.value).fillInStackTrace();
+				throw (GenericException) slot.value;
 			}
 			else {
-				throw new Exception("invalid slot type: " + slot.type);
+				throw new AssertionError("invalid slot type: " + slot.type);
 			}
 		}
 
-		public Object getReply(int seq) throws Exception
+		public Object getReply(int seq) 
+				throws IOException, PackedException, GenericException, ProtocolError
 		{
 			return getReply(seq, -1);
 		}
