@@ -8,16 +8,16 @@ public class Packers
 {
 	public static abstract class BasePacker
 	{
-		abstract void pack(Object obj, OutputStream stream) throws IOException;
+		abstract public void pack(Object obj, OutputStream stream) throws IOException;
 
-		abstract Object unpack(InputStream stream) throws IOException;
+		abstract public Object unpack(InputStream stream) throws IOException;
 
-		void pack(Object obj, Transports.ITransport transport) throws IOException
+		public void pack(Object obj, Transports.ITransport transport) throws IOException
 		{
 			pack(obj, transport.getOutputStream());
 		}
 
-		Object unpack(Transports.ITransport transport) throws IOException
+		public Object unpack(Transports.ITransport transport) throws IOException
 		{
 			return unpack(transport.getInputStream());
 		}

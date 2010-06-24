@@ -291,197 +291,192 @@ public class Protocol
 		}
 	}
 
-	public static abstract class BaseClient
+	public static class BaseClientUtils
 	{
-		protected static class _BaseClientUtils
+		protected Map<Integer, Packers.BasePacker> packedExceptionsMap;
+		protected int						seq;
+		protected Map<Integer, ReplySlot>	replies;
+		protected Map<Long, WeakReference>	proxies;
+		public Transports.ITransport		transport;
+
+		public _BaseClientUtils(Transports.ITransport transport, 
+					Map<Integer, Packers.BasePacker> packedExceptionsMap)
+				throws Exception
 		{
-			protected Map<Integer, Packers.BasePacker> packedExceptionsMap;
-			protected int						seq;
-			protected Map<Integer, ReplySlot>	replies;
-			protected Map<Long, WeakReference>	proxies;
-			public Transports.ITransport		transport;
-	
-			public _BaseClientUtils(Transports.ITransport transport, 
-						Map<Integer, Packers.BasePacker> packedExceptionsMap)
-					throws Exception
-			{
-				this.transport = transport;
-				this.packedExceptionsMap = packedExceptionsMap;
-				seq = 0;
-				replies = new HashMap<Integer, ReplySlot>(128);
-				proxies = new HashMap<Long, WeakReference>();
-			}
-	
-			public void close() throws IOException
-			{
-				if (transport != null) {
-					transport.close();
-					transport = null;
-				}
-			}
-	
-			public synchronized int getSeq()
-			{
-				seq += 1;
-				return seq;
-			}
-	
-			public Object getProxy(Long objref)
-			{
-				WeakReference weak = proxies.get(objref);
-				if (weak == null) {
-					return null;
-				}
-				Object proxy = weak.get();
-				if (proxy == null) {
-					proxies.remove(objref);
-					return null;
-				}
-				return proxy;
-			}
+			this.transport = transport;
+			this.packedExceptionsMap = packedExceptionsMap;
+			seq = 0;
+			replies = new HashMap<Integer, ReplySlot>(128);
+			proxies = new HashMap<Long, WeakReference>();
+		}
 
-			public void cacheProxy(Long objref, Object proxy)
-			{
-				proxies.put(objref, new WeakReference(proxy))
-			}
-
-			public void decref(Long id)
-			{
-				int seq = getSeq();
-				try {
-					Packers.Int8.pack(CMD_DECREF, transport);
-					Packers.Int64.pack(id, transport);
-				} catch (Exception ignored) {
-					// ignored
-				}
-			}
-	
-			public int beginCall(int funcid, Packers.BasePacker packer)
-					throws IOException
-			{
-				int seq = getSeq();
-				transport.beginWrite(seq);
-				Packers.Int8.pack(CMD_INVOKE, transport);
-				Packers.Int32.pack(funcid, transport);
-				replies.put(seq, new ReplySlot(packer));
-				return seq;
-			}
-
-			public void endCall() throws IOException
-			{
-				transport.endWrite();
-			}
-
-			public void cancelCall() throws IOException
-			{
-				transport.endWrite();
-			}
-
-			public PackedException loadPackedException() throws IOException, ProtocolError
-	        {
-	            Integer clsid = (Integer)Packers.Int32.unpack(transport);
-	            Packers.BasePacker packer = packedExceptionsMap.get(clsid);
-	            if (packer == null) {
-	            	throw new Protocol.ProtocolError("unknown exception class id: " + clsid);
-	            }
-	            return (PackedException)packer.unpack(transport);
-	        }
-	        
-			public ProtocolError loadProtocolError() throws IOException
-			{
-				String message = (String) Packers.Str.unpack(transport);
-				return new ProtocolError(message);
-			}
-	
-			public GenericException loadGenericException() throws IOException
-			{
-				String message = (String) Packers.Str.unpack(transport);
-				String traceback = (String) Packers.Str.unpack(transport);
-				return new GenericException(message, traceback);
-			}
-	
-			public boolean processIncoming(int timeout_msecs) throws Exception
-			{
-				int seq = transport.beginRead();
-	
-				try {
-					int code = (Byte) (Packers.Int8.unpack(transport));
-					ReplySlot slot = replies.get(seq);
-					
-					if (slot == null || (slot.type != ReplySlotType.SLOT_EMPTY && 
-							slot.type != ReplySlotType.SLOT_DISCARDED)) {
-						throw new ProtocolError("invalid reply sequence: " + seq);
-					}
-					Packers.BasePacker packer = (Packers.BasePacker) slot.value;
-	
-					switch (code) {
-					case REPLY_SUCCESS:
-						if (packer == null) {
-							slot.value = null;
-						}
-						else {
-							slot.value = packer.unpack(transport);
-						}
-						slot.type = ReplySlotType.SLOT_VALUE;
-						break;
-					case REPLY_PROTOCOL_ERROR:
-						throw (ProtocolError) (loadProtocolError().fillInStackTrace());
-					case REPLY_PACKED_EXCEPTION:
-						slot.type = ReplySlotType.SLOT_EXCEPTION;
-						slot.value = loadPackedException();
-						break;
-					case REPLY_GENERIC_EXCEPTION:
-						slot.type = ReplySlotType.SLOT_EXCEPTION;
-						slot.value = loadGenericException();
-						break;
-					default:
-						throw new ProtocolError("unknown reply code: " + code);
-					}
-				} finally {
-					transport.endRead();
-				}
-	
-				return true;
-			}
-	
-			public boolean isReplyReady(int seq)
-			{
-				ReplySlot slot = replies.get(seq);
-				return slot.type == ReplySlotType.SLOT_VALUE
-						|| slot.type == ReplySlotType.SLOT_EXCEPTION;
-			}
-	
-			public ReplySlot waitReply(int seq, int timeout_msecs)
-					throws Exception
-			{
-				while (!isReplyReady(seq)) {
-					processIncoming(timeout_msecs);
-				}
-				return replies.remove(seq);
-			}
-	
-			public Object getReply(int seq, int timeout_msecs) throws Exception
-			{
-				ReplySlot slot = waitReply(seq, timeout_msecs);
-				if (slot.type == ReplySlotType.SLOT_VALUE) {
-					return slot.value;
-				}
-				else if (slot.type == ReplySlotType.SLOT_EXCEPTION) {
-					((Exception) slot.value).fillInStackTrace();
-					throw (Exception) slot.value;
-				}
-				else {
-					throw new Exception("invalid slot type: " + slot.type);
-				}
-			}
-	
-			public Object getReply(int seq) throws Exception
-			{
-				return getReply(seq, -1);
+		public void close() throws IOException
+		{
+			if (transport != null) {
+				transport.close();
+				transport = null;
 			}
 		}
-		
-		_BaseClientUtils _utils;
-	}
 
+		public synchronized int getSeq()
+		{
+			seq += 1;
+			return seq;
+		}
+
+		public Object getProxy(Long objref)
+		{
+			WeakReference weak = proxies.get(objref);
+			if (weak == null) {
+				return null;
+			}
+			Object proxy = weak.get();
+			if (proxy == null) {
+				proxies.remove(objref);
+				return null;
+			}
+			return proxy;
+		}
+
+		public void cacheProxy(Long objref, Object proxy)
+		{
+			proxies.put(objref, new WeakReference(proxy));
+		}
+
+		public void decref(Long id)
+		{
+			int seq = getSeq();
+			try {
+				Packers.Int8.pack(CMD_DECREF, transport);
+				Packers.Int64.pack(id, transport);
+			} catch (Exception ignored) {
+				// ignored
+			}
+		}
+
+		public int beginCall(int funcid, Packers.BasePacker packer)
+				throws IOException
+		{
+			int seq = getSeq();
+			transport.beginWrite(seq);
+			Packers.Int8.pack(CMD_INVOKE, transport);
+			Packers.Int32.pack(funcid, transport);
+			replies.put(seq, new ReplySlot(packer));
+			return seq;
+		}
+
+		public void endCall() throws IOException
+		{
+			transport.endWrite();
+		}
+		
+		public void cancelCall() throws IOException
+		{
+			transport.endWrite();
+		}
+
+		public PackedException loadPackedException() throws IOException, ProtocolError
+        {
+            Integer clsid = (Integer)Packers.Int32.unpack(transport);
+            Packers.BasePacker packer = packedExceptionsMap.get(clsid);
+            if (packer == null) {
+            	throw new Protocol.ProtocolError("unknown exception class id: " + clsid);
+            }
+            return (PackedException)packer.unpack(transport);
+        }
+        
+		public ProtocolError loadProtocolError() throws IOException
+		{
+			String message = (String) Packers.Str.unpack(transport);
+			return new ProtocolError(message);
+		}
+
+		public GenericException loadGenericException() throws IOException
+		{
+			String message = (String) Packers.Str.unpack(transport);
+			String traceback = (String) Packers.Str.unpack(transport);
+			return new GenericException(message, traceback);
+		}
+
+		public boolean processIncoming(int timeout_msecs) throws Exception
+		{
+			int seq = transport.beginRead();
+
+			try {
+				int code = (Byte) (Packers.Int8.unpack(transport));
+				ReplySlot slot = replies.get(seq);
+				
+				if (slot == null || (slot.type != ReplySlotType.SLOT_EMPTY && 
+						slot.type != ReplySlotType.SLOT_DISCARDED)) {
+					throw new ProtocolError("invalid reply sequence: " + seq);
+				}
+				Packers.BasePacker packer = (Packers.BasePacker) slot.value;
+
+				switch (code) {
+				case REPLY_SUCCESS:
+					if (packer == null) {
+						slot.value = null;
+					}
+					else {
+						slot.value = packer.unpack(transport);
+					}
+					slot.type = ReplySlotType.SLOT_VALUE;
+					break;
+				case REPLY_PROTOCOL_ERROR:
+					throw (ProtocolError) (loadProtocolError().fillInStackTrace());
+				case REPLY_PACKED_EXCEPTION:
+					slot.type = ReplySlotType.SLOT_EXCEPTION;
+					slot.value = loadPackedException();
+					break;
+				case REPLY_GENERIC_EXCEPTION:
+					slot.type = ReplySlotType.SLOT_EXCEPTION;
+					slot.value = loadGenericException();
+					break;
+				default:
+					throw new ProtocolError("unknown reply code: " + code);
+				}
+			} finally {
+				transport.endRead();
+			}
+
+			return true;
+		}
+
+		public boolean isReplyReady(int seq)
+		{
+			ReplySlot slot = replies.get(seq);
+			return slot.type == ReplySlotType.SLOT_VALUE
+					|| slot.type == ReplySlotType.SLOT_EXCEPTION;
+		}
+
+		public ReplySlot waitReply(int seq, int timeout_msecs)
+				throws Exception
+		{
+			while (!isReplyReady(seq)) {
+				processIncoming(timeout_msecs);
+			}
+			return replies.remove(seq);
+		}
+
+		public Object getReply(int seq, int timeout_msecs) throws Exception
+		{
+			ReplySlot slot = waitReply(seq, timeout_msecs);
+			if (slot.type == ReplySlotType.SLOT_VALUE) {
+				return slot.value;
+			}
+			else if (slot.type == ReplySlotType.SLOT_EXCEPTION) {
+				((Exception) slot.value).fillInStackTrace();
+				throw (Exception) slot.value;
+			}
+			else {
+				throw new Exception("invalid slot type: " + slot.type);
+			}
+		}
+
+		public Object getReply(int seq) throws Exception
+		{
+			return getReply(seq, -1);
+		}
+	}	
+	
 }

@@ -104,6 +104,14 @@ class Element(object):
             raise IDLError("unknown attributes: %r" % (attrib.keys(),))
         self.build_members(members)
     
+    def duplicate(self):
+        e = Element.__new__(self.__class__)
+        e.__dict__.update(self.__dict__)
+        e._resolved = False
+        e._postprocessed = False
+        e.id = ID_GENERATOR.next()
+        return e
+    
     def __repr__(self):
         attrs = ["%s=%r" % (name, getattr(self, name, None)) for name in self.ATTRS.keys()]
         return "%s(%s)" % (self.__class__.__name__, ", ".join(sorted(attrs)))
@@ -283,12 +291,12 @@ class Class(Element):
                 raise IDLError("class %r extends %r, which is not a class itself" % (self.name, cls))
             cls.resolve(service)
             for mem in cls.all_attrs:
-                self.all_attrs.append(mem)
+                self.all_attrs.append(mem.duplicate())
                 if mem.name in names:
                     raise IDLError("name %r is redefined by %r" % (mem.name, cls.name))
                 names.add(mem.name)
             for mem in cls.all_methods:
-                self.all_methods.append(mem)
+                self.all_methods.append(mem.duplicate())
                 if mem.name in names:
                     raise IDLError("name %r is redefined by %r" % (mem.name, cls.name))
                 names.add(mem.name)
@@ -296,12 +304,12 @@ class Class(Element):
             mem.resolve(service)
             if mem.name in names:
                 raise IDLError("name %r is redefined by %r" % (mem.name, self.name))
-            self.all_attrs.append(mem)
+            self.all_attrs.append(mem.duplicate())
         for mem in self.methods:
             mem.resolve(service)
             if mem.name in names:
                 raise IDLError("name %r is redefined by %r" % (mem.name, self.name))
-            self.all_methods.append(mem)
+            self.all_methods.append(mem.duplicate())
     
     def _postprocess(self, service): 
         for attr in self.all_attrs:
@@ -313,7 +321,8 @@ class Class(Element):
                 attr.setter = self.autogen(service, attr, "_%s_set_%s" % (self.name, attr.name), 
                     t_void, ("_proxy", self), ("value", attr.type))
         for method in self.all_methods:
-            method.parent = self 
+            method.parent = self
+            assert not method.func
             method.func = self.autogen(service, method, "_%s_%s" % (self.name, method.name), 
                 method.type, ("_proxy", self), *[(arg.name, arg.type) for arg in method.args])
         self.parent = self

@@ -509,7 +509,9 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         DOC = module.doc
-        with BLOCK("public static class Client extends Protocol.BaseClient"):
+        with BLOCK("public static class Client"):
+            STMT("protected Protcol.BaseClientUtils _utils;")
+            SEP()
             for tp in service.types.values():
                 if isinstance(tp, compiler.Class):
                     STMT("protected Packers.ObjRef {0}ObjRef", tp.name)
@@ -550,7 +552,7 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         with BLOCK("public Client(Transports.ITransport transport) throws Exception"):
-            STMT("Map<Integer, Packers.BasePacker> pem = new HashMap<Integer, Packers.BasePacker>") 
+            STMT("Map<Integer, Packers.BasePacker> pem = new HashMap<Integer, Packers.BasePacker>()") 
             for mem in service.types.values():
                 if isinstance(mem, compiler.Exception):
                     STMT("pem.put({0}, {1}Packer)", mem.id, mem.name)
