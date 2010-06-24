@@ -299,7 +299,7 @@ public class Protocol
 		protected Map<Long, WeakReference>	proxies;
 		public Transports.ITransport		transport;
 
-		public _BaseClientUtils(Transports.ITransport transport, 
+		public BaseClientUtils(Transports.ITransport transport, 
 					Map<Integer, Packers.BasePacker> packedExceptionsMap)
 				throws Exception
 		{

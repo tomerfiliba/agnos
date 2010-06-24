@@ -314,7 +314,7 @@ class JavaTarget(TargetBase):
                     STMT("return")
                 with BLOCK("synchronized (this)"):
                     STMT("_disposed = true")
-                    STMT("_client._decref(_objref)")
+                    STMT("_client._utils.decref(_objref)")
             SEP()
             with BLOCK("public String toString()"):
                 STMT('return super.toString() + "<" + _objref + ">"')
@@ -405,7 +405,6 @@ class JavaTarget(TargetBase):
             self.generate_templated_packers(module, service)
             SEP()
             with BLOCK("public Processor(IHandler handler)"):
-                STMT("super(AGNOS_VERSION, IDL_MAGIC)")
                 STMT("this.handler = handler")
                 for tp in service.types.values():
                     if isinstance(tp, compiler.Class):
@@ -510,7 +509,7 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         with BLOCK("public static class Client"):
-            STMT("protected Protcol.BaseClientUtils _utils;")
+            STMT("protected Protocol.BaseClientUtils _utils")
             SEP()
             for tp in service.types.values():
                 if isinstance(tp, compiler.Class):
@@ -556,7 +555,7 @@ class JavaTarget(TargetBase):
             for mem in service.types.values():
                 if isinstance(mem, compiler.Exception):
                     STMT("pem.put({0}, {1}Packer)", mem.id, mem.name)
-            STMT("_utils = new _BaseClientUtils(transport, pem)")
+            STMT("_utils = new Protocol.BaseClientUtils(transport, pem)")
             STMT("_funcs = new _Functions(_utils)")
             SEP()
             STMT("final Client the_client = this")
@@ -634,8 +633,8 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         with BLOCK("protected class _Functions"):
-            STMT("_BaseClientUtils utils")
-            with BLOCK("public _Functions(_BaseClientUtils utils)"):
+            STMT("protected BaseClientUtils utils")
+            with BLOCK("public _Functions(BaseClientUtils utils)"):
                 STMT("this.utils = utils")
             SEP()
             for func in service.funcs.values():

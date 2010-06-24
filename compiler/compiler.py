@@ -315,9 +315,11 @@ class Class(Element):
         for attr in self.all_attrs:
             attr.parent = self 
             if attr.get:
+                assert not attr.getter
                 attr.getter = self.autogen(service, attr, "_%s_get_%s" % (self.name, attr.name), 
                     attr.type, ("_proxy", self))
             if attr.set:
+                assert not attr.setter
                 attr.setter = self.autogen(service, attr, "_%s_set_%s" % (self.name, attr.name), 
                     t_void, ("_proxy", self), ("value", attr.type))
         for method in self.all_methods:
