@@ -339,7 +339,12 @@ public class Protocol
 				}
 				return proxy;
 			}
-	
+
+			public void cacheProxy(Long objref, Object proxy)
+			{
+				proxies.put(objref, new WeakReference(proxy))
+			}
+
 			public void decref(Long id)
 			{
 				int seq = getSeq();
