@@ -41,7 +41,6 @@ class TestJava(TargetTest):
     
     def runTest(self):
         self.run_agnosc("java", "ut/features.xml", "ut/gen-java")
-        return
         agnos_jar = self.ant("lib/java")
         features_jar = self.compile_java("ut/gen-java", "Features.jar", 
             classpath = [agnos_jar])

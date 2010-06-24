@@ -552,9 +552,6 @@ class JavaTarget(TargetBase):
         DOC = module.doc
         with BLOCK("public Client(Transports.ITransport transport) throws Exception"):
             STMT("Map<Integer, Packers.BasePacker> pem = new HashMap<Integer, Packers.BasePacker>()") 
-            for mem in service.types.values():
-                if isinstance(mem, compiler.Exception):
-                    STMT("pem.put({0}, {1}Packer)", mem.id, mem.name)
             STMT("_utils = new Protocol.BaseClientUtils(transport, pem)")
             STMT("_funcs = new _Functions(_utils)")
             SEP()
@@ -569,14 +566,16 @@ class JavaTarget(TargetBase):
                                 STMT("proxy = new {0}(the_client, id)", type_to_java(tp, proxy = True))
                                 STMT("the_client._utils.cacheProxy(id, proxy)")
                             STMT("return proxy")
-            if generated_records:
-                SEP()
-                for rec in generated_records:
-                    STMT("{0}Packer = new _{0}Packer()", rec.name)
-            if namespaces:
-                SEP()
-                for name, id in namespaces:
-                    STMT("{0} = new _Namespace{1}(_funcs)", name, id)
+                    SEP()
+            for rec in generated_records:
+                STMT("{0}Packer = new _{0}Packer()", rec.name)
+            SEP()
+            for mem in service.types.values():
+                if isinstance(mem, compiler.Exception):
+                    STMT("pem.put({0}, {1}Packer)", mem.id, mem.name)
+            SEP()
+            for name, id in namespaces:
+                STMT("{0} = new _Namespace{1}(_funcs)", name, id)
     
     def generate_client_namespaces(self, module, service):
         nsid = itertools.count(0)
