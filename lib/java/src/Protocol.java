@@ -389,9 +389,6 @@ public class Protocol
         {
             Integer clsid = (Integer)Packers.Int32.unpack(transport);
             Packers.BasePacker packer = packedExceptionsMap.get(clsid);
-            for (Map.Entry entry : packedExceptionsMap.entrySet()) {
-            	System.err.println("packedExceptionsMap: " + entry.getKey() + " = " + entry.getValue());
-            }
             if (packer == null) {
             	throw new Protocol.ProtocolError("unknown exception class id: " + clsid);
             }
