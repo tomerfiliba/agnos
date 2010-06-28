@@ -13,43 +13,7 @@ namespace Agnos.Transports
 		Stream getOutputStream();
 	}
 
-	public interface ITransportFactory
-	{
-		ITransport Accept();
-		void Close();
-	}
 
-	public class SocketTransportFactory : ITransportFactory
-	{
-		public const int backlog = 10;
-		public TcpListener listener;
-
-		public SocketTransportFactory(int port) :
-			this(IPAddress.Any, port)
-		{
-		}
-
-		public SocketTransportFactory(String host, int port) :
-			this(Dns.GetHostEntry(Dns.GetHostName()).AddressList[0], port)
-		{
-		}
-
-		public SocketTransportFactory(IPAddress addr, int port)
-		{
-			listener = new TcpListener(addr, port);
-			listener.Start(backlog);
-		}
-		
-		public ITransport Accept()
-		{
-			return new SocketTransport(listener.AcceptSocket());
-		}
-		
-		public void Close()
-		{
-			listener.Stop();
-		}
-	}
 	
 	public class SocketTransport : ITransport
 	{

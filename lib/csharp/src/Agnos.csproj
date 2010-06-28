@@ -44,6 +44,8 @@
     <Compile Include="Servers.cs" />
     <Compile Include="Transports.cs" />
     <Compile Include="HttpTransport.cs" />
+    <Compile Include="TransportFactories.cs" />
+    <Compile Include="Transport2.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
