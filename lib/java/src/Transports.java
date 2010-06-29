@@ -9,21 +9,21 @@ public class Transports
 {
 	public interface ITransport
 	{
-		public void close() throws IOException;
-		public InputStream getInputStream();
-		public OutputStream getOutputStream();
+		void close() throws IOException;
+		InputStream getInputStream();
+		OutputStream getOutputStream();
 
 		// read interface
-		public int beginRead() throws IOException;
-		public int read(byte[] data, int offset, int len) throws IOException;
-		public void endRead() throws IOException;
+		int beginRead() throws IOException;
+		int read(byte[] data, int offset, int len) throws IOException;
+		void endRead() throws IOException;
 		
 		// write interface
-		public void beginWrite(int seq) throws IOException;
-		public void write(byte[] data, int offset, int len) throws IOException;
-		public void reset() throws IOException;
-		public void endWrite() throws IOException;
-		public void cancelWrite() throws IOException;
+		void beginWrite(int seq) throws IOException;
+		void write(byte[] data, int offset, int len) throws IOException;
+		void reset() throws IOException;
+		void endWrite() throws IOException;
+		void cancelWrite() throws IOException;
 	}
 
 	protected static class TransportInputStream extends InputStream
@@ -98,9 +98,11 @@ public class Transports
 		{
 			if (input != null) {
 				input.close();
+				input = null;
 			}
 			if (output != null) {
 				output.close();
+				output = null;
 			}
 		}
 
@@ -247,7 +249,7 @@ public class Transports
 			transport.endWrite();
 		}
 		public void cancelWrite() throws IOException {
-			transport.endWrite();
+			transport.cancelWrite();
 		}
 	}
 	
@@ -350,15 +352,22 @@ public class Transports
 			assertBeganWrite();
 			if (buffer.size() > 0) {
 				URLConnection conn = buildConnection();
+				
 				output = conn.getOutputStream();
-				super.endWrite();
+				Packers.Int32.pack(buffer.size(), output);
+				Packers.Int32.pack(wseq, output);
+				buffer.writeTo(output);
+				output.flush();
+				buffer.reset();
 				output.close();
 				output = null;
+				
 				if (input != null) {
 					input.close();
 				}
 				input = new BufferedInputStream(conn.getInputStream(), ioBufferSize);
 			}
+			wlock.unlock();
 		}
 	}
 

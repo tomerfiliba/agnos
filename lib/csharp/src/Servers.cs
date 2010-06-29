@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Collections.Generic;
 using Agnos.Transports;
+using Agnos.TransportFactories;
 
 
 namespace Agnos.Servers
@@ -33,15 +34,12 @@ namespace Agnos.Servers
 
         internal static void serveClient(Protocol.BaseProcessor processor, ITransport transport)
         {
-            Stream inStream = transport.getInputStream();
-            Stream outStream = transport.getOutputStream();
-
             try
             {
-				//processor.handshake(inStream, outStream);
+				//processor.handshake(transport);
                 while (true)
                 {
-                    processor.process(inStream, outStream);
+                    processor.process(transport);
                 }
             }
             catch (EndOfStreamException)
@@ -50,8 +48,7 @@ namespace Agnos.Servers
             }
 			finally 
 			{
-				inStream.Close();
-				outStream.Close();
+                transport.Close();
 			}
         }
     }
@@ -98,7 +95,7 @@ namespace Agnos.Servers
         internal TcpListener listener;
 
 		public LibraryModeServer(Protocol.BaseProcessor processor) : 
-			this(processor, new Transports.SocketTransportFactory("127.0.0.1", 0))
+			this(processor, new SocketTransportFactory("127.0.0.1", 0))
         {
         }
 
@@ -115,7 +112,7 @@ namespace Agnos.Servers
             System.Console.Out.Write("{0}\n{1}\n", ep.Address, ep.Port);
             System.Console.Out.Flush();
 			// XXX: i can't seem to find a way to actually close the underlying
-			// filedesc, so you have to use readline() instead of read()
+			// filedesc, so we have to use readline() instead of read()
 			// because read() will block indefinitely
             System.Console.Out.Close();
             ITransport transport = transportFactory.Accept();
@@ -243,18 +240,18 @@ namespace Agnos.Servers
 						throw new ArgumentException("simple mode requires specifying a port");
 					}
 					server = new SimpleServer(processor, 
-					                          new Transports.SocketTransportFactory((string)options["host"], (int)options["port"]));
+					                          new SocketTransportFactory((string)options["host"], (int)options["port"]));
 					break;
 				case ServingMode.THREADED:
 					if ((int)options["port"] == 0) {
 						throw new ArgumentException("threaded mode requires specifying a port");
 					}
 					server = new ThreadedServer(processor, 
-					                            new Transports.SocketTransportFactory((string)options["host"], (int)options["port"]));
+					                            new SocketTransportFactory((string)options["host"], (int)options["port"]));
 					break;
 				case ServingMode.LIB:
 					server = new LibraryModeServer(processor, 
-					                               new Transports.SocketTransportFactory((string)options["host"], (int)options["port"]));
+					                               new SocketTransportFactory((string)options["host"], (int)options["port"]));
 					break;
 				default:
 					throw new ArgumentException("invalid mode: " + mode);

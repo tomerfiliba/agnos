@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using Agnos.Transports;
 
 
 namespace Agnos.TransportFactories
@@ -44,7 +45,7 @@ namespace Agnos.TransportFactories
 		
 		public ITransport Accept()
 		{
-			return new Transport.SocketTransport(listener.AcceptSocket());
+			return new SocketTransport(listener.AcceptSocket());
 		}
 		
 		public void Close()

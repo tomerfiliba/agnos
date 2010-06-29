@@ -4,70 +4,81 @@ using System.Text;
 using System.Net;
 using System.Net.Sockets;
 using System.IO;
+using Agnos.Transports;
 
 
 namespace Agnos
 {
 	public static class Packers
 	{
-		public interface IPacker
+		public abstract class BasePacker
 		{
-			void pack(object  obj, Stream stream);
-			object unpack(Stream stream);
-		}
+			public abstract void pack(object  obj, Stream stream);
+            public abstract object unpack(Stream stream);
 
-		internal static void _write(Stream stream, byte[] buf)
-		{
-            try
+            public void pack(object obj, ITransport transport)
             {
-			    stream.Write(buf, 0, buf.Length);
+                pack(obj, transport.GetStream());
             }
-            catch (IOException ex)
-            {
-                throw new EndOfStreamException("write error", ex);
-            }
-            catch (SocketException ex)
-            {
-                throw new EndOfStreamException("write error", ex);
-            }
-        }
 
-		internal static void _read(Stream stream, byte[] buf)
-		{
-			int total_got = 0;
-			int got;
-
-            try
+            public object unpack(ITransport transport)
             {
-                while (total_got < buf.Length)
+                return unpack(transport.GetStream());
+            }
+
+            protected static void _write(Stream stream, byte[] buf)
+            {
+                try
                 {
-                    got = stream.Read(buf, total_got, buf.Length - total_got);
-                    total_got += got;
-                    if (got <= 0 && total_got < buf.Length)
-                    {
-                        throw new EndOfStreamException("premature end of stream detected");
-                    }
+                    stream.Write(buf, 0, buf.Length);
+                }
+                catch (IOException ex)
+                {
+                    throw new EndOfStreamException("write error", ex);
+                }
+                catch (SocketException ex)
+                {
+                    throw new EndOfStreamException("write error", ex);
                 }
             }
-            catch (IOException ex)
+
+            protected static void _read(Stream stream, byte[] buf)
             {
-                throw new EndOfStreamException("read error", ex);
-            }
-            catch (SocketException ex)
-            {
-                throw new EndOfStreamException("read error", ex);
+                int total_got = 0;
+                int got;
+
+                try
+                {
+                    while (total_got < buf.Length)
+                    {
+                        got = stream.Read(buf, total_got, buf.Length - total_got);
+                        total_got += got;
+                        if (got <= 0 && total_got < buf.Length)
+                        {
+                            throw new EndOfStreamException("premature end of stream detected");
+                        }
+                    }
+                }
+                catch (IOException ex)
+                {
+                    throw new EndOfStreamException("read error", ex);
+                }
+                catch (SocketException ex)
+                {
+                    throw new EndOfStreamException("read error", ex);
+                }
             }
         }
 
         /////////////////////////////////////////////////////////////////////
 
-		public class _Int8 : IPacker
+		public class _Int8 : BasePacker
 		{
 			private byte[] buffer = new byte[1];
 			
 			internal _Int8(){}
 
-			public void pack(object obj, Stream stream)
+			public override void pack(object obj, Stream stream)
 			{
 				if (obj == null) {
 					pack((byte)0, stream);
@@ -76,14 +87,14 @@ namespace Agnos
 					pack((byte)obj, stream);
 				}
 			}
-			
-			public void pack(byte val, Stream stream)
+
+            public void pack(byte val, Stream stream)
 			{
 				buffer[0] = val;
 				_write(stream, buffer);
 			}
-	
-			public object unpack(Stream stream)
+
+            public override object unpack(Stream stream)
 			{
 				_read(stream, buffer);
 				return buffer[0];
@@ -94,12 +105,12 @@ namespace Agnos
 
         /////////////////////////////////////////////////////////////////////
 	
-		public class _Bool : IPacker
+		public class _Bool : BasePacker
 		{
 			internal _Bool(){}
 
-			
-			public void pack(object obj, Stream stream)
+
+            public override void pack(object obj, Stream stream)
 			{
 				if (obj == null) {
 					pack(false, stream);
@@ -119,7 +130,7 @@ namespace Agnos
 				}
 			}
 
-			public object unpack(Stream stream)
+            public override object unpack(Stream stream)
 			{
 				return ((byte)Int8.unpack(stream)) != 0;
 			}
@@ -129,13 +140,13 @@ namespace Agnos
 
         /////////////////////////////////////////////////////////////////////
 
-		public class _Int16 : IPacker
+		public class _Int16 : BasePacker
 		{
 			private byte[]	buffer	= new byte[2];
 
 			internal _Int16(){}
 
-			public void pack(object obj, Stream stream)
+            public override void pack(object obj, Stream stream)
 			{
 				if (obj == null) {
 					pack((short)0, stream);
@@ -151,8 +162,8 @@ namespace Agnos
 				buffer[1] = (byte) ((val) & 0xFF);
 				_write(stream, buffer);
 			}
-	
-			public object unpack(Stream stream)
+
+            public override object unpack(Stream stream)
 			{
 				_read(stream, buffer);
 				return (short)((buffer[0] & 0xff) << 8 | (buffer[1] & 0xff));
@@ -163,13 +174,13 @@ namespace Agnos
 
         /////////////////////////////////////////////////////////////////////
 
-		public class _Int32 : IPacker
+		public class _Int32 : BasePacker
 		{
 			private byte[]	buffer	= new byte[4];
 	
 			internal _Int32(){}
 
-			public void pack(object obj, Stream stream)
+            public override void pack(object obj, Stream stream)
 			{
 				if (obj == null) {
 					pack((int)0, stream);
@@ -187,8 +198,8 @@ namespace Agnos
 				buffer[3] = (byte) ((val) & 0xFF);
 				_write(stream, buffer);
 			}
-	
-			public object unpack(Stream stream)
+
+            public override object unpack(Stream stream)
 			{
 				_read(stream, buffer);
 				return ((int)(buffer[0] & 0xff) << 24) | 
@@ -202,13 +213,13 @@ namespace Agnos
 
         /////////////////////////////////////////////////////////////////////
 
-		public class _Int64 : IPacker
+		public class _Int64 : BasePacker
 		{
 			private byte[]	buffer	= new byte[8];
 
 			internal _Int64(){}
-						
-			public void pack(object obj, Stream stream)
+
+            public override void pack(object obj, Stream stream)
 			{
 				if (obj == null) {
 					pack((long)0, stream);
@@ -230,8 +241,8 @@ namespace Agnos
 				buffer[7] = (byte) (val         & 0xff);
 				_write(stream, buffer);
 			}
-	
-			public object unpack(Stream stream)
+
+            public override object unpack(Stream stream)
 			{
 				_read(stream, buffer);
 				return (((long)(buffer[0] & 0xff)) << 56) |
@@ -255,7 +266,7 @@ namespace Agnos
             object load(long id);
         }
 
-        public class ObjRef : IPacker
+        public class ObjRef : BasePacker
         {
             ISerializer serializer;
 
@@ -264,12 +275,12 @@ namespace Agnos
                 this.serializer = serializer;
             }
 
-            public void pack(object obj, Stream stream)
+            public override void pack(object obj, Stream stream)
             {
                 Int64.pack(serializer.store(obj), stream);
             }
 
-            public object unpack(Stream stream)
+            public override object unpack(Stream stream)
             {
                 return serializer.load((long)Int64.unpack(stream));
             }
@@ -277,11 +288,11 @@ namespace Agnos
 
         /////////////////////////////////////////////////////////////////////
 
-        public class _Float : IPacker
+        public class _Float : BasePacker
 		{
 			internal _Float(){}
 
-			public void pack(object obj, Stream stream)
+            public override void pack(object obj, Stream stream)
 			{
 				if (obj == null) {
 					pack(0.0, stream);
@@ -295,8 +306,8 @@ namespace Agnos
 			{
 				Int64.pack(BitConverter.DoubleToInt64Bits(val), stream);
 			}
-	
-			public object unpack(Stream stream)
+
+            public override object unpack(Stream stream)
 			{
 				return BitConverter.Int64BitsToDouble((long)Int64.unpack(stream));
 			}
@@ -306,11 +317,11 @@ namespace Agnos
 
         /////////////////////////////////////////////////////////////////////
 
-        public class _Buffer : IPacker
+        public class _Buffer : BasePacker
 		{
 			internal _Buffer(){}
 
-			public void pack(object obj, Stream stream)
+            public override void pack(object obj, Stream stream)
 			{
 				if (obj == null) {
 					Int32.pack(0, stream);
@@ -321,8 +332,8 @@ namespace Agnos
 					_write(stream, val);
 				}
 			}
-	
-			public object unpack(Stream stream)
+
+            public override object unpack(Stream stream)
 			{
 				int length = (int)Int32.unpack(stream);
 				byte[] buf = new byte[length];
@@ -335,20 +346,20 @@ namespace Agnos
 
         /////////////////////////////////////////////////////////////////////
 
-        public class _Date : IPacker
+        public class _Date : BasePacker
 		{
 			private static DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
 			internal _Date(){}
 
-			public void pack(object obj, Stream stream)
+            public override void pack(object obj, Stream stream)
 			{
 				DateTime val = ((DateTime)obj).ToUniversalTime();
 				long timestamp = (val - epoch).Ticks / 10000;
 				Int64.pack(timestamp, stream);
 			}
 	
-			public object unpack(Stream stream)
+			public override object unpack(Stream stream)
 			{
 				//long timestamp = (long)Int64.unpack(stream);
 				Int64.unpack(stream);
@@ -361,13 +372,13 @@ namespace Agnos
 
         /////////////////////////////////////////////////////////////////////
 
-        public class _Str : IPacker
+        public class _Str : BasePacker
 		{
 			private static UTF8Encoding utf8 = new UTF8Encoding();
 			
 			internal _Str(){}
 			
-			public void pack(object obj, Stream stream)
+			public override void pack(object obj, Stream stream)
 			{
 				if (obj == null) {
 					Buffer.pack(null, stream);
@@ -377,7 +388,7 @@ namespace Agnos
 				}
 			}
 	
-			public object unpack(Stream stream)
+			public override object unpack(Stream stream)
 			{
 				byte[] buf = (byte[])Buffer.unpack(stream);
 				return utf8.GetString(buf);
@@ -388,16 +399,16 @@ namespace Agnos
 
         /////////////////////////////////////////////////////////////////////
 
-        public class ListOf : IPacker
+        public class ListOf : BasePacker
 		{
-			private IPacker	type;
+			private BasePacker	type;
 	
-			public ListOf(IPacker type)
+			public ListOf(BasePacker type)
 			{
 				this.type = type;
 			}
 	
-			public void pack(object obj, Stream stream)
+			public override void pack(object obj, Stream stream)
 			{
 				if (obj == null) {
 					Int32.pack(0, stream);
@@ -411,7 +422,7 @@ namespace Agnos
 				}
 			}
 	
-			public object unpack(Stream stream)
+			public override object unpack(Stream stream)
 			{
 				int length = (int)Int32.unpack(stream);
 				List<object> arr = new List<object>(length);
@@ -424,18 +435,18 @@ namespace Agnos
 
         /////////////////////////////////////////////////////////////////////
 
-        public class MapOf : IPacker
+        public class MapOf : BasePacker
 		{
-			private IPacker	keytype;
-			private IPacker	valtype;
+			private BasePacker	keytype;
+			private BasePacker	valtype;
 	
-			public MapOf(IPacker keytype, IPacker valtype)
+			public MapOf(BasePacker keytype, BasePacker valtype)
 			{
 				this.keytype = keytype;
 				this.valtype = valtype;
 			}
 	
-			public void pack(object obj, Stream stream)
+			public override void pack(object obj, Stream stream)
 			{
 				if (obj == null) {
 					Int32.pack(0, stream);
@@ -450,7 +461,7 @@ namespace Agnos
 				}
 			}
 	
-			public object unpack(Stream stream)
+			public override object unpack(Stream stream)
 			{
 				int length = (int)Int32.unpack(stream);
 				Dictionary<Object, Object> map = new Dictionary<Object, Object>(length);

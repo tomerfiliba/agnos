@@ -419,7 +419,7 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
 
-        with BLOCK("protected void process_invoke(Transports.ITransport transport, int seq) throws Exception"):
+        with BLOCK("protected void processInvoke(Transports.ITransport transport, int seq) throws Exception"):
             STMT("int funcid = (Integer){0}.unpack(transport)", type_to_packer(compiler.t_int32))
             STMT("Packers.BasePacker packer = null")
             STMT("Object result = null")

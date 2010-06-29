@@ -184,14 +184,14 @@ public class Protocol
 			return sw2.toString();
 		}
 
-		protected void send_protocol_error(Transports.ITransport transport,
+		protected void sendProtocolError(Transports.ITransport transport,
 				ProtocolError exc) throws IOException
 		{
 			Packers.Int8.pack((byte) REPLY_PROTOCOL_ERROR, transport);
 			Packers.Str.pack(exc.toString(), transport);
 		}
 
-		protected void send_generic_exception(Transports.ITransport transport,
+		protected void sendGenericException(Transports.ITransport transport,
 				GenericException exc) throws IOException
 		{
 			Packers.Int8.pack((byte) REPLY_GENERIC_EXCEPTION, transport);
@@ -210,19 +210,19 @@ public class Protocol
 			try {
 				switch (cmdid) {
 					case CMD_INVOKE:
-						process_invoke(transport, seq);
+						processInvoke(transport, seq);
 						break;
 					case CMD_DECREF:
-						process_decref(transport, seq);
+						processDecref(transport, seq);
 						break;
 					case CMD_INCREF:
-						process_incref(transport, seq);
+						processIncref(transport, seq);
 						break;
 					case CMD_QUIT:
-						process_quit(transport, seq);
+						processQuit(transport, seq);
 						break;
 					case CMD_PING:
-						process_ping(transport, seq);
+						processPing(transport, seq);
 						break;
 					default:
 						throw new ProtocolError("unknown command code: "
@@ -230,10 +230,10 @@ public class Protocol
 				}
 			} catch (ProtocolError exc) {
 				transport.reset();
-				send_protocol_error(transport, exc);
+				sendProtocolError(transport, exc);
 			} catch (GenericException exc) {
 				transport.reset();
-				send_generic_exception(transport, exc);
+				sendGenericException(transport, exc);
 			} catch (Exception ex) {
 				transport.cancelWrite();
 				throw ex;
@@ -243,26 +243,26 @@ public class Protocol
 			transport.endWrite();
 		}
 
-		protected void process_decref(Transports.ITransport transport,
+		protected void processDecref(Transports.ITransport transport,
 				Integer seq) throws IOException
 		{
 			Long id = (Long) (Packers.Int64.unpack(transport));
 			decref(id);
 		}
 
-		protected void process_incref(Transports.ITransport transport,
+		protected void processIncref(Transports.ITransport transport,
 				Integer seq) throws IOException
 		{
 			Long id = (Long) (Packers.Int64.unpack(transport));
 			incref(id);
 		}
 
-		protected void process_quit(Transports.ITransport transport, Integer seq)
+		protected void processQuit(Transports.ITransport transport, Integer seq)
 				throws IOException
 		{
 		}
 
-		protected void process_ping(Transports.ITransport transport, Integer seq)
+		protected void processPing(Transports.ITransport transport, Integer seq)
 				throws IOException
 		{
 			String message = (String) (Packers.Str.unpack(transport));
@@ -270,7 +270,7 @@ public class Protocol
 			Packers.Str.pack(message, transport);
 		}
 
-		abstract protected void process_invoke(Transports.ITransport transport,
+		abstract protected void processInvoke(Transports.ITransport transport,
 				int seq) throws Exception;
 	}
 
@@ -328,7 +328,7 @@ public class Protocol
 			}
 		}
 
-		public synchronized int getSeq()
+		protected synchronized int getSeq()
 		{
 			seq += 1;
 			return seq;
@@ -382,26 +382,26 @@ public class Protocol
 		
 		public void cancelCall() throws IOException
 		{
-			transport.endWrite();
+			transport.cancelWrite();
 		}
 
-		public PackedException loadPackedException() throws IOException, ProtocolError
+		protected PackedException loadPackedException() throws IOException, ProtocolError
         {
             Integer clsid = (Integer)Packers.Int32.unpack(transport);
             Packers.BasePacker packer = packedExceptionsMap.get(clsid);
             if (packer == null) {
-            	throw new Protocol.ProtocolError("unknown exception class id: " + clsid);
+            	throw new ProtocolError("unknown exception class id: " + clsid);
             }
             return (PackedException)packer.unpack(transport);
         }
         
-		public ProtocolError loadProtocolError() throws IOException
+		protected ProtocolError loadProtocolError() throws IOException
 		{
 			String message = (String) Packers.Str.unpack(transport);
 			return new ProtocolError(message);
 		}
 
-		public GenericException loadGenericException() throws IOException
+		protected GenericException loadGenericException() throws IOException
 		{
 			String message = (String) Packers.Str.unpack(transport);
 			String traceback = (String) Packers.Str.unpack(transport);
@@ -420,6 +420,7 @@ public class Protocol
 						slot.type != ReplySlotType.SLOT_DISCARDED)) {
 					throw new ProtocolError("invalid reply sequence: " + seq);
 				}
+				boolean discard = (slot.type == ReplySlotType.SLOT_DISCARDED);
 				Packers.BasePacker packer = (Packers.BasePacker) slot.value;
 
 				switch (code) {
@@ -444,6 +445,10 @@ public class Protocol
 					break;
 				default:
 					throw new ProtocolError("unknown reply code: " + code);
+				}
+				
+				if (discard) {
+					replies.remove(seq);
 				}
 			} finally {
 				transport.endRead();
