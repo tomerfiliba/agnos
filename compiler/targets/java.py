@@ -420,13 +420,13 @@ class JavaTarget(TargetBase):
         SEP = module.sep
 
         with BLOCK("protected void processInvoke(Transports.ITransport transport, int seq) throws Exception"):
-            STMT("int funcid = (Integer){0}.unpack(transport)", type_to_packer(compiler.t_int32))
             STMT("Packers.BasePacker packer = null")
             STMT("Object result = null")
             STMT("Object inst = null")
             STMT("Object[] args = null")
             STMT("InputStream inStream = transport.getInputStream()")
             STMT("OutputStream outStream = transport.getOutputStream()")
+            STMT("int funcid = (Integer){0}.unpack(inStream)", type_to_packer(compiler.t_int32))
             packed_exceptions = [tp for tp in service.types.values() if isinstance(tp, compiler.Exception)]
 
             with BLOCK("try") if packed_exceptions else NOOP:
@@ -508,6 +508,7 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         DOC = module.doc
+        
         with BLOCK("public static class Client"):
             STMT("protected Protocol.BaseClientUtils _utils")
             SEP()

@@ -268,7 +268,7 @@ namespace Agnos
                 }
             }
 
-            protected ITransport transport;
+            public ITransport transport;
             protected int seq;
             protected Dictionary<int, ReplySlot> replies;
             protected Dictionary<long, WeakReference> proxies;
@@ -465,7 +465,7 @@ namespace Agnos
                 return slot;
             }
 
-            protected Object GetReply(int seq, int timeout_msecs)
+            public Object GetReply(int seq, int timeout_msecs)
             {
                 ReplySlot slot = WaitReply(seq, timeout_msecs);
                 if (slot.type == ReplySlotType.SLOT_VALUE)
@@ -482,7 +482,7 @@ namespace Agnos
                 }
             }
 
-            protected Object GetReply(int seq)
+            public Object GetReply(int seq)
             {
                 return GetReply(seq, -1);
             }

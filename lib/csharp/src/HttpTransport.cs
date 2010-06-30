@@ -50,6 +50,15 @@ namespace Agnos.Transports
             return req;
         }
 
+		public override int BeginRead()
+		{
+			if (inputStream == null) {
+				throw new IOException("BeginRead must be called only after EndWrite");
+			}
+			return base.BeginRead();
+		}
+
+		
         public override void EndRead()
         {
             lock (this)
@@ -57,6 +66,7 @@ namespace Agnos.Transports
                 AssertBeganRead();
                 inputStream.Close();
                 inputStream = null;
+				resp = null;
                 rlock.Release();
             }
         }
