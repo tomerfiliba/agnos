@@ -53,16 +53,16 @@ namespace Agnos
 
     public static class Protocol
     {
-        public const int CMD_PING = 0;
-        public const int CMD_INVOKE = 1;
-        public const int CMD_QUIT = 2;
-        public const int CMD_DECREF = 3;
-        public const int CMD_INCREF = 4;
+        public const byte CMD_PING = 0;
+        public const byte CMD_INVOKE = 1;
+        public const byte CMD_QUIT = 2;
+        public const byte CMD_DECREF = 3;
+        public const byte CMD_INCREF = 4;
 
-        public const int REPLY_SUCCESS = 0;
-        public const int REPLY_PROTOCOL_ERROR = 1;
-        public const int REPLY_PACKED_EXCEPTION = 2;
-        public const int REPLY_GENERIC_EXCEPTION = 3;
+        public const byte REPLY_SUCCESS = 0;
+        public const byte REPLY_PROTOCOL_ERROR = 1;
+        public const byte REPLY_PACKED_EXCEPTION = 2;
+        public const byte REPLY_GENERIC_EXCEPTION = 3;
 
         public const int AGNOS_MAGIC = 0x5af30cf7;
 
@@ -157,13 +157,13 @@ namespace Agnos
 
             protected void sendProtocolError(ITransport transport, ProtocolError exc)
             {
-                Packers.Int8.pack((byte)REPLY_PROTOCOL_ERROR, transport);
+                Packers.Int8.pack(REPLY_PROTOCOL_ERROR, transport);
                 Packers.Str.pack(exc.ToString(), transport);
             }
 
             protected void sendGenericException(ITransport transport, GenericException exc)
             {
-                Packers.Int8.pack((byte)REPLY_GENERIC_EXCEPTION, transport);
+                Packers.Int8.pack(REPLY_GENERIC_EXCEPTION, transport);
                 Packers.Str.pack(exc.Message, transport);
                 Packers.Str.pack(exc.Traceback, transport);
             }
@@ -171,7 +171,7 @@ namespace Agnos
             public void process(ITransport transport)
             {
                 int seq = transport.BeginRead();
-                int cmdid = (byte)(Packers.Int8.unpack(transport));
+                byte cmdid = (byte)(Packers.Int8.unpack(transport));
 
                 transport.BeginWrite(seq);
 

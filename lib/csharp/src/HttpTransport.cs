@@ -82,7 +82,7 @@ namespace Agnos.Transports
                     req.ContentLength = buffer.Length + 8;
                     
                     outputStream = req.GetRequestStream();
-                    Packers.Int32.pack(buffer.Length, outputStream);
+                    Packers.Int32.pack((int)buffer.Length, outputStream);
                     Packers.Int32.pack(wseq, outputStream);
                     buffer.WriteTo(outputStream);
                     outputStream.Flush();
