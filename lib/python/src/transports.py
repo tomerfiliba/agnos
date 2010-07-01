@@ -33,7 +33,59 @@ class SocketFile(object):
             sent = self.sock.send(buf)
             data = data[sent:]
 
-I32 = Struct("!I")
+class Transport(object):
+    HEADER = Struct("!II")
+
+    def __init__(self, infile, outfile):
+        self.infile = infile
+        self.outfile = outfile
+        self._rlock = threading.RLock()
+        self._wlock = threading.RLock()
+        self._read_length = -1
+        self._read_pos = -1
+        self._read_seq = -1
+        self._write_seq = -1
+    
+    def close(self):
+        self.infile.close()
+        self.outfile.close()
+    
+    def begin_read(self):
+        rlock.acquire()
+        self._read_length packers.Int32.unpack(self.file)
+        self._read_seq = packers.Int32.unpack(self.file)
+        self._read_pos = 0
+        return self._read_seq
+    
+    def read(self, count):
+        if self._read_pos + count > self._read_length:
+            raise EOFError("request to read more than available")
+        data = self.infile.read(count)
+        self._read_pos += len(data)
+        return data
+    
+    def end_read(self):
+        remaining = self._read_length - self._read_pos
+        while remaining > 0:
+            chunk = self.infile.read(min(remaining, 16*1024))
+            remaining -= len(chunk)
+        self._rlock.release()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class Transport(object):
     def getInputStream(self):

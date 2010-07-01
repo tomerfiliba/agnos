@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.Net;
 using System.Net.Sockets;
@@ -69,6 +69,23 @@ namespace Agnos
                 }
             }
         }
+
+		/////////////////////////////////////////////////////////////////////
+		
+		public class _MockupPacker : BasePacker
+		{
+			internal _MockupPacker(){}
+			
+            public override void pack(object obj, Stream stream)
+			{
+			}
+            public override object unpack(Stream stream)
+			{
+				return null;
+			}
+		}
+		
+		public static _MockupPacker MockupPacker = new _MockupPacker();
 
         /////////////////////////////////////////////////////////////////////
 
@@ -414,7 +431,7 @@ namespace Agnos
 					Int32.pack(0, stream);
 				}
 				else {
-					List<object> val = (List<object>)obj;
+					IList val = (IList)obj;
 					Int32.pack(val.Count, stream);
 					foreach (object obj2 in val) {
 						type.pack(obj2, stream);
@@ -425,7 +442,7 @@ namespace Agnos
 			public override object unpack(Stream stream)
 			{
 				int length = (int)Int32.unpack(stream);
-				List<object> arr = new List<object>(length);
+				ArrayList arr = new ArrayList(length);
 				for (int i = 0; i < length; i++) {
 					arr.Add(type.unpack(stream));
 				}
@@ -452,9 +469,9 @@ namespace Agnos
 					Int32.pack(0, stream);
 				}
 				else {
-					Dictionary<Object, Object> val = (Dictionary<Object, Object>)obj;
+					IDictionary val = (IDictionary)obj;
 					Int32.pack(val.Count, stream);
-					foreach (KeyValuePair<object, object> item in val) {
+					foreach (DictionaryEntry item in val) {
 						keytype.pack(item.Key, stream);
 						valtype.pack(item.Value, stream);
 					}
@@ -464,7 +481,7 @@ namespace Agnos
 			public override object unpack(Stream stream)
 			{
 				int length = (int)Int32.unpack(stream);
-				Dictionary<Object, Object> map = new Dictionary<Object, Object>(length);
+				Hashtable map = new Hashtable(length);
 				for (int i = 0; i < length; i++) {
 					object k = keytype.unpack(stream);
 					object v = valtype.unpack(stream);

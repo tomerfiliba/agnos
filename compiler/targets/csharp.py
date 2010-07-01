@@ -409,7 +409,27 @@ class CSharpTarget(TargetBase):
                     STMT("{0}Packer = new _{0}Packer({1})", rec.name, ", ".join(type_to_packer(tp) for tp in complex_types))
                 self.generate_templated_packers_impl(module, service)
             SEP()
+            self.generate_process_getinfo(module, service)
+            SEP()
             self.generate_process_invoke(module, service)
+
+    def generate_process_getinfo(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        
+        with BLOCK("protected override void processGetGeneralInfo(IDictionary info)"):
+            STMT('info["AGNOS_VERSION"] = AGNOS_VERSION')
+            STMT('info["IDL_MAGIC"] = IDL_MAGIC')
+            STMT('info["SERVICE_NAME"] = "{0}"', service.name)
+        SEP()
+        with BLOCK("protected override void processGetFunctionsInfo(IDictionary info)"):
+            for func in service.funcs.values():
+                STMT('info["{0}"] = "{1}"', func.id, func.name)
+                STMT('info["{0}_type"] = "{1}"', func.id, str(func.type))
+                STMT('info["{0}_arg_names"] = "{1}"', func.id, ";".join(arg.name for arg in func.args))
+                STMT('info["{0}_arg_types"] = "{1}"', func.id, ";".join(str(arg.type) for arg in func.args))
+                STMT('info["{0}_annotations"] = "{1}"', func.id, ";".join(str(anno) for anno in func.annotations))
 
     def generate_process_invoke(self, module, service):
         BLOCK = module.block
@@ -558,6 +578,13 @@ class CSharpTarget(TargetBase):
             self.generate_client_ctor(module, service, namespaces, generated_records)
             SEP()
             self.generate_client_funcs(module, service)
+            SEP()
+            with BLOCK("public IDictionary GetServiceInfo(int code)"):
+                STMT("return _utils.GetServiceInfo(code)")
+            SEP()
+            with BLOCK("public byte[] TunnelRequest(byte[] blob)"):
+                STMT("int seq = _utils.TunnelRequest(blob)")
+                STMT("return (byte[])_utils.GetReply(seq)")
 
     def generate_client_ctor(self, module, service, namespaces, generated_records):
         BLOCK = module.block

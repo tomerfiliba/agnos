@@ -1,4 +1,28 @@
 from packers import Int32
+import threading
+
+
+class RLock(object):
+    def __init__(self):
+        self._lock = threading.RLock()
+        self._owner = None
+        self._count = 0
+    def acquire(self):
+        assert self._count >= 0
+        self._lock.acquire()
+        self._owner = threading.current_thread()
+        self._count += 1
+    def release(self):
+        assert self._count >= 0
+        if self._count == 0:
+            raise threading.ThreadError("released too many times")
+        else:
+            self._count -= 1
+            if self._count == 0:
+                self._owner = None
+        self._lock.release()
+    def is_held_by_current_thread(self):
+        return self._owner == thread.current_thread()
 
 
 class EnumError(Exception):

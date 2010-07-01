@@ -412,8 +412,28 @@ class JavaTarget(TargetBase):
                 for rec in generated_records:
                     STMT("{0}Packer = new _{0}Packer()", rec.name)
             SEP()
+            self.generate_process_getinfo(module, service)
+            SEP()
             self.generate_process_invoke(module, service)
-    
+
+    def generate_process_getinfo(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        
+        with BLOCK("protected void processGetGeneralInfo(Map info)"):
+            STMT('info.put("AGNOS_VERSION", AGNOS_VERSION)')
+            STMT('info.put("IDL_MAGIC", IDL_MAGIC)')
+            STMT('info.put("SERVICE_NAME", "{0}")', service.name)
+        SEP()
+        with BLOCK("protected void processGetFunctionsInfo(Map info)"):
+            for func in service.funcs.values():
+                STMT('info.put("{0}", "{1}")', func.id, func.name)
+                STMT('info.put("{0}_type", "{1}")', func.id, str(func.type))
+                STMT('info.put("{0}_arg_names", "{1}")', func.id, ";".join(arg.name for arg in func.args))
+                STMT('info.put("{0}_arg_types", "{1}")', func.id, ";".join(str(arg.type) for arg in func.args))
+                STMT('info.put("{0}_annotations", "{1}")', func.id, ";".join(str(anno) for anno in func.annotations))
+        
     def generate_process_invoke(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
@@ -545,6 +565,13 @@ class JavaTarget(TargetBase):
             self.generate_client_ctor(module, service, namespaces, generated_records)
             SEP()
             self.generate_client_funcs(module, service)
+            SEP()
+            with BLOCK("public Map getServiceInfo(int code) throws Exception"):
+                STMT("return _utils.getServiceInfo(code)")
+            SEP()
+            with BLOCK("public byte[] tunnelRequest(byte[] blob) throws Exception"):
+                STMT("int seq = _utils.tunnelRequest(blob)")
+                STMT("return (byte[])_utils.getReply(seq)")
     
     def generate_client_ctor(self, module, service, namespaces, generated_records):
         BLOCK = module.block

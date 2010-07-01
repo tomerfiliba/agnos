@@ -208,6 +208,10 @@ class AstNode(object):
         func = getattr(visitor, "visit_%s" % (self.__class__.__name__,), NOOP)
         return func(self)
 
+class AnnotationNode(AstNode):
+    TAG = "annotation"
+    ATTRS = dict(name = arg_value, value = arg_value)
+
 class ClassAttrNode(AstNode):
     TAG = "attr"
     ATTRS = dict(name = auto_fill_name, type = arg_value, access = arg_default("get,set"))
@@ -219,16 +223,16 @@ class MethodArgNode(AstNode):
 class MethodNode(AstNode):
     TAG = "method"
     ATTRS = dict(name = auto_fill_name, type = arg_default("void"))
-    CHILDREN = [MethodArgNode]
+    CHILDREN = [MethodArgNode, AnnotationNode]
 
 class StaticMethodNode(AstNode):
     TAG = "staticmethod"
     ATTRS = dict(name = auto_fill_name, type = arg_default("void"))
-    CHILDREN = [MethodArgNode]
+    CHILDREN = [MethodArgNode, AnnotationNode]
 
 class CtorNode(AstNode):
     TAG = "ctor"
-    CHILDREN = [MethodArgNode]
+    CHILDREN = [MethodArgNode, AnnotationNode]
 
 class ClassNode(AstNode):
     TAG = "class"
@@ -242,7 +246,7 @@ class FuncArgNode(AstNode):
 class FuncNode(AstNode):
     TAG = "func"
     ATTRS = dict(name = auto_fill_name, type = arg_default("void"))
-    CHILDREN = [FuncArgNode]
+    CHILDREN = [FuncArgNode, AnnotationNode]
 
 class ServiceNode(AstNode):
     TAG = "service"

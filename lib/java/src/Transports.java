@@ -15,7 +15,9 @@ public class Transports
 
 		// read interface
 		int beginRead() throws IOException;
+		int beginRead(int msecs) throws IOException;
 		int read(byte[] data, int offset, int len) throws IOException;
+		byte[] readAll() throws IOException;
 		void endRead() throws IOException;
 		
 		// write interface
@@ -96,6 +98,8 @@ public class Transports
 		
 		public void close() throws IOException
 		{
+			// XXX: call endWrite here? 
+			// then again, it might not make much sense
 			if (input != null) {
 				input.close();
 				input = null;
@@ -120,6 +124,11 @@ public class Transports
 		// read interface
 		//
 		public synchronized int beginRead() throws IOException
+		{
+			return beginRead(-1);
+		}
+		
+		public synchronized int beginRead(int msecs) throws IOException
 		{
 			if (rlock.isHeldByCurrentThread()) {
 				throw new IOException("beginRead is not reentrant");
@@ -149,6 +158,13 @@ public class Transports
 			int actually_read = input.read(data, offset, len);
 			rpos += actually_read;
 			return actually_read;
+		}
+		
+		public byte[] readAll() throws IOException
+		{
+			byte[] data = new byte[rlength - rpos];
+			read(data, 0, data.length);
+			return data;
 		}
 		
 		public synchronized void endRead() throws IOException
@@ -230,8 +246,14 @@ public class Transports
 		public int beginRead() throws IOException {
 			return transport.beginRead();
 		}
+		public int beginRead(int msecs) throws IOException {
+			return transport.beginRead(msecs);
+		}
 		public int read(byte[] data, int offset, int len) throws IOException {
 			return transport.read(data, offset, len);
+		}
+		public byte[] readAll() throws IOException {
+			return transport.readAll();
 		}
 		public void endRead() throws IOException {
 			transport.endRead();

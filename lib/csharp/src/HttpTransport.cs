@@ -52,12 +52,16 @@ namespace Agnos.Transports
 
 		public override int BeginRead()
 		{
+			return BeginRead(-1);
+		}
+
+		public override int BeginRead(int msecs)
+		{
 			if (inputStream == null) {
 				throw new IOException("BeginRead must be called only after EndWrite");
 			}
-			return base.BeginRead();
+			return base.BeginRead(msecs);
 		}
-
 		
         public override void EndRead()
         {

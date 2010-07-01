@@ -15,7 +15,9 @@ namespace Agnos.Transports
 
         // read interface
         int BeginRead();
+        int BeginRead(int msecs);
         int Read(byte[] data, int offset, int len);
+        byte[] ReadAll();
         void EndRead();
 
         // write interface
@@ -133,7 +135,12 @@ namespace Agnos.Transports
         //
         // read interface
         //
-        virtual public int BeginRead()
+		virtual public int BeginRead()
+        {
+			return BeginRead(-1);
+        }
+
+		virtual public int BeginRead(int msecs)
         {
             lock (this)
             {
@@ -143,14 +150,22 @@ namespace Agnos.Transports
                 }
 
                 rlock.Acquire();
-                rlength = (int)Packers.Int32.unpack(inputStream);
-                rseq = (int)Packers.Int32.unpack(inputStream);
+				//inputStream.ReadTimeout = msecs;
+				//try {
+	            rlength = (int)Packers.Int32.unpack(inputStream);
+	            rseq = (int)Packers.Int32.unpack(inputStream);
+				//}
+				//catch (TimeoutException ex) {
+				//	rlock.Release();
+				//	throw ex;
+				//}
+				//inputStream.ReadTimeout = -1;
                 rpos = 0;
 
                 return rseq;
             }
         }
-
+		
         protected void AssertBeganRead()
         {
             if (!rlock.IsHeldByCurrentThread())
@@ -170,6 +185,13 @@ namespace Agnos.Transports
             rpos += actually_read;
             return actually_read;
         }
+		
+		virtual public byte[] ReadAll()
+		{
+			byte[] data = new byte[rlength - rpos];
+			Read(data, 0, data.Length);
+			return data;
+		}
 
         virtual public void EndRead()
         {
@@ -184,7 +206,7 @@ namespace Agnos.Transports
                     if (chunk > garbage.Length) {
                         chunk = garbage.Length;
                     }
-                    inputStream.Read(garbage, 0, chunk);
+                    i += inputStream.Read(garbage, 0, chunk);
                 }
 
                 rlock.Release();
@@ -280,9 +302,17 @@ namespace Agnos.Transports
         {
             return transport.BeginRead();
         }
+        public int BeginRead(int msecs)
+        {
+            return transport.BeginRead(msecs);
+        }
         public int Read(byte[] data, int offset, int len)
         {
             return transport.Read(data, offset, len);
+        }
+        public byte[] ReadAll()
+        {
+            return transport.ReadAll(data);
         }
         public void EndRead()
         {

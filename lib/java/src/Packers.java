@@ -3,202 +3,189 @@ package agnos;
 import java.io.*;
 import java.util.*;
 
-
-public class Packers
-{
-	public static abstract class BasePacker
-	{
-		abstract public void pack(Object obj, OutputStream stream) throws IOException;
+public class Packers {
+	public static abstract class BasePacker {
+		abstract public void pack(Object obj, OutputStream stream)
+				throws IOException;
 
 		abstract public Object unpack(InputStream stream) throws IOException;
 
-		public void pack(Object obj, Transports.ITransport transport) throws IOException
-		{
+		public void pack(Object obj, Transports.ITransport transport)
+				throws IOException {
 			pack(obj, transport.getOutputStream());
 		}
 
-		public Object unpack(Transports.ITransport transport) throws IOException
-		{
+		public Object unpack(Transports.ITransport transport)
+				throws IOException {
 			return unpack(transport.getInputStream());
 		}
-	}
 
-	// private static String repr(byte[] buffer)
-	// {
-	// StringBuilder sb = new StringBuilder(buffer.length);
-	// int b;
-	// String s;
-	//		
-	// for (int i = 0; i < buffer.length; i++) {
-	// b = buffer[i] & 0xff;
-	// if (b >= 32 && b <= 127) {
-	// sb.append((char)b);
-	// }
-	// else {
-	// s = Integer.toString(b, 16);
-	// if (s.length() == 1) {
-	// s = "0" + s;
-	// }
-	// sb.append("\\x" + s);
-	// }
-	// }
-	// return sb.toString();
-	// }
-
-	protected static void _write(OutputStream stream, byte[] buffer)
-			throws IOException
-	{
-		// System.err.println("W: " + repr(buffer));
-		stream.write(buffer, 0, buffer.length);
-	}
-
-	protected static void _read(InputStream stream, byte[] buffer)
-			throws IOException
-	{
-		int total_got = 0;
-		int got;
-
-		while (total_got < buffer.length) {
-			got = stream.read(buffer, total_got, buffer.length - total_got);
-			total_got += got;
-			if (got <= 0 && total_got < buffer.length) {
-				throw new EOFException("premature end of stream detected");
-			}
+//		private static String repr(byte[] buffer) {
+//			StringBuilder sb = new StringBuilder(buffer.length);
+//			int b;
+//			String s;
+//
+//			for (int i = 0; i < buffer.length; i++) {
+//				b = buffer[i] & 0xff;
+//				if (b >= 32 && b <= 127) {
+//					sb.append((char) b);
+//				} else {
+//					s = Integer.toString(b, 16);
+//					if (s.length() == 1) {
+//						s = "0" + s;
+//					}
+//					sb.append("\\x" + s);
+//				}
+//			}
+//			return sb.toString();
+//		}
+		
+		protected static void _write(OutputStream stream, byte[] buffer)
+				throws IOException {
+			// System.err.println("W: " + repr(buffer));
+			stream.write(buffer, 0, buffer.length);
 		}
 
-		// System.err.println("R: " + repr(buffer));
+		protected static void _read(InputStream stream, byte[] buffer)
+				throws IOException {
+			int total_got = 0;
+			int got;
+
+			while (total_got < buffer.length) {
+				got = stream.read(buffer, total_got, buffer.length - total_got);
+				total_got += got;
+				if (got <= 0 && total_got < buffer.length) {
+					throw new EOFException("premature end of stream detected");
+				}
+			}
+
+			// System.err.println("R: " + repr(buffer));
+		}
+
 	}
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Int8 extends BasePacker
-	{
-		private byte[]	buffer	= new byte[1];
-
-		protected _Int8()
-		{
+	public static class _MockupPacker extends BasePacker {
+		protected _MockupPacker() {
 		}
 
-		public void pack(Object obj, OutputStream stream) throws IOException
-		{
+		public void pack(Object obj, OutputStream stream) throws IOException {
+		}
+
+		public Object unpack(InputStream stream) throws IOException {
+			return null;
+		}
+	}
+
+	public static _MockupPacker MockupPacker = new _MockupPacker();
+
+	// ////////////////////////////////////////////////////////////////////////
+
+	public static class _Int8 extends BasePacker {
+		private byte[] buffer = new byte[1];
+
+		protected _Int8() {
+		}
+
+		public void pack(Object obj, OutputStream stream) throws IOException {
 			if (obj == null) {
 				pack((byte) 0, stream);
-			}
-			else {
+			} else {
 				pack(((Number) obj).byteValue(), stream);
 			}
 		}
 
-		public void pack(byte val, OutputStream stream) throws IOException
-		{
+		public void pack(byte val, OutputStream stream) throws IOException {
 			buffer[0] = val;
 			_write(stream, buffer);
 		}
 
-		public Object unpack(InputStream stream) throws IOException
-		{
+		public Object unpack(InputStream stream) throws IOException {
 			_read(stream, buffer);
 			return new Byte(buffer[0]);
 		}
 	}
 
-	public static _Int8	Int8	= new _Int8();
+	public static _Int8 Int8 = new _Int8();
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Bool extends BasePacker
-	{
-		protected _Bool()
-		{
+	public static class _Bool extends BasePacker {
+		protected _Bool() {
 		}
 
-		public void pack(Object obj, OutputStream stream) throws IOException
-		{
+		public void pack(Object obj, OutputStream stream) throws IOException {
 			if (obj == null) {
 				pack(false, stream);
-			}
-			else {
+			} else {
 				pack(((Boolean) obj).booleanValue(), stream);
 			}
 		}
 
-		public void pack(boolean val, OutputStream stream) throws IOException
-		{
+		public void pack(boolean val, OutputStream stream) throws IOException {
 			if (val) {
 				Int8.pack((byte) 1, stream);
-			}
-			else {
+			} else {
 				Int8.pack((byte) 0, stream);
 			}
 		}
 
-		public Object unpack(InputStream stream) throws IOException
-		{
+		public Object unpack(InputStream stream) throws IOException {
 			return new Boolean((((Byte) Int8.unpack(stream))).byteValue() != 0);
 		}
 	}
 
-	public static _Bool	Bool	= new _Bool();
+	public static _Bool Bool = new _Bool();
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Int16 extends BasePacker
-	{
-		private byte[]	buffer	= new byte[2];
+	public static class _Int16 extends BasePacker {
+		private byte[] buffer = new byte[2];
 
-		protected _Int16()
-		{
+		protected _Int16() {
 		}
 
-		public void pack(Object obj, OutputStream stream) throws IOException
-		{
+		public void pack(Object obj, OutputStream stream) throws IOException {
 			if (obj == null) {
 				pack((short) 0, stream);
-			}
-			else {
+			} else {
 				pack(((Number) obj).shortValue(), stream);
 			}
 		}
 
-		public void pack(short val, OutputStream stream) throws IOException
-		{
+		public void pack(short val, OutputStream stream) throws IOException {
 			buffer[0] = (byte) ((val >> 8) & 0xff);
 			buffer[1] = (byte) (val & 0xff);
 			_write(stream, buffer);
 		}
 
-		public Object unpack(InputStream stream) throws IOException
-		{
+		public Object unpack(InputStream stream) throws IOException {
 			_read(stream, buffer);
 			return new Short(
 					(short) (((buffer[0] & 0xff) << 8) | (buffer[1] & 0xff)));
 		}
 	}
 
-	public static _Int16	Int16	= new _Int16();
+	public static _Int16 Int16 = new _Int16();
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Int32 extends BasePacker
-	{
-		private byte[]	buffer	= new byte[4];
+	public static class _Int32 extends BasePacker {
+		private byte[] buffer = new byte[4];
 
-		protected _Int32()
-		{
+		protected _Int32() {
 		}
 
-		public void pack(Object obj, OutputStream stream) throws IOException
-		{
+		public void pack(Object obj, OutputStream stream) throws IOException {
 			if (obj == null) {
 				pack(0, stream);
-			}
-			else {
+			} else {
 				pack(((Number) obj).intValue(), stream);
 			}
 		}
 
-		public void pack(int val, OutputStream stream) throws IOException
-		{
+		public void pack(int val, OutputStream stream) throws IOException {
 			buffer[0] = (byte) ((val >> 24) & 0xff);
 			buffer[1] = (byte) ((val >> 16) & 0xff);
 			buffer[2] = (byte) ((val >> 8) & 0xff);
@@ -206,8 +193,7 @@ public class Packers
 			_write(stream, buffer);
 		}
 
-		public Object unpack(InputStream stream) throws IOException
-		{
+		public Object unpack(InputStream stream) throws IOException {
 			_read(stream, buffer);
 			return new Integer(((int) (buffer[0] & 0xff) << 24)
 					| ((int) (buffer[1] & 0xff) << 16)
@@ -216,30 +202,25 @@ public class Packers
 		}
 	}
 
-	public static _Int32	Int32	= new _Int32();
+	public static _Int32 Int32 = new _Int32();
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Int64 extends BasePacker
-	{
-		private byte[]	buffer	= new byte[8];
+	public static class _Int64 extends BasePacker {
+		private byte[] buffer = new byte[8];
 
-		protected _Int64()
-		{
+		protected _Int64() {
 		}
 
-		public void pack(Object obj, OutputStream stream) throws IOException
-		{
+		public void pack(Object obj, OutputStream stream) throws IOException {
 			if (obj == null) {
 				pack((long) 0, stream);
-			}
-			else {
+			} else {
 				pack(((Number) obj).longValue(), stream);
 			}
 		}
 
-		public void pack(long val, OutputStream stream) throws IOException
-		{
+		public void pack(long val, OutputStream stream) throws IOException {
 			buffer[0] = (byte) ((val >> 56) & 0xff);
 			buffer[1] = (byte) ((val >> 48) & 0xff);
 			buffer[2] = (byte) ((val >> 40) & 0xff);
@@ -251,8 +232,7 @@ public class Packers
 			_write(stream, buffer);
 		}
 
-		public Object unpack(InputStream stream) throws IOException
-		{
+		public Object unpack(InputStream stream) throws IOException {
 			_read(stream, buffer);
 
 			return new Long(((long) (buffer[0] & 0xff) << 56)
@@ -266,33 +246,28 @@ public class Packers
 		}
 	}
 
-	public static _Int64	Int64	= new _Int64();
+	public static _Int64 Int64 = new _Int64();
 
 	// ////////////////////////////////////////////////////////////////////////
-	public interface ISerializer
-	{
+	public interface ISerializer {
 		Long store(Object obj);
 
 		Object load(Long id);
 	}
 
-	public static class ObjRef extends BasePacker
-	{
-		protected ISerializer	serializer;
+	public static class ObjRef extends BasePacker {
+		protected ISerializer serializer;
 
-		public ObjRef(ISerializer serializer)
-		{
+		public ObjRef(ISerializer serializer) {
 			this.serializer = serializer;
 		}
 
-		public void pack(Object obj, OutputStream stream) throws IOException
-		{
+		public void pack(Object obj, OutputStream stream) throws IOException {
 			Long obj2 = serializer.store(obj);
 			Int64.pack(obj2, stream);
 		}
 
-		public Object unpack(InputStream stream) throws IOException
-		{
+		public Object unpack(InputStream stream) throws IOException {
 			Long obj = (Long) Int64.unpack(stream);
 			return serializer.load(obj);
 		}
@@ -300,58 +275,47 @@ public class Packers
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Float extends BasePacker
-	{
-		protected _Float()
-		{
+	public static class _Float extends BasePacker {
+		protected _Float() {
 		}
 
-		public void pack(Object obj, OutputStream stream) throws IOException
-		{
+		public void pack(Object obj, OutputStream stream) throws IOException {
 			if (obj == null) {
 				pack(0.0, stream);
-			}
-			else {
+			} else {
 				pack(((Number) obj).doubleValue(), stream);
 			}
 		}
 
-		public void pack(double val, OutputStream stream) throws IOException
-		{
+		public void pack(double val, OutputStream stream) throws IOException {
 			Int64.pack(Double.doubleToLongBits(val), stream);
 		}
 
-		public Object unpack(InputStream stream) throws IOException
-		{
+		public Object unpack(InputStream stream) throws IOException {
 			return new Double(Double.longBitsToDouble(((Long) (Int64
 					.unpack(stream))).longValue()));
 		}
 	}
 
-	public static _Float	Float	= new _Float();
+	public static _Float Float = new _Float();
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Buffer extends BasePacker
-	{
-		protected _Buffer()
-		{
+	public static class _Buffer extends BasePacker {
+		protected _Buffer() {
 		}
 
-		public void pack(Object obj, OutputStream stream) throws IOException
-		{
+		public void pack(Object obj, OutputStream stream) throws IOException {
 			if (obj == null) {
 				Int32.pack(new Integer(0), stream);
-			}
-			else {
+			} else {
 				byte[] val = (byte[]) obj;
 				Int32.pack(new Integer(val.length), stream);
 				_write(stream, val);
 			}
 		}
 
-		public Object unpack(InputStream stream) throws IOException
-		{
+		public Object unpack(InputStream stream) throws IOException {
 			int length = (Integer) Int32.unpack(stream);
 			byte[] buf = new byte[length];
 			_read(stream, buf);
@@ -359,75 +323,62 @@ public class Packers
 		}
 	}
 
-	public static _Buffer	Buffer	= new _Buffer();
+	public static _Buffer Buffer = new _Buffer();
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Date extends BasePacker
-	{
-		protected _Date()
-		{
+	public static class _Date extends BasePacker {
+		protected _Date() {
 		}
 
-		public void pack(Object obj, OutputStream stream) throws IOException
-		{
+		public void pack(Object obj, OutputStream stream) throws IOException {
 			Int64.pack(new Long(((Date) obj).getTime()), stream);
 		}
 
-		public Object unpack(InputStream stream) throws IOException
-		{
+		public Object unpack(InputStream stream) throws IOException {
 			return new Date((Long) Int64.unpack(stream));
 		}
 	}
 
-	public static _Date	Date	= new _Date();
+	public static _Date Date = new _Date();
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Str extends BasePacker
-	{
-		private static final String	encoding	= "UTF-8";
+	public static class _Str extends BasePacker {
+		private static final String encoding = "UTF-8";
 
-		protected _Str()
-		{
+		protected _Str() {
 		}
 
-		public void pack(Object obj, OutputStream stream) throws IOException
-		{
+		public void pack(Object obj, OutputStream stream) throws IOException {
 			if (obj == null) {
 				Buffer.pack(null, stream);
-			}
-			else {
+			} else {
 				Buffer.pack(((String) obj).getBytes(encoding), stream);
 			}
 		}
 
-		public Object unpack(InputStream stream) throws IOException
-		{
+		public Object unpack(InputStream stream) throws IOException {
 			byte[] buf = (byte[]) Buffer.unpack(stream);
 			return new String(buf, encoding);
 		}
 	}
 
-	public static _Str	Str	= new _Str();
+	public static _Str Str = new _Str();
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class ListOf extends BasePacker
-	{
-		private BasePacker	type;
+	public static class ListOf extends BasePacker {
+		private BasePacker type;
 
-		public ListOf(BasePacker type)
-		{
+		public ListOf(BasePacker type) {
 			this.type = type;
 		}
 
-		public void pack(Object obj, OutputStream stream) throws IOException
-		{
+		public void pack(Object obj, OutputStream stream) throws IOException {
 			if (obj == null) {
 				Int32.pack(new Integer(0), stream);
-			}
-			else {
+			} else {
 				List val = (List) obj;
 				Int32.pack(new Integer(val.size()), stream);
 
@@ -437,8 +388,7 @@ public class Packers
 			}
 		}
 
-		public Object unpack(InputStream stream) throws IOException
-		{
+		public Object unpack(InputStream stream) throws IOException {
 			int length = (Integer) Int32.unpack(stream);
 			ArrayList<Object> arr = new ArrayList<Object>(length);
 			for (int i = 0; i < length; i++) {
@@ -450,23 +400,19 @@ public class Packers
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class MapOf extends BasePacker
-	{
-		private BasePacker	keytype;
-		private BasePacker	valtype;
+	public static class MapOf extends BasePacker {
+		private BasePacker keytype;
+		private BasePacker valtype;
 
-		public MapOf(BasePacker keytype, BasePacker valtype)
-		{
+		public MapOf(BasePacker keytype, BasePacker valtype) {
 			this.keytype = keytype;
 			this.valtype = valtype;
 		}
 
-		public void pack(Object obj, OutputStream stream) throws IOException
-		{
+		public void pack(Object obj, OutputStream stream) throws IOException {
 			if (obj == null) {
 				Int32.pack(new Integer(0), stream);
-			}
-			else {
+			} else {
 				Map val = (Map) obj;
 				Int32.pack(new Integer(val.size()), stream);
 
@@ -477,8 +423,7 @@ public class Packers
 			}
 		}
 
-		public Object unpack(InputStream stream) throws IOException
-		{
+		public Object unpack(InputStream stream) throws IOException {
 			int length = (Integer) Int32.unpack(stream);
 			Map<Object, Object> map = new HashMap<Object, Object>(length);
 			for (int i = 0; i < length; i++) {
