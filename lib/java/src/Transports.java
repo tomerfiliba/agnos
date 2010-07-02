@@ -361,6 +361,19 @@ public class Transports
 			return conn;
 		}
 
+		public int beginRead(int msecs)
+		{
+			return beginRead(-1);
+		}
+
+		public int beginRead(int msecs)
+		{
+			if (input == null) {
+				throw new IOException("beginRead must be called only after endWrite");
+			}
+			return super.beginRead(msecs);
+		}
+		
 		public synchronized void endRead() throws IOException
 		{
 			assertBeganRead();
