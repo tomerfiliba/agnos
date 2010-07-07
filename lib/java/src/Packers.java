@@ -545,13 +545,17 @@ public class Packers {
 				Int32.pack(0, stream);
 			}
 			else {
-				Int32.pack(map.map.size(), stream);
-				for(Map.Entry<Object, HeteroMap.HeteroValue> e : map.entrySet()) {
-					HeteroMap.HeteroValue hv = e.getValue();
-					Int32.pack(hv.keypacker.getId(), stream);
-					hv.keypacker.pack(e.getKey(), stream);
-					Int32.pack(hv.valpacker.getId(), stream);
-					hv.valpacker.pack(hv.value, stream);
+				Int32.pack(map.size(), stream);
+				for(MapEntry e : map.entrySet()) {
+					Object key = e.getKey();
+					Object val = e.getValue();
+					HeteroMap.FieldInfo info = map.getFieldInfo(key);
+					
+					Int32.pack(info.keypacker.getId(), stream);
+					info.keypacker.pack(key, stream);
+					
+					Int32.pack(info.valpacker.getId(), stream);
+					info.valpacker.pack(val, stream);
 				}
 			}
 		}

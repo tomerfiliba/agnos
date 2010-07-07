@@ -9,129 +9,58 @@ public class HeteroMap
 	{
 		public Packers.AbstractPacker keypacker;
 		public Packers.AbstractPacker valpacker;
-		public HeteroValue(Packers.AbstractPacker keypacker, Packers.AbstractPacker valpacker)
+		public FieldInfo(Packers.AbstractPacker keypacker, Packers.AbstractPacker valpacker)
 		{
 			this.keypacker = keypacker;
 			this.valpacker = valpacker;
 		}
 	}
 	
-	protected Map<Object, HeteroValue> map;
+	protected Map<Object, FieldInfo> fields;
+	protected Map<Object, Object> data;
 	
 	public HeteroMap()
 	{
-		map = new HashMap<Object, HeteroValue>();
-		map = new HashMap();
+		fields = new HashMap<Object, FieldInfo>();
+		data = new HashMap<Object, Object>();
 	}
 	public HeteroMap(int capacity)
 	{
-		map = new HashMap<Object, HeteroValue>(capacity);
+		fields = new HashMap<Object, FieldInfo>(capacity);
+		data = new HashMap<Object, Object>(capacity);
 	}
 	public HeteroMap(HeteroMap other)
 	{
-		map = new HashMap<Object, HeteroValue>(other.fields);
+		fields = new HashMap<Object, FieldInfo>(other.fields);
+		data = new HashMap<Object, Object>(other.data);
 	}
-	
-	public void putField(Object key, Packers.AbstractPacker keypacker, Packers.AbstractPacker valpacker)
-	{
-		fields.put(key, new )
-	}
-	
-	public void put(Packers.AbstractPacker keypacker, Object key, Packers.AbstractPacker valpacker, Object value)
-	{
-		map.put(key, new HeteroValue(keypacker, valpacker, valpacker));
-	}
-	public void put(Byte key, Packers.AbstractPacker valpacker, Object value)
-	{
-		put(Int8, key, valpacker, value);
-	}
-	public void put(byte key, Packers.AbstractPacker valpacker, Object value)
-	{
-		put(Int8, new Byte(key), valpacker, value);
-	}
-	public void put(Short key, Packers.AbstractPacker valpacker, Object value)
-	{
-		put(Int16, key, valpacker, value);
-	}
-	public void put(short key, Packers.AbstractPacker valpacker, Object value)
-	{
-		put(Int16, new Short(key), valpacker, value);
-	}
-	public void put(Integer key, Packers.AbstractPacker valpacker, Object value)
-	{
-		put(Int32, key, valpacker, value);
-	}
-	public void put(int key, Packers.AbstractPacker valpacker, Object value)
-	{
-		put(Int32, new Integer(key), valpacker, value);
-	}
-	public void put(Long key, Packers.AbstractPacker valpacker, Object value)
-	{
-		put(Long, key, valpacker, value);
-	}
-	public void put(long key, Packers.AbstractPacker valpacker, Object value)
-	{
-		put(Int64, new Long(key), valpacker, value);
-	}
-	public void put(String key, Packers.AbstractPacker valpacker, Object value)
-	{
-		put(Str, key, valpacker, value);
-	}
-	
-	public void update(Object key, Object value)
-	{
-		HeteroValue val = map.get(key);
-		val.value = value;
-	}
-	
-	public void putAll(HeteroMap other)
-	{
-		map.putAll(other.map);
-	}
-	
-	public Object get(Object key)
-	{
-		HeteroValue hv = map.get(key);
-		if (hv == null) {
-			return null;
-		}
-		return hv.value;
-	}
-	
+
 	void clear()
 	{
-		map.clear();
+		fields.clear();
+		data.clear();
 	}
-	
 	public boolean containsKey(Object key)
 	{
-		return map.containsKey(name);
+		return data.containsKey(name);
 	}
-	
 	public boolean containsValue(Object val)
 	{
-		return map.containsValue(val);
+		return data.containsValue(val);
 	}
-	
-	public Object remove(Object key)
-	{
-		return map.remove(key);
-	}
-	
 	public int size()
 	{
-		return map.size();
+		return data.size();
 	}
-	
-	public Collection<Object> keySet()
+	public Collection keySet()
 	{
-		return map.keys();
+		return data.keys();
 	}
-	public Collection<HeteroValue> values()
+	public Collection values()
 	{
-		return map.values();
+		return data.values();
 	}
-	public Set<Map.Entry<Object, HeteroValue>> entrySet()
+	public Set<Map.Entry> entrySet()
 	{
 		return map.entrySet();
 	}
@@ -139,145 +68,79 @@ public class HeteroMap
 	public boolean equals(Object o)
 	{
 		if (o instanceof HeteroMap) {
-			return map.equals(o.map);
+			return fields.equals(o.fields) && data.equals(o.data);
 		}
 		else {
 			return false;
 		}
 	}
-	
 	public int hashCode()
 	{
-		return map.hashCode();
-	}
-
-	//
-	// specialized put -- integer key
-	//
-	public void put(Integer key, Byte value)
+		return fields.hashCode();
+	}	
+	
+	public void put(Object key, Packers.AbstractPacker keypacker, Object value, Packers.AbstractPacker valpacker)
 	{
-		put(key, Int8, value);
+		fields.put(key, new FieldInfo(keypacker, valpacker));
+		data.put(key, value);
 	}
-	public void put(Integer key, byte value)
+	public void putAll(HeteroMap other)
 	{
-		put(key, Int8, new Byte(value));
+		fields.putAll(other.fields);
+		data.putAll(data.fields);
 	}
-	public void put(Integer key, Boolean value)
+	
+	public void put(Integer key, Object value, Packers.AbstractPacker valpacker)
 	{
-		put(key, Bool, value);
-	}
-	public void put(Integer key, boolean value)
-	{
-		put(key, Int8, new Boolean(value));
-	}
-	public void put(Integer key, Short value)
-	{
-		put(key, Int16, value);
-	}
-	public void put(Integer key, short value)
-	{
-		put(key, Int16, new Short(value));
+		put(key, Packers.Int32, value, valpacker);
 	}
 	public void put(Integer key, Integer value)
 	{
-		put(key, Int32, value);
-	}
-	public void put(Integer key, int value)
-	{
-		put(key, Int32, new Integer(value));
-	}
-	public void put(Integer key, Long value)
-	{
-		put(key, Int64, value);
-	}
-	public void put(Integer key, long value)
-	{
-		put(key, Int64, new Long(value));
-	}
-	public void put(Integer key, Double value)
-	{
-		put(key, Float, value);
-	}
-	public void put(Integer key, double value)
-	{
-		put(key, Float, new Double(value));
+		put(key, Packers.Int32, value, Packers.Int32);
 	}
 	public void put(Integer key, String value)
 	{
-		put(key, Str, value);
+		put(key, Packers.Int32, value, Packers.Str);
 	}
-	public void put(Integer key, byte[] value)
+	
+	public void put(String key, Object value, Packers.AbstractPacker valpacker)
 	{
-		put(key, Buffer, value);
-	}
-	public void put(Integer key, Date value)
-	{
-		put(key, Date, value);
-	}
-
-	//
-	// specialized put -- string key
-	//
-	public void put(String key, Byte value)
-	{
-		put(key, Int8, value);
-	}
-	public void put(String key, byte value)
-	{
-		put(key, Int8, new Byte(value));
-	}
-	public void put(String key, Boolean value)
-	{
-		put(key, Bool, value);
-	}
-	public void put(String key, boolean value)
-	{
-		put(key, Int8, new Boolean(value));
-	}
-	public void put(String key, Short value)
-	{
-		put(key, Int16, value);
-	}
-	public void put(String key, short value)
-	{
-		put(key, Int16, new Short(value));
+		put(key, Packers.Str, value, valpacker);
 	}
 	public void put(String key, Integer value)
 	{
-		put(key, Int32, value);
-	}
-	public void put(String key, int value)
-	{
-		put(key, Int32, new Integer(value));
-	}
-	public void put(String key, Long value)
-	{
-		put(key, Int64, value);
-	}
-	public void put(String key, long value)
-	{
-		put(key, Int64, new Long(value));
-	}
-	public void put(String key, Double value)
-	{
-		put(key, Float, value);
-	}
-	public void put(String key, double value)
-	{
-		put(key, Float, new Double(value));
+		put(key, Packers.Str, value, Packers.Int32);
 	}
 	public void put(String key, String value)
 	{
-		put(key, Str, value);
+		put(key, Packers.Str, value, Packers.Str);
 	}
-	public void put(String key, byte[] value)
+	
+	public void remove(Object key)
 	{
-		put(key, Buffer, value);
+		fields.remove(key);
+		data.remove(key);
 	}
-	public void put(String key, Date value)
+	
+	public void set(Object key, Object value)
 	{
-		put(key, Date, value);
+		if (!fields.containsKey(key)) {
+			throw new HeteroMapException("field was not set");
+		}
+		data.put(key, value);
 	}
+	
+	public Object get(Object key)
+	{
+		return data.get(key);
+	}
+
+	protected FieldInfo getFieldInfo(Object key)
+	{
+		return fields.get(key);
+	}
+	
+
 }
 
 
