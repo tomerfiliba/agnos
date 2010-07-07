@@ -361,12 +361,12 @@ public class Transports
 			return conn;
 		}
 
-		public int beginRead(int msecs)
+		public int beginRead() throws IOException
 		{
 			return beginRead(-1);
 		}
 
-		public int beginRead(int msecs)
+		public int beginRead(int msecs) throws IOException
 		{
 			if (input == null) {
 				throw new IOException("beginRead must be called only after endWrite");

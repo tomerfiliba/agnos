@@ -173,9 +173,9 @@ class JavaTarget(TargetBase):
 
     def _generate_templated_packer_for_type(self, tp):
         if isinstance(tp, compiler.TList):
-            return "new Packers.ListOf(%s)" % (self._generate_templated_packer_for_type(tp.oftype),)
+            return "new Packers.ListOf(%s, %s)" % (tp.id, self._generate_templated_packer_for_type(tp.oftype),)
         elif isinstance(tp, compiler.TMap):
-            return "new Packers.MapOf(%s, %s)" % (self._generate_templated_packer_for_type(tp.keytype),
+            return "new Packers.MapOf(%s, %s, %s)" % (tp.id, self._generate_templated_packer_for_type(tp.keytype),
                 self._generate_templated_packer_for_type(tp.valtype))
         else:
             return type_to_packer(tp)
@@ -247,6 +247,8 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         with BLOCK("protected {0}class _{1}Packer extends Packers.BasePacker", 
                 "static " if static else "", rec.name):
+            with BLOCK("public int getId()"):
+                STMT("return {0}", rec.id)
             with BLOCK("public void pack(Object obj, OutputStream stream) throws IOException"):
                 STMT("{0} val = ({0})obj", rec.name)
                 for mem in rec.members:

@@ -1,7 +1,9 @@
 import sys
 import os
 import socket
+import signal
 from select import select
+from contextlib import contextmanager
 from subprocess import Popen, PIPE
 from . import packers
 from .utils import RLock 
@@ -20,8 +22,12 @@ class Transport(object):
         self._write_buffer = []
     
     def close(self):
-        self.infile.close()
-        self.outfile.close()
+        if self.infile:
+            self.infile.close()
+            self.infile = None
+        if self.outfile:
+            self.outfile.close()
+            self.outfile = None
     
     def begin_read(self, timeout = None):
         if self._rlock.is_held_by_current_thread():
@@ -40,6 +46,17 @@ class Transport(object):
         data = self.infile.read(count)
         self._read_pos += len(data)
         return data
+    
+    @contextmanager
+    def reading(self):
+        yield self.begin_read()
+        self.end_read()
+
+    @contextmanager
+    def writing(self, seq):
+        self.begin_write(seq)
+        yield
+        self.end_read()
     
     def read_all(self):
         return self.read(self._read_length - self._read_pos)
@@ -182,7 +199,17 @@ class SocketTransport(Transport):
 
 class ProcTransport(WrappedTransport):
     def __init__(self, proc, transport):
-        WrappedTransport.__init__(self, proc)
+        WrappedTransport.__init__(self, transport)
+        self.proc = proc
+    
+    def close(self):
+        WrappedTransport.close(self)
+        self.proc.send_signal(signal.SIGINT)
+        tend = time.time() + 0.5
+        while self.proc.poll() is None and time.time() <= tend:
+            time.sleep(0.1)
+        if self.proc.poll() is None:
+            self.proc.terminate()
     
     @classmethod
     def from_executable(cls, filename, args = ("-m", "lib")):

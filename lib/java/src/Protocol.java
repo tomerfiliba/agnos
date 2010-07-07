@@ -11,21 +11,18 @@ public class Protocol
 	public static final byte CMD_QUIT				= 2;
 	public static final byte CMD_DECREF				= 3;
 	public static final byte CMD_INCREF				= 4;
-	public static final byte CMD_GETINFO				= 5;
+	public static final byte CMD_GETINFO			= 5;
 
-	public static final byte REPLY_SUCCESS			= 0;
-	public static final byte REPLY_PROTOCOL_ERROR	= 1;
-	public static final byte REPLY_PACKED_EXCEPTION	= 2;
+	public static final byte REPLY_SUCCESS				= 0;
+	public static final byte REPLY_PROTOCOL_ERROR		= 1;
+	public static final byte REPLY_PACKED_EXCEPTION		= 2;
 	public static final byte REPLY_GENERIC_EXCEPTION	= 3;
 
-	public static final int INFO_META = 0;
-	public static final int INFO_GENERAL = 1;
-	public static final int INFO_FUNCTIONS = 2;
+	public static final int INFO_META 		= 0;
+	public static final int INFO_GENERAL 	= 1;
+	public static final int INFO_FUNCTIONS 	= 2;
 
 	public static final int	AGNOS_MAGIC				= 0x5af30cf7;
-
-	protected static final Packers.BasePacker _dict_of_strings = 
-		new Packers.MapOf(Packers.Str, Packers.Str);
 	
 	public abstract static class PackedException extends Exception
 	{
@@ -305,7 +302,7 @@ public class Protocol
 			}
 			
             Packers.Int8.pack(REPLY_SUCCESS, transport);
-			_dict_of_strings.pack(info, transport);
+			//_dict_of_strings.pack(info, transport);
         }
 		
 		protected abstract void processGetGeneralInfo(Map info);
@@ -482,7 +479,7 @@ public class Protocol
 			Packers.Int8.pack (CMD_GETINFO, transport);
 			Packers.Int32.pack (code, transport);
 			transport.endWrite ();
-			replies.put(seq, new ReplySlot (_dict_of_strings));
+			//replies.put(seq, new ReplySlot (_dict_of_strings));
 			return (Map)getReply (seq);
 		}
 		
