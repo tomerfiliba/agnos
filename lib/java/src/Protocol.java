@@ -11,12 +11,12 @@ public class Protocol
 	public static final byte CMD_QUIT				= 2;
 	public static final byte CMD_DECREF				= 3;
 	public static final byte CMD_INCREF				= 4;
-	public static final byte CMD_GETINFO			= 5;
+	public static final byte CMD_GETINFO				= 5;
 
 	public static final byte REPLY_SUCCESS				= 0;
 	public static final byte REPLY_PROTOCOL_ERROR		= 1;
 	public static final byte REPLY_PACKED_EXCEPTION		= 2;
-	public static final byte REPLY_GENERIC_EXCEPTION	= 3;
+	public static final byte REPLY_GENERIC_EXCEPTION		= 3;
 
 	public static final int INFO_META 		= 0;
 	public static final int INFO_GENERAL 	= 1;
@@ -115,7 +115,7 @@ public class Protocol
 			return refcount <= 0;
 		}
 	}
-
+	
 	public static abstract class BaseProcessor implements Packers.ISerializer
 	{
 		protected Map<Long, Cell>	cells;
@@ -277,37 +277,35 @@ public class Protocol
 			Packers.Str.pack(message, transport);
 		}
 
-
         protected void processGetInfo(Transports.ITransport transport, int seq) 
         			throws IOException
         {
             int code = (Integer)(Packers.Int32.unpack(transport));
-			Map info = new HashMap();
+            HeteroMap map = new HeteroMap();
 			
 			switch (code)
 			{
 				case INFO_GENERAL:
-					processGetGeneralInfo(info);
+					processGetGeneralInfo(map);
 					break;
 				case INFO_FUNCTIONS:
-					processGetFunctionsInfo(info);
+					processGetFunctionsInfo(map);
 					break;
 				case INFO_META:
 				default:
-					info.put("codes", "INFO_GENERAL;INFO_FUNCTIONS;INFO_META");
-					info.put("INFO_META", Integer.toString(INFO_META));
-					info.put("INFO_GENERAL", Integer.toString(INFO_GENERAL));
-					info.put("INFO_FUNCTIONS", Integer.toString(INFO_FUNCTIONS));
+					map.put("INFO_META", INFO_META);
+					map.put("INFO_GENERAL", INFO_GENERAL);
+					map.put("INFO_FUNCTIONS", INFO_FUNCTIONS);
 					break;
 			}
 			
             Packers.Int8.pack(REPLY_SUCCESS, transport);
-			//_dict_of_strings.pack(info, transport);
+			Packers.builtinHeteroMapPacker.pack(info, transport);
         }
 		
-		protected abstract void processGetGeneralInfo(Map info);
+		protected abstract void processGetGeneralInfo(HeteroMap map);
 		
-		protected abstract void processGetFunctionsInfo(Map info);
+		protected abstract void processGetFunctionsInfo(HeteroMap map);
 		
 		abstract protected void processInvoke(Transports.ITransport transport,
 				int seq) throws Exception;
@@ -333,7 +331,7 @@ public class Protocol
 		public ReplySlotType	type;
 		public Object			value;
 
-		public ReplySlot(Packers.BasePacker packer)
+		public ReplySlot(Packers.AbstractPacker packer)
 		{
 			type = ReplySlotType.SLOT_EMPTY;
 			value = packer;
@@ -342,14 +340,14 @@ public class Protocol
 
 	public static class BaseClientUtils
 	{
-		protected Map<Integer, Packers.BasePacker> packedExceptionsMap;
+		protected Map<Integer, Packers.AbstractPacker> packedExceptionsMap;
 		protected int						seq;
 		protected Map<Integer, ReplySlot>	replies;
 		protected Map<Long, WeakReference>	proxies;
 		public Transports.ITransport		transport;
 
 		public BaseClientUtils(Transports.ITransport transport, 
-					Map<Integer, Packers.BasePacker> packedExceptionsMap)
+					Map<Integer, Packers.AbstractPacker> packedExceptionsMap)
 				throws Exception
 		{
 			this.transport = transport;
@@ -403,7 +401,7 @@ public class Protocol
 			}
 		}
 
-		public int beginCall(int funcid, Packers.BasePacker packer)
+		public int beginCall(int funcid, Packers.AbstractPacker packer)
 				throws IOException
 		{
 			int seq = getSeq();
@@ -486,7 +484,7 @@ public class Protocol
 		protected PackedException loadPackedException() throws IOException, ProtocolError
 		{
 			Integer clsid = (Integer)Packers.Int32.unpack(transport);
-			Packers.BasePacker packer = packedExceptionsMap.get(clsid);
+			Packers.AbstractPacker packer = packedExceptionsMap.get(clsid);
 			if (packer == null) {
 				throw new ProtocolError("unknown exception class id: " + clsid);
 			}
@@ -519,7 +517,7 @@ public class Protocol
 					throw new ProtocolError("invalid reply sequence: " + seq);
 				}
 				boolean discard = (slot.type == ReplySlotType.SLOT_DISCARDED);
-				Packers.BasePacker packer = (Packers.BasePacker) slot.value;
+				Packers.AbstractPacker packer = (Packers.AbstractPacker) slot.value;
 
 				switch (code) {
 				case REPLY_SUCCESS:

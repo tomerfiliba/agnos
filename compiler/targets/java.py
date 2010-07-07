@@ -211,6 +211,8 @@ class JavaTarget(TargetBase):
                 STMT("return _BY_VALUE.get(val)")
         SEP()
         with BLOCK("protected static class _{0}Packer extends Packers.BasePacker", enum.name):
+            with BLOCK("public int getId()"):
+                STMT("return {0}", enum.id)
             with BLOCK("public void pack(Object obj, OutputStream stream) throws IOException"):
                 STMT("Packers.Int32.pack((({0})obj).value, stream)", enum.name)
             with BLOCK("public Object unpack(InputStream stream) throws IOException"):
@@ -228,7 +230,6 @@ class JavaTarget(TargetBase):
             extends = ""
         SEP()
         with BLOCK("public static class {0} {1}", rec.name, extends):
-            STMT("protected static Integer __recid = new Integer({0})", rec.id)
             for mem in rec.members:
                 STMT("public {0} {1}", type_to_java(mem.type), mem.name)
             SEP()
@@ -410,7 +411,7 @@ class JavaTarget(TargetBase):
                 STMT("this.handler = handler")
                 for tp in service.types.values():
                     if isinstance(tp, compiler.Class):
-                        STMT("{0}ObjRef = new Packers.ObjRef(this)", tp.name)
+                        STMT("{0}ObjRef = new Packers.ObjRef({1}, this)", tp.name, tp.id)
                 for rec in generated_records:
                     STMT("{0}Packer = new _{0}Packer()", rec.name)
             SEP()
@@ -423,14 +424,14 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        with BLOCK("protected void processGetGeneralInfo(Map info)"):
-            STMT('info.put("AGNOS_VERSION", AGNOS_VERSION)')
-            STMT('info.put("IDL_MAGIC", IDL_MAGIC)')
-            STMT('info.put("SERVICE_NAME", "{0}")', service.name)
+        with BLOCK("protected void processGetGeneralInfo(Packers.DynamicRecord dr)"):
+            STMT('dr.addField("AGNOS_VERSION", AGNOS_VERSION)')
+            STMT('dr.addField("IDL_MAGIC", IDL_MAGIC)')
+            STMT('dr.addField("SERVICE_NAME", "{0}")', service.name)
         SEP()
-        with BLOCK("protected void processGetFunctionsInfo(Map info)"):
+        with BLOCK("protected void processGetFunctionsInfo(Packers.DynamicRecord dr)"):
             for func in service.funcs.values():
-                STMT('info.put("{0}", "{1}")', func.id, func.name)
+                STMT('dr.addField("{0}", "{1}")', func.id, func.name)
                 STMT('info.put("{0}_type", "{1}")', func.id, str(func.type))
                 STMT('info.put("{0}_arg_names", "{1}")', func.id, ";".join(arg.name for arg in func.args))
                 STMT('info.put("{0}_arg_types", "{1}")', func.id, ";".join(str(arg.type) for arg in func.args))
@@ -469,7 +470,7 @@ class JavaTarget(TargetBase):
                 with BLOCK("catch ({0} ex)", tp.name):
                     STMT("transport.reset()")
                     STMT("{0}.pack(new Byte((byte)Protocol.REPLY_PACKED_EXCEPTION), outStream)", type_to_packer(compiler.t_int8))
-                    STMT("{0}.pack(ex.__recid, outStream)", type_to_packer(compiler.t_int32))
+                    STMT("{0}.pack({1}, outStream)", type_to_packer(compiler.t_int32), tp.id)
                     STMT("{0}.pack(ex, outStream)", type_to_packer(tp))
 
     def generate_invocation_case(self, module, func):
@@ -588,8 +589,8 @@ class JavaTarget(TargetBase):
             STMT("final Client the_client = this")
             for tp in service.types.values():
                 if isinstance(tp, compiler.Class):
-                    with BLOCK("{0}ObjRef = new Packers.ObjRef(new ClientSerializer() {1}", 
-                            tp.name, "{", prefix = "", suffix = "});"):
+                    with BLOCK("{0}ObjRef = new Packers.ObjRef({1}, new ClientSerializer() {2}", 
+                            tp.name, tp.id, "{", prefix = "", suffix = "});"):
                         with BLOCK("protected Object _get_proxy(Long id)"):
                             STMT("Object proxy = the_client._utils.getProxy(id)")
                             with BLOCK("if (proxy == null)"):

@@ -428,13 +428,16 @@ def memoized(func):
         return res
     return wrapper
 
-@memoized
 class TList(BuiltinType):
     def __init__(self, oftype):
         if oftype == t_void:
             raise IDLError("list: contained type cannot be 'void'")
         self.oftype = oftype
         self.id = ID_GENERATOR.next()
+    @staticmethod
+    @memoized
+    def create(oftype):
+        return TList(oftype)
     def __repr__(self):
         return "BuiltinType(list<%r>)" % (self.oftype,)
     def __str__(self):
@@ -442,7 +445,6 @@ class TList(BuiltinType):
     def stringify(self):
         return "list_%s" % (self.oftype.stringify(),)
 
-@memoized
 class TMap(BuiltinType):
     def __init__(self, keytype, valtype):
         if keytype == t_void:
@@ -452,6 +454,10 @@ class TMap(BuiltinType):
         self.keytype = keytype
         self.valtype = valtype
         self.id = ID_GENERATOR.next()
+    @staticmethod
+    @memoized
+    def create(keytype, valtype):
+        return TMap(keytype, valtype)
     def __repr__(self):
         return "BuiltinType(map<%r, %r>)" % (self.keytype, self.valtype)
     def __str__(self):
@@ -534,7 +540,7 @@ class Service(Element):
                 raise IDLError("list template: wrong number of parameters: %r" % (text,))
             head2, children2 = children[0]
             tp = self._get_type(head2, children2)
-            return TList(tp)
+            return TList.create(tp)
         elif head == "map" or head == "dict":
             if len(children) != 2:
                 raise IDLError("map template: wrong number of parameters: %r" % (text,))
@@ -542,7 +548,7 @@ class Service(Element):
             vhead, vchildren = children[1]
             ktp = self._get_type(khead, kchildren)
             vtp = self._get_type(vhead, vchildren)
-            return TMap(ktp, vtp)
+            return TMap.create(ktp, vtp)
         elif head in self.BUILTIN_TYPES:
             return self.BUILTIN_TYPES[head]
         elif head in self.types:

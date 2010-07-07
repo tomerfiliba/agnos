@@ -463,7 +463,7 @@ class CSharpTarget(TargetBase):
                 with BLOCK("catch ({0} ex)", tp.name):
                     STMT("transport.Reset()")
                     STMT("{0}.pack((byte)Protocol.REPLY_PACKED_EXCEPTION, stream)", type_to_packer(compiler.t_int8))
-                    STMT("{0}.pack({1}.__recid, stream)", type_to_packer(compiler.t_int32), tp.name)
+                    STMT("{0}.pack({1}, stream)", type_to_packer(compiler.t_int32), tp.id)
                     STMT("{0}.pack(ex, stream)", type_to_packer(tp))
 
     def generate_invocation_case(self, module, func):

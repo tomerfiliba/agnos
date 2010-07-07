@@ -24,7 +24,6 @@ INFO_GENERAL = 1
 INFO_FUNCTIONS = 2
 
 AGNOS_MAGIC = 0x5af30cf7
-dict_of_strings_packer = MapOf(Str, Str)
 
 
 class PackedException(Exception):

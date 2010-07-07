@@ -4,7 +4,6 @@ import java.io.*;
 import java.util.*;
 
 public class Packers {
-	public static final int BUILTIN_PACKER_ID_BASE = 1000;
 	public static final int CUSTOM_PACKER_ID_BASE = 2000;
 	
 	public static class UnknownPackerId extends IOException
@@ -14,7 +13,7 @@ public class Packers {
 		}
 	}
 	
-	public static abstract class BasePacker {
+	public static abstract class AbstractPacker {
 		abstract public void pack(Object obj, OutputStream stream)
 				throws IOException;
 
@@ -78,7 +77,7 @@ public class Packers {
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _MockupPacker extends BasePacker {
+	public static class _MockupPacker extends AbstractPacker {
 		protected _MockupPacker() {
 		}
 
@@ -98,7 +97,7 @@ public class Packers {
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Int8 extends BasePacker {
+	public static class _Int8 extends AbstractPacker {
 		private byte[] buffer = new byte[1];
 
 		protected _Int8() {
@@ -127,11 +126,11 @@ public class Packers {
 		}
 	}
 
-	public static _Int8 Int8 = new _Int8();
+	public static final _Int8 Int8 = new _Int8();
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Bool extends BasePacker {
+	public static class _Bool extends AbstractPacker {
 		protected _Bool() {
 		}
 
@@ -160,11 +159,11 @@ public class Packers {
 		}
 	}
 
-	public static _Bool Bool = new _Bool();
+	public static final _Bool Bool = new _Bool();
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Int16 extends BasePacker {
+	public static class _Int16 extends AbstractPacker {
 		private byte[] buffer = new byte[2];
 
 		protected _Int16() {
@@ -195,11 +194,11 @@ public class Packers {
 		}
 	}
 
-	public static _Int16 Int16 = new _Int16();
+	public static final _Int16 Int16 = new _Int16();
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Int32 extends BasePacker {
+	public static class _Int32 extends AbstractPacker {
 		private byte[] buffer = new byte[4];
 
 		protected _Int32() {
@@ -234,11 +233,11 @@ public class Packers {
 		}
 	}
 
-	public static _Int32 Int32 = new _Int32();
+	public static final _Int32 Int32 = new _Int32();
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Int64 extends BasePacker {
+	public static class _Int64 extends AbstractPacker {
 		private byte[] buffer = new byte[8];
 
 		protected _Int64() {
@@ -282,7 +281,7 @@ public class Packers {
 		}
 	}
 
-	public static _Int64 Int64 = new _Int64();
+	public static final _Int64 Int64 = new _Int64();
 
 	// ////////////////////////////////////////////////////////////////////////
 	public interface ISerializer {
@@ -291,7 +290,7 @@ public class Packers {
 		Object load(Long id);
 	}
 
-	public static class ObjRef extends BasePacker {
+	public static class ObjRef extends AbstractPacker {
 		protected ISerializer serializer;
 		private int id;
 
@@ -317,7 +316,7 @@ public class Packers {
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Float extends BasePacker {
+	public static class _Float extends AbstractPacker {
 		protected _Float() {
 		}
 
@@ -343,11 +342,11 @@ public class Packers {
 		}
 	}
 
-	public static _Float Float = new _Float();
+	public static final _Float Float = new _Float();
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Buffer extends BasePacker {
+	public static class _Buffer extends AbstractPacker {
 		protected _Buffer() {
 		}
 
@@ -373,11 +372,11 @@ public class Packers {
 		}
 	}
 
-	public static _Buffer Buffer = new _Buffer();
+	public static final _Buffer Buffer = new _Buffer();
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Date extends BasePacker {
+	public static class _Date extends AbstractPacker {
 		protected _Date() {
 		}
 
@@ -394,11 +393,11 @@ public class Packers {
 		}
 	}
 
-	public static _Date Date = new _Date();
+	public static final _Date Date = new _Date();
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Str extends BasePacker {
+	public static class _Str extends AbstractPacker {
 		private static final String encoding = "UTF-8";
 
 		protected _Str() {
@@ -422,15 +421,15 @@ public class Packers {
 		}
 	}
 
-	public static _Str Str = new _Str();
+	public static final _Str Str = new _Str();
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class ListOf extends BasePacker {
-		private BasePacker type;
+	public static class ListOf extends AbstractPacker {
+		private AbstractPacker type;
 		private int id;
 
-		public ListOf(int id, BasePacker type) {
+		public ListOf(int id, AbstractPacker type) {
 			this.id = id;
 			this.type = type;
 		}
@@ -461,15 +460,25 @@ public class Packers {
 			return arr;
 		}
 	}
+	
+	public static final ListOf listOfInt8 = new ListOf(800, Int8);
+	public static final ListOf listOfBool = new ListOf(801, Bool);
+	public static final ListOf listOfInt16 = new ListOf(802, Int16);
+	public static final ListOf listOfInt32 = new ListOf(803, Int32);
+	public static final ListOf listOfInt64 = new ListOf(804, Int64);
+	public static final ListOf listOfFloat = new ListOf(805, Float);
+	public static final ListOf listOfBuffer = new ListOf(806, Buffer);
+	public static final ListOf listOfDate = new ListOf(807, Date);
+	public static final ListOf listOfStr = new ListOf(808, Str);
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class MapOf extends BasePacker {
-		private BasePacker keytype;
-		private BasePacker valtype;
+	public static class MapOf extends AbstractPacker {
+		private AbstractPacker keytype;
+		private AbstractPacker valtype;
 		private int id;
 
-		public MapOf(int id, BasePacker keytype, BasePacker valtype) {
+		public MapOf(int id, AbstractPacker keytype, AbstractPacker valtype) {
 			this.id = id;
 			this.keytype = keytype;
 			this.valtype = valtype;
@@ -505,141 +514,20 @@ public class Packers {
 		}
 	}
 
+	public static final MapOf mapOfInt32Int32 = new MapOf(850, Int32, Int32);
+	public static final MapOf mapOfInt32Str = new MapOf(851, Int32, Str);
+	public static final MapOf mapOfStrInt32 = new MapOf(852, Str, Int32);
+	public static final MapOf mapOfStrStr = new MapOf(853, Str, Str);
+	
 	// ////////////////////////////////////////////////////////////////////////
 	
-	protected static class DynamicRecordField
-	{
-		public BasePacker packer;
-		public Object value;
-		public DynamicRecordField(BasePacker packer)
-		{
-			this(packer, null);
-		}
-		public DynamicRecordField(BasePacker packer, Object value)
-		{
-			this.packer = packer;
-			this.value = value;
-		}
-	}
-	
-	public static class DynamicRecord
-	{
-		protected Map<String, DynamicRecordField> fields;
-		
-		public DynamicRecord()
-		{
-			this(32);
-		}
-		public DynamicRecord(int capacity)
-		{
-			fields = new HashMap<String, DynamicRecordField>(capacity);
-		}
-		public DynamicRecord(DynamicRecord other)
-		{
-			fields = new HashMap<String, DynamicRecordField>(other.fields);
-		}
-		
-		public void addField(String name, BasePacker packer)
-		{
-			fields.put(name, new DynamicRecordField(packer));
-		}
-		public void addField(String name, BasePacker packer, Object value)
-		{
-			fields.put(name, new DynamicRecordField(packer, value));
-		}
-		public void addField(String name, Byte value)
-		{
-			addField(name, Int8, value);
-		}
-		public void addField(String name, byte value)
-		{
-			addField(name, Int8, new Byte(value));
-		}
-		public void addField(String name, Boolean value)
-		{
-			addField(name, Bool, value);
-		}
-		public void addField(String name, boolean value)
-		{
-			addField(name, Int8, new Boolean(value));
-		}
-		public void addField(String name, Short value)
-		{
-			addField(name, Int16, value);
-		}
-		public void addField(String name, short value)
-		{
-			addField(name, Int16, new Short(value));
-		}
-		public void addField(String name, Integer value)
-		{
-			addField(name, Int32, value);
-		}
-		public void addField(String name, int value)
-		{
-			addField(name, Int32, new Integer(value));
-		}
-		public void addField(String name, Long value)
-		{
-			addField(name, Int64, value);
-		}
-		public void addField(String name, long value)
-		{
-			addField(name, Int64, new Long(value));
-		}
-		public void addField(String name, Double value)
-		{
-			addField(name, Float, value);
-		}
-		public void addField(String name, double value)
-		{
-			addField(name, Float, new Double(value));
-		}
-		public void addField(String name, String value)
-		{
-			addField(name, Str, value);
-		}
-		public void addField(String name, byte[] value)
-		{
-			addField(name, Buffer, value);
-		}
-		public void addField(String name, Date value)
-		{
-			addField(name, Date, value);
-		}
 
-		public void removeField(String name)
-		{
-			fields.remove(name);
-		}
-		public boolean hasField(String name)
-		{
-			return fields.containsKey(name);
-		}
-		public Set<String> listFields()
-		{
-			return fields.keySet();
-		}
-		public void setField(String name, Object value)
-		{
-			fields.get(name).value = value;
-		}
-		public Object getField(String name, Object value)
-		{
-			DynamicRecordField drf = fields.get(name);
-			if (drf != null) {
-				return drf.value;
-			}
-			return null;
-		}
-	}
-
-	public static class DynamicRecordPacker extends BasePacker
+	public static class HeteroMapPacker extends AbstractPacker
 	{
-		protected Map<Integer, BasePacker> packersMap;
+		protected Map<Integer, AbstractPacker> packersMap;
 		private int id;
 		
-		public DynamicRecordPacker(int id, Map<Integer, BasePacker> packersMap)
+		public HeteroMapPacker(int id, Map<Integer, AbstractPacker> packersMap)
 		{
 			this.id = id;
 			this.packersMap = packersMap;
@@ -652,17 +540,18 @@ public class Packers {
 		
 		public void pack(Object obj, OutputStream stream) throws IOException
 		{
-			DynamicRecord dr = (DynamicRecord)obj;
-			if (dr == null) {
+			HeteroMap map = (HeteroMap)obj;
+			if (map == null) {
 				Int32.pack(0, stream);
 			}
 			else {
-				Int32.pack(dr.fields.size(), stream);
-				for(Map.Entry<String, DynamicRecordField> e : dr.fields.entrySet()) {
-					DynamicRecordField drf = e.getValue();
-					Str.pack(e.getKey(), stream);
-					Int32.pack(drf.packer.getId(), stream);
-					drf.packer.pack(drf.value, stream);
+				Int32.pack(map.map.size(), stream);
+				for(Map.Entry<Object, HeteroMap.HeteroValue> e : map.entrySet()) {
+					HeteroMap.HeteroValue hv = e.getValue();
+					Int32.pack(hv.keypacker.getId(), stream);
+					hv.keypacker.pack(e.getKey(), stream);
+					Int32.pack(hv.valpacker.getId(), stream);
+					hv.valpacker.pack(hv.value, stream);
 				}
 			}
 		}
@@ -670,18 +559,22 @@ public class Packers {
 		public Object unpack(InputStream stream) throws IOException
 		{
 			int length = (Integer) Int32.unpack(stream);
-			DynamicRecord dr = new DynamicRecord(length);
+			HeteroMap map = new HeteroMap(length);
 			for (int i = 0; i < length; i++) {
-				String name = (String)Str.unpack(stream);
-				Integer packerid = (Integer)Int32.unpack(stream);
-				BasePacker packer = getPacker(packerid);
-				Object value = packer.unpack(stream);
-				dr.addField(name, packer, value);
+				Integer keypid = (Integer)Int32.unpack(stream);
+				AbstractPacker keypacker = getPacker(keypid);
+				Object key = keypacker.unpack(stream);
+				
+				Integer valpid = (Integer)Int32.unpack(stream);
+				AbstractPacker valpacker = getPacker(valpid);
+				Object val = valpacker.unpack(stream);
+				
+				map.put(keypacker, key, valpacker, value);
 			}
 			return dr;
 		}
 		
-		protected BasePacker getPacker(Integer id) throws UnknownPackerId
+		protected AbstractPacker getPacker(Integer id) throws UnknownPackerId
 		{
 			switch(id)
 			{
@@ -703,11 +596,42 @@ public class Packers {
 					return Date;
 				case 9:
 					return Str;
+				case 800:
+					return listOfInt8;
+				case 801:
+					return listOfBool;
+				case 802:
+					return listOfInt16;
+				case 803:
+					return listOfInt32;
+				case 804:
+					return listOfInt64;
+				case 805:
+					return listOfFloat;
+				case 806:
+					return listOfBuffer;
+				case 807:
+					return listOfDate;
+				case 808:
+					return listOfStr;
+				case 850:
+					return mapOfInt32Int32;
+				case 851:
+					return mapOfInt32Str;
+				case 852:
+					return mapOfStrInt32;
+				case 853:
+					return mapOfStrStr;
+				case 999:
+					return builtinHeteroMapPacker;
 				default:
+					if (id < CUSTOM_PACKER_ID_BASE) {
+						throw new UnknownPackerId("packer id too low" + id);
+					}
 					if (packersMap == null) {
 						throw new UnknownPackerId("unknown packer id " + id);
 					}
-					BasePacker packer = (BasePacker)packersMap.get(id);
+					AbstractPacker packer = (AbstractPacker)packersMap.get(id);
 					if (packer == null) {
 						throw new UnknownPackerId("unknown packer id " + id);
 					}
@@ -715,17 +639,8 @@ public class Packers {
 			}
 		}
 	}
+	
+	public static final HeteroMapPacker builtinHeteroMapPacker = 
+		new HeteroMapPacker(999, null);
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
