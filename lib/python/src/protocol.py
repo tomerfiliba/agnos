@@ -242,7 +242,7 @@ class Namespace(object):
         setattr(ns, parts[-1], obj)
 
 
-class BaseClientUtils(object):
+class ClientUtils(object):
     REPLY_SLOT_EMPTY = 1
     REPLY_SLOT_SUCCESS = 2
     REPLY_SLOT_ERROR = 3
@@ -395,10 +395,22 @@ class BaseClientUtils(object):
             raise ValueError("invalid reply slot type: %r" % (seq,))
 
 
-
-
-
-
+class BaseClient(object):
+    @classmethod
+    def connect(cls, host, port):
+        return cls(transports.SocketTransport.connect(host, port))
+    @classmethod
+    def connect_executable(cls, filename, args = ()):
+        return cls(transports.ProcTransport.from_executable(filename, args))
+    @classmethod
+    def connect_proc(cls, proc):
+        return cls(transports.ProcTransport.from_proc(proc))
+    def close(self):
+        self._utils.close()
+    def get_service_info(self, code):
+        return self._utils.get_service_info(code)
+    def tunnel_request(self, blob):
+        return self._utils.tunnel_request(code)
 
 
 

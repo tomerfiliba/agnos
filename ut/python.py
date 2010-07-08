@@ -7,8 +7,6 @@ from base import TargetTest
 class FeatureTestClient(TargetTest):
     def runTest(self):
         self.run_agnosc("python", "ut/features.xml", "ut/python-test")
-        return
-    
         sys.path.append(self.REL("ut/python-test"))
         import FeatureTest_bindings
         global FeatureTest
