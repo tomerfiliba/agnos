@@ -66,10 +66,9 @@ namespace Agnos
 		public const int INFO_META = 0;
 		public const int INFO_GENERAL = 1;
 		public const int INFO_FUNCTIONS = 2;
+		public const int INFO_FUNCCODES = 3;
 
 		public const int AGNOS_MAGIC = 0x5af30cf7;
-
-		static internal readonly Packers.BasePacker _dict_of_strings = new Packers.MapOf (Packers.Str, Packers.Str);
 
 		public abstract class BaseProcessor : Packers.ISerializer
 		{
@@ -235,7 +234,7 @@ namespace Agnos
 			protected void processGetInfo (ITransport transport, int seq)
 			{
 				int code = (int)(Packers.Int32.unpack (transport));
-				IDictionary info = new Hashtable ();
+				HeteroMap info = new HeteroMap();
 				
 				switch (code) {
 				case INFO_GENERAL:
@@ -244,22 +243,25 @@ namespace Agnos
 				case INFO_FUNCTIONS:
 					processGetFunctionsInfo (info);
 					break;
+				case INFO_FUNCCODES:
+					processGetFunctionCodes (info);
+					break;
 				case INFO_META:
 				default:
-					info["codes"] = "INFO_GENERAL;INFO_FUNCTIONS;INFO_META";
-					info["INFO_META"] = INFO_META.ToString ();
-					info["INFO_GENERAL"] = INFO_GENERAL.ToString ();
-					info["INFO_FUNCTIONS"] = INFO_FUNCTIONS.ToString ();
+					info["INFO_META"] = INFO_META;
+					info["INFO_GENERAL"] = INFO_GENERAL;
+					info["INFO_FUNCTIONS"] = INFO_FUNCTIONS;
+					info["INFO_FUNCCODE"] = INFO_FUNCCODES;
 					break;
 				}
 				
 				Packers.Int8.pack (REPLY_SUCCESS, transport);
-				_dict_of_strings.pack (info, transport);
+				Packers.builtinHeteroMapPacker.pack(info, transport);
 			}
 
-			protected abstract void processGetGeneralInfo (IDictionary info);
-
-			protected abstract void processGetFunctionsInfo (IDictionary info);
+			protected abstract void processGetGeneralInfo (HeteroMap info);
+			protected abstract void processGetFunctionsInfo (HeteroMap info);
+			protected abstract void processGetFunctionCodes (HeteroMap info);
 
 			protected abstract void processInvoke (ITransport transport, int seq);
 		}
@@ -279,7 +281,7 @@ namespace Agnos
 				public ReplySlotType type;
 				public Object value;
 
-				public ReplySlot (Packers.BasePacker packer)
+				public ReplySlot (Packers.AbstractPacker packer)
 				{
 					type = ReplySlotType.SLOT_EMPTY;
 					value = packer;
@@ -290,9 +292,9 @@ namespace Agnos
 			protected int seq;
 			protected Dictionary<int, ReplySlot> replies;
 			protected Dictionary<long, WeakReference> proxies;
-			protected Dictionary<int, Packers.BasePacker> packedExceptionsMap;
+			protected Dictionary<int, Packers.AbstractPacker> packedExceptionsMap;
 
-			public BaseClientUtils (ITransport transport, Dictionary<int, Packers.BasePacker> packedExceptionsMap)
+			public BaseClientUtils (ITransport transport, Dictionary<int, Packers.AbstractPacker> packedExceptionsMap)
 			{
 				this.transport = transport;
 				this.packedExceptionsMap = packedExceptionsMap;
@@ -334,7 +336,7 @@ namespace Agnos
 				proxies[objref] = new WeakReference (proxy);
 			}
 
-			public int BeginCall (int funcid, Packers.BasePacker packer)
+			public int BeginCall (int funcid, Packers.AbstractPacker packer)
 			{
 				int seq = getSeq ();
 				transport.BeginWrite (seq);
@@ -401,21 +403,21 @@ namespace Agnos
 				return dt.Milliseconds;
 			}
 
-			public IDictionary GetServiceInfo (int code)
+			public HeteroMap GetServiceInfo (int code)
 			{
 				int seq = getSeq ();
 				transport.BeginWrite (seq);
 				Packers.Int8.pack (CMD_GETINFO, transport);
 				Packers.Int32.pack (code, transport);
 				transport.EndWrite ();
-				replies[seq] = new ReplySlot (_dict_of_strings);
-				return (IDictionary)GetReply (seq);
+				replies[seq] = new ReplySlot (Packers.builtinHeteroMapPacker);
+				return (HeteroMap)GetReply (seq);
 			}
 
 			protected PackedException loadPackedException ()
 			{
 				int clsid = (int)Packers.Int32.unpack (transport);
-				Packers.BasePacker packer;
+				Packers.AbstractPacker packer;
 				if (!packedExceptionsMap.TryGetValue (clsid, out packer)) {
 					throw new ProtocolError ("unknown exception class id: " + clsid);
 				}
@@ -447,7 +449,7 @@ namespace Agnos
 							(slot.type != ReplySlotType.SLOT_EMPTY && slot.type != ReplySlotType.SLOT_DISCARDED)) {
 						throw new ProtocolError ("invalid reply sequence: " + seq);
 					}
-					Packers.BasePacker packer = (Packers.BasePacker)slot.value;
+					Packers.AbstractPacker packer = (Packers.AbstractPacker)slot.value;
 					bool discard = (slot.type == ReplySlotType.SLOT_DISCARDED);
 					
 					switch (code) {

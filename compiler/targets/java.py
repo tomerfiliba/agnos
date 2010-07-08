@@ -188,7 +188,7 @@ class JavaTarget(TargetBase):
         for tp in service.all_types:
             if isinstance(tp, (compiler.TList, compiler.TMap)):
                 definition = self._generate_templated_packer_for_type(tp)
-                STMT("protected Packers.BasePacker _{0} = {1}", tp.stringify(), definition)
+                STMT("protected Packers.AbstractPacker _{0} = {1}", tp.stringify(), definition)
     
     def generate_enum(self, module, enum):
         BLOCK = module.block
@@ -210,7 +210,7 @@ class JavaTarget(TargetBase):
             with BLOCK("public static {0} getByValue(Integer val)", enum.name):
                 STMT("return _BY_VALUE.get(val)")
         SEP()
-        with BLOCK("protected static class _{0}Packer extends Packers.BasePacker", enum.name):
+        with BLOCK("protected static class _{0}Packer extends Packers.AbstractPacker", enum.name):
             with BLOCK("public int getId()"):
                 STMT("return {0}", enum.id)
             with BLOCK("public void pack(Object obj, OutputStream stream) throws IOException"):
@@ -246,7 +246,7 @@ class JavaTarget(TargetBase):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
-        with BLOCK("protected {0}class _{1}Packer extends Packers.BasePacker", 
+        with BLOCK("protected {0}class _{1}Packer extends Packers.AbstractPacker", 
                 "static " if static else "", rec.name):
             with BLOCK("public int getId()"):
                 STMT("return {0}", rec.id)
@@ -424,26 +424,42 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        with BLOCK("protected void processGetGeneralInfo(Packers.DynamicRecord dr)"):
-            STMT('dr.addField("AGNOS_VERSION", AGNOS_VERSION)')
-            STMT('dr.addField("IDL_MAGIC", IDL_MAGIC)')
-            STMT('dr.addField("SERVICE_NAME", "{0}")', service.name)
+        with BLOCK("protected void processGetGeneralInfo(HeteroMap map)"):
+            STMT('map.put("AGNOS_VERSION", AGNOS_VERSION)')
+            STMT('map.put("IDL_MAGIC", IDL_MAGIC)')
+            STMT('map.put("SERVICE_NAME", "{0}")', service.name)
         SEP()
-        with BLOCK("protected void processGetFunctionsInfo(Packers.DynamicRecord dr)"):
+        with BLOCK("protected void processGetFunctionsInfo(HeteroMap map)"):
+            STMT("HeteroMap funcinfo")
+            STMT("HashMap<String, String> args")
+            STMT("HashMap<String, String> anno")
+            SEP()
             for func in service.funcs.values():
-                STMT('dr.addField("{0}", "{1}")', func.id, func.name)
-                STMT('info.put("{0}_type", "{1}")', func.id, str(func.type))
-                STMT('info.put("{0}_arg_names", "{1}")', func.id, ";".join(arg.name for arg in func.args))
-                STMT('info.put("{0}_arg_types", "{1}")', func.id, ";".join(str(arg.type) for arg in func.args))
-                STMT('info.put("{0}_annotations", "{1}")', func.id, ";".join(str(anno) for anno in func.annotations))
-        
+                STMT("funcinfo = new HeteroMap()")
+                STMT('funcinfo.put("name", "{0}")', func.name)
+                STMT('funcinfo.put("type", "{0}")', str(func.type))
+                STMT("args = new HashMap<String, String>()")
+                for arg in func.args:
+                    STMT('args.put("{0}", "{1}")', arg.name, str(arg.type))
+                STMT('funcinfo.put("args", args, Packers.mapOfStrStr)')
+                if func.annotations:
+                    STMT("anno = new HashMap<String, String>()")
+                    for anno in func.annotations:
+                        STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
+                    STMT('funcinfo.put("annotations", anno, Packers.mapOfStrStr)')
+                STMT('map.put({0}, funcinfo, Packers.builtinHeteroMapPacker)', func.id)
+        SEP()
+        with BLOCK("protected void processGetFunctionCodes(HeteroMap map)"):
+            for func in service.funcs.values():
+                STMT('map.put("{0}", {1})', func.name, func.id)    
+    
     def generate_process_invoke(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
 
         with BLOCK("protected void processInvoke(Transports.ITransport transport, int seq) throws Exception"):
-            STMT("Packers.BasePacker packer = null")
+            STMT("Packers.AbstractPacker packer = null")
             STMT("Object result = null")
             STMT("Object inst = null")
             STMT("Object[] args = null")
@@ -569,7 +585,7 @@ class JavaTarget(TargetBase):
             SEP()
             self.generate_client_funcs(module, service)
             SEP()
-            with BLOCK("public Map getServiceInfo(int code) throws Exception"):
+            with BLOCK("public HeteroMap getServiceInfo(int code) throws Exception"):
                 STMT("return _utils.getServiceInfo(code)")
             SEP()
             with BLOCK("public byte[] tunnelRequest(byte[] blob) throws Exception"):
@@ -582,7 +598,7 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         with BLOCK("public Client(Transports.ITransport transport) throws Exception"):
-            STMT("Map<Integer, Packers.BasePacker> pem = new HashMap<Integer, Packers.BasePacker>()") 
+            STMT("Map<Integer, Packers.AbstractPacker> pem = new HashMap<Integer, Packers.AbstractPacker>()") 
             STMT("_utils = new Protocol.BaseClientUtils(transport, pem)")
             STMT("_funcs = new _Functions(_utils)")
             SEP()

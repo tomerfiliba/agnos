@@ -189,10 +189,10 @@ class CSharpTarget(TargetBase):
         for tp in service.all_types:
             if isinstance(tp, (compiler.TList, compiler.TMap)):
                 if is_complex_type(tp):
-                    STMT("internal Packers.BasePacker _{0}", tp.stringify())
+                    STMT("internal Packers.AbstractPacker _{0}", tp.stringify())
                 else:
                     definition = self._generate_templated_packer_for_type(tp)
-                    STMT("internal static Packers.BasePacker _{0} = {1}", tp.stringify(), definition)
+                    STMT("internal static Packers.AbstractPacker _{0} = {1}", tp.stringify(), definition)
             
     def generate_templated_packers_impl(self, module, service):
         BLOCK = module.block
@@ -214,7 +214,7 @@ class CSharpTarget(TargetBase):
                 STMT("{0} = {1}", mem.name, mem.value, suffix = ",")
             STMT("{0} = {1}", enum.members[-1].name, enum.members[-1].value, suffix = "")
         SEP()
-        with BLOCK("internal class _{0}Packer : Packers.BasePacker", enum.name):
+        with BLOCK("internal class _{0}Packer : Packers.AbstractPacker", enum.name):
             with BLOCK("public override void pack(object obj, Stream stream)"):
                 STMT("Packers.Int32.pack((int)(({0})obj), stream)", enum.name)
             with BLOCK("public override object unpack(Stream stream)"):
@@ -249,12 +249,12 @@ class CSharpTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
 
-        with BLOCK("internal class _{0}Packer : Packers.BasePacker", rec.name):
+        with BLOCK("internal class _{0}Packer : Packers.AbstractPacker", rec.name):
             if not static:
                 complex_types = rec.get_complex_types()
                 for tp in complex_types:
-                    STMT("protected Packers.BasePacker {0}", type_to_packer(tp))
-                args =  ", ".join("Packers.BasePacker %s" % (type_to_packer(tp),) for tp in complex_types)
+                    STMT("protected Packers.AbstractPacker {0}", type_to_packer(tp))
+                args =  ", ".join("Packers.AbstractPacker %s" % (type_to_packer(tp),) for tp in complex_types)
                 with BLOCK("public _{0}Packer({1})", rec.name, args):
                     for tp in complex_types:
                         STMT("this.{0} = {0}", type_to_packer(tp))
@@ -423,13 +423,29 @@ class CSharpTarget(TargetBase):
             STMT('info["IDL_MAGIC"] = IDL_MAGIC')
             STMT('info["SERVICE_NAME"] = "{0}"', service.name)
         SEP()
-        with BLOCK("protected override void processGetFunctionsInfo(IDictionary info)"):
+        with BLOCK("protected void processGetFunctionsInfo(HeteroMap map)"):
+            STMT("HeteroMap funcinfo")
+            STMT("Dictionary<String, String> args")
+            STMT("Dictionary<String, String> anno")
+            SEP()
             for func in service.funcs.values():
-                STMT('info["{0}"] = "{1}"', func.id, func.name)
-                STMT('info["{0}_type"] = "{1}"', func.id, str(func.type))
-                STMT('info["{0}_arg_names"] = "{1}"', func.id, ";".join(arg.name for arg in func.args))
-                STMT('info["{0}_arg_types"] = "{1}"', func.id, ";".join(str(arg.type) for arg in func.args))
-                STMT('info["{0}_annotations"] = "{1}"', func.id, ";".join(str(anno) for anno in func.annotations))
+                STMT("funcinfo = new HeteroMap()")
+                STMT('funcinfo["name"] = "{0}"', func.name)
+                STMT('funcinfo["type"] = "{0}"', str(func.type))
+                STMT("args = new Dictionary<String, String>()")
+                for arg in func.args:
+                    STMT('args["{0}"] = "{1}"', arg.name, str(arg.type))
+                STMT('funcinfo.Add("args", args, Packers.mapOfStrStr)')
+                if func.annotations:
+                    STMT("anno = new Dictionary<String, String>()")
+                    for anno in func.annotations:
+                        STMT('anno["{0}"] = "{1}"', anno.name, anno.value)
+                    STMT('funcinfo.Add("annotations", anno, Packers.mapOfStrStr)')
+                STMT('map.Add({0}, funcinfo, Packers.builtinHeteroMapPacker)', func.id)
+        SEP()
+        with BLOCK("protected void processGetFunctionCodes(HeteroMap map)"):
+            for func in service.funcs.values():
+                STMT('map["{0}"] = {1}', func.name, func.id)
 
     def generate_process_invoke(self, module, service):
         BLOCK = module.block
@@ -437,7 +453,7 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
 
         with BLOCK("override protected void processInvoke(ITransport transport, int seq)"):
-            STMT("Packers.BasePacker packer = null")
+            STMT("Packers.AbstractPacker packer = null")
             STMT("object result = null")
             STMT("object inst = null")
             STMT("object[] args = null")
@@ -593,7 +609,7 @@ class CSharpTarget(TargetBase):
         DOC = module.doc
         
         with BLOCK("public Client(ITransport transport)"):
-            STMT("Dictionary<int, Packers.BasePacker> pem = new Dictionary<int, Packers.BasePacker>()") 
+            STMT("Dictionary<int, Packers.AbstractPacker> pem = new Dictionary<int, Packers.AbstractPacker>()") 
             STMT("_utils = new Protocol.BaseClientUtils(transport, pem)")
             STMT("_funcs = new _Functions(this)")
             SEP()

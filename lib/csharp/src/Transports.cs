@@ -312,7 +312,7 @@ namespace Agnos.Transports
         }
         public byte[] ReadAll()
         {
-            return transport.ReadAll(data);
+            return transport.ReadAll();
         }
         public void EndRead()
         {

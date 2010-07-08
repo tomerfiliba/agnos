@@ -3,9 +3,10 @@ package agnos;
 import java.io.*;
 import java.util.*;
 
-public class HeteroMap
+
+public class HeteroMap implements Map
 {
-	public static class FieldInfo
+	protected static class FieldInfo
 	{
 		public Packers.AbstractPacker keypacker;
 		public Packers.AbstractPacker valpacker;
@@ -17,32 +18,32 @@ public class HeteroMap
 	}
 	
 	protected Map<Object, FieldInfo> fields;
-	protected Map<Object, Object> data;
+	protected Map data;
 	
 	public HeteroMap()
 	{
 		fields = new HashMap<Object, FieldInfo>();
-		data = new HashMap<Object, Object>();
+		data = new HashMap();
 	}
 	public HeteroMap(int capacity)
 	{
 		fields = new HashMap<Object, FieldInfo>(capacity);
-		data = new HashMap<Object, Object>(capacity);
+		data = new HashMap(capacity);
 	}
 	public HeteroMap(HeteroMap other)
 	{
 		fields = new HashMap<Object, FieldInfo>(other.fields);
-		data = new HashMap<Object, Object>(other.data);
+		data = new HashMap(other.data);
 	}
 
-	void clear()
+	public void clear()
 	{
 		fields.clear();
 		data.clear();
 	}
 	public boolean containsKey(Object key)
 	{
-		return data.containsKey(name);
+		return data.containsKey(key);
 	}
 	public boolean containsValue(Object val)
 	{
@@ -52,9 +53,9 @@ public class HeteroMap
 	{
 		return data.size();
 	}
-	public Collection keySet()
+	public Set keySet()
 	{
-		return data.keys();
+		return data.keySet();
 	}
 	public Collection values()
 	{
@@ -62,13 +63,14 @@ public class HeteroMap
 	}
 	public Set<Map.Entry> entrySet()
 	{
-		return map.entrySet();
+		return data.entrySet();
 	}
 	
 	public boolean equals(Object o)
 	{
 		if (o instanceof HeteroMap) {
-			return fields.equals(o.fields) && data.equals(o.data);
+			HeteroMap hm = (HeteroMap)o;
+			return fields.equals(hm.fields) && data.equals(hm.data);
 		}
 		else {
 			return false;
@@ -79,55 +81,120 @@ public class HeteroMap
 		return fields.hashCode();
 	}	
 	
-	public void put(Object key, Packers.AbstractPacker keypacker, Object value, Packers.AbstractPacker valpacker)
+	public Object put(Object key, Packers.AbstractPacker keypacker, Object value, Packers.AbstractPacker valpacker)
 	{
-		fields.put(key, new FieldInfo(keypacker, valpacker));
-		data.put(key, value);
-	}
-	public void putAll(HeteroMap other)
-	{
-		fields.putAll(other.fields);
-		data.putAll(data.fields);
-	}
-	
-	public void put(Integer key, Object value, Packers.AbstractPacker valpacker)
-	{
-		put(key, Packers.Int32, value, valpacker);
-	}
-	public void put(Integer key, Integer value)
-	{
-		put(key, Packers.Int32, value, Packers.Int32);
-	}
-	public void put(Integer key, String value)
-	{
-		put(key, Packers.Int32, value, Packers.Str);
+		FieldInfo fi = fields.get(key);
+		if (fi == null) {
+			fields.put(key, new FieldInfo(keypacker, valpacker));
+		}
+		else {
+			fi.keypacker = keypacker;
+			fi.valpacker = valpacker;
+		}
+		return data.put(key, value);
 	}
 	
-	public void put(String key, Object value, Packers.AbstractPacker valpacker)
+	protected Packers.AbstractPacker getPackerForBuiltinType(Object val)
 	{
-		put(key, Packers.Str, value, valpacker);
-	}
-	public void put(String key, Integer value)
-	{
-		put(key, Packers.Str, value, Packers.Int32);
-	}
-	public void put(String key, String value)
-	{
-		put(key, Packers.Str, value, Packers.Str);
+		if (val instanceof String) {
+			return Packers.Str;
+		}
+		if (val instanceof Integer) {
+			return Packers.Int32;
+		}
+		if (val instanceof Long) {
+			return Packers.Int64;
+		}
+		if (val instanceof Double || val instanceof Float) {
+			return Packers.Float;
+		}
+		if (val instanceof Byte) {
+			return Packers.Int8;
+		}
+		if (val instanceof Short) {
+			return Packers.Int16;
+		}
+		if (val instanceof Date) {
+			return Packers.Date;
+		}
+		if (val instanceof byte[]) {
+			return Packers.Buffer;
+		}
+		return null;
 	}
 	
-	public void remove(Object key)
+	public Object put(Object key, Object value)
+	{
+		Packers.AbstractPacker keypacker = getPackerForBuiltinType(key);
+		Packers.AbstractPacker valpacker = getPackerForBuiltinType(value);
+		
+		if (keypacker == null) {
+			keypacker = getKeyPacker(key);
+		}
+		if (valpacker == null) {
+			valpacker = getValuePacker(key);
+		}
+		if (keypacker == null || valpacker == null) {
+			throw new IllegalArgumentException("cannot deduce key or value packer, use the 4-argument put()");
+		}
+		
+		return put(key, keypacker, value, valpacker);
+	}
+
+	public Object put(Object key, Object value, Packers.AbstractPacker valpacker)
+	{
+		Packers.AbstractPacker keypacker = getPackerForBuiltinType(key);
+		if (keypacker == null) {
+			keypacker = getKeyPacker(key);
+			if (keypacker == null) {
+				throw new IllegalArgumentException("cannot deduce key packer, use the 4-argument put()");
+			}
+		}
+		
+		return put(key, keypacker, value, valpacker);
+	}
+
+	public Object put(Integer key, String value)
+	{
+		return put(key, Packers.Int32, value, Packers.Str);
+	}
+	public Object put(Integer key, Integer value)
+	{
+		return put(key, Packers.Int32, value, Packers.Int32);
+	}
+	public Object put(String key, String value)
+	{
+		return put(key, Packers.Str, value, Packers.Str);
+	}
+	public Object put(String key, Integer value)
+	{
+		return put(key, Packers.Str, value, Packers.Int32);
+	}
+	
+	
+	public void putAll(Map other)
+	{
+		if (other instanceof HeteroMap) {
+			HeteroMap hm = (HeteroMap)other;
+			fields.putAll(hm.fields);
+			data.putAll(hm.data);
+		}
+		else {
+			for (Map.Entry e : (Set<Map.Entry>)other.entrySet()) {
+				put(e.getKey(), e.getValue());
+			}
+		}
+	}
+	
+	public Object remove(Object key)
 	{
 		fields.remove(key);
-		data.remove(key);
+		return data.remove(key);
 	}
 	
-	public void set(Object key, Object value)
+	public boolean isEmpty()
 	{
-		if (!fields.containsKey(key)) {
-			throw new HeteroMapException("field was not set");
-		}
-		data.put(key, value);
+		return data.isEmpty();
 	}
 	
 	public Object get(Object key)
@@ -135,12 +202,23 @@ public class HeteroMap
 		return data.get(key);
 	}
 
-	protected FieldInfo getFieldInfo(Object key)
+	protected Packers.AbstractPacker getKeyPacker(Object key)
 	{
-		return fields.get(key);
+		FieldInfo fi = fields.get(key);
+		if (fi == null) {
+			return null;
+		}
+		return fi.keypacker;
 	}
-	
 
+	protected Packers.AbstractPacker getValuePacker(Object key)
+	{
+		FieldInfo fi = fields.get(key);
+		if (fi == null) {
+			return null;
+		}
+		return fi.valpacker;
+	}
 }
 
 

@@ -21,6 +21,7 @@ public class Protocol
 	public static final int INFO_META 		= 0;
 	public static final int INFO_GENERAL 	= 1;
 	public static final int INFO_FUNCTIONS 	= 2;
+	public static final int INFO_FUNCCODES	= 3;
 
 	public static final int	AGNOS_MAGIC				= 0x5af30cf7;
 	
@@ -291,21 +292,25 @@ public class Protocol
 				case INFO_FUNCTIONS:
 					processGetFunctionsInfo(map);
 					break;
+				case INFO_FUNCCODES:
+					processGetFunctionCodes(map);
+					break;
 				case INFO_META:
 				default:
 					map.put("INFO_META", INFO_META);
 					map.put("INFO_GENERAL", INFO_GENERAL);
 					map.put("INFO_FUNCTIONS", INFO_FUNCTIONS);
+					map.put("INFO_FUNCCODES", INFO_FUNCCODES);
 					break;
 			}
 			
             Packers.Int8.pack(REPLY_SUCCESS, transport);
-			Packers.builtinHeteroMapPacker.pack(info, transport);
+			Packers.builtinHeteroMapPacker.pack(map, transport);
         }
 		
 		protected abstract void processGetGeneralInfo(HeteroMap map);
-		
 		protected abstract void processGetFunctionsInfo(HeteroMap map);
+		protected abstract void processGetFunctionCodes(HeteroMap map);
 		
 		abstract protected void processInvoke(Transports.ITransport transport,
 				int seq) throws Exception;
@@ -470,15 +475,15 @@ public class Protocol
 			return 0;
 		}
 
-		public Map getServiceInfo (int code) throws IOException, ProtocolError, PackedException, GenericException
+		public HeteroMap getServiceInfo (int code) throws IOException, ProtocolError, PackedException, GenericException
 		{
 			int seq = getSeq ();
 			transport.beginWrite (seq);
 			Packers.Int8.pack (CMD_GETINFO, transport);
 			Packers.Int32.pack (code, transport);
 			transport.endWrite ();
-			//replies.put(seq, new ReplySlot (_dict_of_strings));
-			return (Map)getReply (seq);
+			replies.put(seq, new ReplySlot (Packers.builtinHeteroMapPacker));
+			return (HeteroMap)getReply (seq);
 		}
 		
 		protected PackedException loadPackedException() throws IOException, ProtocolError
