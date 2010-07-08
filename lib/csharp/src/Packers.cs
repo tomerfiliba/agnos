@@ -691,12 +691,12 @@ namespace Agnos
 					return mapOfStrInt32;
 				case 853:
 					return mapOfStrStr;
-				case 999:
+				case 998:
 					return builtinHeteroMapPacker;
 				default:
-					if (id < CUSTOM_PACKER_ID_BASE) {
-						throw new UnknownPackerId ("packer id too low" + id);
-					}
+					//if (id < CUSTOM_PACKER_ID_BASE) {
+					//	throw new UnknownPackerId ("packer id too low" + id);
+					//}
 					if (packersMap == null) {
 						throw new UnknownPackerId ("unknown packer id " + id);
 					}
@@ -709,7 +709,7 @@ namespace Agnos
 			}
 		}
 
-		public static readonly HeteroMapPacker builtinHeteroMapPacker = new HeteroMapPacker (999, null);
+		public static readonly HeteroMapPacker builtinHeteroMapPacker = new HeteroMapPacker (998, null);
 	}
 	
 	

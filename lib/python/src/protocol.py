@@ -3,7 +3,8 @@ import itertools
 import traceback
 import weakref
 from subprocess import Popen, PIPE
-from .packers import Int8, Int32, Int64, Str, MapOf
+from contextlib import contextmanager
+from .packers import Int8, Int32, Int64, Str, BuiltinHeteroMapPacker
 from . import transports
 
 
@@ -22,6 +23,7 @@ REPLY_GENERIC_EXCEPTION = 3
 INFO_META = 0
 INFO_GENERAL = 1
 INFO_FUNCTIONS = 2
+INFO_FUNCCODES = 3
 
 AGNOS_MAGIC = 0x5af30cf7
 
@@ -140,6 +142,8 @@ class BaseProcessor(object):
                         self.process_decref(transport, seq)
                     elif cmd == CMD_QUIT:
                         self.process_quit(transport, seq)
+                    elif cmd == CMD_GETINFO:
+                        self.process_get_info(transport, seq)
                     else:
                         raise ProtocolError("unknown command code: %d" % (cmd,))
                 except ProtocolError, ex:
@@ -170,21 +174,22 @@ class BaseProcessor(object):
 
     def process_get_info(self, transport, seq):
         code = Int32.unpack(transport)
+        info = HeteroMap()
         
         if code == INFO_GENERAL:
-            info = self.process_get_general_info()
+            self.process_get_general_info(info)
         elif code == INFO_FUNCTIONS:
-            info = self.process_get_functions_info()
+            self.process_get_functions_info(info)
+        elif code == INFO_FUNCCODES:
+            self.process_get_function_codes(info)
         else: # INFO_META:
-            info = {
-                "codes" : "INFO_GENERAL;INFO_FUNCTIONS;INFO_META",
-                "INFO_META" : str(INFO_META),
-                "INFO_GENERAL" : str(INFO_GENERAL),
-                "INFO_FUNCTIONS" : str(INFO_FUNCTIONS),
-            }
+            info["INFO_META"] = INFO_META
+            info["INFO_GENERAL"] = INFO_GENERAL
+            info["INFO_FUNCTIONS"] = INFO_FUNCTIONS
+            info["INFO_FUNCCODES"] = INFO_FUNCTIONS
         
         Int8.pack(REPLY_SUCCESS, transport)
-        dict_of_strings_packer.pack(info, transport)
+        BuiltinHeteroMapPacker.pack(info, transport)
 
     def process_invoke(self, transport, seq):
         funcid = Int32.unpack(transport)
@@ -292,20 +297,20 @@ class BaseClientUtils(object):
         return seq
     
     def load_packed_exception(self):
-        clsid = Int32.unpack(self._instream)
+        clsid = Int32.unpack(self.transport)
         try:
-            packer = self.PACKED_EXCEPTIONS[clsid]
+            packer = self.packed_exceptions[clsid]
         except KeyError:
             raise ProtocolError("invalid class id: %d" % (clsid,))
-        return packer.unpack(self._instream)
+        return packer.unpack(self.transport)
 
     def load_protocol_error(self):
-        msg = Str.unpack(self._instream)
+        msg = Str.unpack(self.transport)
         return ProtocolError(msg)
 
     def load_generic_exception(self):
-        msg = Str.unpack(self._instream)
-        tb = Str.unpack(self._instream)
+        msg = Str.unpack(self.transport)
+        tb = Str.unpack(self.transport)
         return GenericException(msg, tb)
     
     def ping(self, payload, timeout):
@@ -326,16 +331,13 @@ class BaseClientUtils(object):
         with self.transport.writing(seq):
             Int8.pack(CMD_GETINFO, self.transport)
             Int32.pack(code, self.transport)
-        replies[seq] = (self.REPLY_SLOT_EMPTY, dict_of_strings_packer)
+        replies[seq] = (self.REPLY_SLOT_EMPTY, BuiltinHeteroMapPacker)
         return self.get_reply(seq)
 
     def process_incoming(self, timeout):
-        if not self._instream.poll(timeout):
-            return
-        
-        with self.transport.reading() as seq:
+        with self.transport.reading(timeout) as seq:
             code = Int8.unpack(self.transport)
-            tp, packer = self._replies.get(seq, (None, None))
+            tp, packer = self.replies.get(seq, (None, None))
             if tp != self.REPLY_SLOT_EMPTY and tp != self.REPLY_SLOT_DISCARDED:
                 raise ProtocolError("invalid sequence number %d" % (seq,))
             if code == REPLY_SUCCESS:
@@ -358,10 +360,10 @@ class BaseClientUtils(object):
                 raise ProtocolError("unknown reply code: %d" % (code,))
             
             if tp == self.REPLY_SLOT_DISCARDED:
-                del self._replies[seq]
+                del self.replies[seq]
     
     def is_reply_ready(self, seq):
-        tp = self._replies[seq][0]
+        tp = self.replies[seq][0]
         return tp != self.REPLY_SLOT_EMPTY and tp != self.REPLY_SLOT_DISCARDED
     
     def discard_reply(self, seq):
@@ -381,10 +383,10 @@ class BaseClientUtils(object):
             if timeout is not None:
                 remaining = tend - time.time() 
             self.process_incoming(remaining)
-        return self._replies.pop(seq)
+        return self.replies.pop(seq)
     
     def get_reply(self, seq, timeout = None):
-        type, obj = self._wait_reply(seq, timeout)
+        type, obj = self.wait_reply(seq, timeout)
         if type == self.REPLY_SLOT_SUCCESS:
             return obj
         elif type == self.REPLY_SLOT_ERROR:

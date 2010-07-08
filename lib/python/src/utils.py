@@ -1,4 +1,5 @@
-from packers import Int32
+from datetime import datetime
+import packers
 import threading
 
 
@@ -57,10 +58,10 @@ class Enum(object):
     def pack(cls, obj, stream):
         if not isinstance(obj, Enum):
             obj = cls.get_by_value(obj)
-        Int32.pack(obj.value, stream)
+        packers.Int32.pack(obj.value, stream)
     @classmethod
     def unpack(cls, stream):
-        return cls.get_by_value(Int32.unpack(stream))
+        return cls.get_by_value(packers.Int32.unpack(stream))
 
 def create_enum(name, members):
     cls = type(name, (Enum,), dict(_BY_VALUE = {}))
@@ -75,6 +76,86 @@ def make_method(cls):
         setattr(cls, func.__name__, func)
     return deco
 
+MAX_INT32 = 2 ** 31
+
+class HeteroMap(object):
+    def __init__(self, fields = None):
+        if fields is None:
+            self.fields = {}
+        else:
+            self.fields = fields
+    def add(self, key, keypacker, val, valpacker):
+        self.fields[key] = (val, keypacker, valpacker)
+    def clear(self):
+        self.fields.clear()
+    def copy(self):
+        return HeteroMap(self.fields.copy())
+    def get(self, default = None):
+        return self.fields.get(key, (default,))[0]
+    def items(self):
+        return list(self.iteritems())
+    def iteritems(self):
+        for k, v in self.fields.iteritems():
+            yield k, v[0]
+    def iterkeys(self):
+        return self.fields.iterkeys()
+    def itervalues(self):
+        for v in self.fields.itervalues():
+            yield v[0]
+    def iter_fields(self):
+        for k, v in self.fields.iteritems():
+            vv, kp, vp = v
+            yield kp, vv, kp
+    def keys(self):
+        return self.fields.keys()
+    def pop(self, key, *default):
+        if not default:
+            return self.fields.pop(key)[0]
+        elif len(default) == 1:
+            return self.fields.pop(key, (default[0],))[0]
+        else:
+            raise TypeError("pop takes at most two arguments")
+    def update(self, other):
+        if isinstance(other, HeteroMap):
+            self.fields.update(other.fields)
+        else:
+            for k, v in other.items():
+                self[k] = v
+    def values(self):
+        return list(self.itervalues())
+    def __contains__(self, key):
+        return key in self.fields
+    has_key = __contains__
+    def __getitem__(self, key):
+        return self.fields[key][0]
+    def __delitem__(self, key):
+        del self.fields[key]
+    def __setitem__(self, key, val):
+        if key in self.fields:
+            _, kp, vp = self.fields[key]
+        else:
+            kp = vp = None
+        keypacker = self._get_packer(key, kp)
+        valpacker = self._get_packer(val, vp)
+        if not keypacker:
+            raise TypeError("cannot deduce packer for %r" % (key,))
+        if not valpacker:
+            raise TypeError("cannot deduce packer for %r" % (val,))
+        self.add(key, keypacker, val, valpacker)
+    def _get_packer(self, obj, default):
+        if isinstance(obj, basestring):
+            return packers.Str
+        if isinstance(obj, int) and obj < MAX_INT32:
+            return packers.Int32
+        if isinstance(obj, long):
+            return packers.Int64
+        if isinstance(obj, float):
+            return packers.Float
+        if isinstance(obj, datetime):
+            return packers.Date
+        if isinstance(obj, bytes):
+            return packers.Buffer
+        
 
 
 

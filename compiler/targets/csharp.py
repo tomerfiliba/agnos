@@ -26,6 +26,8 @@ def type_to_cs(t, proxy = False):
         return "DateTime"
     elif t == compiler.t_buffer:
         return "byte[]"
+    elif t == compiler.t_heteromap:
+        return "Agnos.HeteroMap"
     elif isinstance(t, compiler.TList):
         return "IList"
     elif isinstance(t, compiler.TMap):
@@ -61,6 +63,8 @@ def type_to_packer(t):
         return "Packers.Buffer"
     elif t == compiler.t_string:
         return "Packers.Str"
+    elif t == compiler.t_heteromap:
+        return "heteroMapPacker"
     elif isinstance(t, (compiler.TList, compiler.TMap)):
         return "_%s" % (t.stringify(),)
     elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
@@ -405,6 +409,8 @@ class CSharpTarget(TargetBase):
                         SEP()
             self.generate_templated_packers_decl(module, service)
             SEP()
+            STMT("protected Packers.HeteroMapPacker heteroMapPacker")
+            SEP()
             with BLOCK("public Processor(IHandler handler)"):
                 STMT("this.handler = handler")
                 for tp in service.types.values():
@@ -414,6 +420,12 @@ class CSharpTarget(TargetBase):
                     complex_types = rec.get_complex_types()
                     STMT("{0}Packer = new _{0}Packer({1})", rec.name, ", ".join(type_to_packer(tp) for tp in complex_types))
                 self.generate_templated_packers_impl(module, service)
+                SEP()
+                STMT("Dictionary<int, Packers.AbstractPacker> packersMap = new Dictionary<int, Packers.AbstractPacker>()")
+                for tp in service.types.values():
+                    STMT("packersMap[{0}] = {1}", tp.id, type_to_packer(tp))
+                STMT("heteroMapPacker = new Packers.HeteroMapPacker(999, packersMap)")
+                STMT("packersMap[999] = heteroMapPacker")
             SEP()
             self.generate_process_getinfo(module, service)
             SEP()
@@ -593,6 +605,8 @@ class CSharpTarget(TargetBase):
                         with BLOCK("protected override object newProxy(long id)"):
                             STMT("return new {0}(client, id)", type_to_cs(tp, proxy = True))
             SEP()
+            STMT("protected Packers.HeteroMapPacker heteroMapPacker")
+            SEP()
             namespaces = self.generate_client_namespaces(module, service)
             SEP()
             self.generate_client_internal_funcs(module, service)
@@ -637,6 +651,13 @@ class CSharpTarget(TargetBase):
                 STMT("{0} = new _Namespace{1}(_funcs)", name, id)
             
             self.generate_templated_packers_impl(module, service)
+            SEP()
+            
+            STMT("Dictionary<int, Packers.AbstractPacker> packersMap = new Dictionary<int, Packers.AbstractPacker>()")
+            for tp in service.types.values():
+                STMT("packersMap[{0}] = {1}", tp.id, type_to_packer(tp))
+            STMT("heteroMapPacker = new Packers.HeteroMapPacker(999, packersMap)")
+            STMT("packersMap[999] = heteroMapPacker")
 
     def generate_client_namespaces(self, module, service):
         nsid = itertools.count(0)

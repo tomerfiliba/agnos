@@ -9,6 +9,9 @@ from . import packers
 from .utils import RLock 
 
 
+class TransportTimeout(IOError):
+    pass
+
 class Transport(object):
     def __init__(self, infile, outfile):
         self.infile = infile
@@ -32,7 +35,11 @@ class Transport(object):
     def begin_read(self, timeout = None):
         if self._rlock.is_held_by_current_thread():
             raise IOError("begin_read is not reentrant")
-        rlock.acquire()
+        self._rlock.acquire()
+        rl, _, _ = select([self.file], [], [], max(0, timeout))
+        if not rl:
+            self._rlock.release()
+            raise TransportTimeout("no data received in given time span")
         self._read_length = packers.Int32.unpack(self.file)
         self._read_seq = packers.Int32.unpack(self.file)
         self._read_pos = 0
@@ -48,8 +55,8 @@ class Transport(object):
         return data
     
     @contextmanager
-    def reading(self):
-        yield self.begin_read()
+    def reading(self, timeout = None):
+        yield self.begin_read(timeout)
         self.end_read()
 
     @contextmanager
@@ -127,6 +134,10 @@ class WrappedTransport(object):
         self.transport.end_write()
     def cancel_write(self):
         self.transport.cancel_write()
+    def reading(self, timeout = None):
+        return self.transport.reading(timeout)
+    def writing(self, seq):
+        return self.transport.writing()
 
 
 class SocketFile(object):

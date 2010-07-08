@@ -26,6 +26,8 @@ def type_to_java(t, proxy = False):
         return "Date"
     elif t == compiler.t_buffer:
         return "byte[]"
+    elif t == compiler.t_heteromap:
+        return "agnos.HeteroMap"
     elif isinstance(t, compiler.TList):
         return "List"
     elif isinstance(t, compiler.TMap):
@@ -61,6 +63,8 @@ def type_to_packer(t):
         return "Packers.Buffer"
     elif t == compiler.t_string:
         return "Packers.Str"
+    elif t == compiler.t_heteromap:
+        return "heteroMapPacker"
     elif isinstance(t, (compiler.TList, compiler.TMap)):
         return "_%s" % (t.stringify(),)
     elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
@@ -407,6 +411,8 @@ class JavaTarget(TargetBase):
                         SEP()
             self.generate_templated_packers(module, service)
             SEP()
+            STMT("protected Packers.HeteroMapPacker heteroMapPacker")
+            SEP()
             with BLOCK("public Processor(IHandler handler)"):
                 STMT("this.handler = handler")
                 for tp in service.types.values():
@@ -414,6 +420,13 @@ class JavaTarget(TargetBase):
                         STMT("{0}ObjRef = new Packers.ObjRef({1}, this)", tp.name, tp.id)
                 for rec in generated_records:
                     STMT("{0}Packer = new _{0}Packer()", rec.name)
+                SEP()
+                STMT("HashMap<Integer, Packers.AbstractPacker> packersMap = new HashMap<Integer, Packers.AbstractPacker>()")
+                for tp in service.types.values():
+                    STMT("packersMap.put({0}, {1})", tp.id, type_to_packer(tp))
+                STMT("heteroMapPacker = new Packers.HeteroMapPacker(999, packersMap)")
+                STMT("packersMap.put(999, heteroMapPacker)")
+                
             SEP()
             self.generate_process_getinfo(module, service)
             SEP()
@@ -577,6 +590,8 @@ class JavaTarget(TargetBase):
                 SEP()
                 STMT("protected abstract Object _get_proxy(Long id)")
             SEP()
+            STMT("protected Packers.HeteroMapPacker heteroMapPacker")
+            SEP()
             namespaces = self.generate_client_namespaces(module, service)
             SEP()
             self.generate_client_internal_funcs(module, service)
@@ -623,7 +638,13 @@ class JavaTarget(TargetBase):
             SEP()
             for name, id in namespaces:
                 STMT("{0} = new _Namespace{1}(_funcs)", name, id)
-    
+            SEP()
+            STMT("HashMap<Integer, Packers.AbstractPacker> packersMap = new HashMap<Integer, Packers.AbstractPacker>()")
+            for tp in service.types.values():
+                STMT("packersMap.put({0}, {1})", tp.id, type_to_packer(tp))
+                STMT("heteroMapPacker = new Packers.HeteroMapPacker(999, packersMap)")
+            STMT("packersMap.put(999, heteroMapPacker)")
+
     def generate_client_namespaces(self, module, service):
         nsid = itertools.count(0)
         root = {"__id__" : nsid.next()}

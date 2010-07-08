@@ -26,6 +26,8 @@ def type_to_packer(t):
         return "packers.Buffer"
     elif t == compiler.t_string:
         return "packers.Str"
+    elif t == compiler.t_heteromap:
+        return "heteroMapPacker"
     elif isinstance(t, (compiler.TList, compiler.TMap)):
         return "_%s" % (t.stringify(),)
     elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
@@ -57,7 +59,7 @@ def const_to_python(typ, val):
     elif isinstance(typ, compiler.TList):
         return "[%s]" % (", ".join(const_to_cs(typ.oftype, item) for item in val),)
     else:
-        raise IDLError("%r cannot be converted to a c# const" % (val,))
+        raise IDLError("%r cannot be converted to a python const" % (val,))
 
 
 class PythonTarget(TargetBase):
@@ -129,9 +131,9 @@ class PythonTarget(TargetBase):
 
     def _generate_templated_packer_for_type(self, tp):
         if isinstance(tp, compiler.TList):
-            return "packers.ListOf(%s)" % (self._generate_templated_packer_for_type(tp.oftype),)
+            return "packers.ListOf(%s, %s)" % (tp.id, self._generate_templated_packer_for_type(tp.oftype),)
         elif isinstance(tp, compiler.TMap):
-            return "packers.MapOf(%s, %s)" % (self._generate_templated_packer_for_type(tp.keytype),
+            return "packers.MapOf(%s, %s, %s)" % (tp.id, self._generate_templated_packer_for_type(tp.keytype),
                 self._generate_templated_packer_for_type(tp.valtype))
         else:
             return type_to_packer(tp)
@@ -155,6 +157,9 @@ class PythonTarget(TargetBase):
         STMT("{0} = utils.create_enum('{0}', {{{1}}})", enum.name, ", ".join(members))
         SEP()
         with BLOCK("class {0}Packer(packers.Packer)", enum.name):
+            STMT("@classmethod")
+            with BLOCK("def get_id(cls)"):
+                STMT("return {0}", enum.id)
             STMT("@classmethod")
             with BLOCK("def pack(cls, obj, stream)"):
                 STMT("packers.Int32.pack(obj.value, stream)")
@@ -191,6 +196,10 @@ class PythonTarget(TargetBase):
         SEP = module.sep
         
         with BLOCK("class {0}Packer(packers.Packer)", rec.name):
+            STMT("@classmethod")
+            with BLOCK("def get_id(cls)"):
+                STMT("return {0}", rec.id)
+
             STMT("@classmethod")
             with BLOCK("def pack(cls, obj, stream)"):
                 for mem in rec.members:
@@ -249,13 +258,40 @@ class PythonTarget(TargetBase):
                 self._generate_processor_function(module, func)
                 self._generate_processor_unpacker(module, func)
             SEP()
-            STMT("proc = agnos.BaseProcessor(AGNOS_VERSION, IDL_MAGIC)")
+            with BLOCK("class Processor(agnos.BaseProcessor)"):
+                with BLOCK("def process_get_general_info(self, info)"):
+                    STMT('info["AGNOS_VERSION"] = AGNOS_VERSION')
+                    STMT('info["IDL_MAGIC"] = IDL_MAGIC')
+                    STMT('info["SERVICE_NAME"] = "{0}"', service.name)
+                SEP()
+                with BLOCK("def process_get_functions_info(self, info)"):
+                    for func in service.funcs.values():
+                        STMT("funcinfo = utils.HeteroMap()")
+                        STMT('funcinfo["name"] = "{0}"', func.name)
+                        STMT('funcinfo["type"] = "{0}"', str(func.type))
+                        STMT("args = utils.HeteroMap()")
+                        for arg in func.args:
+                            STMT('args["{0}"] = "{1}"', arg.name, str(arg.type))
+                        STMT('funcinfo.add("args", packers.Str, args, packers.BuiltinHeteroMapPacker)')
+                        if func.annotations:
+                            with BLOCK("anno = ", prefix = "{", suffix = "}"):
+                                STMT('"{0}" : "{1}"', anno.name, repr(anno.value))
+                            STMT('funcinfo.add("annotations", packers. anno, packers.map_of_str_str)')
+                        STMT('info.add({0}, packers.Str, funcinfo, packers.BuiltinHeteroMapPacker)', func.id)
+                SEP()
+                with BLOCK("def process_get_function_codes(self, info)"):
+                    for func in service.funcs.values():
+                        STMT('info["{0}"] = {1}', func.name, func.id)    
+            SEP()
+            
+            STMT("proc = Processor()")
             STMT("storer = proc.store")
             STMT("loader = proc.load")
+            
             SEP()
             for tp in service.types.values():
                 if isinstance(tp, compiler.Class):
-                    STMT("{0}ObjRef = packers.ObjRef(storer, loader)", tp.name)
+                    STMT("{0}ObjRef = packers.ObjRef({1}, storer, loader)", tp.name, tp.id)
             SEP()
             for member in service.types.values():
                 if isinstance(member, compiler.Record):
@@ -273,6 +309,12 @@ class PythonTarget(TargetBase):
                 for mem in service.types.values():
                     if isinstance(mem, compiler.Exception):
                         STMT("{0} : {1},", mem.name, type_to_packer(mem))
+            SEP()
+            with BLOCK("packers_map = ", prefix = "{", suffix = "}"):
+                for tp in service.types.values():
+                    STMT("{0} : {1}", tp.id, type_to_packer(tp))
+            STMT("heteroMapPacker = HeteroMapPacker(999, packers_map)")
+            STMT("packers_map[999] = heteroMapPacker")
             SEP()
             STMT("proc.post_init(func_mapping, packed_exceptions, exception_map)")
             STMT("return proc")
@@ -303,33 +345,41 @@ class PythonTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        with BLOCK("def _unpack_{0}(stream)", func.id):
+        with BLOCK("def _unpack_{0}(transport)", func.id):
             if not func.args:
                 STMT("return []")
                 return 
             with BLOCK("return ", prefix = "[", suffix="]"):
                 for arg in func.args:
-                    STMT("{0}.unpack(stream),", type_to_packer(arg.type))
+                    STMT("{0}.unpack(transport),", type_to_packer(arg.type))
     
     def generate_client(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
         
-        with BLOCK("def Client(instream, outstream)"):
+        with BLOCK("def Client(transport)"):
             for member in service.types.values():
                 if isinstance(member, compiler.Record):
                     if is_complex_type(member):
                         self.generate_record_packer(module, member)
                         SEP()
-            with BLOCK("class ClientClass(agnos.BaseClient)"):
-                with BLOCK("PACKED_EXCEPTIONS = ", prefix = "{", suffix = "}"):
-                    for mem in service.types.values():
-                        if isinstance(mem, compiler.Exception):
-                            STMT("{0} : {1},", mem.id, type_to_packer(mem))
-                SEP()
-                with BLOCK("def __init__(self, instream, outstream)"):
-                    STMT("agnos.BaseClient.__init__(self, instream, outstream, AGNOS_VERSION, IDL_MAGIC)")
+
+            with BLOCK("class Functions(object)"):
+                with BLOCK("def __init__(self, utils)"):
+                    STMT("self.utils = utils")
+                for func in service.funcs.values():
+                    args = ", ".join(arg.name for arg in func.args)
+                    with BLOCK("def sync_{0}(_self, {1})", func.id, args):
+                        with BLOCK("with _self.utils.invocation({0}, {1}) as seq", func.id, type_to_packer(func.type)):
+                            for arg in func.args:
+                                STMT("{0}.pack({1}, _self.utils.transport)", type_to_packer(arg.type), arg.name)
+                        STMT("return _self.utils.get_reply(seq)")
+            SEP()
+            with BLOCK("class ClientClass(object)"):
+                with BLOCK("def __init__(self, transport)"):
+                    STMT("self._utils = agnos.BaseClientUtils(transport, PACKED_EXCEPTIONS)")
+                    STMT("self._funcs = Functions(self._utils)")
                     for func in service.funcs.values():
                         if not func.namespace:
                             continue
@@ -338,32 +388,33 @@ class PythonTarget(TargetBase):
                         if not func.namespace:
                             continue
                         head, tail = (func.namespace + "." + func.name).split(".", 1)
-                        STMT("self.{0}['{1}'] = self._autogen_{2}", head, tail, func.fullname)
-                SEP()
+                        STMT("self.{0}['{1}'] = self._funcs.sync_{2}", head, tail, func.id)
                 for func in service.funcs.values():
+                    if not isinstance(func, compiler.Func) or func.namespace:
+                        continue
                     args = ", ".join(arg.name for arg in func.args)
-                    if func.namespace:
-                        name = "_autogen_%s" % (func.fullname,)
-                    else:
-                        name = func.name
-                    with BLOCK("def {0}_send(_self, {1})", name, args):
-                        with BLOCK("with _self._outstream.transaction() as trans"):
-                            STMT("seq = _self._send_invocation(trans, {0}, {1})", func.id, type_to_packer(func.type))
-                            for arg in func.args:
-                                STMT("{0}.pack({1}, trans)", type_to_packer(arg.type), arg.name)
-                        STMT("return seq")
-                    with BLOCK("def {0}(_self, {1})", name, args):
-                        STMT("seq = _self.{0}_send({1})", name, args)
-                        STMT("return _self._get_reply(seq)")
-                    SEP()
-            STMT("clnt = ClientClass(instream, outstream)")
-            STMT("storer = storer = lambda proxy: -1 if proxy is None else proxy._objref")
+                    with BLOCK("def {0}(_self, {1})", func.name, args):
+                        STMT("return self._funcs.sync_{0}", func.id)
+            SEP()
+            STMT("clnt = ClientClass(transport)")
+            STMT("storer = lambda proxy: -1 if proxy is None else proxy._objref")
             SEP()
             for tp in service.types.values():
                 if isinstance(tp, compiler.Class):
-                    STMT("{0}ObjRef = packers.ObjRef(storer, lambda oid: clnt._get_proxy({0}Proxy, oid))", tp.name)
+                    STMT("{0}ObjRef = packers.ObjRef({1}, storer, lambda oid: clnt._get_proxy({0}Proxy, oid))", tp.name, tp.id)
             SEP()
             self.generate_templated_packers(module, service)
+            SEP()
+            with BLOCK("PACKED_EXCEPTIONS = ", prefix = "{", suffix = "}"):
+                for mem in service.types.values():
+                    if isinstance(mem, compiler.Exception):
+                        STMT("{0} : {1},", mem.id, type_to_packer(mem))
+            SEP()
+            with BLOCK("packers_map = ", prefix = "{", suffix = "}"):
+                for tp in service.types.values():
+                    STMT("{0} : {1}", tp.id, type_to_packer(tp))
+            STMT("heteroMapPacker = HeteroMapPacker(999, packers_map)")
+            SEP()
             STMT("return clnt")
         SEP()
         STMT("@utils.make_method(Client)")

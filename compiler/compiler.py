@@ -416,6 +416,7 @@ t_buffer = BuiltinType(7, "buffer")
 t_date = BuiltinType(8, "date")
 t_string = BuiltinType(9, "str")
 t_void = BuiltinType(None, "void")
+t_heteromap = BuiltinType(999, "heteromap")
 
 
 def memoized(func):
@@ -492,6 +493,7 @@ class Service(Element):
         "int8" : t_int8,
         "int16" : t_int16,
         "int32" : t_int32,
+        "int" : t_int32,
         "int64" : t_int64,
         "float" : t_float,
         "bool" : t_bool,
@@ -499,6 +501,8 @@ class Service(Element):
         "buffer" : t_buffer,
         "str" : t_string,
         "string" : t_string,
+        "heteromap" : t_heteromap,
+        "hmap" : t_heteromap,
         "list" : None,
         "map" : None,
         "dict" : None,
