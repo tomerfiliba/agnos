@@ -174,9 +174,9 @@ class CSharpTarget(TargetBase):
 
     def _generate_templated_packer_for_type(self, tp):
         if isinstance(tp, compiler.TList):
-            return "new Packers.ListOf(%s)" % (self._generate_templated_packer_for_type(tp.oftype),)
+            return "new Packers.ListOf(%s, %s)" % (tp.id, self._generate_templated_packer_for_type(tp.oftype),)
         elif isinstance(tp, compiler.TMap):
-            return "new Packers.MapOf(%s, %s)" % (self._generate_templated_packer_for_type(tp.keytype),
+            return "new Packers.MapOf(%s, %s, %s)" % (tp.id, self._generate_templated_packer_for_type(tp.keytype),
                 self._generate_templated_packer_for_type(tp.valtype))
         else:
             return type_to_packer(tp)
@@ -215,6 +215,8 @@ class CSharpTarget(TargetBase):
             STMT("{0} = {1}", enum.members[-1].name, enum.members[-1].value, suffix = "")
         SEP()
         with BLOCK("internal class _{0}Packer : Packers.AbstractPacker", enum.name):
+            with BLOCK("public override int getId()"):
+                STMT("return {0}", enum.id)
             with BLOCK("public override void pack(object obj, Stream stream)"):
                 STMT("Packers.Int32.pack((int)(({0})obj), stream)", enum.name)
             with BLOCK("public override object unpack(Stream stream)"):
@@ -259,6 +261,10 @@ class CSharpTarget(TargetBase):
                     for tp in complex_types:
                         STMT("this.{0} = {0}", type_to_packer(tp))
                 SEP()
+
+            with BLOCK("public override int getId()"):
+                STMT("return {0}", rec.id)
+
             with BLOCK("public override void pack(object obj, Stream stream)"):
                 STMT("{0} val = ({0})obj", rec.name)
                 for mem in rec.members:
@@ -403,7 +409,7 @@ class CSharpTarget(TargetBase):
                 STMT("this.handler = handler")
                 for tp in service.types.values():
                     if isinstance(tp, compiler.Class):
-                        STMT("{0}ObjRef = new Packers.ObjRef(this)", tp.name)
+                        STMT("{0}ObjRef = new Packers.ObjRef({1}, this)", tp.name, tp.id)
                 for rec in generated_records:
                     complex_types = rec.get_complex_types()
                     STMT("{0}Packer = new _{0}Packer({1})", rec.name, ", ".join(type_to_packer(tp) for tp in complex_types))
@@ -418,12 +424,12 @@ class CSharpTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        with BLOCK("protected override void processGetGeneralInfo(IDictionary info)"):
-            STMT('info["AGNOS_VERSION"] = AGNOS_VERSION')
-            STMT('info["IDL_MAGIC"] = IDL_MAGIC')
-            STMT('info["SERVICE_NAME"] = "{0}"', service.name)
+        with BLOCK("protected override void processGetGeneralInfo(HeteroMap map)"):
+            STMT('map["AGNOS_VERSION"] = AGNOS_VERSION')
+            STMT('map["IDL_MAGIC"] = IDL_MAGIC')
+            STMT('map["SERVICE_NAME"] = "{0}"', service.name)
         SEP()
-        with BLOCK("protected void processGetFunctionsInfo(HeteroMap map)"):
+        with BLOCK("protected override void processGetFunctionsInfo(HeteroMap map)"):
             STMT("HeteroMap funcinfo")
             STMT("Dictionary<String, String> args")
             STMT("Dictionary<String, String> anno")
@@ -443,7 +449,7 @@ class CSharpTarget(TargetBase):
                     STMT('funcinfo.Add("annotations", anno, Packers.mapOfStrStr)')
                 STMT('map.Add({0}, funcinfo, Packers.builtinHeteroMapPacker)', func.id)
         SEP()
-        with BLOCK("protected void processGetFunctionCodes(HeteroMap map)"):
+        with BLOCK("protected override void processGetFunctionCodes(HeteroMap map)"):
             for func in service.funcs.values():
                 STMT('map["{0}"] = {1}', func.name, func.id)
 
@@ -595,7 +601,7 @@ class CSharpTarget(TargetBase):
             SEP()
             self.generate_client_funcs(module, service)
             SEP()
-            with BLOCK("public IDictionary GetServiceInfo(int code)"):
+            with BLOCK("public HeteroMap GetServiceInfo(int code)"):
                 STMT("return _utils.GetServiceInfo(code)")
             SEP()
             with BLOCK("public byte[] TunnelRequest(byte[] blob)"):
@@ -615,7 +621,7 @@ class CSharpTarget(TargetBase):
             SEP()
             for tp in service.types.values():
                 if isinstance(tp, compiler.Class):
-                    STMT("{0}ObjRef = new Packers.ObjRef(new {0}ClientSerializer(this))", tp.name) 
+                    STMT("{0}ObjRef = new Packers.ObjRef({1}, new {0}ClientSerializer(this))", tp.name, tp.id) 
             
             for rec in generated_records:
                 complex_types = rec.get_complex_types()

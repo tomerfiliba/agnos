@@ -47,7 +47,6 @@ class TestCSharp(TargetTest):
         try:
             host = serverproc.stdout.readline().strip()
             port = serverproc.stdout.readline().strip()
-            serverproc.stdout.close()
             print host, port
             
             clientproc = self.spawn([client_exe, host, port])
@@ -65,7 +64,10 @@ class TestCSharp(TargetTest):
                     serverproc.kill()
             except Exception:
                 pass
-
+            print "===server output==="
+            print serverproc.stdout.read()
+            print serverproc.stderr.read()
+            print "==================="
 
 if __name__ == '__main__':
     unittest.main()

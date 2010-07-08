@@ -79,6 +79,16 @@ namespace Agnos
 		{
 			data.CopyTo(array, arrayIndex);
 		}
+		public void Update(HeteroMap other)
+		{
+			foreach (KeyValuePair<Object, FieldInfo> e in other.fields) {
+				Add(e.Key, e.Value.keypacker, other.data[e.Key], e.Value.valpacker);
+			}
+		}
+		IEnumerator IEnumerable.GetEnumerator()
+		{
+			return (IEnumerator)GetEnumerator();
+		}
 		public IDictionaryEnumerator GetEnumerator()
 		{
 			return data.GetEnumerator();
@@ -120,6 +130,7 @@ namespace Agnos
 
 		public void Add(Object key,	Packers.AbstractPacker keypacker, Object value, Packers.AbstractPacker valpacker)
 		{
+			//System.Console.Error.WriteLine("Add: {0}, {1}, {2}, {3}", key, keypacker, value, valpacker);
 			if (keypacker == null || valpacker == null) {
 				throw new ArgumentNullException("keypacker and valpacker cannot be null");
 			}
@@ -164,7 +175,7 @@ namespace Agnos
 			if (valpacker == null || keypacker == null) {
 				throw new ArgumentException("cannot deduce key or value packer, use 4-argument Add()");
 			}
-			Add(key, keypacker, valpacker, valpacker);
+			Add(key, keypacker, value, valpacker);
 		}
 
 		public void Add(Object key, Object value, Packers.AbstractPacker valpacker)
@@ -176,7 +187,7 @@ namespace Agnos
 			if (keypacker == null) {
 				throw new ArgumentException("cannot deduce key packer, use 4-argument Add()");
 			}
-			Add(key, keypacker, valpacker, valpacker);
+			Add(key, keypacker, value, valpacker);
 		}		
 		
 		public bool TryGetValue(Object key, out Object value)

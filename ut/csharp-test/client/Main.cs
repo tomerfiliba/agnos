@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Agnos;
 using FeatureTestBindings;
 
@@ -43,7 +44,17 @@ public class myclient {
 		} catch (Agnos.GenericException) {
 			// okay
 		}
+
+		Agnos.HeteroMap info = conn.GetServiceInfo(Agnos.Protocol.INFO_GENERAL);
+		if ((String)info["SERVICE_NAME"] != "FeatureTest") {
+			throw new Exception("wrong service name: " + info["SERVICE_NAME"]);
+		}
 		
+		info = conn.GetServiceInfo(Agnos.Protocol.INFO_FUNCCODES);
+		foreach (DictionaryEntry e in info) {
+			System.Console.WriteLine("{0} = {1}", e.Key, e.Value);
+		}
+				
 		System.Console.WriteLine("test passed!");
 	}
 }
