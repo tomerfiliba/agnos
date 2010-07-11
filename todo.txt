@@ -1,25 +1,19 @@
 * intergrate with XSF
 
-* HAK2.0:
-	* HTTP stream
-	* jscript client (over URLs)
-
-* want:
+* new targets:
 	* c++
 	* REST access in the meanwhile:
 	    can implement REST on top of agnos, by writing a small python mediator 
 	    program that acts as a client from one side, and exposes REST 
 	    web access on the other
+	* jscript client (over URLs) for web gui
 
 * optional features:
     * async/timed invocation
     * by-ref list, by-ref map
     * custom type templates
     * complex consts
-	* authentication? encryption?
-	* dynamic structs -- basically like heterogenous dicts, 
-	  where keys are strings and values can be anything. each value is 
-	  serialized with its type code 
+	* authentication? encryption? -- best to leave this out
 
 * maybe targets:
 	* powershell

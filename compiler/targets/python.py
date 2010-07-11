@@ -183,6 +183,8 @@ class PythonTarget(TargetBase):
             SEP()
             args = ["%s = None" % (mem.name,) for mem in rec.members]
             with BLOCK("def __init__(self, {0})", ", ".join(args)):
+                if not rec.members:
+                    STMT("pass")
                 for mem in rec.members:
                     STMT("self.{0} = {0}", mem.name)
             SEP()
@@ -203,6 +205,8 @@ class PythonTarget(TargetBase):
 
             STMT("@classmethod")
             with BLOCK("def pack(cls, obj, stream)"):
+                if not rec.members:
+                    STMT("pass")
                 for mem in rec.members:
                     STMT("{0}.pack(obj.{1}, stream)", type_to_packer(mem.type), mem.name)
 
@@ -237,6 +241,18 @@ class PythonTarget(TargetBase):
                 with BLOCK("def {0}(self, {1})", method.name, args):
                     callargs = ["self"] + [arg.name for arg in method.args]
                     STMT("return self._client._funcs.sync_{0}({1})", method.func.id, ", ".join(callargs))
+            if cls.all_derived:
+                SEP()
+                DOC("downcasts")
+                for cls2 in cls.all_derived:
+                    with BLOCK("def cast{0}()", cls2.name):
+                        STMT("return {0}Proxy(self._client, self._objref, False)", cls2.name)
+            if cls.all_bases:
+                SEP()
+                DOC("upcasts")
+                for cls2 in cls.all_bases:
+                    with BLOCK("def cast{0}()", cls2.name):
+                        STMT("return {0}Proxy(self._client, self._objref, False)", cls2.name)
 
     def generate_handler_interface(self, module, service):
         BLOCK = module.block
@@ -397,10 +413,10 @@ class PythonTarget(TargetBase):
                 SEP()
                 STMT("self._funcs = Functions(self._utils)")
                 SEP()
-                for func in service.funcs.values():
-                    if not func.namespace:
-                        continue
-                    STMT("self.{0} = agnos.Namespace()", func.namespace.split(".")[0])
+                namespaces = set(func.namespace.split(".")[0] for func in service.funcs.values() 
+                    if func.namespace)
+                for ns in namespaces:
+                    STMT("self.{0} = agnos.Namespace()", ns.split(".")[0])
                 for func in service.funcs.values():
                     if not func.namespace:
                         continue

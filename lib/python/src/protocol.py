@@ -55,21 +55,23 @@ class HandshakeError(ProtocolError):
 
 
 class BaseProxy(object):
-    __slots__ = ["_client", "_objref", "__weakref__"]
-    def __init__(self, client, objref):
+    __slots__ = ["_client", "_objref", "_disposed", "__weakref__"]
+    def __init__(self, client, objref, owns_ref):
         self._client = weakref.proxy(client)
         self._objref = objref
+        self._disposed = not owns_ref
     def __del__(self):
         self.dispose()
     def __repr__(self):
-        if self._client is None:
+        if self._disposed:
             return "<%s instance (disposed)>" % (self.__class__.__name__,)
         else:
             return "<%s instance @ %s>" % (self.__class__.__name__, self._objref)
 
     def dispose(self):
-        if self._client is None:
+        if self._disposed:
             return
+        self._disposed = True
         self._client._utils.decref(self._objref)
         self._client = None
         self._objref = None
@@ -279,7 +281,7 @@ class ClientUtils(object):
         if objref in self.proxy_cache:
             return self.proxy_cache[objref]
         else:
-            proxy = cls(owner, objref)
+            proxy = cls(owner, objref, True)
             self.proxy_cache[objref] = proxy
             return proxy
 

@@ -308,10 +308,10 @@ class JavaTarget(TargetBase):
             STMT("protected Client _client")
             STMT("protected boolean _disposed")
             SEP()
-            with BLOCK("protected BaseProxy(Client client, Long objref)"):
+            with BLOCK("protected BaseProxy(Client client, Long objref, boolean owns_ref)"):
                 STMT("_client = client")
                 STMT("_objref = objref")
-                STMT("_disposed = false")
+                STMT("_disposed = owns_ref ? false : true")
             SEP()
             with BLOCK("protected void finalize()"):
                 STMT("dispose()")
@@ -352,8 +352,8 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         with BLOCK("public static class {0}Proxy extends BaseProxy implements I{0}", cls.name):
-            with BLOCK("protected {0}Proxy(Client client, Long objref)", cls.name):
-                STMT("super(client, objref)")
+            with BLOCK("protected {0}Proxy(Client client, Long objref, boolean owns_ref)", cls.name):
+                STMT("super(client, objref, owns_ref)")
             SEP()
             for attr in cls.all_attrs:
                 if attr.get:
@@ -379,6 +379,18 @@ class JavaTarget(TargetBase):
                     else:
                         STMT("return ({0})_client._funcs.sync_{1}({2})", type_to_java(method.type),
                             method.func.id, ", ".join(callargs))
+            if cls.all_derived:
+                SEP()
+                DOC("downcasts")
+                for cls2 in cls.all_derived:
+                    with BLOCK("public {0} cast{1}()", type_to_java(cls2, proxy = True), cls2.name):
+                        STMT("return new {0}(_client, _objref, false)", type_to_java(cls2, proxy = True))
+            if cls.all_bases:
+                SEP()
+                DOC("upcasts")
+                for cls2 in cls.all_bases:
+                    with BLOCK("public {0} cast{1}()", type_to_java(cls2, proxy = True), cls2.name):
+                        STMT("return new {0}(_client, _objref, false)", type_to_java(cls2, proxy = True))
 
     def generate_handler_interface(self, module, service):
         BLOCK = module.block
@@ -625,7 +637,7 @@ class JavaTarget(TargetBase):
                         with BLOCK("protected Object _get_proxy(Long id)"):
                             STMT("Object proxy = the_client._utils.getProxy(id)")
                             with BLOCK("if (proxy == null)"):
-                                STMT("proxy = new {0}(the_client, id)", type_to_java(tp, proxy = True))
+                                STMT("proxy = new {0}(the_client, id, true)", type_to_java(tp, proxy = True))
                                 STMT("the_client._utils.cacheProxy(id, proxy)")
                             STMT("return proxy")
                     SEP()

@@ -2,16 +2,19 @@ import os
 
 
 class SourceError(Exception):
-    def __init__(self, blk, msg, *args):
+    def __init__(self, blk, msg, *args, **kwargs):
         self.blk = blk
         if args:
             msg %= args
         self.msg = msg
+        self.kwargs = kwargs
     
     def display(self):
         if self.blk:
             print "Error at %s(%s)" % (self.blk.fileinfo.filename, self.blk.lineno)
             print "    %s" % (self.blk.text)
+            for k, v in self.kwargs.iteritems():
+                print "    %s = %r" % (k, v)
         print self.msg
 
 
@@ -56,6 +59,7 @@ class SourceBlock(object):
             if not line:
                 continue
             root.append(lineno, indentation, line)
+            #print "." * indentation + line
         return root
 
 
@@ -122,6 +126,11 @@ class TokenizedBlock(object):
             else:
                 doc.append(child.text)
         return cls("#module-root#", {}, doc, children, blk)
+    
+    def debug(self, level = 0):
+        print ".." * level, self.tag, self.args
+        for child in self.children:
+            child.debug(level + 1)
 
 
 #===============================================================================
@@ -197,7 +206,8 @@ class AstNode(object):
             try:
                 cls2 = mapping[child.tag]
             except KeyError:
-                raise SourceError(self.block.srcblock, "tag %r is invalid in this context", child.tag)
+                raise SourceError(self.block.srcblock, "tag %r is invalid in this context", child.tag,
+                    parent_node = self)
             self.children.append(cls2(child, self))
     
     def postprocess(self):
@@ -265,10 +275,8 @@ class RecordNode(AstNode):
     ATTRS = dict(name = auto_fill_name, extends = comma_sep_arg_value)
     CHILDREN = [RecordAttrNode]
 
-class ExceptionNode(AstNode):
+class ExceptionNode(RecordNode):
     TAG = "exception"
-    ATTRS = dict(name = auto_fill_name)
-    CHILDREN = [RecordAttrNode]
 
 class EnumAttrNode(AstNode):
     TAG = "member"
@@ -329,7 +337,7 @@ class RootNode(object):
         classes = {}
         for child in self.children:
             for child2 in child.children:
-                if isinstance(child2, ClassNode):
+                if isinstance(child2, (ClassNode, ExceptionNode)):
                     classes[child2.attrs["name"]] = child2
         for cls in classes.values():
             if cls.attrs["extends"]:
@@ -346,8 +354,12 @@ def parse_source_file(filename):
     fileinf = FileInfo(filename)
     source_root = SourceBlock.blockify_source(fileinf)
     tokenized_root = TokenizedBlock.tokenize_root(source_root)
+    #try:
     ast_root = ModuleNode(tokenized_root)
     ast_root.postprocess()
+    #except Exception, ex:
+    #tokenized_root.debug()
+    #raise
     return ast_root
 
 def parse_source_files(rootdir, filenames, rootpackage):
@@ -361,6 +373,8 @@ def parse_source_files(rootdir, filenames, rootpackage):
         if not ast.modinfo:
             relative_name = fn[len(rootdir):][:-3]
             modname = relative_name.replace("/", ".").replace("\\", ".").strip(".")
+            if modname.endswith("__init__"):
+                modname = modname[:-8]
             ast.modinfo = ModuleInfoNode.__new__(ModuleInfoNode)
             ast.modinfo.attrs = dict(name = rootpackage + "." + modname, namespace = None)
         modules.append(ast)

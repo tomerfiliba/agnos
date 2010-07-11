@@ -299,10 +299,10 @@ class CSharpTarget(TargetBase):
             STMT("protected Client _client")
             STMT("protected bool _disposed")
             SEP()
-            with BLOCK("protected BaseProxy(Client client, long objref)"):
+            with BLOCK("protected BaseProxy(Client client, long objref, bool owns_ref)"):
                 STMT("_client = client")
                 STMT("_objref = objref")
-                STMT("_disposed = false")
+                STMT("_disposed = owns_ref ? false : true")
             SEP()
             with BLOCK("~BaseProxy()"):
                 STMT("Dispose(false)")
@@ -351,9 +351,11 @@ class CSharpTarget(TargetBase):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
+        DOC = module.doc
 
         with BLOCK("public class {0}Proxy : BaseProxy, I{0}", cls.name):
-            with BLOCK("internal {0}Proxy(Client client, long objref) : base(client, objref)", cls.name):
+            with BLOCK("internal {0}Proxy(Client client, long objref, bool owns_ref) :"
+                    " base(client, objref, owns_ref)", cls.name):
                 pass
             SEP()
             for attr in cls.all_attrs:
@@ -376,6 +378,18 @@ class CSharpTarget(TargetBase):
                         STMT("_client._funcs.sync_{0}({1})", method.func.id, ", ".join(callargs))
                     else:
                         STMT("return _client._funcs.sync_{0}({1})", method.func.id, ", ".join(callargs))
+            if cls.all_derived:
+                SEP()
+                DOC("downcasts")
+                for cls2 in cls.all_derived:
+                    with BLOCK("public {0} cast{1}()", type_to_cs(cls2, proxy = True), cls2.name):
+                        STMT("return new {0}(_client, _objref, false)", type_to_cs(cls2, proxy = True))
+            if cls.all_bases:
+                SEP()
+                DOC("upcasts")
+                for cls2 in cls.all_bases:
+                    with BLOCK("public {0} cast{1}()", type_to_cs(cls2, proxy = True), cls2.name):
+                        STMT("return new {0}(_client, _objref, false)", type_to_cs(cls2, proxy = True))
 
     def generate_handler_interface(self, module, service):
         BLOCK = module.block
@@ -603,7 +617,7 @@ class CSharpTarget(TargetBase):
                         with BLOCK("public {0}ClientSerializer(Client client) : base(client)", tp.name):
                             pass
                         with BLOCK("protected override object newProxy(long id)"):
-                            STMT("return new {0}(client, id)", type_to_cs(tp, proxy = True))
+                            STMT("return new {0}(client, id, true)", type_to_cs(tp, proxy = True))
             SEP()
             STMT("protected Packers.HeteroMapPacker heteroMapPacker")
             SEP()

@@ -91,11 +91,16 @@ class IdlGenerator(object):
                 child.accept(self)
 
     def visit_StaticMethodNode(self, node):
+        if node.parent.parent.modinfo.attrs["namespace"]:
+            namespace = node.parent.parent.modinfo.attrs["namespace"] + "."
+        else:
+            namespace = ""
+        namespace += node.parent.attrs["name"]
         self.auto_generated_funcs.append(FuncInfo(
             name = node.attrs["name"], 
             type = node.attrs["type"],
             args = node.children,
-            namespace = node.parent.attrs["name"],
+            namespace = namespace,
             doc = node.doc
             ))
     
@@ -122,6 +127,8 @@ class IdlGenerator(object):
 
     def visit_ExceptionNode(self, node):
         with self.BLOCK("exception", name = node.attrs["name"]):
+            if node.attrs["extends"]:
+                self.ATTR(extends = ",".join(node.attrs["extends"]))
             self.emit_doc(node)
             for child in node.children:
                 child.accept(self)
@@ -132,6 +139,8 @@ class IdlGenerator(object):
 
     def visit_ConstNode(self, node):
         with self.BLOCK("const", name = node.attrs["name"], type = node.attrs["type"]):
+            if node.parent.modinfo.attrs["namespace"]:
+                self.ATTR(namespace = node.parent.modinfo.attrs["namespace"])
             self.ATTR(value = node.attrs["value"]) 
             self.emit_doc(node)
 
@@ -195,8 +204,9 @@ class ServerGenerator(object):
     
     def visit_FuncNode(self, node):
         args = ", ".join(arg.attrs["name"] for arg in node.children)
-        if "namespace" in node.attrs:
-            name = node.attrs["namespace"].replace(".", "_") + "_" + node.attrs["name"]
+        if node.parent.modinfo.attrs["namespace"]:
+            namespace = node.parent.modinfo.attrs["namespace"]
+            name = namespace.replace(".", "_") + "_" + node.attrs["name"]
         else:
             name = node.attrs["name"]
         with self.BLOCK("def {0}(_self, {1})", name, args):
@@ -221,8 +231,12 @@ class ServerGenerator(object):
                 node.parent.block.src_name, args)
 
     def visit_StaticMethodNode(self, node):
+        if node.parent.parent.modinfo.attrs["namespace"]:
+            namespace = node.parent.parent.modinfo.attrs["namespace"].replace(".", "_") + "_"
+        else:
+            namespace = ""
         args = ", ".join(arg.attrs["name"] for arg in node.children)
-        with self.BLOCK("def {0}_{1}(_self, {2})", node.parent.attrs["name"], node.attrs["name"], args):
+        with self.BLOCK("def {0}_{1}(_self, {2})", namespace + node.parent.attrs["name"], node.attrs["name"], args):
             self.required_modules.add(node.parent.parent.modinfo.attrs["name"])
             self.STMT("return {0}.{1}.{2}({3})", node.parent.parent.modinfo.attrs["name"], 
                 node.parent.block.src_name, node.block.src_name, args)
