@@ -18,28 +18,22 @@ class BaseServer(object):
     def _accept_client(self, transport):
         raise NotImplementedError()
 
-    @classmethod
-    def _serve_client(cls, processor, transport):
-        instream = transport.get_input_stream()
-        outstream = transport.get_output_stream()
-        
+    def _serve_client(self, transport):
         try:
-            #processor.handshake(instream, outstream)
             while True:
-                processor.process(instream, outstream)
+                self.processor.process(transport)
         except EOFError:
             pass
         finally:
-            instream.close()
-            outstream.close()
+            transport.close()
 
 class SimpleServer(BaseServer):
     def _accept_client(self, transport):
-        self._serve_client(self.processor, transport)
+        self._serve_client(transport)
 
 class ThreadedServer(BaseServer):
     def _accept_client(self, transport):
-        t = threading.Thread(target = BaseServer._serve_client, args = (self.processor, transport))
+        t = threading.Thread(target = self._serve_client, args = (transport,))
         t.start()
 
 class LibraryModeServer(BaseServer):
@@ -48,7 +42,7 @@ class LibraryModeServer(BaseServer):
         sys.stdout.flush()
         sys.stdout.close()
         trans = self.transport_factory.accept()
-        self._serve_client(self.processor, trans)
+        self._serve_client(trans)
 
 def server_main(processor, mode = "simple", port = 0, host = "localhost"):
     parser = OptionParser(conflict_handler="resolve")

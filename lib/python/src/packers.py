@@ -25,7 +25,8 @@ class PrimitivePacker(Packer):
             obj = 0
         stream.write(self.struct.pack(obj))
     def unpack(self, stream):
-        return self.struct.unpack(stream.read(self.struct.size))[0]
+        data = stream.read(self.struct.size)
+        return self.struct.unpack(data)[0]
 
 Int8 = PrimitivePacker(1, "!b")
 Int16 = PrimitivePacker(3, "!h")

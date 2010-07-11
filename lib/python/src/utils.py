@@ -23,7 +23,7 @@ class RLock(object):
                 self._owner = None
         self._lock.release()
     def is_held_by_current_thread(self):
-        return self._owner == thread.current_thread()
+        return self._owner == threading.current_thread()
 
 
 class EnumError(Exception):

@@ -82,6 +82,7 @@ class PythonTarget(TargetBase):
             STMT("import agnos")
             STMT("from agnos import packers")
             STMT("from agnos import utils")
+            STMT("from functools import partial")
             SEP()
             
             STMT("AGNOS_VERSION = 'Agnos 1.0'")
@@ -223,11 +224,11 @@ class PythonTarget(TargetBase):
                 accessors = []
                 if attr.get:
                     with BLOCK("def _get_{0}(self)", attr.name):
-                        STMT("return self._client._autogen_{0}_get_{1}(self)", cls.name, attr.name)
+                        STMT("return self._client._funcs.sync_{0}(self)", attr.getter.id)
                     accessors.append("_get_%s" % (attr.name,))
                 if attr.set:
                     with BLOCK("def _set_{0}(self, value)", attr.name):
-                        STMT("self._client._autogen_{0}_set_{1}(self, value)", cls.name, attr.name)
+                        STMT("self._client._funcs.sync_{0}(self, value)", attr.getter.id)
                     accessors.append("_set_%s" % (attr.name,))
                 STMT("{0} = property({1})", attr.name, ", ".join(accessors))
             SEP()
@@ -235,7 +236,7 @@ class PythonTarget(TargetBase):
                 args = ", ".join(arg.name for arg in method.args)
                 with BLOCK("def {0}(self, {1})", method.name, args):
                     callargs = ["self"] + [arg.name for arg in method.args]
-                    STMT("return self._client._autogen_{0}_{1}({2})", cls.name, method.name, ", ".join(callargs))
+                    STMT("return self._client._funcs.sync_{0}({1})", method.func.id, ", ".join(callargs))
 
     def generate_handler_interface(self, module, service):
         BLOCK = module.block
@@ -255,6 +256,7 @@ class PythonTarget(TargetBase):
         SEP = module.sep
         with BLOCK("class Processor(agnos.BaseProcessor)"):
             with BLOCK("def __init__(self, handler, exception_map = {})"):
+                STMT("agnos.BaseProcessor.__init__(self)")
                 for func in service.funcs.values():
                     self._generate_processor_function(module, func)
                     self._generate_processor_unpacker(module, func)
@@ -286,7 +288,7 @@ class PythonTarget(TargetBase):
                 with BLOCK("packers_map = ", prefix = "{", suffix = "}"):
                     for tp in service.types.values():
                         STMT("{0} : {1},", tp.id, type_to_packer(tp))
-                STMT("heteroMapPacker = HeteroMapPacker(999, packers_map)")
+                STMT("heteroMapPacker = packers.HeteroMapPacker(999, packers_map)")
                 STMT("packers_map[999] = heteroMapPacker")
             SEP()
             with BLOCK("def process_get_general_info(self, info)"):
@@ -359,22 +361,25 @@ class PythonTarget(TargetBase):
                         if is_complex_type(member):
                             self.generate_record_packer(module, member)
                             SEP()
+                STMT("packed_exceptions = {}")
+                STMT("self._utils = agnos.ClientUtils(transport, packed_exceptions)")
+                SEP()
                 STMT("storer = lambda proxy: -1 if proxy is None else proxy._objref")
                 for tp in service.types.values():
                     if isinstance(tp, compiler.Class):
-                        STMT("{0}ObjRef = packers.ObjRef({1}, storer, lambda oid: clnt._get_proxy({0}Proxy, oid))", tp.name, tp.id)
+                        STMT("{0}ObjRef = packers.ObjRef({1}, storer, partial(self._utils.get_proxy, {0}Proxy, self))", tp.name, tp.id)
                 SEP()
                 self.generate_templated_packers(module, service)
                 SEP()
-                with BLOCK("packed_exceptions = ", prefix = "{", suffix = "}"):
-                    for mem in service.types.values():
-                        if isinstance(mem, compiler.Exception):
-                            STMT("{0} : {1},", mem.id, type_to_packer(mem))
+                for mem in service.types.values():
+                    if isinstance(mem, compiler.Exception):
+                        STMT("packed_exceptions[{0}] = {1}", mem.id, type_to_packer(mem))
                 SEP()
                 with BLOCK("packers_map = ", prefix = "{", suffix = "}"):
                     for tp in service.types.values():
                         STMT("{0} : {1},", tp.id, type_to_packer(tp))
-                STMT("heteroMapPacker = HeteroMapPacker(999, packers_map)")
+                STMT("heteroMapPacker = packers.HeteroMapPacker(999, packers_map)")
+                STMT("packers_map[999] = heteroMapPacker")
                 SEP()
                 with BLOCK("class Functions(object)"):
                     with BLOCK("def __init__(self, utils)"):
@@ -385,12 +390,13 @@ class PythonTarget(TargetBase):
                             with BLOCK("with _self.utils.invocation({0}, {1}) as seq", func.id, type_to_packer(func.type)):
                                 if not func.args:
                                     STMT("pass")
-                                for arg in func.args:
-                                    STMT("{0}.pack({1}, _self.utils.transport)", type_to_packer(arg.type), arg.name)
+                                else:
+                                    for arg in func.args:
+                                        STMT("{0}.pack({1}, _self.utils.transport)", type_to_packer(arg.type), arg.name)
                             STMT("return _self.utils.get_reply(seq)")
                 SEP()
-                STMT("self._utils = agnos.BaseClientUtils(transport, packed_exceptions)")
                 STMT("self._funcs = Functions(self._utils)")
+                SEP()
                 for func in service.funcs.values():
                     if not func.namespace:
                         continue
@@ -406,7 +412,7 @@ class PythonTarget(TargetBase):
                     continue
                 args = ", ".join(arg.name for arg in func.args)
                 with BLOCK("def {0}(_self, {1})", func.name, args):
-                    STMT("return self._funcs.sync_{0}", func.id)
+                    STMT("return _self._funcs.sync_{0}({1})", func.id, args)
 
 
 

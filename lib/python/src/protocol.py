@@ -2,6 +2,7 @@ import sys
 import itertools
 import traceback
 import weakref
+import time
 from subprocess import Popen, PIPE
 from contextlib import contextmanager
 from .packers import Int8, Int32, Int64, Str, BuiltinHeteroMapPacker
@@ -69,7 +70,7 @@ class BaseProxy(object):
     def dispose(self):
         if self._client is None:
             return
-        self._client._decref(self._objref)
+        self._client._utils.decref(self._objref)
         self._client = None
         self._objref = None
 
@@ -207,7 +208,6 @@ class BaseProcessor(object):
         except Exception, ex:
             raise self.pack_exception(*sys.exc_info())
         else:
-            Int32.pack(seq, transport)
             Int8.pack(REPLY_SUCCESS, transport)
             if res_packer:
                 res_packer.pack(res, transport)
@@ -256,7 +256,10 @@ class ClientUtils(object):
         self.packed_exceptions = packed_exceptions
     
     def __del__(self):
-        self.close()
+        try:
+            self.close()
+        except Exception:
+            pass
     
     def close(self):
         self.transport.close()
@@ -270,13 +273,13 @@ class ClientUtils(object):
         except Exception:
             pass
     
-    def get_proxy(self, cls, objref):
+    def get_proxy(self, cls, owner, objref):
         if objref < 0:
             return None
         if objref in self.proxy_cache:
             return self.proxy_cache[objref]
         else:
-            proxy = cls(self, objref)
+            proxy = cls(owner, objref)
             self.proxy_cache[objref] = proxy
             return proxy
 
@@ -400,8 +403,11 @@ class BaseClient(object):
     def connect(cls, host, port):
         return cls(transports.SocketTransport.connect(host, port))
     @classmethod
-    def connect_executable(cls, filename, args = ()):
-        return cls(transports.ProcTransport.from_executable(filename, args))
+    def connect_executable(cls, filename, args = None):
+        if args is None:
+            return cls(transports.ProcTransport.from_executable(filename))
+        else:
+            return cls(transports.ProcTransport.from_executable(filename, args))
     @classmethod
     def connect_proc(cls, proc):
         return cls(transports.ProcTransport.from_proc(proc))

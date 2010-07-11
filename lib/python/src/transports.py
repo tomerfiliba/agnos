@@ -1,7 +1,6 @@
-import sys
-import os
 import socket
 import signal
+import time
 from select import select
 from contextlib import contextmanager
 from subprocess import Popen, PIPE
@@ -16,8 +15,8 @@ class Transport(object):
     def __init__(self, infile, outfile):
         self.infile = infile
         self.outfile = outfile
-        self._rlock = threading.RLock()
-        self._wlock = threading.RLock()
+        self._rlock = RLock()
+        self._wlock = RLock()
         self._read_length = -1
         self._read_pos = -1
         self._read_seq = -1
@@ -36,12 +35,14 @@ class Transport(object):
         if self._rlock.is_held_by_current_thread():
             raise IOError("begin_read is not reentrant")
         self._rlock.acquire()
-        rl, _, _ = select([self.file], [], [], max(0, timeout))
+        if timeout is not None and timeout < 0:
+            timeout = 0
+        rl, _, _ = select([self.infile], [], [], timeout)
         if not rl:
             self._rlock.release()
-            raise TransportTimeout("no data received in given time span")
-        self._read_length = packers.Int32.unpack(self.file)
-        self._read_seq = packers.Int32.unpack(self.file)
+            raise TransportTimeout("no data received within %r seconds" % (timeout,))
+        self._read_length = packers.Int32.unpack(self.infile)
+        self._read_seq = packers.Int32.unpack(self.infile)
         self._read_pos = 0
         return self._read_seq
     
@@ -53,17 +54,6 @@ class Transport(object):
         data = self.infile.read(count)
         self._read_pos += len(data)
         return data
-    
-    @contextmanager
-    def reading(self, timeout = None):
-        yield self.begin_read(timeout)
-        self.end_read()
-
-    @contextmanager
-    def writing(self, seq):
-        self.begin_write(seq)
-        yield
-        self.end_read()
     
     def read_all(self):
         return self.read(self._read_length - self._read_pos)
@@ -111,33 +101,44 @@ class Transport(object):
             raise IOError("thread must first call begin_write")
         del self._write_buffer[:]
         self._wlock.release()
+    
+    @contextmanager
+    def reading(self, timeout = None):
+        yield self.begin_read(timeout)
+        self.end_read()
+
+    @contextmanager
+    def writing(self, seq):
+        self.begin_write(seq)
+        yield
+        self.end_write()
 
 
 class WrappedTransport(object):
     def __init__(self, transport):
         self.transport = transport
     def close(self):
-        self.transport.close()
+        return self.transport.close()
     def begin_read(self, timeout = None):
-        self.transport.begin_read(timeout)
+        return self.transport.begin_read(timeout)
     def read(self, count):
-        self.transport.read(count)
+        return self.transport.read(count)
     def read_all(self):
-        self.transport.read_all()
+        return self.transport.read_all()
     def begin_write(self, seq):
-        self.transport.begin_write(seq)
+        return self.transport.begin_write(seq)
     def write(self, data):
-        self.transport.write(data)
+        return self.transport.write(data)
     def reset(self):
-        self.transport.reset()
+        return self.transport.reset()
     def end_write(self):
-        self.transport.end_write()
+        return self.transport.end_write()
     def cancel_write(self):
-        self.transport.cancel_write()
+        return self.transport.cancel_write()
     def reading(self, timeout = None):
         return self.transport.reading(timeout)
     def writing(self, seq):
-        return self.transport.writing()
+        return self.transport.writing(seq)
 
 
 class SocketFile(object):
@@ -188,6 +189,8 @@ class SocketFile(object):
             data2 = self._underlying_read(req)
             data = self.read_buffer + data2[:req]
             self.read_buffer = data2[req:]
+        if count > 0 and not data:
+            raise EOFError()
         return data
     
     def write(self, data):
@@ -234,6 +237,8 @@ class ProcTransport(WrappedTransport):
 
     @classmethod
     def from_proc(cls, proc):
+        if proc.poll() is not None:
+            raise ValueError("process terminated with exit code %r" % (proc.poll(),))
         host = proc.stdout.readline().strip()
         port = int(proc.stdout.readline().strip())
         proc.stdout.close()
