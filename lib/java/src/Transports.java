@@ -227,7 +227,7 @@ public class Transports
 		}
 	}
 
-	public static abstract class WrappedTransport
+	public static abstract class WrappedTransport implements ITransport
 	{
 		protected ITransport transport;
 		

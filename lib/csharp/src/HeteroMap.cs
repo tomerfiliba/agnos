@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Text;
 using System.Collections.Generic;
 
 
@@ -36,6 +37,17 @@ namespace Agnos
 			data = new Hashtable(other.data);
 		}
 		
+		public override string ToString ()
+		{
+			StringBuilder sb = new StringBuilder(5000);
+			sb.Append("HeteroMap{");
+			foreach (DictionaryEntry e in data) {
+				sb.AppendFormat("    {0} : {1}\n", e.Key, e.Value);
+			}
+			sb.Append("}");
+			return sb.ToString();
+		}
+
 		public int Count {
 			get { return data.Count;}
 		}

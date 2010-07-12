@@ -343,7 +343,7 @@ public class Protocol
 		}
 	}
 
-	public static class BaseClientUtils
+	public static class ClientUtils
 	{
 		protected Map<Integer, Packers.AbstractPacker> packedExceptionsMap;
 		protected int						seq;
@@ -351,7 +351,7 @@ public class Protocol
 		protected Map<Long, WeakReference>	proxies;
 		public Transports.ITransport		transport;
 
-		public BaseClientUtils(Transports.ITransport transport, 
+		public ClientUtils(Transports.ITransport transport, 
 					Map<Integer, Packers.AbstractPacker> packedExceptionsMap)
 				throws Exception
 		{
@@ -613,6 +613,21 @@ public class Protocol
 		{
 			return getReply(seq, -1);
 		}
-	}	
-	
+	}
+
+	public static class BaseClient
+	{
+		public ClientUtils _utils;
+		
+        public HeteroMap getServiceInfo(int code) throws Exception
+        {
+            return _utils.getServiceInfo(code);
+        }
+        
+        public byte[] tunnelRequest(byte[] blob) throws Exception
+        {
+            int seq = _utils.tunnelRequest(blob);
+            return (byte[])_utils.getReply(seq);
+        }
+	}
 }

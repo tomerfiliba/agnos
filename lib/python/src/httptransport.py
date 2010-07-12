@@ -53,14 +53,12 @@ class HttpClientTransport(Transport):
         return Transport.begin_read(self, timeout)
     
     def end_read(self):
-        if not self._rlock.is_held_by_current_thread():
-            raise IOError("thread must first call begin_read")
+        self._assert_rlock()
         self.infile = None
         self._rlock.release()
     
     def end_write(self):
-        if not self._wlock.is_held_by_current_thread():
-            raise IOError("thread must first call begin_write")
+        self._assert_wlock()
         data = "".join(self._write_buffer)
         del self._write_buffer[:]
         if data:

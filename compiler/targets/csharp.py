@@ -121,6 +121,9 @@ class CSharpTarget(TargetBase):
             
             STMT("using System")
             STMT("using System.IO")
+            STMT("using System.Net")
+            STMT("using System.Net.Sockets")
+            STMT("using System.Diagnostics")
             STMT("using System.Collections")
             STMT("using System.Collections.Generic")
             STMT("using Agnos")
@@ -247,7 +250,7 @@ class CSharpTarget(TargetBase):
                 for mem in rec.members:
                     STMT("this.{0} = {0}", mem.name)
             SEP()
-            with BLOCK("public override String ToString()"):
+            with BLOCK("public override string ToString()"):
                 STMT('return "{0}(" + {1} + ")"', rec.name, ' + ", " + '.join(mem.name  for mem in rec.members))
 
     def generate_record_packer(self, module, rec, static):
@@ -317,7 +320,7 @@ class CSharpTarget(TargetBase):
                     STMT("_disposed = true")
                     STMT("_client._utils.Decref(_objref)")
             SEP()
-            with BLOCK("public override String ToString()"):
+            with BLOCK("public override string ToString()"):
                 STMT('return base.ToString() + "<" + _objref + ">"')
 
     def generate_class_interface(self, module, cls):
@@ -382,13 +385,13 @@ class CSharpTarget(TargetBase):
                 SEP()
                 DOC("downcasts")
                 for cls2 in cls.all_derived:
-                    with BLOCK("public {0} cast{1}()", type_to_cs(cls2, proxy = True), cls2.name):
+                    with BLOCK("public {0} CastTo{1}()", type_to_cs(cls2, proxy = True), cls2.name):
                         STMT("return new {0}(_client, _objref, false)", type_to_cs(cls2, proxy = True))
             if cls.all_bases:
                 SEP()
                 DOC("upcasts")
                 for cls2 in cls.all_bases:
-                    with BLOCK("public {0} cast{1}()", type_to_cs(cls2, proxy = True), cls2.name):
+                    with BLOCK("public {0} CastTo{1}()", type_to_cs(cls2, proxy = True), cls2.name):
                         STMT("return new {0}(_client, _objref, false)", type_to_cs(cls2, proxy = True))
 
     def generate_handler_interface(self, module, service):
@@ -457,19 +460,19 @@ class CSharpTarget(TargetBase):
         SEP()
         with BLOCK("protected override void processGetFunctionsInfo(HeteroMap map)"):
             STMT("HeteroMap funcinfo")
-            STMT("Dictionary<String, String> args")
-            STMT("Dictionary<String, String> anno")
+            STMT("Dictionary<string, string> args")
+            STMT("Dictionary<string, string> anno")
             SEP()
             for func in service.funcs.values():
                 STMT("funcinfo = new HeteroMap()")
                 STMT('funcinfo["name"] = "{0}"', func.name)
                 STMT('funcinfo["type"] = "{0}"', str(func.type))
-                STMT("args = new Dictionary<String, String>()")
+                STMT("args = new Dictionary<string, string>()")
                 for arg in func.args:
                     STMT('args["{0}"] = "{1}"', arg.name, str(arg.type))
                 STMT('funcinfo.Add("args", args, Packers.mapOfStrStr)')
                 if func.annotations:
-                    STMT("anno = new Dictionary<String, String>()")
+                    STMT("anno = new Dictionary<string, string>()")
                     for anno in func.annotations:
                         STMT('anno["{0}"] = "{1}"', anno.name, anno.value)
                     STMT('funcinfo.Add("annotations", anno, Packers.mapOfStrStr)')
@@ -574,9 +577,7 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         
-        with BLOCK("public class Client"):
-            STMT("internal Protocol.BaseClientUtils _utils")
-            SEP()
+        with BLOCK("public class Client : Protocol.BaseClient"):
             for tp in service.types.values():
                 if isinstance(tp, compiler.Class):
                     STMT("internal Packers.ObjRef {0}ObjRef", tp.name)
@@ -629,12 +630,7 @@ class CSharpTarget(TargetBase):
             SEP()
             self.generate_client_funcs(module, service)
             SEP()
-            with BLOCK("public HeteroMap GetServiceInfo(int code)"):
-                STMT("return _utils.GetServiceInfo(code)")
-            SEP()
-            with BLOCK("public byte[] TunnelRequest(byte[] blob)"):
-                STMT("int seq = _utils.TunnelRequest(blob)")
-                STMT("return (byte[])_utils.GetReply(seq)")
+            self.generate_client_factories(module, service)
 
     def generate_client_ctor(self, module, service, namespaces, generated_records):
         BLOCK = module.block
@@ -644,7 +640,7 @@ class CSharpTarget(TargetBase):
         
         with BLOCK("public Client(ITransport transport)"):
             STMT("Dictionary<int, Packers.AbstractPacker> pem = new Dictionary<int, Packers.AbstractPacker>()") 
-            STMT("_utils = new Protocol.BaseClientUtils(transport, pem)")
+            STMT("_utils = new Protocol.ClientUtils(transport, pem)")
             STMT("_funcs = new _Functions(this)")
             SEP()
             for tp in service.types.values():
@@ -722,6 +718,26 @@ class CSharpTarget(TargetBase):
                     STMT("{0} = new _Namespace{1}(funcs)", name, id)
         STMT("public _Namespace{0} {1}", root["__id__"], root["__name__"])
 
+    def generate_client_factories(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        
+        with BLOCK("public static Client ConnectSock(string host, int port)"):
+            STMT("return new Client(new SocketTransport(host, port))")
+        with BLOCK("public static Client ConnectSock(Socket sock)"):
+            STMT("return new Client(new SocketTransport(sock))")
+        
+        with BLOCK("public static Client ConnectProc(string executable)"):
+            STMT("return new Client(ProcTransport.Connect(executable))")
+        with BLOCK("public static Client ConnectProc(Process proc)"):
+            STMT("return new Client(ProcTransport.Connect(proc))")
+
+        with BLOCK("public static Client ConnectUri(string uri)"):
+            STMT("return new Client(new HttpClientTransport(uri))")
+        with BLOCK("public static Client ConnectUri(Uri uri)"):
+            STMT("return new Client(new HttpClientTransport(uri))")
+    
     def generate_client_internal_funcs(self, module, service):
         BLOCK = module.block
         STMT = module.stmt

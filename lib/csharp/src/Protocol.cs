@@ -266,7 +266,7 @@ namespace Agnos
 			protected abstract void processInvoke (ITransport transport, int seq);
 		}
 
-		public class BaseClientUtils
+		public class ClientUtils
 		{
 			protected enum ReplySlotType
 			{
@@ -294,7 +294,7 @@ namespace Agnos
 			protected Dictionary<long, WeakReference> proxies;
 			protected Dictionary<int, Packers.AbstractPacker> packedExceptionsMap;
 
-			public BaseClientUtils (ITransport transport, Dictionary<int, Packers.AbstractPacker> packedExceptionsMap)
+			public ClientUtils (ITransport transport, Dictionary<int, Packers.AbstractPacker> packedExceptionsMap)
 			{
 				this.transport = transport;
 				this.packedExceptionsMap = packedExceptionsMap;
@@ -547,6 +547,23 @@ namespace Agnos
 				return GetReply (seq, -1);
 			}
 		}
-	}
+
+		public class BaseClient
+		{
+			public ClientUtils _utils;
+			
+	        public HeteroMap GetServiceInfo(int code)
+	        {
+	        		return _utils.GetServiceInfo(code);
+	        }
+	        
+	        public byte[] TunnelRequest(byte[] blob)
+	        {
+	        		int seq = _utils.TunnelRequest(blob);
+				return (byte[])_utils.GetReply(seq);
+			}
 	
+		}
+		
+	}
 }

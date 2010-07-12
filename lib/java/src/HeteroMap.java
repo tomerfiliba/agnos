@@ -35,6 +35,18 @@ public class HeteroMap implements Map
 		fields = new HashMap<Object, FieldInfo>(other.fields);
 		data = new HashMap(other.data);
 	}
+	
+	public String toString()
+	{
+		StringWriter sw = new StringWriter(2000);
+		sw.write("HeteroMap{\n");
+		for (Map.Entry e : (Set<Map.Entry>)data.entrySet()) {
+			sw.write("    " + e.getKey().toString() + " : " + e.getValue().toString() + "\n");
+		}
+		sw.write("}");
+		sw.flush();
+		return sw.toString();
+	}
 
 	public void clear()
 	{

@@ -6,8 +6,9 @@ import time
 
 class Packer(object):
     __slots__ = []
-    def get_id(self):
-        return self.ID
+    @classmethod
+    def get_id(cls):
+        return cls.ID
     def pack(self, obj, stream):
         raise NotImplementedError()
     def unpack(self, stream):

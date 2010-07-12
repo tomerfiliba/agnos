@@ -6,7 +6,7 @@ from agnos_compiler.compiler import compile
 from agnos_compiler.compiler.targets import PythonTarget
 
 
-ID_GENERATOR = itertools.count(200000)
+ID_GENERATOR = itertools.count(800000)
 
 class FuncInfo(object):
     def __init__(self, name, type, args, namespace = None, doc = None):
@@ -152,7 +152,7 @@ class IdlGenerator(object):
     
     def visit_EnumAttrNode(self, node):
         with self.BLOCK("member", name = node.attrs["name"]):
-            if node.attrs["value"]:
+            if "value" in node.attrs and node.attrs["value"] is not None:
                 self.ATTR(value = node.attrs["value"])
             self.emit_doc(node)
 

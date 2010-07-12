@@ -1,11 +1,13 @@
 import socket
 import signal
 import time
+import itertools
 from select import select
+from cStringIO import StringIO 
 from contextlib import contextmanager
 from subprocess import Popen, PIPE
 from . import packers
-from .utils import RLock 
+from .utils import RLock
 
 
 class TransportTimeout(IOError):
@@ -46,9 +48,12 @@ class Transport(object):
         self._read_pos = 0
         return self._read_seq
     
-    def read(self, count):
+    def _assert_rlock(self):
         if not self._rlock.is_held_by_current_thread():
             raise IOError("thread must first call begin_read")
+    
+    def read(self, count):
+        self._assert_rlock()
         if self._read_pos + count > self._read_length:
             raise EOFError("request to read more than available")
         data = self.infile.read(count)
@@ -59,8 +64,7 @@ class Transport(object):
         return self.read(self._read_length - self._read_pos)
     
     def end_read(self):
-        if not self._rlock.is_held_by_current_thread():
-            raise IOError("thread must first call begin_read")
+        self._assert_rlock()
         remaining = self._read_length - self._read_pos
         while remaining > 0:
             chunk = self.infile.read(min(remaining, 16*1024))
@@ -69,24 +73,25 @@ class Transport(object):
     
     def begin_write(self, seq):
         if self._wlock.is_held_by_current_thread():
-            raise IOError("begin_write is not reentrant")
+            raise IOError("begin_write() is not reentrant")
         self._wlock.acquire()
         self._write_seq = seq
         del self._write_buffer[:]
     
-    def write(self, data):
+    def _assert_wlock(self):
         if not self._wlock.is_held_by_current_thread():
-            raise IOError("thread must first call begin_write")
+            raise IOError("thread must first call begin_write()")
+    
+    def write(self, data):
+        self._assert_wlock()
         self._write_buffer.append(data)
     
     def reset(self):
-        if not self._wlock.is_held_by_current_thread():
-            raise IOError("thread must first call begin_write")
+        self._assert_wlock()
         del self._write_buffer[:]
     
     def end_write(self):
-        if not self._wlock.is_held_by_current_thread():
-            raise IOError("thread must first call begin_write")
+        self._assert_wlock()
         data = "".join(self._write_buffer)
         del self._write_buffer[:]
         if data:
@@ -97,8 +102,7 @@ class Transport(object):
         self._wlock.release()
     
     def cancel_write(self):
-        if not self._wlock.is_held_by_current_thread():
-            raise IOError("thread must first call begin_write")
+        self._assert_wlock()
         del self._write_buffer[:]
         self._wlock.release()
     
@@ -244,6 +248,55 @@ class ProcTransport(WrappedTransport):
         proc.stdout.close()
         transport = SocketTransport.connect(host, port)
         return cls(proc, transport)
+
+
+class LoopbackTransport(Transport):
+    def __init__(self):
+        Transport.__init__(self, None, None)
+        self.incoming = []
+        self.outgoing = []
+        self.seqgen = itertools.count(400000)
+    
+    def insert(self, blob, seq = None):
+        """feed the transport with data to read"""
+        if seq is None:
+            seq = self.seqgen.next()
+        self.incoming.append((seq, blob))
+    def pop(self):
+        """get the result of the previous end_write() operation"""
+        if not self.outgoing:
+            raise ValueError("pop() called before end_write()")
+        return self.outgoing.pop(0)
+    
+    def close(self):
+        self.incoming = None
+        self.outgoing = None
+
+    def begin_read(self, timeout = None):
+        if self._rlock.is_held_by_current_thread():
+            raise IOError("begin_read is not reentrant")
+        self._rlock.acquire()
+        if not self.incoming:
+            self._rlock.release()
+            raise IOError("begin_read() called before insert()")
+        seq, data = self.incoming.pop(0)
+        self.infile = StringIO(data)
+        self._read_length = len(data)
+        self._read_seq = seq
+        self._read_pos = 0
+        return self._read_seq
+    
+    def end_read(self):
+        self._assert_rlock()
+        self.infile = None
+        self._rlock.release()
+    
+    def end_write(self):
+        self._assert_wlock()
+        data = "".join(self._write_buffer)
+        del self._write_buffer[:]
+        self.outgoing.append(data)
+        self._wlock.release()
 
 
 #===============================================================================

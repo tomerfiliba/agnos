@@ -10,8 +10,7 @@ public class myclient {
 		string host = args[0];
 		int port = int.Parse(args[1]);
 
-		FeatureTest.Client conn = new FeatureTest.Client(
-				new Agnos.Transports.SocketTransport(host, port));
+		FeatureTest.Client conn = new FeatureTest.Client.ConnectSock(host, port);
 		test(conn);
 	}
 

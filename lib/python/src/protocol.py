@@ -3,6 +3,7 @@ import itertools
 import traceback
 import weakref
 import time
+from . import utils
 from subprocess import Popen, PIPE
 from contextlib import contextmanager
 from .packers import Int8, Int32, Int64, Str, BuiltinHeteroMapPacker
@@ -177,7 +178,7 @@ class BaseProcessor(object):
 
     def process_get_info(self, transport, seq):
         code = Int32.unpack(transport)
-        info = HeteroMap()
+        info = utils.HeteroMap()
         
         if code == INFO_GENERAL:
             self.process_get_general_info(info)

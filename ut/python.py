@@ -6,7 +6,7 @@ from base import TargetTest
 
 class FeatureTestClient(TargetTest):
     def runTest(self):
-        self.run_agnosc("python", "ut/features.xml", "ut/python-test")
+        self.run_agnosc(sys.executable, "ut/features.xml", "ut/python-test")
         sys.path.append(self.REL("ut/python-test"))
         import FeatureTest_bindings
         global FeatureTest
@@ -34,8 +34,8 @@ class FeatureTestClient(TargetTest):
             FeatureTest.Address(FeatureTest.State.NY, "albany", "microsoft drive", 1772),
             eve)
 
-        self.assertEquals(adam.think(17, 3), 17/3.0)        
-        self.assertRaises(agnos.GenericException, adam.think, 17, 0)        
+        self.assertEquals(adam.think(17, 3), 17/3.0)
+        self.assertRaises(agnos.GenericException, adam.think, 17, 0)
         
 
 if __name__ == "__main__":

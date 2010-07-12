@@ -513,6 +513,9 @@ public class Packers
 
 		public ListOf(int id, AbstractPacker type)
 		{
+			if (type == null) {
+				throw new AssertionError("type is null!");
+			}
 			this.id = id;
 			this.type = type;
 		}
@@ -528,11 +531,11 @@ public class Packers
 				Int32.pack(0, stream);
 			}
 			else {
-				List val = (List) obj;
-				Int32.pack(val.size(), stream);
+				List lst = (List)obj;
+				Int32.pack(lst.size(), stream);
 
-				for (Object obj2 : val) {
-					type.pack(obj2, stream);
+				for (Object item : lst) {
+					type.pack(item, stream);
 				}
 			}
 		}
@@ -540,11 +543,11 @@ public class Packers
 		public Object unpack(InputStream stream) throws IOException
 		{
 			int length = (Integer) Int32.unpack(stream);
-			ArrayList<Object> arr = new ArrayList<Object>(length);
+			ArrayList lst = new ArrayList(length);
 			for (int i = 0; i < length; i++) {
-				arr.add(type.unpack(stream));
+				lst.add(type.unpack(stream));
 			}
-			return arr;
+			return lst;
 		}
 	}
 
@@ -571,6 +574,9 @@ public class Packers
 			this.id = id;
 			this.keytype = keytype;
 			this.valtype = valtype;
+			if (keytype == null || valtype == null) {
+				throw new AssertionError("type is null!");
+			}
 		}
 
 		protected int getId()

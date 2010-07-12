@@ -163,7 +163,10 @@ class PythonTarget(TargetBase):
                 STMT("return {0}", enum.id)
             STMT("@classmethod")
             with BLOCK("def pack(cls, obj, stream)"):
-                STMT("packers.Int32.pack(obj.value, stream)")
+                with BLOCK("if isinstance(obj, utils.Enum)"):
+                    STMT("packers.Int32.pack(obj.value, stream)")
+                with BLOCK("else"):
+                    STMT("packers.Int32.pack(obj, stream)")
             STMT("@classmethod")
             with BLOCK("def unpack(cls, stream)"):
                 STMT("return {0}.get_by_value(packers.Int32.unpack(stream))", enum.name)

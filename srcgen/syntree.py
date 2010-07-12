@@ -158,6 +158,24 @@ def auto_fill_name(argname, blk):
         blk.args["name"] = blk.src_name
     return blk.args["name"]
 
+def auto_enum_name(argname, blk):
+    assert argname == "name"
+    if "name" not in blk.args:
+        for i in range(blk.srcblock.lineno, len(blk.srcblock.fileinfo.lines)):
+            l = blk.srcblock.fileinfo.lines[i].strip()
+            if "=" in l:
+                n, v = l.split("=", 1)
+                blk.args["name"] = n.strip()
+                blk.args["value"] = int(v.strip())
+                break
+    return blk.args["name"]
+
+def auto_enum_value(argname, blk):
+    assert argname == "value"
+    if argname not in blk.args:
+        raise SourceError(blk.srcblock, "required argument %r missing", argname)
+    return blk.args[argname]
+
 def arg_value(argname, blk):
     if argname not in blk.args:
         raise SourceError(blk.srcblock, "required argument %r missing", argname)
@@ -280,7 +298,7 @@ class ExceptionNode(RecordNode):
 
 class EnumAttrNode(AstNode):
     TAG = "member"
-    ATTRS = dict(name = arg_value, value = arg_default(None))
+    ATTRS = dict(name = auto_enum_name, value = auto_enum_value)
 
 class EnumNode(AstNode):
     TAG = "enum"

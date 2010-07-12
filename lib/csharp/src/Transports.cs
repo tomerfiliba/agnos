@@ -282,7 +282,7 @@ namespace Agnos.Transports
         }
     }
 
-    public abstract class WrappedTransport
+    public abstract class WrappedTransport : ITransport
     {
         protected ITransport transport;
 

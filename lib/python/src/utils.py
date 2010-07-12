@@ -54,14 +54,6 @@ class Enum(object):
             return getattr(cls, name)
         except AttrributeError:
             raise EnumError("no member named %r" % (val,))
-    @classmethod
-    def pack(cls, obj, stream):
-        if not isinstance(obj, Enum):
-            obj = cls.get_by_value(obj)
-        packers.Int32.pack(obj.value, stream)
-    @classmethod
-    def unpack(cls, stream):
-        return cls.get_by_value(packers.Int32.unpack(stream))
 
 def create_enum(name, members):
     cls = type(name, (Enum,), dict(_BY_VALUE = {}))
@@ -105,7 +97,7 @@ class HeteroMap(object):
     def iter_fields(self):
         for k, v in self.fields.iteritems():
             vv, kp, vp = v
-            yield kp, vv, kp
+            yield k, kp, vv, kp
     def keys(self):
         return self.fields.keys()
     def pop(self, key, *default):
@@ -123,6 +115,8 @@ class HeteroMap(object):
                 self[k] = v
     def values(self):
         return list(self.itervalues())
+    def __len__(self):
+        return len(self.fields)
     def __contains__(self, key):
         return key in self.fields
     has_key = __contains__

@@ -29,6 +29,7 @@ def type_to_java(t, proxy = False):
     elif t == compiler.t_heteromap:
         return "agnos.HeteroMap"
     elif isinstance(t, compiler.TList):
+        #return "%s[]" % (type_to_java(t.oftype, proxy = proxy),)
         return "List"
     elif isinstance(t, compiler.TMap):
         return "Map"
@@ -123,6 +124,7 @@ class JavaTarget(TargetBase):
             SEP()
             STMT("import java.util.*")
             STMT("import java.io.*")
+            STMT("import java.net.*;")
             STMT("import agnos.*")
             SEP()
             with BLOCK("public class {0}Bindings", service.name):
@@ -184,15 +186,23 @@ class JavaTarget(TargetBase):
         else:
             return type_to_packer(tp)
 
-    def generate_templated_packers(self, module, service):
+    def generate_templated_packers_decl(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
         
         for tp in service.all_types:
             if isinstance(tp, (compiler.TList, compiler.TMap)):
-                definition = self._generate_templated_packer_for_type(tp)
-                STMT("protected Packers.AbstractPacker _{0} = {1}", tp.stringify(), definition)
+                STMT("protected Packers.AbstractPacker _{0}", tp.stringify())
+
+    def generate_templated_packers_impl(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        
+        for tp in service.all_types:
+            if isinstance(tp, (compiler.TList, compiler.TMap)):
+                STMT("_{0} = {1}", tp.stringify(), self._generate_templated_packer_for_type(tp))
     
     def generate_enum(self, module, enum):
         BLOCK = module.block
@@ -383,13 +393,13 @@ class JavaTarget(TargetBase):
                 SEP()
                 DOC("downcasts")
                 for cls2 in cls.all_derived:
-                    with BLOCK("public {0} cast{1}()", type_to_java(cls2, proxy = True), cls2.name):
+                    with BLOCK("public {0} castTo{1}()", type_to_java(cls2, proxy = True), cls2.name):
                         STMT("return new {0}(_client, _objref, false)", type_to_java(cls2, proxy = True))
             if cls.all_bases:
                 SEP()
                 DOC("upcasts")
                 for cls2 in cls.all_bases:
-                    with BLOCK("public {0} cast{1}()", type_to_java(cls2, proxy = True), cls2.name):
+                    with BLOCK("public {0} castTo{1}()", type_to_java(cls2, proxy = True), cls2.name):
                         STMT("return new {0}(_client, _objref, false)", type_to_java(cls2, proxy = True))
 
     def generate_handler_interface(self, module, service):
@@ -421,7 +431,7 @@ class JavaTarget(TargetBase):
                         self.generate_record_packer(module, member, static = False)
                         generated_records.append(member)
                         SEP()
-            self.generate_templated_packers(module, service)
+            self.generate_templated_packers_decl(module, service)
             SEP()
             STMT("protected Packers.HeteroMapPacker heteroMapPacker")
             SEP()
@@ -432,6 +442,7 @@ class JavaTarget(TargetBase):
                         STMT("{0}ObjRef = new Packers.ObjRef({1}, this)", tp.name, tp.id)
                 for rec in generated_records:
                     STMT("{0}Packer = new _{0}Packer()", rec.name)
+                self.generate_templated_packers_impl(module, service)
                 SEP()
                 STMT("HashMap<Integer, Packers.AbstractPacker> packersMap = new HashMap<Integer, Packers.AbstractPacker>()")
                 for tp in service.types.values():
@@ -573,9 +584,7 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         
-        with BLOCK("public static class Client"):
-            STMT("protected Protocol.BaseClientUtils _utils")
-            SEP()
+        with BLOCK("public static class Client extends Protocol.BaseClient"):
             for tp in service.types.values():
                 if isinstance(tp, compiler.Class):
                     STMT("protected Packers.ObjRef {0}ObjRef", tp.name)
@@ -587,7 +596,7 @@ class JavaTarget(TargetBase):
                         self.generate_record_packer(module, member, static = False)
                         generated_records.append(member)
                         SEP()
-            self.generate_templated_packers(module, service)
+            self.generate_templated_packers_decl(module, service)
             SEP()
             with BLOCK("protected abstract class ClientSerializer implements Packers.ISerializer"):
                 with BLOCK("public Long store(Object obj)"):
@@ -612,12 +621,8 @@ class JavaTarget(TargetBase):
             SEP()
             self.generate_client_funcs(module, service)
             SEP()
-            with BLOCK("public HeteroMap getServiceInfo(int code) throws Exception"):
-                STMT("return _utils.getServiceInfo(code)")
-            SEP()
-            with BLOCK("public byte[] tunnelRequest(byte[] blob) throws Exception"):
-                STMT("int seq = _utils.tunnelRequest(blob)")
-                STMT("return (byte[])_utils.getReply(seq)")
+            self.generate_client_factories(module, service)
+            
     
     def generate_client_ctor(self, module, service, namespaces, generated_records):
         BLOCK = module.block
@@ -626,7 +631,7 @@ class JavaTarget(TargetBase):
         DOC = module.doc
         with BLOCK("public Client(Transports.ITransport transport) throws Exception"):
             STMT("Map<Integer, Packers.AbstractPacker> pem = new HashMap<Integer, Packers.AbstractPacker>()") 
-            STMT("_utils = new Protocol.BaseClientUtils(transport, pem)")
+            STMT("_utils = new Protocol.ClientUtils(transport, pem)")
             STMT("_funcs = new _Functions(_utils)")
             SEP()
             STMT("final Client the_client = this")
@@ -643,6 +648,7 @@ class JavaTarget(TargetBase):
                     SEP()
             for rec in generated_records:
                 STMT("{0}Packer = new _{0}Packer()", rec.name)
+            self.generate_templated_packers_impl(module, service)
             SEP()
             for mem in service.types.values():
                 if isinstance(mem, compiler.Exception):
@@ -706,14 +712,34 @@ class JavaTarget(TargetBase):
                     STMT("{0} = new _Namespace{1}(funcs)", name, id)
         STMT("public _Namespace{0} {1}", root["__id__"], root["__name__"])
 
+    def generate_client_factories(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        
+        with BLOCK("public static Client connectSock(String host, int port) throws Exception"):
+            STMT("return new Client(new Transports.SocketTransport(host, port))")
+        with BLOCK("public static Client connectSock(Socket sock) throws Exception"):
+            STMT("return new Client(new Transports.SocketTransport(sock))")
+        
+        with BLOCK("public static Client connectProc(String executable) throws Exception"):
+            STMT("return new Client(Transports.ProcTransport.connect(executable))")
+        with BLOCK("public static Client connectProc(ProcessBuilder procbuilder) throws Exception"):
+            STMT("return new Client(Transports.ProcTransport.connect(procbuilder))")
+
+        with BLOCK("public static Client connectUrl(String url) throws Exception"):
+            STMT("return new Client(new Transports.HttpClientTransport(url))")
+        with BLOCK("public static Client connectUrl(URL url) throws Exception"):
+            STMT("return new Client(new Transports.HttpClientTransport(url))")
+
     def generate_client_internal_funcs(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
         DOC = module.doc
         with BLOCK("protected class _Functions"):
-            STMT("protected Protocol.BaseClientUtils utils")
-            with BLOCK("public _Functions(Protocol.BaseClientUtils utils)"):
+            STMT("protected Protocol.ClientUtils utils")
+            with BLOCK("public _Functions(Protocol.ClientUtils utils)"):
                 STMT("this.utils = utils")
             SEP()
             for func in service.funcs.values():
