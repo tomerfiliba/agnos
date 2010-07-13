@@ -1,0 +1,42 @@
+using System;
+using System.Collections;
+using MextraBindings;
+
+
+namespace csclient
+{
+	class MainClass
+	{
+		public static void Main (string[] args)
+		{
+			string host = args[0];
+			int port = int.Parse(args[1]);
+	
+			Mextra.Client conn = Mextra.Client.ConnectSock(host, port);
+			System.Console.WriteLine(conn.GetServiceInfo(Agnos.Protocol.INFO_GENERAL));
+			
+			var sys = conn.get_system();
+			System.Console.WriteLine(sys);
+			
+			var racks = sys.racks;
+			var rack = (Mextra.RackProxy)(racks[0]);
+			System.Console.WriteLine("this rack: {0}", rack.compid);
+			
+			var pool = (Mextra.PoolProxy)sys.pools[0];
+			System.Console.WriteLine("pool name: {0}", pool.name);
+			System.Console.WriteLine("used size: {0}", pool.used_size);
+			
+			var vol = (Mextra.VolumeProxy)pool.create_volume("moshiko", 18290);
+			System.Console.WriteLine("used size after creating a volume: {0}", pool.used_size);
+			
+			try {
+				vol.resize(99);
+			} catch (Mextra.VolSizeError ex) {
+				System.Console.WriteLine("oops: {0}", ex);
+			}
+	
+			vol.resize(999999);
+			System.Console.WriteLine("used size after growing volume: {0}", pool.used_size);
+		}
+	}
+}

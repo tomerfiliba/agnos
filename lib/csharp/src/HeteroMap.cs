@@ -40,7 +40,7 @@ namespace Agnos
 		public override string ToString ()
 		{
 			StringBuilder sb = new StringBuilder(5000);
-			sb.Append("HeteroMap{");
+			sb.Append("HeteroMap{\n");
 			foreach (DictionaryEntry e in data) {
 				sb.AppendFormat("    {0} : {1}\n", e.Key, e.Value);
 			}

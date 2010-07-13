@@ -8,12 +8,14 @@
 	    web access on the other
 	* jscript client (over URLs) for web gui
 
+* features:
+	* async, timed
+	* SSL
+
 * optional features:
-    * async/timed invocation
     * by-ref list, by-ref map
     * custom type templates
     * complex consts
-	* authentication? encryption? -- best to leave this out
 
 * maybe targets:
 	* powershell

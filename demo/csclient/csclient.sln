@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "csclient", "csclient.csproj", "{35C47132-FE49-448F-A28E-7032874E0D72}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Agnos", "..\..\lib\csharp\src\Agnos.csproj", "{8D5457D1-288E-4517-BC0A-DC1EFD36EA78}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mextra", "Mextra\Mextra.csproj", "{8EA543D1-46EC-4EEE-9BC9-405674A73F3C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{35C47132-FE49-448F-A28E-7032874E0D72}.Debug|x86.ActiveCfg = Debug|x86
+		{35C47132-FE49-448F-A28E-7032874E0D72}.Debug|x86.Build.0 = Debug|x86
+		{35C47132-FE49-448F-A28E-7032874E0D72}.Release|x86.ActiveCfg = Release|x86
+		{35C47132-FE49-448F-A28E-7032874E0D72}.Release|x86.Build.0 = Release|x86
+		{8D5457D1-288E-4517-BC0A-DC1EFD36EA78}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{8D5457D1-288E-4517-BC0A-DC1EFD36EA78}.Debug|x86.Build.0 = Debug|Any CPU
+		{8D5457D1-288E-4517-BC0A-DC1EFD36EA78}.Release|x86.ActiveCfg = Release|Any CPU
+		{8D5457D1-288E-4517-BC0A-DC1EFD36EA78}.Release|x86.Build.0 = Release|Any CPU
+		{8EA543D1-46EC-4EEE-9BC9-405674A73F3C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{8EA543D1-46EC-4EEE-9BC9-405674A73F3C}.Debug|x86.Build.0 = Debug|Any CPU
+		{8EA543D1-46EC-4EEE-9BC9-405674A73F3C}.Release|x86.ActiveCfg = Release|Any CPU
+		{8EA543D1-46EC-4EEE-9BC9-405674A73F3C}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		StartupItem = csclient.csproj
+	EndGlobalSection
+EndGlobal

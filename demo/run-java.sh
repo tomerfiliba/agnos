@@ -2,10 +2,10 @@
 ROOT=`pwd`/..
 export PATH=$PATH:$ROOT/bin
 
-echo "running srcgen"
+echo "generating IDL"
 agnos-srcgen.py mextra -o autogen
 
-echo "running agnosc"
+echo "generating java bindings"
 agnosc.py autogen/Mextra_autogen.xml -t java -o javaclient
 
 #echo "building agnos.jar"
