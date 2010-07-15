@@ -249,12 +249,16 @@ class JavaTarget(TargetBase):
             SEP()
             with BLOCK("public {0}()", rec.name):
                 pass
-            args = ", ".join("%s %s" % (type_to_java(mem.type), mem.name) for mem in rec.members)
-            with BLOCK("public {0}({1})", rec.name, args):
-                for mem in rec.members:
-                    STMT("this.{0} = {0}", mem.name)
+            if rec.members:
+                args = ", ".join("%s %s" % (type_to_java(mem.type), mem.name) for mem in rec.members)
+                with BLOCK("public {0}({1})", rec.name, args):
+                    for mem in rec.members:
+                        STMT("this.{0} = {0}", mem.name)
             with BLOCK("public String toString()"):
-                STMT('return "{0}(" + {1} + ")"', rec.name, ' + ", " + '.join(mem.name  for mem in rec.members))
+                if not rec.members:
+                    STMT('return "{0}()"', rec.name)
+                else:
+                    STMT('return "{0}(" + {1} + ")"', rec.name, ' + ", " + '.join(mem.name  for mem in rec.members))
     
     def generate_record_packer(self, module, rec, static):
         BLOCK = module.block
@@ -698,7 +702,7 @@ class JavaTarget(TargetBase):
                     subnamespaces.append((name, node["__id__"]))
                 elif isinstance(node, compiler.Func):
                     func = node
-                    args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in func.args)
+                    args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = False), arg.name) for arg in func.args)
                     callargs = ", ".join(arg.name for arg in func.args)
                     with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(func.type, proxy = True), func.name, args):
                         if func.type == compiler.t_void:
@@ -743,7 +747,7 @@ class JavaTarget(TargetBase):
                 STMT("this.utils = utils")
             SEP()
             for func in service.funcs.values():
-                args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in func.args)
+                args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = False), arg.name) for arg in func.args)
                 with BLOCK("public {0} sync_{1}({2}) throws Exception", type_to_java(func.type, proxy = True), func.id, args):
                     STMT("int seq = utils.beginCall({0}, {1})", func.id, type_to_packer(func.type))
                     STMT("OutputStream outStream = utils.transport.getOutputStream()")

@@ -245,13 +245,17 @@ class CSharpTarget(TargetBase):
             SEP()
             with BLOCK("public {0}()", rec.name):
                 pass
-            args = ", ".join("%s %s" % (type_to_cs(mem.type), mem.name) for mem in rec.members)
-            with BLOCK("public {0}({1})", rec.name, args):
-                for mem in rec.members:
-                    STMT("this.{0} = {0}", mem.name)
+            if rec.members:
+                args = ", ".join("%s %s" % (type_to_cs(mem.type), mem.name) for mem in rec.members)
+                with BLOCK("public {0}({1})", rec.name, args):
+                    for mem in rec.members:
+                        STMT("this.{0} = {0}", mem.name)
             SEP()
             with BLOCK("public override string ToString()"):
-                STMT('return "{0}(" + {1} + ")"', rec.name, ' + ", " + '.join(mem.name  for mem in rec.members))
+                if not rec.members:
+                    STMT('return "{0}()"', rec.name)
+                else:
+                    STMT('return "{0}(" + {1} + ")"', rec.name, ' + ", " + '.join(mem.name  for mem in rec.members))
 
     def generate_record_packer(self, module, rec, static):
         BLOCK = module.block

@@ -13,9 +13,12 @@ namespace csclient
 			int port = int.Parse(args[1]);
 	
 			Mextra.Client conn = Mextra.Client.ConnectSock(host, port);
+			
 			System.Console.WriteLine(conn.GetServiceInfo(Agnos.Protocol.INFO_GENERAL));
 			
 			var sys = conn.get_system();
+			//var v = conn.Volume.create_volume();
+			
 			System.Console.WriteLine(sys);
 			
 			var racks = sys.racks;

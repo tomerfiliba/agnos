@@ -11,6 +11,7 @@ public class Demo
 
 		try {
 			MextraBindings.Client conn = MextraBindings.Client.connectSock(host, port);
+			//MextraBindings.Client conn = MextraBindings.Client.connectProc("./mextra_server.py")
 			doStuff(conn);
 		} catch (Exception ex) {
 			ex.printStackTrace(System.out);

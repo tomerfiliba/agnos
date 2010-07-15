@@ -1,0 +1,1 @@
+gcc -fPIC -shared -o agnos.so -pedantic -Werror  *.cpp 

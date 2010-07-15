@@ -1,16 +1,22 @@
 * intergrate with XSF
-
-* new targets:
-	* c++
-	* REST access in the meanwhile:
-	    can implement REST on top of agnos, by writing a small python mediator 
-	    program that acts as a client from one side, and exposes REST 
-	    web access on the other
-	* jscript client (over URLs) for web gui
+	* buildbot tests
+	* simple init
+	* performance tests
+	* include tracebacks?
+	* srcgen: parse consts
 
 * features:
 	* async, timed
 	* SSL
+
+* targets:
+	1 powershell
+	2 c++
+	3 REST access in the meanwhile:
+	    can implement REST on top of agnos, by writing a small python mediator 
+	    program that acts as a client from one side, and exposes REST 
+	    web access on the other
+	4 jscript client (over URLs) for web gui
 
 * optional features:
     * by-ref list, by-ref map
@@ -18,7 +24,6 @@
     * complex consts
 
 * maybe targets:
-	* powershell
     * c
     * perl
     * php

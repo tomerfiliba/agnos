@@ -1,24 +1,22 @@
 <project>
+	<target name="clean">
+		<delete dir="build" />
+	</target>
 
-    <!--path id="compile.classpath">
-        <fileset dir="/usr/local/lib" includes="*.jar" />
-    </path-->
+	<target name="compile">
+		<mkdir dir="build/classes" />
+		<javac srcdir="src" destdir="build/classes" debug="false" includeAntRuntime="no">
+			<!-- compilerarg value="-Xlint"/-->
+		</javac>
+	</target>
 
-    <target name="clean">
-        <delete dir="build" />
-    </target>
+	<target name="jar" depends="compile">
+		<mkdir dir="build/jars" />
+		<jar destfile="build/jars/agnos.jar" basedir="build/classes" />
+	</target>
 
-    <target name="compile">
-        <mkdir dir="build/classes" />
-        <javac srcdir="src" destdir="build/classes" debug="true" includeAntRuntime="no">
-            <!-- compilerarg value="-Xlint"/-->   
-        </javac>
-        
-    </target>
-
-    <target name="jar" depends="compile">
-        <mkdir dir="build/jars" />
-        <jar destfile="build/jars/agnos.jar" basedir="build/classes" />
-    </target>
+	<target name="install" depends="jar">
+		<copy file="build/jars/agnos.jar" tofile="/usr/local/lib/agnos.jar" />
+	</target>
 
 </project>
