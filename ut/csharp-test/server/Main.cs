@@ -1,7 +1,7 @@
 using System;
 using Agnos;
 using FeatureTestBindings;
-using System.Collections;
+using System.Collections.Generic;
 
 
 public class myserver 
@@ -77,9 +77,9 @@ public class myserver
 	public class ClassC : FeatureTest.IClassC {
 		private int val = 17;
 		private double val3 = 17.77;
-		private IList _my_attr4;
+		private IList<FeatureTest.IClassA> _my_attr4;
 		
-		public ClassC(int a, int b, double c, IList d)
+		public ClassC(int a, int b, double c, IList<FeatureTest.IClassA> d)
 		{
 			val = a;
 			val3 = c;
@@ -112,7 +112,7 @@ public class myserver
 			}
 		}
 
-		public IList attr4 {
+		public IList<FeatureTest.IClassA> attr4 {
 			get {
 				return _my_attr4;
 			}
@@ -239,14 +239,15 @@ public class myserver
 			return new Person(name, father, mother);
 		}
 
-		public IList get_class_c()  {
-			ArrayList x1 = new ArrayList();
+		public IList<FeatureTest.IClassC> get_class_c()  
+		{
+			List<FeatureTest.IClassA> x1 = new List<FeatureTest.IClassA>();
 			x1.Add(new ClassA());
 			x1.Add(new ClassA());
-			ArrayList x2 = new ArrayList();
+			List<FeatureTest.IClassA> x2 = new List<FeatureTest.IClassA>();
 			x2.Add(new ClassA());
 
-			ArrayList arr = new ArrayList();
+			List<FeatureTest.IClassC> arr = new List<FeatureTest.IClassC>();
 			arr.Add(new ClassC(4, 5, 6.0, x1));
 			arr.Add(new ClassC(33, 12, 76.2, x2));
 			
@@ -255,7 +256,7 @@ public class myserver
 
 		public FeatureTest.Everything func_of_everything(Byte a,
 				short b, int c, long d, double e, bool f, DateTime g,
-				byte[] h, string i, IList j, IDictionary k,
+				byte[] h, string i, IList<double> j, IDictionary<int, string> k,
 				FeatureTest.Address l, FeatureTest.IPerson m)
 				 {
 			return new FeatureTest.Everything(a, b, c, d, e, f, g, h,

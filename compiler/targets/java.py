@@ -30,9 +30,10 @@ def type_to_java(t, proxy = False):
         return "agnos.HeteroMap"
     elif isinstance(t, compiler.TList):
         #return "%s[]" % (type_to_java(t.oftype, proxy = proxy),)
-        return "List"
+        return "List<%s>" % (type_to_java(t.oftype, proxy = False),)
     elif isinstance(t, compiler.TMap):
-        return "Map"
+        return "Map<%s, %s>" % (type_to_java(t.keytype, proxy = False), 
+            type_to_java(t.valtype, proxy = False))
     elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
         return "%s" % (t.name,)
     elif isinstance(t, compiler.Class):
@@ -179,9 +180,11 @@ class JavaTarget(TargetBase):
 
     def _generate_templated_packer_for_type(self, tp):
         if isinstance(tp, compiler.TList):
-            return "new Packers.ListOf(%s, %s)" % (tp.id, self._generate_templated_packer_for_type(tp.oftype),)
+            return "new Packers.ListOf<%s>(%s, %s)" % (type_to_java(tp), tp.id, 
+                self._generate_templated_packer_for_type(tp.oftype),)
         elif isinstance(tp, compiler.TMap):
-            return "new Packers.MapOf(%s, %s, %s)" % (tp.id, self._generate_templated_packer_for_type(tp.keytype),
+            return "new Packers.MapOf<%s, %s>(%s, %s, %s)" % (type_to_java(tp.keytype), 
+                type_to_java(tp.valtype), tp.id, self._generate_templated_packer_for_type(tp.keytype),
                 self._generate_templated_packer_for_type(tp.valtype))
         else:
             return type_to_packer(tp)

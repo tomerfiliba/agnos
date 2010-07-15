@@ -39,30 +39,9 @@ public class Packers
 			return unpack(transport.getInputStream());
 		}
 
-		// private static String repr(byte[] buffer) {
-		// StringBuilder sb = new StringBuilder(buffer.length);
-		// int b;
-		// String s;
-		//
-		// for (int i = 0; i < buffer.length; i++) {
-		// b = buffer[i] & 0xff;
-		// if (b >= 32 && b <= 127) {
-		// sb.append((char) b);
-		// } else {
-		// s = Integer.toString(b, 16);
-		// if (s.length() == 1) {
-		// s = "0" + s;
-		// }
-		// sb.append("\\x" + s);
-		// }
-		// }
-		// return sb.toString();
-		// }
-
 		protected static void _write(OutputStream stream, byte[] buffer)
 				throws IOException
 		{
-			// System.err.println("W: " + repr(buffer));
 			stream.write(buffer, 0, buffer.length);
 		}
 
@@ -79,36 +58,9 @@ public class Packers
 					throw new EOFException("premature end of stream detected");
 				}
 			}
-
-			// System.err.println("R: " + repr(buffer));
 		}
 
 	}
-
-	// ////////////////////////////////////////////////////////////////////////
-
-	public static class _MockupPacker extends AbstractPacker
-	{
-		protected _MockupPacker()
-		{
-		}
-
-		protected int getId()
-		{
-			throw new AssertionError("cannot use MockupPacker");
-		}
-
-		public void pack(Object obj, OutputStream stream) throws IOException
-		{
-		}
-
-		public Object unpack(InputStream stream) throws IOException
-		{
-			return null;
-		}
-	}
-
-	public static _MockupPacker MockupPacker = new _MockupPacker();
 
 	// ////////////////////////////////////////////////////////////////////////
 
@@ -124,7 +76,7 @@ public class Packers
 		{
 			return 1;
 		}
-
+		
 		public void pack(Object obj, OutputStream stream) throws IOException
 		{
 			if (obj == null) {
@@ -345,7 +297,7 @@ public class Packers
 	public static class ObjRef extends AbstractPacker
 	{
 		protected ISerializer serializer;
-		private int id;
+		protected int id;
 
 		public ObjRef(int id, ISerializer serializer)
 		{
@@ -383,7 +335,7 @@ public class Packers
 		{
 			return 6;
 		}
-
+		
 		public void pack(Object obj, OutputStream stream) throws IOException
 		{
 			if (obj == null) {
@@ -420,7 +372,7 @@ public class Packers
 		{
 			return 7;
 		}
-
+		
 		public void pack(Object obj, OutputStream stream) throws IOException
 		{
 			if (obj == null) {
@@ -456,7 +408,7 @@ public class Packers
 		{
 			return 8;
 		}
-
+		
 		public void pack(Object obj, OutputStream stream) throws IOException
 		{
 			Int64.pack(new Long(((Date) obj).getTime()), stream);
@@ -484,7 +436,7 @@ public class Packers
 		{
 			return 9;
 		}
-
+		
 		public void pack(Object obj, OutputStream stream) throws IOException
 		{
 			if (obj == null) {
@@ -506,10 +458,10 @@ public class Packers
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class ListOf extends AbstractPacker
+	public static class ListOf<T> extends AbstractPacker
 	{
-		private AbstractPacker type;
-		private int id;
+		protected AbstractPacker type;
+		protected int id;
 
 		public ListOf(int id, AbstractPacker type)
 		{
@@ -543,31 +495,31 @@ public class Packers
 		public Object unpack(InputStream stream) throws IOException
 		{
 			int length = (Integer) Int32.unpack(stream);
-			ArrayList lst = new ArrayList(length);
+			List<T> lst = new ArrayList<T>(length);
 			for (int i = 0; i < length; i++) {
-				lst.add(type.unpack(stream));
+				lst.add((T)(type.unpack(stream)));
 			}
 			return lst;
 		}
 	}
 
-	public static final ListOf listOfInt8 = new ListOf(800, Int8);
-	public static final ListOf listOfBool = new ListOf(801, Bool);
-	public static final ListOf listOfInt16 = new ListOf(802, Int16);
-	public static final ListOf listOfInt32 = new ListOf(803, Int32);
-	public static final ListOf listOfInt64 = new ListOf(804, Int64);
-	public static final ListOf listOfFloat = new ListOf(805, Float);
-	public static final ListOf listOfBuffer = new ListOf(806, Buffer);
-	public static final ListOf listOfDate = new ListOf(807, Date);
-	public static final ListOf listOfStr = new ListOf(808, Str);
+	public static final ListOf<Byte> listOfInt8 = new ListOf<Byte>(800, Int8);
+	public static final ListOf<Boolean> listOfBool = new ListOf<Boolean>(801, Bool);
+	public static final ListOf<Short> listOfInt16 = new ListOf<Short>(802, Int16);
+	public static final ListOf<Integer> listOfInt32 = new ListOf<Integer>(803, Int32);
+	public static final ListOf<Long> listOfInt64 = new ListOf<Long>(804, Int64);
+	public static final ListOf<Double> listOfFloat = new ListOf<Double>(805, Float);
+	public static final ListOf<byte[]> listOfBuffer = new ListOf<byte[]>(806, Buffer);
+	public static final ListOf<Date> listOfDate = new ListOf<Date>(807, Date);
+	public static final ListOf<String> listOfStr = new ListOf<String>(808, Str);
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class MapOf extends AbstractPacker
+	public static class MapOf<K, V> extends AbstractPacker
 	{
-		private AbstractPacker keytype;
-		private AbstractPacker valtype;
-		private int id;
+		protected AbstractPacker keytype;
+		protected AbstractPacker valtype;
+		protected int id;
 
 		public MapOf(int id, AbstractPacker keytype, AbstractPacker valtype)
 		{
@@ -603,27 +555,27 @@ public class Packers
 		public Object unpack(InputStream stream) throws IOException
 		{
 			int length = (Integer) Int32.unpack(stream);
-			Map<Object, Object> map = new HashMap<Object, Object>(length);
+			Map<K, V> map = new HashMap<K, V>(length);
 			for (int i = 0; i < length; i++) {
-				Object k = keytype.unpack(stream);
-				Object v = valtype.unpack(stream);
+				K k = (K)(keytype.unpack(stream));
+				V v = (V)(valtype.unpack(stream));
 				map.put(k, v);
 			}
 			return map;
 		}
 	}
 
-	public static final MapOf mapOfInt32Int32 = new MapOf(850, Int32, Int32);
-	public static final MapOf mapOfInt32Str = new MapOf(851, Int32, Str);
-	public static final MapOf mapOfStrInt32 = new MapOf(852, Str, Int32);
-	public static final MapOf mapOfStrStr = new MapOf(853, Str, Str);
+	public static final MapOf<Integer, Integer> mapOfInt32Int32 = new MapOf<Integer, Integer>(850, Int32, Int32);
+	public static final MapOf<Integer, String> mapOfInt32Str = new MapOf<Integer, String>(851, Int32, Str);
+	public static final MapOf<String, Integer> mapOfStrInt32 = new MapOf<String, Integer>(852, Str, Int32);
+	public static final MapOf<String, String> mapOfStrStr = new MapOf<String, String>(853, Str, Str);
 
 	// ////////////////////////////////////////////////////////////////////////
 
 	public static class HeteroMapPacker extends AbstractPacker
 	{
 		protected Map<Integer, AbstractPacker> packersMap;
-		private int id;
+		protected int id;
 
 		public HeteroMapPacker(int id, Map<Integer, AbstractPacker> packersMap)
 		{

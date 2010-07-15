@@ -17,7 +17,7 @@ namespace Agnos.Transports
         int BeginRead();
         int BeginRead(int msecs);
         int Read(byte[] data, int offset, int len);
-        byte[] ReadAll();
+        //byte[] ReadAll();
         void EndRead();
 
         // write interface
@@ -186,12 +186,12 @@ namespace Agnos.Transports
             return actually_read;
         }
 		
-		virtual public byte[] ReadAll()
+		/*virtual public byte[] ReadAll()
 		{
 			byte[] data = new byte[rlength - rpos];
 			Read(data, 0, data.Length);
 			return data;
-		}
+		}*/
 
         virtual public void EndRead()
         {
@@ -310,10 +310,10 @@ namespace Agnos.Transports
         {
             return transport.Read(data, offset, len);
         }
-        public byte[] ReadAll()
+        /*public byte[] ReadAll()
         {
             return transport.ReadAll();
-        }
+        }*/
         public void EndRead()
         {
             transport.EndRead();

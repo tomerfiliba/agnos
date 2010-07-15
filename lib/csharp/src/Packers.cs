@@ -433,17 +433,14 @@ namespace Agnos
 			
 			public override void pack (object obj, Stream stream)
 			{
-				DateTime val = ((DateTime)obj).ToUniversalTime ();
-				long timestamp = (val - epoch).Ticks / 10000;
+				long timestamp = ((DateTime)obj).ToUniversalTime().Ticks / 10;
 				Int64.pack (timestamp, stream);
 			}
 
 			public override object unpack (Stream stream)
 			{
-				//long timestamp = (long)Int64.unpack(stream);
-				Int64.unpack (stream);
-				return DateTime.Now;
-				//return new DateTime(timestamp * 10000, DateTimeKind.Local);
+				long timestamp = (long)Int64.unpack(stream);
+				return new DateTime(timestamp * 10, DateTimeKind.Utc);
 			}
 		}
 
@@ -484,7 +481,7 @@ namespace Agnos
 
 		/////////////////////////////////////////////////////////////////////
 
-		public class ListOf : AbstractPacker
+		public class ListOf<T> : AbstractPacker
 		{
 			protected AbstractPacker type;
 			protected int id;
@@ -516,27 +513,27 @@ namespace Agnos
 			public override object unpack (Stream stream)
 			{
 				int length = (int)Int32.unpack (stream);
-				ArrayList arr = new ArrayList (length);
+				List<T> lst = new List<T> (length);
 				for (int i = 0; i < length; i++) {
-					arr.Add (type.unpack (stream));
+					lst.Add ((T)(type.unpack (stream)));
 				}
-				return arr;
+				return lst;
 			}
 		}
 
-		public static readonly ListOf listOfInt8 = new ListOf(800, Int8);
-		public static readonly ListOf listOfBool = new ListOf(801, Bool);
-		public static readonly ListOf listOfInt16 = new ListOf(802, Int16);
-		public static readonly ListOf listOfInt32 = new ListOf(803, Int32);
-		public static readonly ListOf listOfInt64 = new ListOf(804, Int64);
-		public static readonly ListOf listOfFloat = new ListOf(805, Float);
-		public static readonly ListOf listOfBuffer = new ListOf(806, Buffer);
-		public static readonly ListOf listOfDate = new ListOf(807, Date);
-		public static readonly ListOf listOfStr = new ListOf(808, Str);
+		public static readonly ListOf<byte> listOfInt8 = new ListOf<byte>(800, Int8);
+		public static readonly ListOf<bool> listOfBool = new ListOf<bool>(801, Bool);
+		public static readonly ListOf<short> listOfInt16 = new ListOf<short>(802, Int16);
+		public static readonly ListOf<int> listOfInt32 = new ListOf<int>(803, Int32);
+		public static readonly ListOf<long> listOfInt64 = new ListOf<long>(804, Int64);
+		public static readonly ListOf<double> listOfFloat = new ListOf<double>(805, Float);
+		public static readonly ListOf<byte[]> listOfBuffer = new ListOf<byte[]>(806, Buffer);
+		public static readonly ListOf<DateTime> listOfDate = new ListOf<DateTime>(807, Date);
+		public static readonly ListOf<string> listOfStr = new ListOf<string>(808, Str);
 		
 		/////////////////////////////////////////////////////////////////////
 
-		public class MapOf : AbstractPacker
+		public class MapOf<K, V> : AbstractPacker
 		{
 			protected AbstractPacker keytype;
 			protected AbstractPacker valtype;
@@ -571,20 +568,20 @@ namespace Agnos
 			public override object unpack (Stream stream)
 			{
 				int length = (int)Int32.unpack (stream);
-				Hashtable map = new Hashtable (length);
+				Dictionary<K, V> map = new Dictionary<K, V>(length);
 				for (int i = 0; i < length; i++) {
-					object k = keytype.unpack (stream);
-					object v = valtype.unpack (stream);
+					K k = (K)(keytype.unpack (stream));
+					V v = (V)(valtype.unpack (stream));
 					map.Add (k, v);
 				}
 				return map;
 			}
 		}
 
-		public static readonly MapOf mapOfInt32Int32 = new MapOf (850, Int32, Int32);
-		public static readonly MapOf mapOfInt32Str = new MapOf (851, Int32, Str);
-		public static readonly MapOf mapOfStrInt32 = new MapOf (852, Str, Int32);
-		public static readonly MapOf mapOfStrStr = new MapOf (853, Str, Str);
+		public static readonly MapOf<int, int> mapOfInt32Int32 = new MapOf<int, int> (850, Int32, Int32);
+		public static readonly MapOf<int, string> mapOfInt32Str = new MapOf<int, string> (851, Int32, Str);
+		public static readonly MapOf<string, int> mapOfStrInt32 = new MapOf<string, int> (852, Str, Int32);
+		public static readonly MapOf<string, string> mapOfStrStr = new MapOf<string, string> (853, Str, Str);
 
 		// ////////////////////////////////////////////////////////////////////////
 

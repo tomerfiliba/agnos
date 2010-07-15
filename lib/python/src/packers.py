@@ -1,5 +1,5 @@
 from struct import Struct as _Struct
-from datetime import datetime
+from datetime import datetime, timedelta
 from utils import HeteroMap
 import time
 
@@ -62,15 +62,19 @@ class ObjRef(Packer):
 
 class Date(Packer):
     ID = 8
+    EPOCH = datetime.fromordinal(1)
     __slots__ = []
     @classmethod
     def pack(cls, obj, stream):
-        ts = time.mktime(obj.timetuple()) + (obj.microsecond/1000000.0)
-        Int64.pack(int(ts * 1000), stream)
+        delta = obj - self.EPOCH
+        microsecs = (delta.days * 86400 + delta.seconds) * 10**6 + delta.microseconds
+        Int64.pack(microsecs, stream)
     @classmethod
     def unpack(cls, stream):
-        ts = Int64.unpack(stream)
-        return datetime.fromtimestamp(ts / 1000.0)
+        microsecs = Int64.unpack(stream)
+        secs = microsecs // 10**6
+        msecs = microsecs % 10**6
+        return self.EPOCH + timedelta(seconds = secs, microseconds = msecs)
 
 class Buffer(Packer):
     ID = 7

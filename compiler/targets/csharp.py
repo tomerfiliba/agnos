@@ -29,9 +29,10 @@ def type_to_cs(t, proxy = False):
     elif t == compiler.t_heteromap:
         return "Agnos.HeteroMap"
     elif isinstance(t, compiler.TList):
-        return "IList"
+        return "IList<%s>" % (type_to_cs(t.oftype, proxy = False),)
     elif isinstance(t, compiler.TMap):
-        return "IDictionary"
+        return "IDictionary<%s, %s>" % (type_to_cs(t.keytype, proxy = False), 
+            type_to_cs(t.valtype, proxy = False))
     elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
         return "%s" % (t.name,)
     elif isinstance(t, compiler.Class):
@@ -181,9 +182,11 @@ class CSharpTarget(TargetBase):
 
     def _generate_templated_packer_for_type(self, tp):
         if isinstance(tp, compiler.TList):
-            return "new Packers.ListOf(%s, %s)" % (tp.id, self._generate_templated_packer_for_type(tp.oftype),)
+            return "new Packers.ListOf<%s>(%s, %s)" % (type_to_cs(tp.oftype), 
+                tp.id, self._generate_templated_packer_for_type(tp.oftype),)
         elif isinstance(tp, compiler.TMap):
-            return "new Packers.MapOf(%s, %s, %s)" % (tp.id, self._generate_templated_packer_for_type(tp.keytype),
+            return "new Packers.MapOf<%s, %s>(%s, %s, %s)" % (type_to_cs(tp.keytype), 
+                type_to_cs(tp.valtype), tp.id, self._generate_templated_packer_for_type(tp.keytype),
                 self._generate_templated_packer_for_type(tp.valtype))
         else:
             return type_to_packer(tp)
@@ -708,7 +711,7 @@ class CSharpTarget(TargetBase):
                     subnamespaces.append((name, node["__id__"]))
                 elif isinstance(node, compiler.Func):
                     func = node
-                    args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) for arg in func.args)
+                    args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = False), arg.name) for arg in func.args)
                     callargs = ", ".join(arg.name for arg in func.args)
                     with BLOCK("public {0} {1}({2})", type_to_cs(func.type, proxy = True), func.name, args):
                         if func.type == compiler.t_void:
@@ -753,7 +756,7 @@ class CSharpTarget(TargetBase):
                 STMT("this.client = client")
             SEP()
             for func in service.funcs.values():
-                args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) for arg in func.args)
+                args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = False), arg.name) for arg in func.args)
                 with BLOCK("public {0} sync_{1}({2})", type_to_cs(func.type, proxy = True), func.id, args):
                     if is_complex_type(func.type):
                         STMT("int seq = client._utils.BeginCall({0}, client.{1})", func.id, type_to_packer(func.type))

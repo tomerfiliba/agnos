@@ -356,7 +356,7 @@ namespace Agnos
 				transport.CancelWrite ();
 			}
 
-			public int TunnelRequest (byte[] blob)
+			/*public int TunnelRequest (byte[] blob)
 			{
 				int seq = getSeq ();
 				transport.BeginWrite (seq);
@@ -364,7 +364,7 @@ namespace Agnos
 				transport.EndWrite ();
 				replies[seq] = new ReplySlot (Packers.MockupPacker);
 				return seq;
-			}
+			}*/
 
 			public void Decref (long id)
 			{
@@ -456,9 +456,11 @@ namespace Agnos
 					case REPLY_SUCCESS:
 						if (packer == null) {
 							slot.value = null;
-						} else if (packer == Packers.MockupPacker) {
+						} 
+						/*else if (packer == Packers.MockupPacker) {
 							slot.value = transport.ReadAll ();
-						} else {
+						}*/
+						else {
 							slot.value = packer.unpack (transport);
 						}
 						slot.type = ReplySlotType.SLOT_VALUE;
@@ -557,12 +559,11 @@ namespace Agnos
 	        		return _utils.GetServiceInfo(code);
 	        }
 	        
-	        public byte[] TunnelRequest(byte[] blob)
+	        /*public byte[] TunnelRequest(byte[] blob)
 	        {
 	        		int seq = _utils.TunnelRequest(blob);
 				return (byte[])_utils.GetReply(seq);
-			}
-	
+			}*/
 		}
 		
 	}

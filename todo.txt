@@ -4,6 +4,7 @@
 	* performance tests
 	* include tracebacks?
 	* srcgen: parse consts
+	* date!!!
 
 * features:
 	* async, timed

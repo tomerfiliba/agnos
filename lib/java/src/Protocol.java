@@ -427,7 +427,7 @@ public class Protocol
 			transport.cancelWrite();
 		}
 
-		public int tunnelRequest (byte[] blob) throws IOException
+		/*public int tunnelRequest (byte[] blob) throws IOException
 		{
 			int seq = getSeq ();
 			transport.beginWrite (seq);
@@ -435,7 +435,7 @@ public class Protocol
 			transport.endWrite ();
 			replies.put(seq, new ReplySlot (Packers.MockupPacker));
 			return seq;
-		}
+		}*/
 
 		public void decref (long id) throws Exception
 		{
@@ -529,9 +529,9 @@ public class Protocol
 					if (packer == null) {
 						slot.value = null;
 					}
-					else if (packer == Packers.MockupPacker) {
+					/*else if (packer == Packers.MockupPacker) {
 						slot.value = transport.readAll();
-					}
+					}*/
 					else {
 						slot.value = packer.unpack(transport);
 					}
@@ -624,10 +624,10 @@ public class Protocol
             return _utils.getServiceInfo(code);
         }
         
-        public byte[] tunnelRequest(byte[] blob) throws Exception
+        /*public byte[] tunnelRequest(byte[] blob) throws Exception
         {
             int seq = _utils.tunnelRequest(blob);
             return (byte[])_utils.getReply(seq);
-        }
+        }*/
 	}
 }
