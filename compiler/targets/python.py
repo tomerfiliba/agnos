@@ -287,6 +287,10 @@ class PythonTarget(TargetBase):
                     if isinstance(tp, compiler.Class):
                         STMT("{0}ObjRef = packers.ObjRef({1}, storer, loader)", tp.name, tp.id)
                 SEP()
+                STMT("packers_map = {}")
+                STMT("heteroMapPacker = packers.HeteroMapPacker(999, packers_map)")
+                STMT("packers_map[999] = heteroMapPacker")
+                SEP()
                 for member in service.types.values():
                     if isinstance(member, compiler.Record):
                         if is_complex_type(member):
@@ -304,11 +308,8 @@ class PythonTarget(TargetBase):
                         if isinstance(mem, compiler.Exception):
                             STMT("{0} : {1},", mem.name, type_to_packer(mem))
                 SEP()
-                with BLOCK("packers_map = ", prefix = "{", suffix = "}"):
-                    for tp in service.types.values():
-                        STMT("{0} : {1},", tp.id, type_to_packer(tp))
-                STMT("heteroMapPacker = packers.HeteroMapPacker(999, packers_map)")
-                STMT("packers_map[999] = heteroMapPacker")
+                for tp in service.types.values():
+                    STMT("packers_map[{0}] = {1}", tp.id, type_to_packer(tp))
             SEP()
             with BLOCK("def process_get_general_info(self, info)"):
                 STMT('info["AGNOS_VERSION"] = AGNOS_VERSION')
@@ -388,17 +389,18 @@ class PythonTarget(TargetBase):
                     if isinstance(tp, compiler.Class):
                         STMT("{0}ObjRef = packers.ObjRef({1}, storer, partial(self._utils.get_proxy, {0}Proxy, self))", tp.name, tp.id)
                 SEP()
+                STMT("packers_map = {}")
+                STMT("heteroMapPacker = packers.HeteroMapPacker(999, packers_map)")
+                STMT("packers_map[999] = heteroMapPacker")
+                SEP()
                 self.generate_templated_packers(module, service)
                 SEP()
                 for mem in service.types.values():
                     if isinstance(mem, compiler.Exception):
                         STMT("packed_exceptions[{0}] = {1}", mem.id, type_to_packer(mem))
                 SEP()
-                with BLOCK("packers_map = ", prefix = "{", suffix = "}"):
-                    for tp in service.types.values():
-                        STMT("{0} : {1},", tp.id, type_to_packer(tp))
-                STMT("heteroMapPacker = packers.HeteroMapPacker(999, packers_map)")
-                STMT("packers_map[999] = heteroMapPacker")
+                for tp in service.types.values():
+                    STMT("packers_map[{0}] = {1}", tp.id, type_to_packer(tp))
                 SEP()
                 with BLOCK("class Functions(object)"):
                     with BLOCK("def __init__(self, utils)"):
