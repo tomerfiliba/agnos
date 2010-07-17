@@ -1,6 +1,6 @@
 from struct import Struct as _Struct
 from datetime import datetime, timedelta
-from utils import HeteroMap
+from .utils import HeteroMap
 import time
 
 
@@ -63,18 +63,31 @@ class ObjRef(Packer):
 class Date(Packer):
     ID = 8
     EPOCH = datetime.fromordinal(1)
+    t0 = time.time()
+    UTC_DELTA = datetime.fromtimestamp(t0) - datetime.utcfromtimestamp(t0)
+
     __slots__ = []
     @classmethod
     def pack(cls, obj, stream):
-        delta = obj - self.EPOCH
+        if isinstance(obj, datetime):
+            if obj.tzinfo:
+                time_utc = obj - obj.tzinfo.utcoffset(obj)
+            else:
+                # assume local time and convert to UTC
+                time_utc = obj - cls.UTC_DELTA
+        elif isinstance(obj, (int, long, float)):
+            # assume time_t from unix epoch
+            time_utc = datetime.utcfromtimestamp(obj)
+        else:
+            raise TypeError("cannot encode %r as a datetime object" % (obj,))
+        delta = time_utc - cls.EPOCH
         microsecs = (delta.days * 86400 + delta.seconds) * 10**6 + delta.microseconds
         Int64.pack(microsecs, stream)
     @classmethod
     def unpack(cls, stream):
         microsecs = Int64.unpack(stream)
-        secs = microsecs // 10**6
-        msecs = microsecs % 10**6
-        return self.EPOCH + timedelta(seconds = secs, microseconds = msecs)
+        return cls.EPOCH + timedelta(seconds = microsecs // 10**6, 
+            microseconds = microsecs % 10**6)
 
 class Buffer(Packer):
     ID = 7

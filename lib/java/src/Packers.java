@@ -398,8 +398,10 @@ public class Packers
 
 	// ////////////////////////////////////////////////////////////////////////
 
-	public static class _Date extends AbstractPacker
+	public static final class _Date extends AbstractPacker
 	{
+		private static final long UNIX_EPOCH_UTC_MICROSECS = 62135596800000000L;
+		
 		protected _Date()
 		{
 		}
@@ -411,12 +413,14 @@ public class Packers
 		
 		public void pack(Object obj, OutputStream stream) throws IOException
 		{
-			Int64.pack(new Long(((Date) obj).getTime()), stream);
+			long microsecs = ((Date) obj).getTime() * 1000;
+			Int64.pack(new Long(UNIX_EPOCH_UTC_MICROSECS + microsecs), stream);
 		}
 
 		public Object unpack(InputStream stream) throws IOException
 		{
-			return new Date((Long) Int64.unpack(stream));
+			long microsecs = (Long)Int64.unpack(stream);
+			return new Date((microsecs - UNIX_EPOCH_UTC_MICROSECS) / 1000);
 		}
 	}
 
