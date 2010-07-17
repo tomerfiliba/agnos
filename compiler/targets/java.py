@@ -30,10 +30,10 @@ def type_to_java(t, proxy = False):
         return "agnos.HeteroMap"
     elif isinstance(t, compiler.TList):
         #return "%s[]" % (type_to_java(t.oftype, proxy = proxy),)
-        return "List<%s>" % (type_to_java(t.oftype, proxy = False),)
+        return "List<%s>" % (type_to_java(t.oftype, proxy = proxy),)
     elif isinstance(t, compiler.TMap):
-        return "Map<%s, %s>" % (type_to_java(t.keytype, proxy = False), 
-            type_to_java(t.valtype, proxy = False))
+        return "Map<%s, %s>" % (type_to_java(t.keytype, proxy = proxy), 
+            type_to_java(t.valtype, proxy = proxy))
     elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
         return "%s" % (t.name,)
     elif isinstance(t, compiler.Class):
@@ -368,34 +368,30 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         DOC = module.doc
-        with BLOCK("public static class {0}Proxy extends BaseProxy implements I{0}", cls.name):
+        with BLOCK("public static class {0}Proxy extends BaseProxy", cls.name):
             with BLOCK("protected {0}Proxy(Client client, Long objref, boolean owns_ref)", cls.name):
                 STMT("super(client, objref, owns_ref)")
             SEP()
             for attr in cls.all_attrs:
                 if attr.get:
                     self.emit_javadoc(["Getter for %s" % (attr.name,), attr.doc], module)
-                    with BLOCK("public {0} get_{1}() throws Exception", type_to_java(attr.type), attr.name):
-                        STMT("return ({0})(_client._funcs.sync_{1}(this))", type_to_java(attr.type), attr.getter.id)
+                    with BLOCK("public {0} get_{1}() throws Exception", type_to_java(attr.type, proxy = True), attr.name):
+                        STMT("return _client._funcs.sync_{0}(this)", attr.getter.id)
                 if attr.set:
                     self.emit_javadoc(["Setter for %s" % (attr.name,), attr.doc], module)
                     with BLOCK("public void set_{0}({1} value) throws Exception", 
-                            attr.name, type_to_java(attr.type)):
+                            attr.name, type_to_java(attr.type, proxy = True)):
                         STMT("_client._funcs.sync_{0}(this, value)", attr.setter.id)
             SEP()
             for method in cls.all_methods:
                 self.emit_func_javadoc(method, module)
-                args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) for arg in method.args)
-                with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(method.type), method.name, args):
-                    callargs = ["this"] + [
-                        "(%s)%s" % (type_to_java(arg.type, proxy=True), arg.name) 
-                            if isinstance(arg.type, compiler.Class) else arg.name 
-                        for arg in method.args]
+                args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in method.args)
+                with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(method.type, proxy = True), method.name, args):
+                    callargs = ["this"] + [arg.name for arg in method.args]
                     if method.type == compiler.t_void:
                         STMT("_client._funcs.sync_{0}({1})", method.func.id, ", ".join(callargs))
                     else:
-                        STMT("return ({0})_client._funcs.sync_{1}({2})", type_to_java(method.type),
-                            method.func.id, ", ".join(callargs))
+                        STMT("return _client._funcs.sync_{0}({1})", method.func.id, ", ".join(callargs))
             if cls.all_derived:
                 SEP()
                 DOC("downcasts")
@@ -705,7 +701,7 @@ class JavaTarget(TargetBase):
                     subnamespaces.append((name, node["__id__"]))
                 elif isinstance(node, compiler.Func):
                     func = node
-                    args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = False), arg.name) for arg in func.args)
+                    args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in func.args)
                     callargs = ", ".join(arg.name for arg in func.args)
                     with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(func.type, proxy = True), func.name, args):
                         if func.type == compiler.t_void:
@@ -750,7 +746,7 @@ class JavaTarget(TargetBase):
                 STMT("this.utils = utils")
             SEP()
             for func in service.funcs.values():
-                args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = False), arg.name) for arg in func.args)
+                args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in func.args)
                 with BLOCK("public {0} sync_{1}({2}) throws Exception", type_to_java(func.type, proxy = True), func.id, args):
                     STMT("int seq = utils.beginCall({0}, {1})", func.id, type_to_packer(func.type))
                     STMT("OutputStream outStream = utils.transport.getOutputStream()")
