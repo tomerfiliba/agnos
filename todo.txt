@@ -5,10 +5,12 @@
 	* include tracebacks?
 	* srcgen: parse consts
 	* date!!!
+	* proxies instead of interfaces
 
 * features:
 	* async, timed
 	* SSL
+	* rlist, rmap (by ref)
 
 * targets:
 	1 powershell
@@ -20,7 +22,6 @@
 	4 jscript client (over URLs) for web gui
 
 * optional features:
-    * by-ref list, by-ref map
     * custom type templates
     * complex consts
 

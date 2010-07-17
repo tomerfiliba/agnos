@@ -71,6 +71,10 @@ class TestJava(TargetTest):
                     serverproc.kill()
             except Exception:
                 pass
+            print "===server output==="
+            print serverproc.stdout.read()
+            print serverproc.stderr.read()
+            print "==================="
 
 
 if __name__ == '__main__':

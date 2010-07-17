@@ -248,13 +248,13 @@ class PythonTarget(TargetBase):
                 SEP()
                 DOC("downcasts")
                 for cls2 in cls.all_derived:
-                    with BLOCK("def cast{0}()", cls2.name):
+                    with BLOCK("def cast_to_{0}()", cls2.name):
                         STMT("return {0}Proxy(self._client, self._objref, False)", cls2.name)
             if cls.all_bases:
                 SEP()
                 DOC("upcasts")
                 for cls2 in cls.all_bases:
-                    with BLOCK("def cast{0}()", cls2.name):
+                    with BLOCK("def cast_to_{0}()", cls2.name):
                         STMT("return {0}Proxy(self._client, self._objref, False)", cls2.name)
 
     def generate_handler_interface(self, module, service):

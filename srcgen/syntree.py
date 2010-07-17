@@ -160,18 +160,52 @@ def auto_fill_name(argname, blk):
 
 def auto_enum_name(argname, blk):
     assert argname == "name"
-    if "name" not in blk.args:
+    if argname not in blk.args:
         for i in range(blk.srcblock.lineno, len(blk.srcblock.fileinfo.lines)):
             l = blk.srcblock.fileinfo.lines[i].strip()
             if "=" in l:
                 n, v = l.split("=", 1)
-                blk.args["name"] = n.strip()
-                blk.args["value"] = int(v.strip())
+                blk.args[argname] = n.strip()
                 break
-    return blk.args["name"]
+    if argname not in blk.args:
+        raise SourceError(blk.srcblock, "required argument %r missing", argname)
+    return blk.args[argname]
 
 def auto_enum_value(argname, blk):
     assert argname == "value"
+    if argname not in blk.args:
+        for i in range(blk.srcblock.lineno, len(blk.srcblock.fileinfo.lines)):
+            l = blk.srcblock.fileinfo.lines[i].strip()
+            if "=" in l:
+                n, v = l.split("=", 1)
+                blk.args[argname] = int(v.strip())
+                break
+    if argname not in blk.args:
+        raise SourceError(blk.srcblock, "required argument %r missing", argname)
+    return blk.args[argname]
+
+def auto_const_name(argname, blk):
+    assert argname == "name"
+    if argname not in blk.args:
+        for i in range(blk.srcblock.lineno, len(blk.srcblock.fileinfo.lines)):
+            l = blk.srcblock.fileinfo.lines[i].strip()
+            if "=" in l:
+                n, v = l.split("=", 1)
+                blk.args[argname] = n.strip()
+                break
+    if argname not in blk.args:
+        raise SourceError(blk.srcblock, "required argument %r missing", argname)
+    return blk.args[argname]
+
+def auto_const_value(argname, blk):
+    assert argname == "value"
+    if argname not in blk.args:
+        for i in range(blk.srcblock.lineno, len(blk.srcblock.fileinfo.lines)):
+            l = blk.srcblock.fileinfo.lines[i].strip()
+            if "=" in l:
+                n, v = l.split("=", 1)
+                blk.args[argname] = v.strip()
+                break
     if argname not in blk.args:
         raise SourceError(blk.srcblock, "required argument %r missing", argname)
     return blk.args[argname]
@@ -282,7 +316,7 @@ class ServiceNode(AstNode):
 
 class ConstNode(AstNode):
     TAG = "const"
-    ATTRS = dict(name = arg_value, type = arg_value, value = arg_value)
+    ATTRS = dict(name = auto_const_name, type = arg_value, value = auto_const_value)
 
 class RecordAttrNode(AstNode):
     TAG = "attr"

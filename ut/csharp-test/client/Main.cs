@@ -24,11 +24,17 @@ public class myclient {
 			throw new Exception("cain is not the name");
 		}
 
+        bool succ = true;
 		try {
 			adam.marry(eve);
 		} catch (FeatureTest.MartialStatusError) {
 			// okay
+            succ = false;
 		}
+
+        if (succ) {
+            throw new Exception("an exception should have been thrown!");
+        }
 		
 		double thought = adam.think(17, 3.0);
         if (thought != (17/3.0)) {

@@ -15,10 +15,11 @@ namespace Agnos.TransportFactories
 
 	public class SocketTransportFactory : ITransportFactory
 	{
-		public TcpListener listener;
+		internal TcpListener listener;
+        public const int DefaultBacklog = 10;
 
 		public SocketTransportFactory(int port) :
-			this(port, 10)
+			this(IPAddress.Any, port)
 		{
 		}
 
@@ -27,22 +28,37 @@ namespace Agnos.TransportFactories
 		{
 		}
 
+        protected static IPAddress GetIPv4AddressOf(String host)
+        {
+            foreach (IPAddress addr in Dns.GetHostEntry(host).AddressList) {
+                if (addr.AddressFamily == AddressFamily.InterNetwork) {
+                    return addr;
+                }
+            }
+            return null;
+        }
+
 		public SocketTransportFactory(String host, int port) :
-			this(Dns.GetHostEntry(Dns.GetHostName()).AddressList[0], port, 10)
+            this(GetIPv4AddressOf(host), port)
 		{
 		}
 
 		public SocketTransportFactory(String host, int port, int backlog) :
-			this(Dns.GetHostEntry(Dns.GetHostName()).AddressList[0], port, backlog)
+            this(GetIPv4AddressOf(host), port, backlog)
 		{
 		}
 
-		public SocketTransportFactory(IPAddress addr, int port, int backlog)
-		{
-			listener = new TcpListener(addr, port);
-			listener.Start(backlog);
-		}
-		
+        public SocketTransportFactory(IPAddress addr, int port) :
+            this(addr, port, DefaultBacklog)
+        {
+        }
+
+        public SocketTransportFactory(IPAddress addr, int port, int backlog)
+        {
+            listener = new TcpListener(addr, port);
+            listener.Start(backlog);
+        }
+
 		public ITransport Accept()
 		{
 			return new SocketTransport(listener.AcceptSocket());

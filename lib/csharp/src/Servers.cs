@@ -92,8 +92,6 @@ namespace Agnos.Servers
 
     public class LibraryModeServer : BaseServer
     {
-        internal TcpListener listener;
-
 		public LibraryModeServer(Protocol.BaseProcessor processor) : 
 			this(processor, new SocketTransportFactory("127.0.0.1", 0))
         {
