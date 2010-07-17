@@ -279,10 +279,10 @@ class CSharpTarget(TargetBase):
         for tp in service.all_types:
             if isinstance(tp, (compiler.TList, compiler.TMap)):
                 if is_complex_type(tp):
-                    STMT("internal Packers.AbstractPacker _{0}", tp.stringify())
+                    STMT("internal readonly Packers.AbstractPacker _{0}", tp.stringify())
                 else:
                     definition = self._generate_templated_packer_for_type(tp, proxy)
-                    STMT("internal static Packers.AbstractPacker _{0} = {1}", tp.stringify(), definition)
+                    STMT("internal static readonly Packers.AbstractPacker _{0} = {1}", tp.stringify(), definition)
             
     def generate_templated_packers_impl(self, module, service, proxy):
         BLOCK = module.block
@@ -344,7 +344,7 @@ class CSharpTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
 
-        with BLOCK("internal class _{0}Packer : Packers.AbstractPacker", rec.name):
+        with BLOCK("internal sealed class _{0}Packer : Packers.AbstractPacker", rec.name):
             if not static:
                 complex_types = rec.get_complex_types()
                 for tp in complex_types:
@@ -374,9 +374,9 @@ class CSharpTarget(TargetBase):
                             type_to_packer(mem.type), suffix = "")
         SEP()
         if static:
-            STMT("internal static _{0}Packer {0}Packer = new _{0}Packer()", rec.name)
+            STMT("internal static readonly _{0}Packer {0}Packer = new _{0}Packer()", rec.name)
         else:
-            STMT("internal _{0}Packer {0}Packer", rec.name)
+            STMT("internal readonly _{0}Packer {0}Packer", rec.name)
 
     def generate_base_class_proxy(self, module, service):
         BLOCK = module.block
@@ -384,8 +384,8 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
 
         with BLOCK("public abstract class BaseProxy : IDisposable"):
-            STMT("internal long _objref")
-            STMT("protected Client _client")
+            STMT("internal readonly long _objref")
+            STMT("protected readonly Client _client")
             STMT("protected bool _disposed")
             SEP()
             with BLOCK("protected BaseProxy(Client client, long objref, bool owns_ref)"):
@@ -494,11 +494,11 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
 
         with BLOCK("public class Processor : Protocol.BaseProcessor"):
-            STMT("internal IHandler handler")
+            STMT("internal readonly IHandler handler")
             SEP()
             for tp in service.types.values():
                 if isinstance(tp, compiler.Class):
-                    STMT("internal Packers.ObjRef {0}ObjRef", tp.name)
+                    STMT("internal readonly Packers.ObjRef {0}ObjRef", tp.name)
             SEP()
             generated_records = []
             for member in service.types.values():
@@ -509,7 +509,7 @@ class CSharpTarget(TargetBase):
                         SEP()
             self.generate_templated_packers_decl(module, service, proxy = False)
             SEP()
-            STMT("protected Packers.HeteroMapPacker heteroMapPacker")
+            STMT("protected readonly Packers.HeteroMapPacker heteroMapPacker")
             SEP()
             with BLOCK("public Processor(IHandler handler)"):
                 STMT("this.handler = handler")
@@ -663,7 +663,7 @@ class CSharpTarget(TargetBase):
         with BLOCK("public class Client : Protocol.BaseClient"):
             for tp in service.types.values():
                 if isinstance(tp, compiler.Class):
-                    STMT("internal Packers.ObjRef {0}ObjRef", tp.name)
+                    STMT("internal readonly Packers.ObjRef {0}ObjRef", tp.name)
             SEP()
             generated_records = []
             for member in service.types.values():
@@ -703,7 +703,7 @@ class CSharpTarget(TargetBase):
                         with BLOCK("protected override object newProxy(long id)"):
                             STMT("return new {0}(client, id, true)", type_to_cs(tp, proxy = True))
             SEP()
-            STMT("protected Packers.HeteroMapPacker heteroMapPacker")
+            STMT("protected readonly Packers.HeteroMapPacker heteroMapPacker")
             SEP()
             namespaces = self.generate_client_namespaces(module, service)
             SEP()
@@ -777,9 +777,9 @@ class CSharpTarget(TargetBase):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
-        with BLOCK("public class _Namespace{0}", root["__id__"]):
+        with BLOCK("public sealed class _Namespace{0}", root["__id__"]):
             subnamespaces = []
-            STMT("internal _Functions _funcs")
+            STMT("internal readonly _Functions _funcs")
             SEP()
             for name, node in root.iteritems():
                 if isinstance(node, dict):
@@ -799,7 +799,7 @@ class CSharpTarget(TargetBase):
                 STMT("_funcs = funcs")
                 for name, id in subnamespaces:
                     STMT("{0} = new _Namespace{1}(funcs)", name, id)
-        STMT("public _Namespace{0} {1}", root["__id__"], root["__name__"])
+        STMT("public readonly _Namespace{0} {1}", root["__id__"], root["__name__"])
 
     def generate_client_factories(self, module, service):
         BLOCK = module.block
@@ -826,7 +826,7 @@ class CSharpTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         DOC = module.doc
-        with BLOCK("internal class _Functions"):
+        with BLOCK("internal sealed class _Functions"):
             STMT("internal Client client")
             with BLOCK("public _Functions(Client client)"):
                 STMT("this.client = client")
@@ -856,7 +856,7 @@ class CSharpTarget(TargetBase):
                         STMT("return ({0})client._utils.GetReply(seq)", type_to_cs(func.type, proxy = True))
                 SEP()
         SEP()
-        STMT("internal _Functions _funcs")
+        STMT("internal readonly _Functions _funcs")
     
     def generate_client_funcs(self, module, service):
         BLOCK = module.block

@@ -29,7 +29,6 @@ def type_to_java(t, proxy = False):
     elif t == compiler.t_heteromap:
         return "agnos.HeteroMap"
     elif isinstance(t, compiler.TList):
-        #return "%s[]" % (type_to_java(t.oftype, proxy = proxy),)
         return "List<%s>" % (type_to_java(t.oftype, proxy = proxy),)
     elif isinstance(t, compiler.TMap):
         return "Map<%s, %s>" % (type_to_java(t.keytype, proxy = proxy), 
@@ -115,77 +114,138 @@ class JavaTarget(TargetBase):
             f.write(mod.render())
 
     def generate(self, service):
-        with self.new_module("%sBindings.java" % (service.name,)) as module:
-            BLOCK = module.block
+        with self.new_module("%sServerBindings.java" % (service.name,)) as module:
             STMT = module.stmt
             SEP = module.sep
-            DOC = module.doc
             
             STMT("package {0}Bindings", service.name)
             SEP()
             STMT("import java.util.*")
             STMT("import java.io.*")
-            STMT("import java.net.*;")
+            STMT("import java.net.*")
             STMT("import agnos.*")
             SEP()
-            with BLOCK("public class {0}Bindings", service.name):
-                STMT('public static final String AGNOS_VERSION = "Agnos 1.0"')
-                STMT('public static final String IDL_MAGIC = "{0}"', service.digest)
+            self.generate_server_bindings(module, service)
+            SEP()
 
-                SEP()
-                
-                DOC("enums", spacer = True)
-                for member in service.types.values():
-                    if isinstance(member, compiler.Enum):
-                        self.generate_enum(module, member)
+        with self.new_module("%sClientBindings.java" % (service.name,)) as module:
+            STMT = module.stmt
+            SEP = module.sep
+            
+            STMT("package {0}Bindings", service.name)
+            SEP()
+            STMT("import java.util.*")
+            STMT("import java.io.*")
+            STMT("import java.net.*")
+            STMT("import agnos.*")
+            SEP()
+            self.generate_client_bindings(module, service)
+            SEP()
+
+    def generate_server_bindings(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        DOC = module.doc
+            
+        with BLOCK("public final class {0}ServerBindings", service.name):
+            STMT('public static final String AGNOS_VERSION = "Agnos 1.0"')
+            STMT('public static final String IDL_MAGIC = "{0}"', service.digest)
+            SEP()
+            
+            DOC("enums", spacer = True)
+            for member in service.types.values():
+                if isinstance(member, compiler.Enum):
+                    self.generate_enum(module, member)
+                    SEP()
+            
+            DOC("records", spacer = True)
+            for member in service.types.values():
+                if isinstance(member, compiler.Record):
+                    self.generate_record_class(module, member, proxy = False)
+                    SEP()
+            
+            for member in service.types.values():
+                if isinstance(member, compiler.Record):
+                    if not is_complex_type(member):
+                        self.generate_record_packer(module, member, static = True, proxy = False)
                         SEP()
+
+            DOC("consts", spacer = True)
+            for member in service.consts.values():
+                STMT("public static final {0} {1} = {2}", type_to_java(member.type), 
+                    member.name, const_to_java(member.type, member.value))
+            SEP()
                 
-                DOC("records", spacer = True)
-                for member in service.types.values():
-                    if isinstance(member, compiler.Record):
-                        self.generate_record_class(module, member)
+            DOC("classes", spacer = True)
+            for member in service.types.values():
+                if isinstance(member, compiler.Class):
+                    self.generate_class_interface(module, member)
+                    SEP()
+
+            DOC("server implementation", spacer = True)
+            self.generate_handler_interface(module, service)
+            SEP()
+            self.generate_processor(module, service)
+            SEP()
+
+    def generate_client_bindings(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        DOC = module.doc
+
+        with BLOCK("public final class {0}ClientBindings", service.name):
+            STMT('public static final String AGNOS_VERSION = "Agnos 1.0"')
+            STMT('public static final String IDL_MAGIC = "{0}"', service.digest)
+            SEP()
+            
+            DOC("enums", spacer = True)
+            for member in service.types.values():
+                if isinstance(member, compiler.Enum):
+                    self.generate_enum(module, member)
+                    SEP()
+            
+            DOC("records", spacer = True)
+            for member in service.types.values():
+                if isinstance(member, compiler.Record):
+                    self.generate_record_class(module, member, proxy = True)
+                    SEP()
+            
+            for member in service.types.values():
+                if isinstance(member, compiler.Record):
+                    if not is_complex_type(member):
+                        self.generate_record_packer(module, member, static = True, proxy = True)
                         SEP()
-                
-                for member in service.types.values():
-                    if isinstance(member, compiler.Record):
-                        if not is_complex_type(member):
-                            self.generate_record_packer(module, member, static = True)
-                            SEP()
 
-                DOC("consts", spacer = True)
-                for member in service.consts.values():
-                    STMT("public final static {0} {1} = {2}", type_to_java(member.type), 
-                        member.name, const_to_java(member.type, member.value))
-                SEP()
-                
-                DOC("classes", spacer = True)
-                self.generate_base_class_proxy(module, service)
-                SEP()
-                for member in service.types.values():
-                    if isinstance(member, compiler.Class):
-                        self.generate_class_interface(module, member)
-                        SEP()
-                        self.generate_class_proxy(module, service, member)
-                        SEP()
+            DOC("consts", spacer = True)
+            for member in service.consts.values():
+                STMT("public static final {0} {1} = {2}", type_to_java(member.type), 
+                    member.name, const_to_java(member.type, member.value))
+            SEP()
+            
+            DOC("classes", spacer = True)
+            self.generate_base_class_proxy(module, service)
+            SEP()
+            for member in service.types.values():
+                if isinstance(member, compiler.Class):
+                    self.generate_class_proxy(module, service, member)
+                    SEP()
+            
+            DOC("client", spacer = True)
+            self.generate_client(module, service)
+            SEP()
 
-                DOC("server implementation", spacer = True)
-                self.generate_handler_interface(module, service)
-                SEP()
-                self.generate_processor(module, service)
-                SEP()
-
-                DOC("client", spacer = True)
-                self.generate_client(module, service)
-                SEP()
-
-    def _generate_templated_packer_for_type(self, tp):
+    def _generate_templated_packer_for_type(self, tp, proxy):
         if isinstance(tp, compiler.TList):
-            return "new Packers.ListOf<%s>(%s, %s)" % (type_to_java(tp), tp.id, 
-                self._generate_templated_packer_for_type(tp.oftype),)
+            return "new Packers.ListOf<%s>(%s, %s)" % (type_to_java(tp, proxy = proxy), 
+                tp.id, self._generate_templated_packer_for_type(tp.oftype, proxy = proxy),)
         elif isinstance(tp, compiler.TMap):
-            return "new Packers.MapOf<%s, %s>(%s, %s, %s)" % (type_to_java(tp.keytype), 
-                type_to_java(tp.valtype), tp.id, self._generate_templated_packer_for_type(tp.keytype),
-                self._generate_templated_packer_for_type(tp.valtype))
+            return "new Packers.MapOf<%s, %s>(%s, %s, %s)" % (type_to_java(tp.keytype, proxy = proxy), 
+                type_to_java(tp.valtype, proxy = proxy), 
+                tp.id, 
+                self._generate_templated_packer_for_type(tp.keytype, proxy = proxy),
+                self._generate_templated_packer_for_type(tp.valtype, proxy = proxy))
         else:
             return type_to_packer(tp)
 
@@ -196,16 +256,16 @@ class JavaTarget(TargetBase):
         
         for tp in service.all_types:
             if isinstance(tp, (compiler.TList, compiler.TMap)):
-                STMT("protected Packers.AbstractPacker _{0}", tp.stringify())
+                STMT("protected final Packers.AbstractPacker _{0}", tp.stringify())
 
-    def generate_templated_packers_impl(self, module, service):
+    def generate_templated_packers_impl(self, module, service, proxy):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
         
         for tp in service.all_types:
             if isinstance(tp, (compiler.TList, compiler.TMap)):
-                STMT("_{0} = {1}", tp.stringify(), self._generate_templated_packer_for_type(tp))
+                STMT("_{0} = {1}", tp.stringify(), self._generate_templated_packer_for_type(tp, proxy = proxy))
     
     def generate_enum(self, module, enum):
         BLOCK = module.block
@@ -216,7 +276,7 @@ class JavaTarget(TargetBase):
                 STMT("{0} ({1})", mem.name, mem.value, suffix = ",")
             STMT("{0} ({1})", enum.members[-1].name, enum.members[-1].value)
             SEP()
-            STMT("public Integer value")
+            STMT("public final Integer value")
             with BLOCK("private static final Map<Integer, {0}> _BY_VALUE = new HashMap<Integer, {0}>()", 
                     enum.name, prefix = "{{", suffix = "}};"):
                 with BLOCK("for({0} member : {0}.values())", enum.name):
@@ -237,7 +297,7 @@ class JavaTarget(TargetBase):
         SEP()
         STMT("protected static _{0}Packer {0}Packer = new _{0}Packer()", enum.name)
 
-    def generate_record_class(self, module, rec):
+    def generate_record_class(self, module, rec, proxy):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
@@ -248,12 +308,12 @@ class JavaTarget(TargetBase):
         SEP()
         with BLOCK("public static class {0} {1}", rec.name, extends):
             for mem in rec.members:
-                STMT("public {0} {1}", type_to_java(mem.type), mem.name)
+                STMT("public {0} {1}", type_to_java(mem.type, proxy = proxy), mem.name)
             SEP()
             with BLOCK("public {0}()", rec.name):
                 pass
             if rec.members:
-                args = ", ".join("%s %s" % (type_to_java(mem.type), mem.name) for mem in rec.members)
+                args = ", ".join("%s %s" % (type_to_java(mem.type, proxy = proxy), mem.name) for mem in rec.members)
                 with BLOCK("public {0}({1})", rec.name, args):
                     for mem in rec.members:
                         STMT("this.{0} = {0}", mem.name)
@@ -263,11 +323,11 @@ class JavaTarget(TargetBase):
                 else:
                     STMT('return "{0}(" + {1} + ")"', rec.name, ' + ", " + '.join(mem.name  for mem in rec.members))
     
-    def generate_record_packer(self, module, rec, static):
+    def generate_record_packer(self, module, rec, static, proxy):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
-        with BLOCK("protected {0}class _{1}Packer extends Packers.AbstractPacker", 
+        with BLOCK("protected final {0}class _{1}Packer extends Packers.AbstractPacker", 
                 "static " if static else "", rec.name):
             with BLOCK("public int getId()"):
                 STMT("return {0}", rec.id)
@@ -278,17 +338,17 @@ class JavaTarget(TargetBase):
             with BLOCK("public Object unpack(InputStream stream) throws IOException"):
                 with BLOCK("return new {0}(", rec.name, prefix = "", suffix = ");"):
                     for mem in rec.members[:-1]:
-                        STMT("({0}){1}.unpack(stream)", type_to_java(mem.type), 
+                        STMT("({0}){1}.unpack(stream)", type_to_java(mem.type, proxy = proxy), 
                             type_to_packer(mem.type), suffix = ",")
                     if rec.members:
                         mem = rec.members[-1]
-                        STMT("({0}){1}.unpack(stream)", type_to_java(mem.type), 
+                        STMT("({0}){1}.unpack(stream)", type_to_java(mem.type, proxy = proxy), 
                             type_to_packer(mem.type), suffix = "")
         SEP()
         if static:
-            STMT("protected static _{0}Packer {0}Packer = new _{0}Packer()", rec.name)
+            STMT("protected static final _{0}Packer {0}Packer = new _{0}Packer()", rec.name)
         else:
-            STMT("protected _{0}Packer {0}Packer", rec.name)
+            STMT("protected final _{0}Packer {0}Packer", rec.name)
 
     def generate_class_interface(self, module, cls):
         BLOCK = module.block
@@ -321,8 +381,8 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         with BLOCK("public static abstract class BaseProxy"):
-            STMT("protected Long _objref")
-            STMT("protected Client _client")
+            STMT("protected final Long _objref")
+            STMT("protected final Client _client")
             STMT("protected boolean _disposed")
             SEP()
             with BLOCK("protected BaseProxy(Client client, Long objref, boolean owns_ref)"):
@@ -421,22 +481,22 @@ class JavaTarget(TargetBase):
         SEP = module.sep
 
         with BLOCK("public static class Processor extends Protocol.BaseProcessor"):
-            STMT("protected IHandler handler")
+            STMT("protected final IHandler handler")
             SEP()
             for tp in service.types.values():
                 if isinstance(tp, compiler.Class):
-                    STMT("protected Packers.ObjRef {0}ObjRef", tp.name)
+                    STMT("protected final Packers.ObjRef {0}ObjRef", tp.name)
             SEP()
             generated_records = []
             for member in service.types.values():
                 if isinstance(member, compiler.Record):
                     if is_complex_type(member):
-                        self.generate_record_packer(module, member, static = False)
+                        self.generate_record_packer(module, member, static = False, proxy = False)
                         generated_records.append(member)
                         SEP()
             self.generate_templated_packers_decl(module, service)
             SEP()
-            STMT("protected Packers.HeteroMapPacker heteroMapPacker")
+            STMT("protected final Packers.HeteroMapPacker heteroMapPacker")
             SEP()
             with BLOCK("public Processor(IHandler handler)"):
                 STMT("this.handler = handler")
@@ -445,7 +505,7 @@ class JavaTarget(TargetBase):
                         STMT("{0}ObjRef = new Packers.ObjRef({1}, this)", tp.name, tp.id)
                 for rec in generated_records:
                     STMT("{0}Packer = new _{0}Packer()", rec.name)
-                self.generate_templated_packers_impl(module, service)
+                self.generate_templated_packers_impl(module, service, proxy = False)
                 SEP()
                 STMT("HashMap<Integer, Packers.AbstractPacker> packersMap = new HashMap<Integer, Packers.AbstractPacker>()")
                 for tp in service.types.values():
@@ -596,7 +656,7 @@ class JavaTarget(TargetBase):
             for member in service.types.values():
                 if isinstance(member, compiler.Record):
                     if is_complex_type(member):
-                        self.generate_record_packer(module, member, static = False)
+                        self.generate_record_packer(module, member, static = False, proxy = True)
                         generated_records.append(member)
                         SEP()
             self.generate_templated_packers_decl(module, service)
@@ -614,7 +674,7 @@ class JavaTarget(TargetBase):
                 SEP()
                 STMT("protected abstract Object _get_proxy(Long id)")
             SEP()
-            STMT("protected Packers.HeteroMapPacker heteroMapPacker")
+            STMT("protected final Packers.HeteroMapPacker heteroMapPacker")
             SEP()
             namespaces = self.generate_client_namespaces(module, service)
             SEP()
@@ -625,7 +685,6 @@ class JavaTarget(TargetBase):
             self.generate_client_funcs(module, service)
             SEP()
             self.generate_client_factories(module, service)
-            
     
     def generate_client_ctor(self, module, service, namespaces, generated_records):
         BLOCK = module.block
@@ -651,7 +710,7 @@ class JavaTarget(TargetBase):
                     SEP()
             for rec in generated_records:
                 STMT("{0}Packer = new _{0}Packer()", rec.name)
-            self.generate_templated_packers_impl(module, service)
+            self.generate_templated_packers_impl(module, service, proxy = True)
             SEP()
             for mem in service.types.values():
                 if isinstance(mem, compiler.Exception):
@@ -663,7 +722,7 @@ class JavaTarget(TargetBase):
             STMT("HashMap<Integer, Packers.AbstractPacker> packersMap = new HashMap<Integer, Packers.AbstractPacker>()")
             for tp in service.types.values():
                 STMT("packersMap.put({0}, {1})", tp.id, type_to_packer(tp))
-                STMT("heteroMapPacker = new Packers.HeteroMapPacker(999, packersMap)")
+            STMT("heteroMapPacker = new Packers.HeteroMapPacker(999, packersMap)")
             STMT("packersMap.put(999, heteroMapPacker)")
 
     def generate_client_namespaces(self, module, service):
@@ -691,9 +750,9 @@ class JavaTarget(TargetBase):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
-        with BLOCK("public class _Namespace{0}", root["__id__"]):
+        with BLOCK("public final class _Namespace{0}", root["__id__"]):
             subnamespaces = []
-            STMT("protected _Functions _funcs")
+            STMT("protected final _Functions _funcs")
             SEP()
             for name, node in root.iteritems():
                 if isinstance(node, dict):
@@ -713,7 +772,7 @@ class JavaTarget(TargetBase):
                 STMT("_funcs = funcs")
                 for name, id in subnamespaces:
                     STMT("{0} = new _Namespace{1}(funcs)", name, id)
-        STMT("public _Namespace{0} {1}", root["__id__"], root["__name__"])
+        STMT("public final _Namespace{0} {1}", root["__id__"], root["__name__"])
 
     def generate_client_factories(self, module, service):
         BLOCK = module.block
@@ -741,7 +800,7 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         with BLOCK("protected class _Functions"):
-            STMT("protected Protocol.ClientUtils utils")
+            STMT("protected final Protocol.ClientUtils utils")
             with BLOCK("public _Functions(Protocol.ClientUtils utils)"):
                 STMT("this.utils = utils")
             SEP()
@@ -762,7 +821,7 @@ class JavaTarget(TargetBase):
                         STMT("return ({0})res", type_to_java(func.type, proxy = True))
                 SEP()
         SEP()
-        STMT("protected _Functions _funcs")
+        STMT("protected final _Functions _funcs")
 
     def generate_client_funcs(self, module, service):
         BLOCK = module.block
