@@ -1,7 +1,6 @@
 using System;
-using Agnos;
-using FeatureTestBindings;
 using System.Collections.Generic;
+using FeatureTestServerBindings;
 
 
 public class myserver 

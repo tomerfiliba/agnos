@@ -130,68 +130,148 @@ class CSharpTarget(TargetBase):
             STMT("using Agnos")
             STMT("using Agnos.Transports")
             SEP()
-            with BLOCK("namespace {0}Bindings", service.name):
-                with BLOCK("public static class {0}", service.name):
-                    STMT('public const string AGNOS_VERSION = "Agnos 1.0"', service.digest)
-                    STMT('public const string IDL_MAGIC = "{0}"', service.digest)
-                    SEP()
+            self.generate_shared_bindings(module, service)
+            SEP()
+            self.generate_server_bindings(module, service)
+            SEP()
+            self.generate_client_bindings(module, service)
+            SEP()
 
-                    DOC("enums", spacer = True)
-                    for member in service.types.values():
-                        if isinstance(member, compiler.Enum):
-                            self.generate_enum(module, member)
-                            SEP()
-                    
-                    DOC("records", spacer = True)
-                    for member in service.types.values():
-                        if isinstance(member, compiler.Record):
-                            self.generate_record_class(module, member)
-                            SEP()
-                    
-                    for member in service.types.values():
-                        if isinstance(member, compiler.Record):
-                            if not is_complex_type(member):
-                                self.generate_record_packer(module, member, static = True, proxy = False)
-                                SEP()
-    
-                    DOC("consts", spacer = True)
-                    for member in service.consts.values():
-                        STMT("public const {0} {1} = {2}", type_to_cs(member.type), 
-                            member.name, const_to_cs(member.type, member.value))
-                    SEP()
-                    
-                    DOC("classes", spacer = True)
-                    self.generate_base_class_proxy(module, service)
-                    SEP()
-                    for member in service.types.values():
-                        if isinstance(member, compiler.Class):
-                            self.generate_class_interface(module, member)
-                            SEP()
-                            self.generate_class_proxy(module, service, member)
-                            SEP()
-    
-                    DOC("server implementation", spacer = True)
-                    self.generate_handler_interface(module, service)
-                    SEP()
-                    self.generate_processor(module, service)
-                    SEP()
-    
-                    DOC("client", spacer = True)
-                    self.generate_client(module, service)
-                    SEP()
+    def generate_shared_bindings(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        DOC = module.doc
+        
+        with BLOCK("namespace {0}SharedBindings", service.name):
+            pass
+#            DOC("enums", spacer = True)
+#            for member in service.types.values():
+#                if isinstance(member, compiler.Enum):
+#                    self.generate_enum(module, member)
+#                    SEP()
+#            
+#            DOC("records", spacer = True)
+#            for member in service.types.values():
+#                if isinstance(member, compiler.Record) and not is_complex_type(member):
+#                    self.generate_record_class(module, member, proxy = False)
+#                    self.generate_record_packer(module, member, static = True, proxy = False)
+#                    SEP()
 
-    def _generate_templated_packer_for_type(self, tp):
+    def generate_server_bindings(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        DOC = module.doc
+        
+        with BLOCK("namespace {0}ServerBindings", service.name):
+            STMT("using {0}SharedBindings", service.name)
+            SEP()
+            with BLOCK("public static class {0}", service.name):
+                STMT('public const string AGNOS_VERSION = "Agnos 1.0"', service.digest)
+                STMT('public const string IDL_MAGIC = "{0}"', service.digest)
+                SEP()
+
+                DOC("enums", spacer = True)
+                for member in service.types.values():
+                    if isinstance(member, compiler.Enum):
+                        self.generate_enum(module, member)
+                        SEP()
+                
+                DOC("records", spacer = True)
+                for member in service.types.values():
+                    if isinstance(member, compiler.Record):
+                        self.generate_record_class(module, member, proxy = False)
+                        SEP()
+                
+                for member in service.types.values():
+                    if isinstance(member, compiler.Record):
+                        if not is_complex_type(member):
+                            self.generate_record_packer(module, member, static = True, proxy = False)
+                            SEP()
+
+                DOC("consts", spacer = True)
+                for member in service.consts.values():
+                    STMT("public const {0} {1} = {2}", type_to_cs(member.type), 
+                        member.name, const_to_cs(member.type, member.value))
+                SEP()
+                
+                DOC("classes", spacer = True)
+                for member in service.types.values():
+                    if isinstance(member, compiler.Class):
+                        self.generate_class_interface(module, member)
+                        SEP()
+
+                DOC("server implementation", spacer = True)
+                self.generate_handler_interface(module, service)
+                SEP()
+                
+                self.generate_processor(module, service)
+    
+    def generate_client_bindings(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        DOC = module.doc
+        
+        with BLOCK("namespace {0}ClientBindings", service.name):
+            STMT("using {0}SharedBindings", service.name)
+            SEP()
+            with BLOCK("public static class {0}", service.name):
+                STMT('public const string AGNOS_VERSION = "Agnos 1.0"', service.digest)
+                STMT('public const string IDL_MAGIC = "{0}"', service.digest)
+                SEP()
+
+                DOC("enums", spacer = True)
+                for member in service.types.values():
+                    if isinstance(member, compiler.Enum):
+                        self.generate_enum(module, member)
+                        SEP()
+                
+                DOC("records", spacer = True)
+                for member in service.types.values():
+                    if isinstance(member, compiler.Record):
+                        self.generate_record_class(module, member, proxy = True)
+                        SEP()
+                
+                for member in service.types.values():
+                    if isinstance(member, compiler.Record):
+                        if not is_complex_type(member):
+                            self.generate_record_packer(module, member, static = True, proxy = True)
+                            SEP()
+
+                DOC("consts", spacer = True)
+                for member in service.consts.values():
+                    STMT("public const {0} {1} = {2}", type_to_cs(member.type), 
+                        member.name, const_to_cs(member.type, member.value))
+                SEP()
+                
+                DOC("classes", spacer = True)
+                self.generate_base_class_proxy(module, service)
+                SEP()
+                for member in service.types.values():
+                    if isinstance(member, compiler.Class):
+                        self.generate_class_proxy(module, service, member)
+                        SEP()
+
+                DOC("client", spacer = True)
+                self.generate_client(module, service)
+
+    def _generate_templated_packer_for_type(self, tp, proxy):
         if isinstance(tp, compiler.TList):
-            return "new Packers.ListOf<%s>(%s, %s)" % (type_to_cs(tp.oftype), 
-                tp.id, self._generate_templated_packer_for_type(tp.oftype),)
+            return "new Packers.ListOf<%s>(%s, %s)" % (type_to_cs(tp.oftype, proxy = proxy), 
+                tp.id, self._generate_templated_packer_for_type(tp.oftype, proxy = proxy))
         elif isinstance(tp, compiler.TMap):
-            return "new Packers.MapOf<%s, %s>(%s, %s, %s)" % (type_to_cs(tp.keytype), 
-                type_to_cs(tp.valtype), tp.id, self._generate_templated_packer_for_type(tp.keytype),
-                self._generate_templated_packer_for_type(tp.valtype))
+            return "new Packers.MapOf<%s, %s>(%s, %s, %s)" % (
+                type_to_cs(tp.keytype, proxy = proxy), 
+                type_to_cs(tp.valtype, proxy = proxy), 
+                tp.id, 
+                self._generate_templated_packer_for_type(tp.keytype, proxy = proxy),
+                self._generate_templated_packer_for_type(tp.valtype, proxy = proxy))
         else:
             return type_to_packer(tp)
 
-    def generate_templated_packers_decl(self, module, service):
+    def generate_templated_packers_decl(self, module, service, proxy):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
@@ -201,17 +281,17 @@ class CSharpTarget(TargetBase):
                 if is_complex_type(tp):
                     STMT("internal Packers.AbstractPacker _{0}", tp.stringify())
                 else:
-                    definition = self._generate_templated_packer_for_type(tp)
+                    definition = self._generate_templated_packer_for_type(tp, proxy)
                     STMT("internal static Packers.AbstractPacker _{0} = {1}", tp.stringify(), definition)
             
-    def generate_templated_packers_impl(self, module, service):
+    def generate_templated_packers_impl(self, module, service, proxy):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
         
         for tp in service.all_types:
             if isinstance(tp, (compiler.TList, compiler.TMap)) and is_complex_type(tp):
-                definition = self._generate_templated_packer_for_type(tp)
+                definition = self._generate_templated_packer_for_type(tp, proxy)
                 STMT("_{0} = {1}", tp.stringify(), definition)
 
     def generate_enum(self, module, enum):
@@ -234,7 +314,7 @@ class CSharpTarget(TargetBase):
         SEP()
         STMT("internal static _{0}Packer {0}Packer = new _{0}Packer()", enum.name)
 
-    def generate_record_class(self, module, rec):
+    def generate_record_class(self, module, rec, proxy):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
@@ -243,12 +323,12 @@ class CSharpTarget(TargetBase):
 
         with BLOCK("public class {0}{1}", rec.name, " : PackedException" if is_exc else ""):
             for mem in rec.members:
-                STMT("public {0} {1}", type_to_cs(mem.type), mem.name)
+                STMT("public {0} {1}", type_to_cs(mem.type, proxy = proxy), mem.name)
             SEP()
             with BLOCK("public {0}()", rec.name):
                 pass
             if rec.members:
-                args = ", ".join("%s %s" % (type_to_cs(mem.type), mem.name) for mem in rec.members)
+                args = ", ".join("%s %s" % (type_to_cs(mem.type, proxy = proxy), mem.name) for mem in rec.members)
                 with BLOCK("public {0}({1})", rec.name, args):
                     for mem in rec.members:
                         STMT("this.{0} = {0}", mem.name)
@@ -427,7 +507,7 @@ class CSharpTarget(TargetBase):
                         self.generate_record_packer(module, member, static = False, proxy = False)
                         generated_records.append(member)
                         SEP()
-            self.generate_templated_packers_decl(module, service)
+            self.generate_templated_packers_decl(module, service, proxy = False)
             SEP()
             STMT("protected Packers.HeteroMapPacker heteroMapPacker")
             SEP()
@@ -439,7 +519,7 @@ class CSharpTarget(TargetBase):
                 for rec in generated_records:
                     complex_types = rec.get_complex_types()
                     STMT("{0}Packer = new _{0}Packer({1})", rec.name, ", ".join(type_to_packer(tp) for tp in complex_types))
-                self.generate_templated_packers_impl(module, service)
+                self.generate_templated_packers_impl(module, service, proxy = False)
                 SEP()
                 STMT("Dictionary<int, Packers.AbstractPacker> packersMap = new Dictionary<int, Packers.AbstractPacker>()")
                 for tp in service.types.values():
@@ -592,7 +672,7 @@ class CSharpTarget(TargetBase):
                         self.generate_record_packer(module, member, static = False, proxy = True)
                         generated_records.append(member)
                         SEP()
-            self.generate_templated_packers_decl(module, service)
+            self.generate_templated_packers_decl(module, service, proxy = True)
             SEP()
             with BLOCK("internal abstract class ClientSerializer : Packers.ISerializer"):
                 STMT("public Client client")
@@ -663,7 +743,7 @@ class CSharpTarget(TargetBase):
             for name, id in namespaces:
                 STMT("{0} = new _Namespace{1}(_funcs)", name, id)
             
-            self.generate_templated_packers_impl(module, service)
+            self.generate_templated_packers_impl(module, service, proxy = True)
             SEP()
             
             STMT("Dictionary<int, Packers.AbstractPacker> packersMap = new Dictionary<int, Packers.AbstractPacker>()")

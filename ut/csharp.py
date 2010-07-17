@@ -30,8 +30,6 @@ class TestCSharp(TargetTest):
     
     def runTest(self):
         self.run_agnosc("c#", "ut/features.xml", "ut/gen-csharp")
-        return
-    
         self.delete_exes(self.REL("ut/csharp-test/server/bin"))
         self.delete_exes(self.REL("ut/csharp-test/client/bin"))
         self.run_msbuild(self.REL("ut/csharp-test/agnostest.sln"))

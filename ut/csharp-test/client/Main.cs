@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using Agnos;
-using FeatureTestBindings;
+using FeatureTestClientBindings;
 
 
 public class myclient {
