@@ -24,7 +24,8 @@ class TestJava(TargetTest):
         self.run_cmdline(["mkdir", "build"], cwd=path)
         print "javac %s" % (path,)
         cmdline = ["javac", "-g", "-cp", ":".join(classpath), "-d", "build"]
-        cmdline.extend(fn for fn in os.listdir(path) if fn.endswith(".java"))
+        for root, dirs, files in os.walk(path):
+            cmdline.extend(os.path.join(root, fn) for fn in files if fn.endswith(".java"))
         self.run_cmdline(cmdline, cwd=path)
         print "jar %s" % (path,)
         self.run_cmdline(["jar", "cf", "thejar.jar", "."], cwd=os.path.join(path, "build"))
@@ -41,7 +42,6 @@ class TestJava(TargetTest):
     
     def runTest(self):
         self.run_agnosc("java", "ut/features.xml", "ut/gen-java")
-        return
         agnos_jar = self.ant("lib/java")
         features_jar = self.compile_java("ut/gen-java", "Features.jar", 
             classpath = [agnos_jar])

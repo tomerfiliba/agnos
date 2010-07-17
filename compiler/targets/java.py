@@ -114,11 +114,12 @@ class JavaTarget(TargetBase):
             f.write(mod.render())
 
     def generate(self, service):
-        with self.new_module("%sServerBindings.java" % (service.name,)) as module:
+        self.mkdir("%sServerBindings" % (service.name,))
+        with self.new_module("%sServerBindings/%s.java" % (service.name, service.name)) as module:
             STMT = module.stmt
             SEP = module.sep
             
-            STMT("package {0}Bindings", service.name)
+            STMT("package {0}ServerBindings", service.name)
             SEP()
             STMT("import java.util.*")
             STMT("import java.io.*")
@@ -128,11 +129,12 @@ class JavaTarget(TargetBase):
             self.generate_server_bindings(module, service)
             SEP()
 
-        with self.new_module("%sClientBindings.java" % (service.name,)) as module:
+        self.mkdir("%sClientBindings" % (service.name,))
+        with self.new_module("%sClientBindings/%s.java" % (service.name, service.name)) as module:
             STMT = module.stmt
             SEP = module.sep
             
-            STMT("package {0}Bindings", service.name)
+            STMT("package {0}ClientBindings", service.name)
             SEP()
             STMT("import java.util.*")
             STMT("import java.io.*")
@@ -148,7 +150,7 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
             
-        with BLOCK("public final class {0}ServerBindings", service.name):
+        with BLOCK("public final class {0}", service.name):
             STMT('public static final String AGNOS_VERSION = "Agnos 1.0"')
             STMT('public static final String IDL_MAGIC = "{0}"', service.digest)
             SEP()
@@ -176,7 +178,7 @@ class JavaTarget(TargetBase):
                 STMT("public static final {0} {1} = {2}", type_to_java(member.type), 
                     member.name, const_to_java(member.type, member.value))
             SEP()
-                
+            
             DOC("classes", spacer = True)
             for member in service.types.values():
                 if isinstance(member, compiler.Class):
@@ -195,7 +197,7 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
 
-        with BLOCK("public final class {0}ClientBindings", service.name):
+        with BLOCK("public final class {0}", service.name):
             STMT('public static final String AGNOS_VERSION = "Agnos 1.0"')
             STMT('public static final String IDL_MAGIC = "{0}"', service.digest)
             SEP()

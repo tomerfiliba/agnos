@@ -125,7 +125,6 @@ class CSharpTarget(TargetBase):
             STMT("using System.Net")
             STMT("using System.Net.Sockets")
             STMT("using System.Diagnostics")
-            STMT("using System.Collections")
             STMT("using System.Collections.Generic")
             STMT("using Agnos")
             STMT("using Agnos.Transports")
@@ -348,7 +347,7 @@ class CSharpTarget(TargetBase):
             if not static:
                 complex_types = rec.get_complex_types()
                 for tp in complex_types:
-                    STMT("protected Packers.AbstractPacker {0}", type_to_packer(tp))
+                    STMT("internal Packers.AbstractPacker {0}", type_to_packer(tp))
                 args =  ", ".join("Packers.AbstractPacker %s" % (type_to_packer(tp),) for tp in complex_types)
                 with BLOCK("public _{0}Packer({1})", rec.name, args):
                     for tp in complex_types:
@@ -827,7 +826,7 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         with BLOCK("internal sealed class _Functions"):
-            STMT("internal Client client")
+            STMT("internal readonly Client client")
             with BLOCK("public _Functions(Client client)"):
                 STMT("this.client = client")
             SEP()

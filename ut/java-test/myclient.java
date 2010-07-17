@@ -1,5 +1,5 @@
 import java.util.*;
-import FeatureTestBindings.*;
+import FeatureTestClientBindings.*;
 
 
 public class myclient
@@ -10,7 +10,7 @@ public class myclient
 		int port = Integer.parseInt(args[1]);
 
 		try {
-			FeatureTestBindings.Client conn = FeatureTestBindings.Client.connectSock(host, port);
+			FeatureTest.Client conn = FeatureTest.Client.connectSock(host, port);
 			test(conn);
 		} catch (Exception ex) {
 			ex.printStackTrace(System.out);
@@ -18,15 +18,15 @@ public class myclient
 		}
 	}
 
-	protected static void test(FeatureTestBindings.Client conn)
+	protected static void test(FeatureTest.Client conn)
 			throws Exception
 	{
-		FeatureTestBindings.PersonProxy eve = conn.Person.init("eve", null,
+		FeatureTest.PersonProxy eve = conn.Person.init("eve", null,
 				null);
-		FeatureTestBindings.PersonProxy adam = conn.Person.init("adam", null,
+		FeatureTest.PersonProxy adam = conn.Person.init("adam", null,
 				null);
 		eve.marry(adam);
-		FeatureTestBindings.PersonProxy cain = conn.Person.init("cain", adam,
+		FeatureTest.PersonProxy cain = conn.Person.init("cain", adam,
 				eve);
 
 		if (!cain.get_name().equals("cain")) {
@@ -35,7 +35,7 @@ public class myclient
 
 		try {
 			adam.marry(eve);
-		} catch (FeatureTestBindings.MartialStatusError ex) {
+		} catch (FeatureTest.MartialStatusError ex) {
 			// okay
 		}
 

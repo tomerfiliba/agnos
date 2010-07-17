@@ -1,8 +1,8 @@
 import java.util.*;
-import FeatureTestBindings.*;
+import FeatureTestServerBindings.*;
 
 public class myserver {
-	public static class ClassA implements FeatureTestBindings.IClassA {
+	public static class ClassA implements FeatureTest.IClassA {
 		private Integer val = new Integer(17);
 
 		public Integer get_attr1() throws Exception {
@@ -27,7 +27,7 @@ public class myserver {
 		}
 	}
 
-	public static class ClassB implements FeatureTestBindings.IClassB {
+	public static class ClassB implements FeatureTest.IClassB {
 		private Integer val = new Integer(17);
 		private Double val3 = new Double(17.77);
 
@@ -66,7 +66,7 @@ public class myserver {
 		}
 	}
 
-	public static class ClassC implements FeatureTestBindings.IClassC {
+	public static class ClassC implements FeatureTest.IClassC {
 		private Integer val = new Integer(17);
 		private Double val3 = new Double(17.77);
 
@@ -93,9 +93,9 @@ public class myserver {
 			val3 = value;
 		}
 
-		private List<FeatureTestBindings.IClassA> attr4 = new ArrayList<FeatureTestBindings.IClassA>();
+		private List<FeatureTest.IClassA> attr4 = new ArrayList<FeatureTest.IClassA>();
 
-		public List<FeatureTestBindings.IClassA> get_attr4() throws Exception {
+		public List<FeatureTest.IClassA> get_attr4() throws Exception {
 			return attr4;
 		}
 
@@ -116,21 +116,21 @@ public class myserver {
 		}
 	}
 
-	public static class Person implements FeatureTestBindings.IPerson {
+	public static class Person implements FeatureTest.IPerson {
 		private String name;
 		private Person father;
 		private Person mother;
 		private Person spouse;
 		private Date date_of_birth;
-		private FeatureTestBindings.Address address;
+		private FeatureTest.Address address;
 
-		protected Person(String name, FeatureTestBindings.IPerson father,
-				FeatureTestBindings.IPerson mother) {
+		protected Person(String name, FeatureTest.IPerson father,
+				FeatureTest.IPerson mother) {
 			this.name = name;
 			this.father = (Person) father;
 			this.mother = (Person) mother;
-			this.address = new FeatureTestBindings.Address(
-					FeatureTestBindings.State.TX, "nashville", "woldorf", 1772);
+			this.address = new FeatureTest.Address(
+					FeatureTest.State.TX, "nashville", "woldorf", 1772);
 			this.date_of_birth = new Date();
 		}
 
@@ -143,40 +143,40 @@ public class myserver {
 			return date_of_birth;
 		}
 
-		public FeatureTestBindings.Address get_address() throws Exception {
+		public FeatureTest.Address get_address() throws Exception {
 			return address;
 		}
 
-		public void set_address(FeatureTestBindings.Address value)
+		public void set_address(FeatureTest.Address value)
 				throws Exception {
 			address = value;
 		}
 
-		public FeatureTestBindings.IPerson get_father() throws Exception {
+		public FeatureTest.IPerson get_father() throws Exception {
 			return father;
 		}
 
-		public FeatureTestBindings.IPerson get_mother() throws Exception {
+		public FeatureTest.IPerson get_mother() throws Exception {
 			return mother;
 		}
 
-		public FeatureTestBindings.IPerson get_spouse() throws Exception {
+		public FeatureTest.IPerson get_spouse() throws Exception {
 			return spouse;
 		}
 
 		// methods
-		public void marry(FeatureTestBindings.IPerson partner) throws Exception {
+		public void marry(FeatureTest.IPerson partner) throws Exception {
 			if (spouse != null) {
-				throw new FeatureTestBindings.MartialStatusError(
+				throw new FeatureTest.MartialStatusError(
 						"already married", this);
 			}
 			if (partner.get_spouse() != null) {
-				throw new FeatureTestBindings.MartialStatusError(
+				throw new FeatureTest.MartialStatusError(
 						"already married", partner);
 			}
 			if ((mother != null && mother == partner.get_mother())
 					|| (father != null && father == partner.get_father())) {
-				throw new FeatureTestBindings.MartialStatusError(
+				throw new FeatureTest.MartialStatusError(
 						"siblings cannot marry", partner);
 			}
 			spouse = (Person) partner;
@@ -185,7 +185,7 @@ public class myserver {
 
 		public void divorce() throws Exception {
 			if (spouse == null) {
-				throw new FeatureTestBindings.MartialStatusError(
+				throw new FeatureTest.MartialStatusError(
 						"does not have a spouse", this);
 			}
 			spouse.spouse = null;
@@ -197,42 +197,42 @@ public class myserver {
 		}
 	}
 
-	public static class Handler implements FeatureTestBindings.IHandler {
-		public FeatureTestBindings.RecordB get_record_b() throws Exception {
-			return new FeatureTestBindings.RecordB(new Integer(17),
+	public static class Handler implements FeatureTest.IHandler {
+		public FeatureTest.RecordB get_record_b() throws Exception {
+			return new FeatureTest.RecordB(new Integer(17),
 					new Integer(18), new Long(19));
 		}
 
-		public FeatureTestBindings.IPerson Person_init(String name,
-				FeatureTestBindings.IPerson father,
-				FeatureTestBindings.IPerson mother) throws Exception {
+		public FeatureTest.IPerson Person_init(String name,
+				FeatureTest.IPerson father,
+				FeatureTest.IPerson mother) throws Exception {
 			return new Person(name, father, mother);
 		}
 
-		public List<FeatureTestBindings.IClassC> get_class_c() throws Exception {
+		public List<FeatureTest.IClassC> get_class_c() throws Exception {
 			ClassA[] x1 = { new ClassA(), new ClassA() };
 			ClassA[] x2 = { new ClassA() };
 
-			ArrayList<FeatureTestBindings.IClassC> arr = new ArrayList<FeatureTestBindings.IClassC>();
+			ArrayList<FeatureTest.IClassC> arr = new ArrayList<FeatureTest.IClassC>();
 			// arr.add(new ClassC(4, 5, 6.0, Arrays.asList(x1)));
 			// arr.add(new ClassC(33, 12, 76.2, Arrays.asList(x2)));
 
 			return arr;
 		}
 
-		public FeatureTestBindings.Everything func_of_everything(Byte a,
+		public FeatureTest.Everything func_of_everything(Byte a,
 				Short b, Integer c, Long d, Double e, Boolean f, Date g,
 				byte[] h, String i, List j, Map k,
-				FeatureTestBindings.Address l, FeatureTestBindings.IPerson m)
+				FeatureTest.Address l, FeatureTest.IPerson m)
 				throws Exception {
-			return new FeatureTestBindings.Everything(a, b, c, d, e, f, g, h,
+			return new FeatureTest.Everything(a, b, c, d, e, f, g, h,
 					i, j, k, l, m);
 		}
 	}
 
 	public static void main(String[] args) {
 		agnos.Servers.CmdlineServer server = new agnos.Servers.CmdlineServer(
-				new FeatureTestBindings.Processor(new Handler()));
+				new FeatureTest.Processor(new Handler()));
 		try {
 			server.main(args);
 		} catch (Exception ex) {
