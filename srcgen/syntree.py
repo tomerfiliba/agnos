@@ -139,7 +139,7 @@ class TokenizedBlock(object):
 def _get_src_name(blk):
     if blk.srcblock.lineno is None:
         return None, ()
-    for i in range(blk.srcblock.lineno, len(blk.srcblock.fileinfo.lines)):
+    for i in range(blk.srcblock.lineno + 1, len(blk.srcblock.fileinfo.lines)):
         l = blk.srcblock.fileinfo.lines[i].strip()
         if l.startswith("def "):
             name = l.split()[1].split("(")[0]
@@ -161,7 +161,7 @@ def auto_fill_name(argname, blk):
 def auto_enum_name(argname, blk):
     assert argname == "name"
     if argname not in blk.args:
-        for i in range(blk.srcblock.lineno, len(blk.srcblock.fileinfo.lines)):
+        for i in range(blk.srcblock.lineno + 1, len(blk.srcblock.fileinfo.lines)):
             l = blk.srcblock.fileinfo.lines[i].strip()
             if "=" in l:
                 n, v = l.split("=", 1)
@@ -174,7 +174,7 @@ def auto_enum_name(argname, blk):
 def auto_enum_value(argname, blk):
     assert argname == "value"
     if argname not in blk.args:
-        for i in range(blk.srcblock.lineno, len(blk.srcblock.fileinfo.lines)):
+        for i in range(blk.srcblock.lineno + 1, len(blk.srcblock.fileinfo.lines)):
             l = blk.srcblock.fileinfo.lines[i].strip()
             if "=" in l:
                 n, v = l.split("=", 1)
@@ -187,7 +187,7 @@ def auto_enum_value(argname, blk):
 def auto_const_name(argname, blk):
     assert argname == "name"
     if argname not in blk.args:
-        for i in range(blk.srcblock.lineno, len(blk.srcblock.fileinfo.lines)):
+        for i in range(blk.srcblock.lineno + 1, len(blk.srcblock.fileinfo.lines)):
             l = blk.srcblock.fileinfo.lines[i].strip()
             if "=" in l:
                 n, v = l.split("=", 1)
@@ -200,7 +200,7 @@ def auto_const_name(argname, blk):
 def auto_const_value(argname, blk):
     assert argname == "value"
     if argname not in blk.args:
-        for i in range(blk.srcblock.lineno, len(blk.srcblock.fileinfo.lines)):
+        for i in range(blk.srcblock.lineno + 1, len(blk.srcblock.fileinfo.lines)):
             l = blk.srcblock.fileinfo.lines[i].strip()
             if "=" in l:
                 n, v = l.split("=", 1)

@@ -6,7 +6,7 @@ import java.util.*;
 
 public class HeteroMap implements Map
 {
-	protected static class FieldInfo
+	protected static final class FieldInfo
 	{
 		public Packers.AbstractPacker keypacker;
 		public Packers.AbstractPacker valpacker;
@@ -17,8 +17,8 @@ public class HeteroMap implements Map
 		}
 	}
 	
-	protected Map<Object, FieldInfo> fields;
-	protected Map data;
+	protected final Map<Object, FieldInfo> fields;
+	protected final Map data;
 	
 	public HeteroMap()
 	{

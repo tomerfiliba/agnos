@@ -541,9 +541,16 @@ class CSharpTarget(TargetBase):
             STMT('map["SERVICE_NAME"] = "{0}"', service.name)
         SEP()
         with BLOCK("protected override void processGetFunctionsInfo(HeteroMap map)"):
+            has_annotations = False
+            for func in service.funcs.values(): 
+                if func.annotations:
+                    has_annotations = True
+                    break
+
             STMT("HeteroMap funcinfo")
             STMT("Dictionary<string, string> args")
-            STMT("Dictionary<string, string> anno")
+            if has_annotations:
+                STMT("Dictionary<string, string> anno")
             SEP()
             for func in service.funcs.values():
                 STMT("funcinfo = new HeteroMap()")

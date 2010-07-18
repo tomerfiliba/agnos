@@ -73,31 +73,7 @@ namespace Agnos
 
 		/////////////////////////////////////////////////////////////////////
 
-		public class _MockupPacker : AbstractPacker
-		{
-			internal _MockupPacker ()
-			{
-			}
-
-			public override int getId()
-			{
-				throw new NotImplementedException("mockup packer");
-			}
-			public override void pack (object obj, Stream stream)
-			{
-				throw new NotImplementedException("mockup packer");
-			}
-			public override object unpack (Stream stream)
-			{
-				throw new NotImplementedException("mockup packer");
-			}
-		}
-
-		public static readonly _MockupPacker MockupPacker = new _MockupPacker ();
-
-		/////////////////////////////////////////////////////////////////////
-
-		public class _Int8 : AbstractPacker
+		public sealed class _Int8 : AbstractPacker
 		{
 			private byte[] buffer = new byte[1];
 
@@ -136,7 +112,7 @@ namespace Agnos
 
 		/////////////////////////////////////////////////////////////////////
 
-		public class _Bool : AbstractPacker
+        public sealed class _Bool : AbstractPacker
 		{
 			internal _Bool ()
 			{
@@ -175,7 +151,7 @@ namespace Agnos
 
 		/////////////////////////////////////////////////////////////////////
 
-		public class _Int16 : AbstractPacker
+        public sealed class _Int16 : AbstractPacker
 		{
 			private byte[] buffer = new byte[2];
 
@@ -215,7 +191,7 @@ namespace Agnos
 
 		/////////////////////////////////////////////////////////////////////
 
-		public class _Int32 : AbstractPacker
+        public sealed class _Int32 : AbstractPacker
 		{
 			private byte[] buffer = new byte[4];
 
@@ -260,7 +236,7 @@ namespace Agnos
 
 		/////////////////////////////////////////////////////////////////////
 
-		public class _Int64 : AbstractPacker
+        public sealed class _Int64 : AbstractPacker
 		{
 			private byte[] buffer = new byte[8];
 
@@ -319,10 +295,10 @@ namespace Agnos
 			object load (long id);
 		}
 
-		public class ObjRef : AbstractPacker
+        public class ObjRef : AbstractPacker
 		{
-			protected ISerializer serializer;
-			protected int id;
+			protected readonly ISerializer serializer;
+            protected readonly int id;
 
 			public ObjRef (int id, ISerializer serializer)
 			{
@@ -348,7 +324,7 @@ namespace Agnos
 
 		/////////////////////////////////////////////////////////////////////
 
-		public class _Float : AbstractPacker
+        public sealed class _Float : AbstractPacker
 		{
 			internal _Float ()
 			{
@@ -383,7 +359,7 @@ namespace Agnos
 
 		/////////////////////////////////////////////////////////////////////
 
-		public class _Buffer : AbstractPacker
+        public sealed class _Buffer : AbstractPacker
 		{
 			internal _Buffer ()
 			{
@@ -418,10 +394,8 @@ namespace Agnos
 
 		/////////////////////////////////////////////////////////////////////
 
-		public class _Date : AbstractPacker
+        public sealed class _Date : AbstractPacker
 		{
-			protected static DateTime epoch = new DateTime (1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
 			internal _Date ()
 			{
 			}
@@ -448,9 +422,9 @@ namespace Agnos
 
 		/////////////////////////////////////////////////////////////////////
 
-		public class _Str : AbstractPacker
+        public sealed class _Str : AbstractPacker
 		{
-			protected static UTF8Encoding utf8 = new UTF8Encoding ();
+            private readonly static UTF8Encoding utf8 = new UTF8Encoding();
 
 			internal _Str ()
 			{
@@ -483,8 +457,8 @@ namespace Agnos
 
 		public class ListOf<T> : AbstractPacker
 		{
-			protected AbstractPacker type;
-			protected int id;
+            protected readonly AbstractPacker type;
+            protected readonly int id;
 
 			public ListOf (int id, AbstractPacker type)
 			{
@@ -535,9 +509,9 @@ namespace Agnos
 
 		public class MapOf<K, V> : AbstractPacker
 		{
-			protected AbstractPacker keytype;
-			protected AbstractPacker valtype;
-			protected int id;
+            protected readonly AbstractPacker keytype;
+            protected readonly AbstractPacker valtype;
+            protected readonly int id;
 
 			public MapOf (int id, AbstractPacker keytype, AbstractPacker valtype)
 			{
@@ -587,7 +561,7 @@ namespace Agnos
 
 		public class HeteroMapPacker : AbstractPacker
 		{
-			protected IDictionary<int, AbstractPacker> packersMap;
+			protected readonly IDictionary<int, AbstractPacker> packersMap;
 			protected int id;
 
 			public HeteroMapPacker (int id, IDictionary<int, AbstractPacker> packersMap)

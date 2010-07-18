@@ -9,7 +9,7 @@ namespace Agnos
 		private struct Pair
 		{
 			public WeakReference wkey;
-			public TValue val;
+            public TValue val;
 			
 			public Pair(TKey k, TValue v)
 			{
@@ -104,8 +104,8 @@ namespace Agnos
 		}
 	}
 
-	internal class ObjectIDGenerator {
-		private WeakKeyDict<Object, long> dict;
+	internal sealed class ObjectIDGenerator {
+        private readonly WeakKeyDict<Object, long> dict;
 		private long counter;
 
 		public ObjectIDGenerator() {

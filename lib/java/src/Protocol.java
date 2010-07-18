@@ -6,25 +6,25 @@ import java.lang.ref.*;
 
 public class Protocol
 {
-	public static final byte CMD_PING				= 0;
-	public static final byte CMD_INVOKE				= 1;
-	public static final byte CMD_QUIT				= 2;
-	public static final byte CMD_DECREF				= 3;
-	public static final byte CMD_INCREF				= 4;
-	public static final byte CMD_GETINFO				= 5;
+	public static final byte	CMD_PING				= 0;
+	public static final byte	CMD_INVOKE				= 1;
+	public static final byte	CMD_QUIT				= 2;
+	public static final byte	CMD_DECREF				= 3;
+	public static final byte	CMD_INCREF				= 4;
+	public static final byte	CMD_GETINFO				= 5;
 
-	public static final byte REPLY_SUCCESS				= 0;
-	public static final byte REPLY_PROTOCOL_ERROR		= 1;
-	public static final byte REPLY_PACKED_EXCEPTION		= 2;
-	public static final byte REPLY_GENERIC_EXCEPTION		= 3;
+	public static final byte	REPLY_SUCCESS			= 0;
+	public static final byte	REPLY_PROTOCOL_ERROR	= 1;
+	public static final byte	REPLY_PACKED_EXCEPTION	= 2;
+	public static final byte	REPLY_GENERIC_EXCEPTION	= 3;
 
-	public static final int INFO_META 		= 0;
-	public static final int INFO_GENERAL 	= 1;
-	public static final int INFO_FUNCTIONS 	= 2;
-	public static final int INFO_FUNCCODES	= 3;
+	public static final int		INFO_META				= 0;
+	public static final int		INFO_GENERAL			= 1;
+	public static final int		INFO_FUNCTIONS			= 2;
+	public static final int		INFO_FUNCCODES			= 3;
 
-	public static final int	AGNOS_MAGIC				= 0x5af30cf7;
-	
+	public static final int		AGNOS_MAGIC				= 0x5af30cf7;
+
 	public abstract static class PackedException extends Exception
 	{
 		public PackedException()
@@ -35,14 +35,6 @@ public class Protocol
 	public static class ProtocolError extends Exception
 	{
 		public ProtocolError(String message)
-		{
-			super(message);
-		}
-	}
-
-	public static class HandshakeError extends ProtocolError
-	{
-		public HandshakeError(String message)
 		{
 			super(message);
 		}
@@ -69,7 +61,7 @@ public class Protocol
 		}
 	}
 
-	public static class ObjectIDGenerator
+	public static final class ObjectIDGenerator
 	{
 		protected Map<Object, Long>	map;
 		protected Long				counter;
@@ -94,10 +86,10 @@ public class Protocol
 		}
 	}
 
-	protected static class Cell
+	protected static final class Cell
 	{
-		public int		refcount;
-		public Object	obj;
+		public int			refcount;
+		public final Object	obj;
 
 		public Cell(Object obj)
 		{
@@ -116,7 +108,7 @@ public class Protocol
 			return refcount <= 0;
 		}
 	}
-	
+
 	public static abstract class BaseProcessor implements Packers.ISerializer
 	{
 		protected Map<Long, Cell>	cells;
@@ -211,7 +203,7 @@ public class Protocol
 			int cmdid = (Byte) (Packers.Int8.unpack(transport));
 
 			transport.beginWrite(seq);
-			
+
 			try {
 				switch (cmdid) {
 					case CMD_INVOKE:
@@ -224,7 +216,7 @@ public class Protocol
 						processIncref(transport, seq);
 						break;
 					case CMD_GETINFO:
-                        processGetInfo(transport, seq);
+						processGetInfo(transport, seq);
 						break;
 					case CMD_PING:
 						processPing(transport, seq);
@@ -278,14 +270,13 @@ public class Protocol
 			Packers.Str.pack(message, transport);
 		}
 
-        protected void processGetInfo(Transports.ITransport transport, int seq) 
-        			throws IOException
-        {
-            int code = (Integer)(Packers.Int32.unpack(transport));
-            HeteroMap map = new HeteroMap();
-			
-			switch (code)
-			{
+		protected void processGetInfo(Transports.ITransport transport, int seq)
+				throws IOException
+		{
+			int code = (Integer) (Packers.Int32.unpack(transport));
+			HeteroMap map = new HeteroMap();
+
+			switch (code) {
 				case INFO_GENERAL:
 					processGetGeneralInfo(map);
 					break;
@@ -303,30 +294,30 @@ public class Protocol
 					map.put("INFO_FUNCCODES", INFO_FUNCCODES);
 					break;
 			}
-			
-            Packers.Int8.pack(REPLY_SUCCESS, transport);
+
+			Packers.Int8.pack(REPLY_SUCCESS, transport);
 			Packers.builtinHeteroMapPacker.pack(map, transport);
-        }
-		
+		}
+
 		protected abstract void processGetGeneralInfo(HeteroMap map);
+
 		protected abstract void processGetFunctionsInfo(HeteroMap map);
+
 		protected abstract void processGetFunctionCodes(HeteroMap map);
-		
+
 		abstract protected void processInvoke(Transports.ITransport transport,
 				int seq) throws Exception;
 	}
 
 	protected enum ReplySlotType
 	{
-		SLOT_EMPTY(false), 
-		SLOT_DISCARDED(false), 
-		SLOT_VALUE(true), 
-		SLOT_GENERIC_EXCEPTION(true), 
-		SLOT_PACKED_EXCEPTION(true);
-		
-		public boolean ready;
-		
-		private ReplySlotType(boolean ready) {
+		SLOT_EMPTY(false), SLOT_DISCARDED(false), SLOT_VALUE(true), SLOT_GENERIC_EXCEPTION(
+				true), SLOT_PACKED_EXCEPTION(true);
+
+		public boolean	ready;
+
+		private ReplySlotType(boolean ready)
+		{
 			this.ready = ready;
 		}
 	}
@@ -343,16 +334,16 @@ public class Protocol
 		}
 	}
 
-	public static class ClientUtils
+	public static final class ClientUtils
 	{
-		protected Map<Integer, Packers.AbstractPacker> packedExceptionsMap;
-		protected int						seq;
-		protected Map<Integer, ReplySlot>	replies;
-		protected Map<Long, WeakReference>	proxies;
-		public Transports.ITransport		transport;
+		protected final Map<Integer, Packers.AbstractPacker>	packedExceptionsMap;
+		protected final Map<Integer, ReplySlot>					replies;
+		protected final Map<Long, WeakReference>				proxies;
+		protected int											seq;
+		public Transports.ITransport							transport;
 
-		public ClientUtils(Transports.ITransport transport, 
-					Map<Integer, Packers.AbstractPacker> packedExceptionsMap)
+		public ClientUtils(Transports.ITransport transport,
+				Map<Integer, Packers.AbstractPacker> packedExceptionsMap)
 				throws Exception
 		{
 			this.transport = transport;
@@ -399,10 +390,16 @@ public class Protocol
 		{
 			int seq = getSeq();
 			try {
+				transport.beginWrite(seq);
 				Packers.Int8.pack(CMD_DECREF, transport);
 				Packers.Int64.pack(id, transport);
+				transport.endWrite();
 			} catch (Exception ignored) {
-				// ignored
+				try {
+					transport.cancelWrite();
+				} catch (Exception ignored2) {
+					// ignored
+				}
 			}
 		}
 
@@ -421,81 +418,74 @@ public class Protocol
 		{
 			transport.endWrite();
 		}
-		
+
 		public void cancelCall() throws IOException
 		{
 			transport.cancelWrite();
 		}
 
-		/*public int tunnelRequest (byte[] blob) throws IOException
+		public void decref(long id) throws Exception
 		{
-			int seq = getSeq ();
-			transport.beginWrite (seq);
-			transport.write (blob, 0, blob.length);
-			transport.endWrite ();
-			replies.put(seq, new ReplySlot (Packers.MockupPacker));
-			return seq;
-		}*/
-
-		public void decref (long id) throws Exception
-		{
-			int seq = getSeq ();
-			transport.beginWrite (seq);
+			int seq = getSeq();
+			transport.beginWrite(seq);
 			try {
-				Packers.Int8.pack (CMD_DECREF, transport);
-				Packers.Int64.pack (id, transport);
-				transport.endWrite ();
+				Packers.Int8.pack(CMD_DECREF, transport);
+				Packers.Int64.pack(id, transport);
+				transport.endWrite();
 			} catch (Exception ex) {
-				transport.cancelWrite ();
+				transport.cancelWrite();
 				throw ex;
 			}
 		}
 
-		public int Ping (String payload, int msecs) throws IOException, ProtocolError, PackedException, GenericException
+		public int ping(String payload, int msecs) throws IOException,
+				ProtocolError, PackedException, GenericException
 		{
-			//DateTime t0 = DateTime.Now;
-			int seq = getSeq ();
-			transport.beginWrite (seq);
-			Packers.Int8.pack (CMD_PING, transport);
-			Packers.Str.pack (payload, transport);
-			transport.endWrite ();
-			replies.put(seq, new ReplySlot (Packers.Str));
+			// DateTime t0 = DateTime.Now;
+			int seq = getSeq();
+			transport.beginWrite(seq);
+			Packers.Int8.pack(CMD_PING, transport);
+			Packers.Str.pack(payload, transport);
+			transport.endWrite();
+			replies.put(seq, new ReplySlot(Packers.Str));
 			String reply;
-			//try {
-			reply = (String)getReply (seq, msecs);
-			//} catch (TimeoutException ex) {
-			//	DiscardReply (seq);
-			//	throw ex;
-			//}
-			//TimeSpan dt = DateTime.Now - t0;
+			// try {
+			reply = (String) getReply(seq, msecs);
+			// } catch (TimeoutException ex) {
+			// DiscardReply (seq);
+			// throw ex;
+			// }
+			// TimeSpan dt = DateTime.Now - t0;
 			if (reply != payload) {
-				throw new ProtocolError ("reply does not match payload!");
+				throw new ProtocolError("reply does not match payload!");
 			}
-			//return dt.Milliseconds;
+			// return dt.Milliseconds;
 			return 0;
 		}
 
-		public HeteroMap getServiceInfo (int code) throws IOException, ProtocolError, PackedException, GenericException
+		public HeteroMap getServiceInfo(int code) throws IOException,
+				ProtocolError, PackedException, GenericException
 		{
-			int seq = getSeq ();
-			transport.beginWrite (seq);
-			Packers.Int8.pack (CMD_GETINFO, transport);
-			Packers.Int32.pack (code, transport);
-			transport.endWrite ();
-			replies.put(seq, new ReplySlot (Packers.builtinHeteroMapPacker));
-			return (HeteroMap)getReply (seq);
+			int seq = getSeq();
+			transport.beginWrite(seq);
+			Packers.Int8.pack(CMD_GETINFO, transport);
+			Packers.Int32.pack(code, transport);
+			transport.endWrite();
+			replies.put(seq, new ReplySlot(Packers.builtinHeteroMapPacker));
+			return (HeteroMap) getReply(seq);
 		}
-		
-		protected PackedException loadPackedException() throws IOException, ProtocolError
+
+		protected PackedException loadPackedException() throws IOException,
+				ProtocolError
 		{
-			Integer clsid = (Integer)Packers.Int32.unpack(transport);
+			Integer clsid = (Integer) Packers.Int32.unpack(transport);
 			Packers.AbstractPacker packer = packedExceptionsMap.get(clsid);
 			if (packer == null) {
 				throw new ProtocolError("unknown exception class id: " + clsid);
 			}
-			return (PackedException)packer.unpack(transport);
+			return (PackedException) packer.unpack(transport);
 		}
-		
+
 		protected ProtocolError loadProtocolError() throws IOException
 		{
 			String message = (String) Packers.Str.unpack(transport);
@@ -509,48 +499,47 @@ public class Protocol
 			return new GenericException(message, traceback);
 		}
 
-		public void processIncoming(int timeout_msecs) throws IOException, ProtocolError
+		public void processIncoming(int timeout_msecs) throws IOException,
+				ProtocolError
 		{
 			int seq = transport.beginRead();
 
 			try {
 				int code = (Byte) (Packers.Int8.unpack(transport));
 				ReplySlot slot = replies.get(seq);
-				
-				if (slot == null || (slot.type != ReplySlotType.SLOT_EMPTY && 
-						slot.type != ReplySlotType.SLOT_DISCARDED)) {
+
+				if (slot == null
+						|| (slot.type != ReplySlotType.SLOT_EMPTY && slot.type != ReplySlotType.SLOT_DISCARDED)) {
 					throw new ProtocolError("invalid reply sequence: " + seq);
 				}
 				boolean discard = (slot.type == ReplySlotType.SLOT_DISCARDED);
 				Packers.AbstractPacker packer = (Packers.AbstractPacker) slot.value;
 
 				switch (code) {
-				case REPLY_SUCCESS:
-					if (packer == null) {
-						slot.value = null;
-					}
-					/*else if (packer == Packers.MockupPacker) {
-						slot.value = transport.readAll();
-					}*/
-					else {
-						slot.value = packer.unpack(transport);
-					}
-					slot.type = ReplySlotType.SLOT_VALUE;
-					break;
-				case REPLY_PROTOCOL_ERROR:
-					throw (ProtocolError) (loadProtocolError().fillInStackTrace());
-				case REPLY_PACKED_EXCEPTION:
-					slot.type = ReplySlotType.SLOT_PACKED_EXCEPTION;
-					slot.value = loadPackedException();
-					break;
-				case REPLY_GENERIC_EXCEPTION:
-					slot.type = ReplySlotType.SLOT_GENERIC_EXCEPTION;
-					slot.value = loadGenericException();
-					break;
-				default:
-					throw new ProtocolError("unknown reply code: " + code);
+					case REPLY_SUCCESS:
+						if (packer == null) {
+							slot.value = null;
+						}
+						else {
+							slot.value = packer.unpack(transport);
+						}
+						slot.type = ReplySlotType.SLOT_VALUE;
+						break;
+					case REPLY_PROTOCOL_ERROR:
+						throw (ProtocolError) (loadProtocolError()
+								.fillInStackTrace());
+					case REPLY_PACKED_EXCEPTION:
+						slot.type = ReplySlotType.SLOT_PACKED_EXCEPTION;
+						slot.value = loadPackedException();
+						break;
+					case REPLY_GENERIC_EXCEPTION:
+						slot.type = ReplySlotType.SLOT_GENERIC_EXCEPTION;
+						slot.value = loadGenericException();
+						break;
+					default:
+						throw new ProtocolError("unknown reply code: " + code);
 				}
-				
+
 				if (discard) {
 					replies.remove(seq);
 				}
@@ -579,8 +568,8 @@ public class Protocol
 			}
 		}
 
-		public ReplySlot waitReply(int seq, int msecs) 
-				throws IOException, ProtocolError
+		public ReplySlot waitReply(int seq, int msecs) throws IOException,
+				ProtocolError
 		{
 			while (!isReplyReady(seq)) {
 				processIncoming(msecs);
@@ -588,8 +577,8 @@ public class Protocol
 			return replies.remove(seq);
 		}
 
-		public Object getReply(int seq, int msecs) 
-				throws IOException, PackedException, GenericException, ProtocolError
+		public Object getReply(int seq, int msecs) throws IOException,
+				PackedException, GenericException, ProtocolError
 		{
 			ReplySlot slot = waitReply(seq, msecs);
 			if (slot.type == ReplySlotType.SLOT_VALUE) {
@@ -608,8 +597,8 @@ public class Protocol
 			}
 		}
 
-		public Object getReply(int seq) 
-				throws IOException, PackedException, GenericException, ProtocolError
+		public Object getReply(int seq) throws IOException, PackedException,
+				GenericException, ProtocolError
 		{
 			return getReply(seq, -1);
 		}
@@ -617,17 +606,16 @@ public class Protocol
 
 	public static class BaseClient
 	{
-		public ClientUtils _utils;
-		
-        public HeteroMap getServiceInfo(int code) throws Exception
-        {
-            return _utils.getServiceInfo(code);
-        }
-        
-        /*public byte[] tunnelRequest(byte[] blob) throws Exception
-        {
-            int seq = _utils.tunnelRequest(blob);
-            return (byte[])_utils.getReply(seq);
-        }*/
+		public ClientUtils	_utils;
+
+		public HeteroMap getServiceInfo(int code) throws Exception
+		{
+			return _utils.getServiceInfo(code);
+		}
+
+		/*
+		 * public byte[] tunnelRequest(byte[] blob) throws Exception { int seq =
+		 * _utils.tunnelRequest(blob); return (byte[])_utils.getReply(seq); }
+		 */
 	}
 }

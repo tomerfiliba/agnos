@@ -17,7 +17,6 @@ namespace Agnos.Transports
         int BeginRead();
         int BeginRead(int msecs);
         int Read(byte[] data, int offset, int len);
-        //byte[] ReadAll();
         void EndRead();
 
         // write interface
@@ -30,9 +29,9 @@ namespace Agnos.Transports
 
     public abstract class BaseTransport : ITransport
     {
-        protected class TransportStream : Stream
+        protected sealed class TransportStream : Stream
         {
-            ITransport transport;
+            readonly ITransport transport;
             public TransportStream(ITransport transport)
             {
                 this.transport = transport;
@@ -186,13 +185,6 @@ namespace Agnos.Transports
             return actually_read;
         }
 		
-		/*virtual public byte[] ReadAll()
-		{
-			byte[] data = new byte[rlength - rpos];
-			Read(data, 0, data.Length);
-			return data;
-		}*/
-
         virtual public void EndRead()
         {
             lock (this)
@@ -310,10 +302,6 @@ namespace Agnos.Transports
         {
             return transport.Read(data, offset, len);
         }
-        /*public byte[] ReadAll()
-        {
-            return transport.ReadAll();
-        }*/
         public void EndRead()
         {
             transport.EndRead();
@@ -342,7 +330,7 @@ namespace Agnos.Transports
 
     public class SocketTransport : BaseTransport
     {
-        protected Socket sock;
+        protected readonly Socket sock;
         protected const int bufsize = 16 * 1024;
 
         public SocketTransport(Socket sock)
@@ -378,7 +366,7 @@ namespace Agnos.Transports
 
     public class ProcTransport : WrappedTransport
     {
-        public Process proc;
+        public readonly Process proc;
 
         public ProcTransport(Process proc, ITransport transport)
             : base(transport)

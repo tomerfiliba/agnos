@@ -3,11 +3,9 @@
 	* simple init
 	* performance tests
 	* include tracebacks?
-	* srcgen: parse consts
-	* date!!!
-	* proxies instead of interfaces
 
 * features:
+    * packers should operate on transports, not streams
 	* async, timed
 	* SSL
 	* rlist, rmap (by ref)

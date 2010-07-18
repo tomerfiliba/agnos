@@ -3,10 +3,10 @@ using System.Threading;
 
 namespace Agnos.Utils
 {
-    public class ReentrantLock
+    public sealed class ReentrantLock
     {
-        protected volatile Thread owner;
-        protected int count;
+        private volatile Thread owner;
+        private int count;
 
         public ReentrantLock()
         {

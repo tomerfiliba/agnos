@@ -498,6 +498,42 @@ class TMap(BuiltinType):
     def stringify(self):
         return "map_%s_%s" % (self.keytype.stringify(), self.valtype.stringify())
 
+class TRefList(BuiltinType):
+    def __init__(self, oftype):
+        if oftype == t_void:
+            raise IDLError("reflist: contained type cannot be 'void'")
+        self.oftype = oftype
+        self.id = ID_GENERATOR.next()
+    @staticmethod
+    @memoized
+    def create(oftype):
+        return TList(oftype)
+    def __repr__(self):
+        return "BuiltinType(reflist<%r>)" % (self.oftype,)
+    def __str__(self):
+        return "reflist[%s]" % (self.oftype,)
+    def stringify(self):
+        return "reflist_%s" % (self.oftype.stringify(),)
+
+class TRefMap(BuiltinType):
+    def __init__(self, keytype, valtype):
+        if keytype == t_void:
+            raise IDLError("refmap: key type cannot be 'void'")
+        if valtype == t_void:
+            raise IDLError("refmap: value type cannot be 'void'")
+        self.keytype = keytype
+        self.valtype = valtype
+        self.id = ID_GENERATOR.next()
+    @staticmethod
+    @memoized
+    def create(keytype, valtype):
+        return TMap(keytype, valtype)
+    def __repr__(self):
+        return "BuiltinType(refmap<%r, %r>)" % (self.keytype, self.valtype)
+    def __str__(self):
+        return "refmap[%s, %s]" % (self.keytype, self.valtype)
+    def stringify(self):
+        return "refmap_%s_%s" % (self.keytype.stringify(), self.valtype.stringify())
 
 pattern = re.compile(' *\<!-- *INCLUDE *"([^"]+)" *--\>')
 
@@ -534,10 +570,18 @@ class Service(Element):
         "str" : t_string,
         "string" : t_string,
         "heteromap" : t_heteromap,
+        "heterodict" : t_heteromap,
         "hmap" : t_heteromap,
+        "hdict" : t_heteromap,
         "list" : None,
         "map" : None,
         "dict" : None,
+        "reflist" : None,
+        "rlist" : None,
+        "refmap" : None,
+        "refdict" : None,
+        "rmap" : None,
+        "rdict" : None,
     }
     
     def build_members(self, members):
@@ -585,6 +629,20 @@ class Service(Element):
             ktp = self._get_type(khead, kchildren)
             vtp = self._get_type(vhead, vchildren)
             return TMap.create(ktp, vtp)
+        elif head == "reflist" or head == "rlist":
+            if len(children) != 1:
+                raise IDLError("reflist template: wrong number of parameters: %r" % (text,))
+            head2, children2 = children[0]
+            tp = self._get_type(head2, children2)
+            return TRefList.create(tp)
+        elif head == "refmap" or head == "refdict" or head == "rmap" or head == "rdict":
+            if len(children) != 2:
+                raise IDLError("refmap template: wrong number of parameters: %r" % (text,))
+            khead, kchildren = children[0]
+            vhead, vchildren = children[1]
+            ktp = self._get_type(khead, kchildren)
+            vtp = self._get_type(vhead, vchildren)
+            return TRefMap.create(ktp, vtp)
         elif head in self.BUILTIN_TYPES:
             return self.BUILTIN_TYPES[head]
         elif head in self.types:

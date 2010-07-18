@@ -8,18 +8,18 @@ namespace Agnos
 {
 	public class HeteroMap : IDictionary
 	{
-		protected class FieldInfo
+		protected sealed class FieldInfo
 		{
 			public Packers.AbstractPacker keypacker;
-			public Packers.AbstractPacker valpacker;
+            public Packers.AbstractPacker valpacker;
 			public FieldInfo(Packers.AbstractPacker keypacker, Packers.AbstractPacker valpacker)
 			{
 				this.keypacker = keypacker;
 				this.valpacker = valpacker;
 			}
 		}
-		protected Dictionary<object, FieldInfo> fields;
-		protected Hashtable data;
+        protected readonly Dictionary<object, FieldInfo> fields;
+        protected readonly Hashtable data;
 		
 		public HeteroMap()
 		{
