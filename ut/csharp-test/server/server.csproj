@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -29,6 +29,7 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
+    <RootNamespace>server</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -61,9 +62,9 @@
       <Project>{8D5457D1-288E-4517-BC0A-DC1EFD36EA78}</Project>
       <Name>Agnos</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Features.csproj">
-      <Project>{EC4E24A4-1D19-4D4D-8C13-7E5D7E139025}</Project>
-      <Name>Features</Name>
+    <ProjectReference Include="..\bindings\bindings.csproj">
+      <Project>{A2EDBB8C-E31A-43A2-9E7D-4FEA32F9A0AF}</Project>
+      <Name>bindings</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

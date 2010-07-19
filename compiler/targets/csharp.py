@@ -129,12 +129,17 @@ class CSharpTarget(TargetBase):
             STMT("using Agnos")
             STMT("using Agnos.Transports")
             SEP()
-            self.generate_shared_bindings(module, service)
-            SEP()
-            self.generate_server_bindings(module, service)
-            SEP()
-            self.generate_client_bindings(module, service)
-            SEP()
+            if service.package == service.name:
+                pkg = service.package + "Bindings"
+            else:
+                pkg = service.package
+            with BLOCK("namespace {0}", pkg):
+                #self.generate_shared_bindings(module, service)
+                #SEP()
+                self.generate_server_bindings(module, service)
+                SEP()
+                self.generate_client_bindings(module, service)
+                SEP()
 
     def generate_shared_bindings(self, module, service):
         BLOCK = module.block
@@ -142,20 +147,20 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         
-        with BLOCK("namespace {0}SharedBindings", service.name):
+        with BLOCK("namespace SharedBindings", service.name):
             pass
-#            DOC("enums", spacer = True)
-#            for member in service.types.values():
-#                if isinstance(member, compiler.Enum):
-#                    self.generate_enum(module, member)
-#                    SEP()
-#            
-#            DOC("records", spacer = True)
-#            for member in service.types.values():
-#                if isinstance(member, compiler.Record) and not is_complex_type(member):
-#                    self.generate_record_class(module, member, proxy = False)
-#                    self.generate_record_packer(module, member, static = True, proxy = False)
-#                    SEP()
+            DOC("enums", spacer = True)
+            for member in service.types.values():
+                if isinstance(member, compiler.Enum):
+                    self.generate_enum(module, member)
+                    SEP()
+            
+            DOC("records", spacer = True)
+            for member in service.types.values():
+                if isinstance(member, compiler.Record) and not is_complex_type(member):
+                    self.generate_record_class(module, member, proxy = False)
+                    self.generate_record_packer(module, member, static = True, proxy = False)
+                    SEP()
 
     def generate_server_bindings(self, module, service):
         BLOCK = module.block
@@ -163,9 +168,7 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         
-        with BLOCK("namespace {0}ServerBindings", service.name):
-            STMT("using {0}SharedBindings", service.name)
-            SEP()
+        with BLOCK("namespace ServerBindings"):
             with BLOCK("public static class {0}", service.name):
                 STMT('public const string AGNOS_VERSION = "Agnos 1.0"', service.digest)
                 STMT('public const string IDL_MAGIC = "{0}"', service.digest)
@@ -213,9 +216,7 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         
-        with BLOCK("namespace {0}ClientBindings", service.name):
-            STMT("using {0}SharedBindings", service.name)
-            SEP()
+        with BLOCK("namespace ClientBindings"):
             with BLOCK("public static class {0}", service.name):
                 STMT('public const string AGNOS_VERSION = "Agnos 1.0"', service.digest)
                 STMT('public const string IDL_MAGIC = "{0}"', service.digest)

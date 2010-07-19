@@ -29,7 +29,7 @@ class TestCSharp(TargetTest):
             os.unlink(fn)
     
     def runTest(self):
-        self.run_agnosc("c#", "ut/features.xml", "ut/gen-csharp")
+        self.run_agnosc("c#", "ut/features.xml", "ut/csharp-test/bindings")
         self.delete_exes(self.REL("ut/csharp-test/server/bin"))
         self.delete_exes(self.REL("ut/csharp-test/client/bin"))
         self.run_msbuild(self.REL("ut/csharp-test/agnostest.sln"))
@@ -51,6 +51,8 @@ class TestCSharp(TargetTest):
             self.fail("server failed to start")
 
         try:
+            banner = serverproc.stdout.readline().strip()
+            self.failUnless(banner == "AGNOS", banner)
             host = serverproc.stdout.readline().strip()
             port = serverproc.stdout.readline().strip()
             print host, port

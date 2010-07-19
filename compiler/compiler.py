@@ -555,7 +555,7 @@ def _load_file_with_includes(file):
 class Service(Element):
     XML_TAG = "service"
     CHILDREN = [Typedef, Const, Enum, Record, Exception, Class, Func]
-    ATTRS = dict(name = IDENTIFIER)
+    ATTRS = dict(name = IDENTIFIER, package = DEFAULT(None))
     BUILTIN_TYPES = {
         "void" : t_void,
         "int8" : t_int8,
@@ -591,6 +591,8 @@ class Service(Element):
         self.funcs = {}
         self.consts = {}
         self._resolved = False
+        if not self.package or not self.package:
+            self.package = self.name
         for mem in members:
             if isinstance(mem, Func):
                 if mem.dotted_fullname in self.funcs:

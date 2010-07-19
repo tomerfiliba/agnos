@@ -1,5 +1,5 @@
 import java.util.*;
-import FeatureTestServerBindings.*;
+import FeatureTest.server_bindings.*;
 
 public class myserver {
 	public static class ClassA implements FeatureTest.IClassA {

@@ -1,12 +1,17 @@
 using System;
 using System.Collections;
 using Agnos;
-using FeatureTestClientBindings;
+using FeatureTestBindings.ClientBindings;
 
 
-public class myclient {
+public class myclient 
+{
 	public static void Main(string[] args) 
 	{
+		foreach(string item in args) {
+			Console.WriteLine(item);
+		}
+		
 		string host = args[0];
 		int port = int.Parse(args[1]);
 

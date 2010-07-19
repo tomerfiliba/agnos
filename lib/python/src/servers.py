@@ -38,7 +38,7 @@ class ThreadedServer(BaseServer):
 
 class LibraryModeServer(BaseServer):
     def serve(self):
-        sys.stdout.write("%s\n%d\n" % (self.transport_factory.host, self.transport_factory.port))
+        sys.stdout.write("AGNOS\n%s\n%d\n" % (self.transport_factory.host, self.transport_factory.port))
         sys.stdout.flush()
         sys.stdout.close()
         trans = self.transport_factory.accept()

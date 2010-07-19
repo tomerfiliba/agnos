@@ -243,6 +243,8 @@ class ProcTransport(WrappedTransport):
     def from_proc(cls, proc):
         if proc.poll() is not None:
             raise ValueError("process terminated with exit code %r" % (proc.poll(),))
+        if proc.stdout.readline().strip() != "AGNOS":
+            raise ValueError("process did not start correctly")
         host = proc.stdout.readline().strip()
         port = int(proc.stdout.readline().strip())
         proc.stdout.close()

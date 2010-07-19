@@ -312,7 +312,7 @@ class FuncNode(AstNode):
 
 class ServiceNode(AstNode):
     TAG = "service"
-    ATTRS = dict(name = arg_value)
+    ATTRS = dict(name = arg_value, package = arg_default(None))
 
 class ConstNode(AstNode):
     TAG = "const"
@@ -377,6 +377,7 @@ class RootNode(object):
                     raise SourceError(module.service.block.srcblock, "tag @service appears more than once per project")
                 else:
                     self.service_name = module.service.attrs["name"]
+                    self.package_name = module.service.attrs["package"]
         if not self.service_name:
             raise SourceError(None, "tag @service does not appear in project")
         self.children = modules

@@ -107,7 +107,7 @@ namespace Agnos.Servers
 			TcpListener listener = ((SocketTransportFactory)transportFactory).listener;
             IPEndPoint ep = (IPEndPoint)listener.LocalEndpoint;
 			
-            System.Console.Out.Write("{0}\n{1}\n", ep.Address, ep.Port);
+            System.Console.Out.Write("AGNOS\n{0}\n{1}\n", ep.Address, ep.Port);
             System.Console.Out.Flush();
 			// XXX: i can't seem to find a way to actually close the underlying
 			// filedesc, so we have to use readline() instead of read()

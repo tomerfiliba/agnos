@@ -7,6 +7,14 @@ import java.util.concurrent.locks.*;
 
 public class Transports 
 {
+	public static class TransportException extends IOException
+	{
+		public TransportException(String message)
+		{
+			super(message);
+		}
+	}	
+	
 	public interface ITransport
 	{
 		void close() throws IOException;
@@ -318,13 +326,50 @@ public class Transports
 		}
 
 		public static ProcTransport connect(ProcessBuilder procbuilder)
-				throws Exception {
+				throws Exception 
+		{
 			Process proc = procbuilder.start();
-			BufferedReader reader = new BufferedReader(new InputStreamReader(
+			BufferedReader stdout = new BufferedReader(new InputStreamReader(
 					new BufferedInputStream(proc.getInputStream())));
-			String hostname = reader.readLine();
-			int port = Integer.parseInt(reader.readLine());
-			reader.close();
+			BufferedReader stderr = new BufferedReader(new InputStreamReader(
+					new BufferedInputStream(proc.getErrorStream())));
+			
+			String banner = stdout.readLine();
+			
+			if (banner == null || !banner.equals("AGNOS")) {
+				StringBuilder sb = new StringBuilder(8000);
+				
+				sb.append("Process " + proc + " either failed to start or is not an Agnos server\n");
+				sb.append("Stdout:\n");
+				if (banner != null) {
+					sb.append("\t" + banner + "\n");
+				}
+				while (true) {
+					String line = stdout.readLine();
+					if (line == null) {
+						break;
+					}
+					sb.append("|    " + line + "\n");
+				}
+				
+				sb.append("Stderr:\n");
+				while (true) {
+					String line = stderr.readLine();
+					if (line == null) {
+						break;
+					}
+					sb.append("|    " + line + "\n");
+				}
+				
+				proc.destroy();
+				
+				throw new TransportException(sb.toString());
+			}
+			
+			String hostname = stdout.readLine();
+			int port = Integer.parseInt(stdout.readLine());
+			stdout.close();
+			stderr.close();
 
 			return new ProcTransport(proc, new SocketTransport(hostname, port));
 		}

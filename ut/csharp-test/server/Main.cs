@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using FeatureTestServerBindings;
+using FeatureTestBindings.ServerBindings;
 
 
 public class myserver 

@@ -25,7 +25,7 @@ class TestJava(TargetTest):
         print "javac %s" % (path,)
         cmdline = ["javac", "-g", "-cp", ":".join(classpath), "-d", "build"]
         for root, dirs, files in os.walk(path):
-            cmdline.extend(os.path.join(root, fn) for fn in files if fn.endswith(".java"))
+            cmdline.extend(os.path.join(dir, fn) for dir, _, fns in os.walk(path) for fn in fns if fn.endswith(".java"))
         self.run_cmdline(cmdline, cwd=path)
         print "jar %s" % (path,)
         self.run_cmdline(["jar", "cf", "thejar.jar", "."], cwd=os.path.join(path, "build"))
@@ -56,6 +56,8 @@ class TestJava(TargetTest):
             self.fail("server failed to start")
         
         try:
+            banner = serverproc.stdout.readline().strip()
+            self.failUnless(banner == "AGNOS", banner)
             host, port = serverproc.stdout.read().splitlines()[:2]
             clientproc = self.run_java(["myclient", host, port], [agnos_jar, features_jar, test_jar])
     

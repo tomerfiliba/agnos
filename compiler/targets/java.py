@@ -1,4 +1,5 @@
 import itertools
+import os
 from contextlib import contextmanager
 from .base import TargetBase, is_complex_type, NOOP
 from ..langs import clike
@@ -114,12 +115,15 @@ class JavaTarget(TargetBase):
             f.write(mod.render())
 
     def generate(self, service):
-        self.mkdir("%sServerBindings" % (service.name,))
-        with self.new_module("%sServerBindings/%s.java" % (service.name, service.name)) as module:
+        pkg = "%s.server_bindings" % (service.package,)
+        dirs = pkg.replace(".", "/")
+        
+        self.mkdir(dirs)
+        with self.new_module(os.path.join(dirs, "%s.java" % (service.name,))) as module:
             STMT = module.stmt
             SEP = module.sep
             
-            STMT("package {0}ServerBindings", service.name)
+            STMT("package {0}", pkg)
             SEP()
             STMT("import java.util.*")
             STMT("import java.io.*")
@@ -129,12 +133,15 @@ class JavaTarget(TargetBase):
             self.generate_server_bindings(module, service)
             SEP()
 
-        self.mkdir("%sClientBindings" % (service.name,))
-        with self.new_module("%sClientBindings/%s.java" % (service.name, service.name)) as module:
+        pkg = "%s.client_bindings" % (service.package,)
+        dirs = pkg.replace(".", "/")
+
+        self.mkdir(dirs)
+        with self.new_module(os.path.join(dirs, "%s.java" % (service.name,))) as module:
             STMT = module.stmt
             SEP = module.sep
             
-            STMT("package {0}ClientBindings", service.name)
+            STMT("package {0}", pkg)
             SEP()
             STMT("import java.util.*")
             STMT("import java.io.*")
@@ -149,7 +156,7 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         DOC = module.doc
-            
+        
         with BLOCK("public final class {0}", service.name):
             STMT('public static final String AGNOS_VERSION = "Agnos 1.0"')
             STMT('public static final String IDL_MAGIC = "{0}"', service.digest)
@@ -189,6 +196,9 @@ class JavaTarget(TargetBase):
             self.generate_handler_interface(module, service)
             SEP()
             self.generate_processor(module, service)
+            SEP()
+            
+            DOC("$$extend-main$$")
             SEP()
 
     def generate_client_bindings(self, module, service):
@@ -236,6 +246,9 @@ class JavaTarget(TargetBase):
             
             DOC("client", spacer = True)
             self.generate_client(module, service)
+            SEP()
+            
+            DOC("$$extend-main$$")
             SEP()
 
     def _generate_templated_packer_for_type(self, tp, proxy):
@@ -481,6 +494,7 @@ class JavaTarget(TargetBase):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
+        DOC = module.doc
 
         with BLOCK("public static class Processor extends Protocol.BaseProcessor"):
             STMT("protected final IHandler handler")
@@ -519,6 +533,9 @@ class JavaTarget(TargetBase):
             self.generate_process_getinfo(module, service)
             SEP()
             self.generate_process_invoke(module, service)
+            SEP()
+            DOC("$$extend-processor$$")
+            SEP()
 
     def generate_process_getinfo(self, module, service):
         BLOCK = module.block
@@ -687,6 +704,9 @@ class JavaTarget(TargetBase):
             self.generate_client_funcs(module, service)
             SEP()
             self.generate_client_factories(module, service)
+            SEP()
+            DOC("$$extend-client$$")
+            SEP()
     
     def generate_client_ctor(self, module, service, namespaces, generated_records):
         BLOCK = module.block

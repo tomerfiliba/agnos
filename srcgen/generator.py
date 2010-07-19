@@ -39,6 +39,9 @@ class IdlGenerator(object):
     
     def visit_RootNode(self, node):
         self.ATTR(name = node.service_name)
+        if node.package_name:
+            self.ATTR(package = node.package_name)
+        
         self.auto_generated_funcs = []
         self.service_name = None
         for child in node.children:

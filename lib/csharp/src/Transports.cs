@@ -8,6 +8,13 @@ using Agnos.Utils;
 
 namespace Agnos.Transports
 {
+    public class TransportException : IOException
+    {
+        public TransportException(String message) : base(message)
+        {
+        }
+    }
+    
     public interface ITransport
     {
         void Close();
@@ -395,6 +402,9 @@ namespace Agnos.Transports
         public static ProcTransport Connect(Process proc)
         {
             proc.Start();
+            if (proc.StandardOutput.ReadLine() != "AGNOS") {
+                throw new TransportException("process " + proc + " did not start correctly");
+            }
             string hostname = proc.StandardOutput.ReadLine();
             int port = Int16.Parse(proc.StandardOutput.ReadLine());
             ITransport transport = new SocketTransport(hostname, port);

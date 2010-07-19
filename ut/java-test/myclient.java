@@ -1,5 +1,5 @@
 import java.util.*;
-import FeatureTestClientBindings.FeatureTest;
+import FeatureTest.client_bindings.*;
 
 
 public class myclient

@@ -120,6 +120,7 @@ public class Servers
         public void serve() throws Exception
         {
         		ServerSocket serverSocket = ((TransportFactories.SocketTransportFactory)transportFactory).serverSocket;
+        		System.out.println("AGNOS");
             System.out.println(serverSocket.getInetAddress().getHostAddress());
             System.out.println(serverSocket.getLocalPort());
             System.out.flush();
