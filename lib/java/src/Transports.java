@@ -337,12 +337,12 @@ public class Transports
 			String banner = stdout.readLine();
 			
 			if (banner == null || !banner.equals("AGNOS")) {
-				StringBuilder sb = new StringBuilder(8000);
+				StringBuilder sb = new StringBuilder(4000);
 				
-				sb.append("Process " + proc + " either failed to start or is not an Agnos server\n");
-				sb.append("Stdout:\n");
+				sb.append("Process " + proc + " either failed to start or is not an Agnos server");
+				/*sb.append("\nStdout:\n");
 				if (banner != null) {
-					sb.append("\t" + banner + "\n");
+					sb.append("|    " + banner + "\n");
 				}
 				while (true) {
 					String line = stdout.readLine();
@@ -359,7 +359,7 @@ public class Transports
 						break;
 					}
 					sb.append("|    " + line + "\n");
-				}
+				}*/
 				
 				proc.destroy();
 				
