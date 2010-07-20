@@ -1,6 +1,6 @@
 using System;
 using System.Collections;
-using MextraBindings;
+using MextraBindings.ClientBindings;
 
 
 namespace csclient
@@ -22,14 +22,13 @@ namespace csclient
 			System.Console.WriteLine(sys);
 			
 			var racks = sys.racks;
-			var rack = (Mextra.RackProxy)(racks[0]);
-			System.Console.WriteLine("this rack: {0}", rack.compid);
+			System.Console.WriteLine("this rack: {0}", racks[0].compid);
 			
-			var pool = (Mextra.PoolProxy)sys.pools[0];
+			var pool = sys.pools[0];
 			System.Console.WriteLine("pool name: {0}", pool.name);
 			System.Console.WriteLine("used size: {0}", pool.used_size);
 			
-			var vol = (Mextra.VolumeProxy)pool.create_volume("moshiko", 18290);
+			var vol = pool.create_volume("moshiko", 18290);
 			System.Console.WriteLine("used size after creating a volume: {0}", pool.used_size);
 			
 			try {

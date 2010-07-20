@@ -1,5 +1,5 @@
 import java.util.*;
-import MextraBindings.*;
+import Mextra.client_bindings.*;
 
 
 public class Demo
@@ -10,34 +10,32 @@ public class Demo
 		int port = Integer.parseInt(args[1]);
 
 		try {
-			MextraBindings.Client conn = MextraBindings.Client.connectSock(host, port);
-			//MextraBindings.Client conn = MextraBindings.Client.connectProc("./mextra_server.py")
+			Mextra.Client conn = Mextra.Client.connectSock(host, port);
 			doStuff(conn);
 		} catch (Exception ex) {
 			ex.printStackTrace(System.out);
 		}
 	}
 	
-	public static void doStuff(MextraBindings.Client conn) throws Exception
+	public static void doStuff(Mextra.Client conn) throws Exception
 	{
 		System.out.println(conn.getServiceInfo(agnos.Protocol.INFO_GENERAL));
 		
-		MextraBindings.StorageSystemProxy sys = conn.get_system();
+		Mextra.StorageSystemProxy sys = conn.get_system();
 		System.out.println(sys);
 		
-		List racks = sys.get_racks();
-		MextraBindings.RackProxy rack = (MextraBindings.RackProxy)racks.get(0);
-		System.out.println("this rack: " + rack.get_compid());
+		List<Mextra.RackProxy> racks = sys.get_racks();
+		System.out.println("this rack: " + racks.get(0).get_compid());
 		
-		MextraBindings.PoolProxy pool = (MextraBindings.PoolProxy)sys.get_pools().get(0);
+		Mextra.PoolProxy pool = sys.get_pools().get(0);
 		System.out.println("pool name: " + pool.get_name());
 		System.out.println("used size: " + pool.get_used_size());
-		MextraBindings.IVolume vol = pool.create_volume("moshiko", new Long(18290));
+		Mextra.VolumeProxy vol = pool.create_volume("moshiko", new Long(18290));
 		System.out.println("used size after creating a volume: " + pool.get_used_size());
 		
 		try {
 			vol.resize(new Long(99));
-		} catch (MextraBindings.VolSizeError ex) {
+		} catch (Mextra.VolSizeError ex) {
 			System.out.println("oops: " + ex);
 		}
 

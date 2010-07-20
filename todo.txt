@@ -3,6 +3,8 @@
 	* simple init
 	* performance tests
 	* include tracebacks?
+	* srcgen: read docstrings
+	* document agnos
 
 * features:
     * packers should operate on transports, not streams

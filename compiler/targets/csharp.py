@@ -169,7 +169,7 @@ class CSharpTarget(TargetBase):
         DOC = module.doc
         
         with BLOCK("namespace ServerBindings"):
-            with BLOCK("public static class {0}", service.name):
+            with BLOCK("public static partial class {0}", service.name):
                 STMT('public const string AGNOS_VERSION = "Agnos 1.0"', service.digest)
                 STMT('public const string IDL_MAGIC = "{0}"', service.digest)
                 SEP()
@@ -217,7 +217,7 @@ class CSharpTarget(TargetBase):
         DOC = module.doc
         
         with BLOCK("namespace ClientBindings"):
-            with BLOCK("public static class {0}", service.name):
+            with BLOCK("public static partial class {0}", service.name):
                 STMT('public const string AGNOS_VERSION = "Agnos 1.0"', service.digest)
                 STMT('public const string IDL_MAGIC = "{0}"', service.digest)
                 SEP()
@@ -493,7 +493,7 @@ class CSharpTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
 
-        with BLOCK("public class Processor : Protocol.BaseProcessor"):
+        with BLOCK("public partial class Processor : Protocol.BaseProcessor"):
             STMT("internal readonly IHandler handler")
             SEP()
             for tp in service.types.values():
@@ -667,7 +667,7 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         
-        with BLOCK("public class Client : Protocol.BaseClient"):
+        with BLOCK("public partial class Client : Protocol.BaseClient"):
             for tp in service.types.values():
                 if isinstance(tp, compiler.Class):
                     STMT("internal readonly Packers.ObjRef {0}ObjRef", tp.name)
