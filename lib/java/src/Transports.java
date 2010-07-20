@@ -340,7 +340,7 @@ public class Transports
 				StringBuilder sb = new StringBuilder(4000);
 				
 				sb.append("Process " + proc + " either failed to start or is not an Agnos server");
-				/*sb.append("\nStdout:\n");
+				sb.append("\nStdout:\n");
 				if (banner != null) {
 					sb.append("|    " + banner + "\n");
 				}
@@ -359,7 +359,7 @@ public class Transports
 						break;
 					}
 					sb.append("|    " + line + "\n");
-				}*/
+				}
 				
 				proc.destroy();
 				
