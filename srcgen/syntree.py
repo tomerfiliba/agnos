@@ -220,9 +220,16 @@ def comma_sep_arg_value(argname, blk):
         return []
     return [n.strip() for n in blk.args[argname].split(",")]
 
-def arg_default(default):
+def arg_default(default, type = str):
     def wrapper(argname, blk):
-        return blk.args.get(argname, default)
+        if argname not in blk.args:
+            return default
+        else:
+            value = blk.args[argname]
+            try:
+                return type(value)
+            except (ValueError, TypeError), ex:
+                raise SourceError(blk.srcblock, "argument %r is a %s, cannot be assigned %r", argname, type.__name__, value)
     return wrapper
 
 NOOP = lambda node: None
@@ -284,22 +291,47 @@ class MethodArgNode(AstNode):
 
 class MethodNode(AstNode):
     TAG = "method"
-    ATTRS = dict(name = auto_fill_name, type = arg_default("void"))
+    ATTRS = dict(name = auto_fill_name, type = arg_default("void"), version = arg_default(None, int))
     CHILDREN = [MethodArgNode, AnnotationNode]
 
 class StaticMethodNode(AstNode):
     TAG = "staticmethod"
-    ATTRS = dict(name = auto_fill_name, type = arg_default("void"))
+    ATTRS = dict(name = auto_fill_name, type = arg_default("void"), version = arg_default(None, int))
     CHILDREN = [MethodArgNode, AnnotationNode]
 
 class CtorNode(AstNode):
     TAG = "ctor"
+    ATTRS = dict(version = arg_default(None, int))
     CHILDREN = [MethodArgNode, AnnotationNode]
+
+def _get_versioned_members(node, members):
+    for child in node.children:
+        if not isinstance(child, (FuncNode, MethodNode, StaticMethodNode, CtorNode)):
+            continue
+        name = child.attrs["name"]
+        ver = child.attrs["version"]
+        if name not in members:
+            members[name] = {}
+        if members[name] and ver is None:
+            raise SourceError(child.block.srcblock, "function %r is duplicated but not versioned", name)
+        if ver in members[name]:
+            raise SourceError(child.block.srcblock, "function %r is duplicated with the same version", name)
+        members[name][ver] = child
 
 class ClassNode(AstNode):
     TAG = "class"
     ATTRS = dict(name = auto_fill_name, extends = comma_sep_arg_value)
     CHILDREN = [ClassAttrNode, CtorNode, MethodNode, StaticMethodNode]
+
+    def postprocess(self):
+        members = {}
+        _get_versioned_members(self, members)
+        for versions in members.values():
+            ordered = [n for v, n in sorted(versions.items())]
+            for child in ordered:
+                child.latest = False
+            ordered[-1].latest = True
+        AstNode.postprocess(self)
 
 class FuncArgNode(AstNode):
     TAG = "arg"
@@ -307,12 +339,12 @@ class FuncArgNode(AstNode):
 
 class FuncNode(AstNode):
     TAG = "func"
-    ATTRS = dict(name = auto_fill_name, type = arg_default("void"))
+    ATTRS = dict(name = auto_fill_name, type = arg_default("void"), version = arg_default(None, int))
     CHILDREN = [FuncArgNode, AnnotationNode]
 
 class ServiceNode(AstNode):
     TAG = "service"
-    ATTRS = dict(name = arg_value, package = arg_default(None))
+    ATTRS = dict(name = arg_value, package = arg_default(None), versions = comma_sep_arg_value, clientversion = arg_default(None))
 
 class ConstNode(AstNode):
     TAG = "const"
@@ -378,6 +410,8 @@ class RootNode(object):
                 else:
                     self.service_name = module.service.attrs["name"]
                     self.package_name = module.service.attrs["package"]
+                    self.supported_versions = module.service.attrs["versions"]
+                    self.client_version = module.service.attrs["clientversion"]
         if not self.service_name:
             raise SourceError(None, "tag @service does not appear in project")
         self.children = modules
@@ -388,10 +422,13 @@ class RootNode(object):
     
     def postprocess(self):
         classes = {}
+        members = {}
         for child in self.children:
+            _get_versioned_members(child, members)
             for child2 in child.children:
                 if isinstance(child2, (ClassNode, ExceptionNode)):
                     classes[child2.attrs["name"]] = child2
+
         for cls in classes.values():
             if cls.attrs["extends"]:
                 continue
@@ -399,6 +436,13 @@ class RootNode(object):
             for basename in cls.block.src_bases:
                 if basename in classes:
                     cls.attrs["extends"].append(basename)
+
+        for versions in members.values():
+            ordered = [n for v, n in sorted(versions.items())]
+            for child in ordered:
+                child.latest = False
+            ordered[-1].latest = True
+
 
 #===============================================================================
 # API

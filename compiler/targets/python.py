@@ -87,6 +87,11 @@ class PythonTarget(TargetBase):
             
             STMT("AGNOS_VERSION = 'Agnos 1.0'")
             STMT("IDL_MAGIC = '{0}'", service.digest)
+            if not service.clientversion:
+                STMT("CLIENT_VERSION = None")
+            else:
+                STMT("CLIENT_VERSION = '{0}'", service.clientversion)
+            STMT("SUPPORTED_VERSIONS = {0}", service.versions)
             SEP()
             
             DOC("enums", spacer = True)
@@ -240,6 +245,8 @@ class PythonTarget(TargetBase):
                 STMT("{0} = property({1})", attr.name, ", ".join(accessors))
             SEP()
             for method in cls.all_methods:
+                if not method.clientside:
+                    continue
                 args = ", ".join(arg.name for arg in method.args)
                 with BLOCK("def {0}(self, {1})", method.name, args):
                     callargs = ["self"] + [arg.name for arg in method.args]
@@ -315,6 +322,7 @@ class PythonTarget(TargetBase):
                 STMT('info["AGNOS_VERSION"] = AGNOS_VERSION')
                 STMT('info["IDL_MAGIC"] = IDL_MAGIC')
                 STMT('info["SERVICE_NAME"] = "{0}"', service.name)
+                STMT('info.add("SUPPORTED_VERSIONS", packers.Str, SUPPORTED_VERSIONS, packers.list_of_str)')
             SEP()
             with BLOCK("def process_get_functions_info(self, info)"):
                 for func in service.funcs.values():
@@ -423,13 +431,13 @@ class PythonTarget(TargetBase):
                 for ns in namespaces:
                     STMT("self.{0} = agnos.Namespace()", ns.split(".")[0])
                 for func in service.funcs.values():
-                    if not func.namespace:
+                    if not func.namespace or not func.clientside:
                         continue
                     head, tail = (func.namespace + "." + func.name).split(".", 1)
                     STMT("self.{0}['{1}'] = self._funcs.sync_{2}", head, tail, func.id)
             SEP()
             for func in service.funcs.values():
-                if not isinstance(func, compiler.Func) or func.namespace:
+                if not isinstance(func, compiler.Func) or func.namespace or not func.clientside:
                     continue
                 args = ", ".join(arg.name for arg in func.args)
                 with BLOCK("def {0}(_self, {1})", func.name, args):

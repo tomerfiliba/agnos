@@ -160,6 +160,10 @@ class JavaTarget(TargetBase):
         with BLOCK("public final class {0}", service.name):
             STMT('public static final String AGNOS_VERSION = "Agnos 1.0"')
             STMT('public static final String IDL_MAGIC = "{0}"', service.digest)
+            with BLOCK('public static final List<String> SUPPORTED_VERSIONS = new ArrayList<String>()',
+                    prefix = "{{", suffix = "}};"):
+                for ver in service.versions:
+                    STMT('add("{0}")', ver)
             SEP()
             
             DOC("enums", spacer = True)
@@ -210,6 +214,11 @@ class JavaTarget(TargetBase):
         with BLOCK("public final class {0}", service.name):
             STMT('public static final String AGNOS_VERSION = "Agnos 1.0"')
             STMT('public static final String IDL_MAGIC = "{0}"', service.digest)
+            if not service.clientversion:
+                STMT("public static final String CLIENT_VERSION = null")
+            else:
+                STMT('public static final String CLIENT_VERSION = "{0}"', service.clientversion)
+
             SEP()
             
             DOC("enums", spacer = True)
@@ -449,17 +458,19 @@ class JavaTarget(TargetBase):
             SEP()
             for attr in cls.all_attrs:
                 if attr.get:
-                    self.emit_javadoc(["Getter for %s" % (attr.name,), attr.doc], module)
+                    #self.emit_javadoc(["Getter for %s" % (attr.name,), attr.doc], module)
                     with BLOCK("public {0} get_{1}() throws Exception", type_to_java(attr.type, proxy = True), attr.name):
                         STMT("return _client._funcs.sync_{0}(this)", attr.getter.id)
                 if attr.set:
-                    self.emit_javadoc(["Setter for %s" % (attr.name,), attr.doc], module)
+                    #self.emit_javadoc(["Setter for %s" % (attr.name,), attr.doc], module)
                     with BLOCK("public void set_{0}({1} value) throws Exception", 
                             attr.name, type_to_java(attr.type, proxy = True)):
                         STMT("_client._funcs.sync_{0}(this, value)", attr.setter.id)
             SEP()
             for method in cls.all_methods:
-                self.emit_func_javadoc(method, module)
+                if not method.clientside:
+                    continue
+                #self.emit_func_javadoc(method, module)
                 args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in method.args)
                 with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(method.type, proxy = True), method.name, args):
                     callargs = ["this"] + [arg.name for arg in method.args]
@@ -546,6 +557,7 @@ class JavaTarget(TargetBase):
             STMT('map.put("AGNOS_VERSION", AGNOS_VERSION)')
             STMT('map.put("IDL_MAGIC", IDL_MAGIC)')
             STMT('map.put("SERVICE_NAME", "{0}")', service.name)
+            STMT('map.put("SUPPORTED_VERSIONS", SUPPORTED_VERSIONS, Packers.listOfStr)')
         SEP()
         with BLOCK("protected void processGetFunctionsInfo(HeteroMap map)"):
             STMT("HeteroMap funcinfo")
@@ -751,7 +763,7 @@ class JavaTarget(TargetBase):
         nsid = itertools.count(0)
         root = {"__id__" : nsid.next()}
         for func in service.funcs.values():
-            if isinstance(func, compiler.Func) and func.namespace:
+            if isinstance(func, compiler.Func) and func.namespace and func.clientside:
                 node = root
                 fns = func.namespace.split(".")
                 for part in fns:
@@ -851,11 +863,11 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         for func in service.funcs.values():
-            if not isinstance(func, compiler.Func) or func.namespace:
+            if not isinstance(func, compiler.Func) or func.namespace or not func.clientside:
                 continue
             args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in func.args)
             callargs = ", ".join(arg.name for arg in func.args)
-            self.emit_func_javadoc(func, module)
+            #self.emit_func_javadoc(func, module)
             with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(func.type, proxy = True), func.name, args):
                 if func.type == compiler.t_void:
                     STMT("_funcs.sync_{0}({1})", func.id, callargs)

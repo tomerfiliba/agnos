@@ -172,6 +172,9 @@ class CSharpTarget(TargetBase):
             with BLOCK("public static partial class {0}", service.name):
                 STMT('public const string AGNOS_VERSION = "Agnos 1.0"', service.digest)
                 STMT('public const string IDL_MAGIC = "{0}"', service.digest)
+                STMT('public static readonly List<string> SUPPORTED_VERSIONS = new List<string> {{ {0} }}',
+                    ", ".join('"%s"' % (ver,) for ver in service.versions))
+
                 SEP()
 
                 DOC("enums", spacer = True)
@@ -220,6 +223,11 @@ class CSharpTarget(TargetBase):
             with BLOCK("public static partial class {0}", service.name):
                 STMT('public const string AGNOS_VERSION = "Agnos 1.0"', service.digest)
                 STMT('public const string IDL_MAGIC = "{0}"', service.digest)
+                if not service.clientversion:
+                    STMT("public const string CLIENT_VERSION = null")
+                else:
+                    STMT('public const string CLIENT_VERSION = "{0}"', service.clientversion)
+
                 SEP()
 
                 DOC("enums", spacer = True)
@@ -457,6 +465,8 @@ class CSharpTarget(TargetBase):
                             STMT("_client._funcs.sync_{0}(this, value)", attr.setter.id)
             SEP()
             for method in cls.all_methods:
+                if not method.clientside:
+                    continue
                 args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) for arg in method.args)
                 with BLOCK("public {0} {1}({2})", type_to_cs(method.type, proxy = True), method.name, args):
                     callargs = ["this"] + [arg.name for arg in method.args]
@@ -540,6 +550,7 @@ class CSharpTarget(TargetBase):
             STMT('map["AGNOS_VERSION"] = AGNOS_VERSION')
             STMT('map["IDL_MAGIC"] = IDL_MAGIC')
             STMT('map["SERVICE_NAME"] = "{0}"', service.name)
+            STMT('map.Add("SUPPORTED_VERSIONS", SUPPORTED_VERSIONS, Packers.listOfStr)')
         SEP()
         with BLOCK("protected override void processGetFunctionsInfo(HeteroMap map)"):
             has_annotations = False
@@ -763,7 +774,7 @@ class CSharpTarget(TargetBase):
         nsid = itertools.count(0)
         root = {"__id__" : nsid.next()}
         for func in service.funcs.values():
-            if isinstance(func, compiler.Func) and func.namespace:
+            if isinstance(func, compiler.Func) and func.namespace and func.clientside:
                 node = root
                 fns = func.namespace.split(".")
                 for part in fns:
@@ -871,7 +882,7 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         for func in service.funcs.values():
-            if not isinstance(func, compiler.Func) or func.namespace:
+            if not isinstance(func, compiler.Func) or func.namespace or not func.clientside:
                 continue
             args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) for arg in func.args)
             callargs = ", ".join(arg.name for arg in func.args)

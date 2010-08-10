@@ -26,6 +26,10 @@ parser.add_option("--serverfile", dest="serverfile", default=None,
 parser.add_option("-r", "--rootpackage", dest="rootpackage", default=None,
                   help="specify the root package name (by default, the top directory is used)", 
                   metavar="NAME")
+parser.add_option("--historyfile", dest="history_file", default=None,
+                  help="specify the history file to use (by default, '.agnos-srcgen-history' in the top directory is used)", 
+                  metavar="NAME")
+
 
 if __name__ == "__main__":
     options, args = parser.parse_args()
@@ -33,6 +37,7 @@ if __name__ == "__main__":
         parser.error("must specify agnos input file(s)")
     for fn in args:
         main(fn, outdir = options.outdir, rootpackage = options.rootpackage,
-            serverfile = options.serverfile, idlfile = options.idlfile)
+            serverfile = options.serverfile, idlfile = options.idlfile,
+            history_file = options.history_file)
 
 

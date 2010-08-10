@@ -33,7 +33,11 @@ class StorageSystem(object):
 
 TheSystem = None
 
-#:: @func type=StorageSystem
+#:: @func get_system type=StorageSystem version=1
+def old_get_system():
+    return 1/0
+
+#:: @func get_system type=StorageSystem version=2
 def get_system():
     global TheSystem
     if not TheSystem:
@@ -47,5 +51,4 @@ def get_system():
         p1.create_volume("vol3", 24 * VOL_SIZE_DIVISOR)
     
     return TheSystem
-
 

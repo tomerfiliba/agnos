@@ -1,10 +1,13 @@
-* intergrate with XSF
-	* buildbot tests
-	* simple init
+* TOP
 	* performance tests
-	* include tracebacks?
-	* srcgen: read docstrings
+	* check version compatibility on connection
 	* document agnos
+
+* intergrate with XSF
+	* buildbot tests+
+	* simple init+
+	* multiple versions+
+	* srcgen: read docstrings
 
 * features:
     * packers should operate on transports, not streams
@@ -13,17 +16,19 @@
 	* rlist, rmap (by ref)
 
 * targets:
-	1 powershell
-	2 c++
-	3 REST access in the meanwhile:
-	    can implement REST on top of agnos, by writing a small python mediator 
-	    program that acts as a client from one side, and exposes REST 
-	    web access on the other
-	4 jscript client (over URLs) for web gui
+	1. HTML docs
+	2. powershell
+	3. c++
+	4. REST access in the meanwhile:
+	   can implement REST on top of agnos, by writing a small python mediator 
+	   program that acts as a client from one side, and exposes REST 
+	   web access on the other
+	5. jscript client (over URLs) for web gui
 
 * optional features:
     * custom type templates
     * complex consts
+	* always include tracebacks?
 
 * maybe targets:
     * c

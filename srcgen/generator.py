@@ -6,22 +6,47 @@ from agnos_compiler.compiler import compile
 from agnos_compiler.compiler.targets import PythonTarget
 
 
-ID_GENERATOR = itertools.count(800000)
-
 class FuncInfo(object):
-    def __init__(self, name, type, args, namespace = None, doc = None):
+    def __init__(self, name, type, args, namespace = None, doc = None, version = None, latest = True):
         self.name = name
         self.type = type
         self.args = args
         self.namespace = namespace
         self.doc = None
+        self.version = version
+        self.latest = latest
 
 
 class IdlGenerator(object):
-    def __init__(self):
+    def __init__(self, history_file):
+        self.history_file = history_file
+        self.history, next_id = self.load_history()
+        self._id_generator = itertools.count(next_id)
+        
         self.doc = xml.XmlDoc("service")
+
+    def load_history(self):
+        history = {}
+        if os.path.exists(self.history_file):
+            with open(self.history_file, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    id, key = line.split(" ", 1)
+                    history[key] = int(id)
+        next_id = max(history.values()) + 1 if history else 800000
+        return history, next_id
+
+    def store_history(self):
+        with open(self.history_file, "w") as f:
+            for key, id in sorted(self.history.items(), key = lambda o: o[1]):
+                f.write("%s %s\n" % (id, key))
+    
     def visit(self, root):
         root.accept(self)
+        self.store_history()
+
     def emit_doc(self, node):
         if not node.doc:
             return
@@ -30,20 +55,28 @@ class IdlGenerator(object):
                 self.TEXT(line)
     
     def BLOCK(self, *args, **kwargs):
-        kwargs["id"] = ID_GENERATOR.next()
         return self.doc.block(*args, **kwargs)
     def ATTR(self, *args, **kwargs):
         return self.doc.attr(*args, **kwargs)
     def TEXT(self, *args, **kwargs):
         return self.doc.text(*args, **kwargs)
+
+    def get_id(self, key):
+        if key not in self.history:
+            self.history[key] = self._id_generator.next()
+        return self.history[key]
     
     def visit_RootNode(self, node):
         self.ATTR(name = node.service_name)
         if node.package_name:
             self.ATTR(package = node.package_name)
+        if node.supported_versions:
+            self.ATTR(versions = ",".join(node.supported_versions))
+        if node.client_version:
+            self.ATTR(clientversion = node.client_version)
         
         self.auto_generated_funcs = []
-        self.service_name = None
+        self.service_name = node.service_name
         for child in node.children:
             child.accept(self)
         
@@ -51,6 +84,14 @@ class IdlGenerator(object):
             with self.BLOCK("func", name = info.name, type = info.type):
                 if info.namespace:
                     self.ATTR(namespace = info.namespace)
+
+                key = self.service_name + "." + info.namespace + "." + info.name
+                self.ATTR(id = self.get_id(key))
+                
+                if not info.latest:
+                    self.ATTR(clientside = "no")
+                    self.ATTR(name = info.name + "_v%s" % (info.version,))
+
                 self.emit_doc(info)
                 for arginfo in info.args:
                     with self.BLOCK("arg", name = arginfo.attrs["name"], 
@@ -62,9 +103,19 @@ class IdlGenerator(object):
             child.accept(self)
     
     def visit_FuncNode(self, node):
+        key = self.service_name + "." + node.attrs["name"]
+        if node.attrs["version"]:
+            key += ".%s" % (node.attrs["version"],)
+        
         with self.BLOCK("func", name = node.attrs["name"], type = node.attrs["type"]):
             if node.parent.modinfo.attrs["namespace"]:
                 self.ATTR(namespace = node.parent.modinfo.attrs["namespace"])
+            
+            if not node.latest:
+                self.ATTR(clientside = "no")
+                self.ATTR(name = node.attrs["name"] + "_v%s" % (node.attrs["version"],))
+            
+            self.ATTR(id = self.get_id(key))
             self.emit_doc(node)
             for child in node.children:
                 child.accept(self)
@@ -79,6 +130,13 @@ class IdlGenerator(object):
     
     def visit_ClassAttrNode(self, node):
         with self.BLOCK("attr", name = node.attrs["name"], type = node.attrs["type"]):
+            if "get" in node.attrs["access"]:
+                key = self.service_name + "." + node.parent.attrs["name"] + "." + node.attrs["name"] + ".get"
+                self.ATTR(getid = self.get_id(key))
+            if "set" in node.attrs["access"]:
+                key = self.service_name + "." + node.parent.attrs["name"] + "." + node.attrs["name"] + ".set"
+                self.ATTR(setid = self.get_id(key))
+            
             self.ATTR(get = "yes" if "get" in node.attrs["access"] else "no")
             self.ATTR(set = "yes" if "set" in node.attrs["access"] else "no")
             self.emit_doc(node)
@@ -88,7 +146,16 @@ class IdlGenerator(object):
             self.emit_doc(node)
     
     def visit_MethodNode(self, node):
+        key = self.service_name + "." + node.parent.attrs["name"] + "." + node.attrs["name"]
+        if node.attrs["version"]:
+            key += ".%s" % (node.attrs["version"],)
+
         with self.BLOCK("method", name = node.attrs["name"], type = node.attrs["type"]):
+            if not node.latest:
+                self.ATTR(clientside = "no")
+                self.ATTR(name = node.attrs["name"] + "_v%s" % (node.attrs["version"],))
+
+            self.ATTR(id = self.get_id(key))
             self.emit_doc(node)
             for child in node.children:
                 child.accept(self)
@@ -99,12 +166,15 @@ class IdlGenerator(object):
         else:
             namespace = ""
         namespace += node.parent.attrs["name"]
+
         self.auto_generated_funcs.append(FuncInfo(
             name = node.attrs["name"], 
             type = node.attrs["type"],
             args = node.children,
             namespace = namespace,
-            doc = node.doc
+            doc = node.doc,
+            version = node.attrs["version"],
+            latest = node.latest,
             ))
     
     def visit_CtorNode(self, node):
@@ -113,7 +183,9 @@ class IdlGenerator(object):
             type = node.parent.attrs["name"],
             args = node.children,
             namespace = node.parent.attrs["name"],
-            doc = node.doc
+            doc = node.doc,
+            version = node.attrs["version"],
+            latest = node.latest,
             ))
     
     def visit_FuncArgNode(self, node):
@@ -167,7 +239,6 @@ class ServerGenerator(object):
         self.STMT = self.doc.stmt
         self.SEP = self.doc.sep
         self.DOC = self.doc.doc
-        self.service_name = None
     def visit(self, root):
         root.accept(self)
     
@@ -212,6 +283,9 @@ class ServerGenerator(object):
             name = namespace.replace(".", "_") + "_" + node.attrs["name"]
         else:
             name = node.attrs["name"]
+        if node.attrs["version"] and not node.latest:
+            name += "_v%s" % (node.attrs["version"],)
+        
         with self.BLOCK("def {0}(_self, {1})", name, args):
             self.required_modules.add(node.parent.modinfo.attrs["name"])
             self.STMT("return {0}.{1}({2})", node.parent.modinfo.attrs["name"], 
@@ -258,7 +332,7 @@ def get_filenames(rootdir, suffix = ".py"):
     return filenames, rootdir
 
 
-def main(rootdir, outdir = None, idlfile = None, serverfile = None, rootpackage = None):
+def main(rootdir, outdir = None, idlfile = None, serverfile = None, rootpackage = None, history_file = None):
     filenames, rootdir = get_filenames(rootdir)
     if not rootpackage:
         rootpackage = os.path.basename(rootdir)
@@ -276,12 +350,14 @@ def main(rootdir, outdir = None, idlfile = None, serverfile = None, rootpackage 
         idlfile = os.path.join(outdir, "%s_autogen.xml" % (ast_root.service_name,))
     if not serverfile:
         serverfile = os.path.join(outdir, "%s_autogen_server.py" % (ast_root.service_name,))
+    if not history_file:
+        history_file = os.path.join(rootdir, ".agnos-srcgen-history")
     
-    visitor = IdlGenerator()
+    visitor = IdlGenerator(history_file)
     visitor.visit(ast_root)
     with open(idlfile, "w") as f:
         f.write(visitor.doc.render())
-    
+
     compile(idlfile, PythonTarget(outdir))
     
     visitor = ServerGenerator()
