@@ -102,10 +102,11 @@ class IdlGenerator(object):
         for child in node.children:
             child.accept(self)
     
+    def _generate_key(self, *args):
+        return self.service_name + "." + ".".join(a for a in args if a)
+    
     def visit_FuncNode(self, node):
-        key = self.service_name + "." + node.attrs["name"]
-        if node.attrs["version"]:
-            key += ".%s" % (node.attrs["version"],)
+        key = self._generate_key(node.parent.modinfo.attrs["namespace"], node.attrs["name"], node.attrs["version"])
         
         with self.BLOCK("func", name = node.attrs["name"], type = node.attrs["type"]):
             if node.parent.modinfo.attrs["namespace"]:
@@ -131,10 +132,10 @@ class IdlGenerator(object):
     def visit_ClassAttrNode(self, node):
         with self.BLOCK("attr", name = node.attrs["name"], type = node.attrs["type"]):
             if "get" in node.attrs["access"]:
-                key = self.service_name + "." + node.parent.attrs["name"] + "." + node.attrs["name"] + ".get"
+                key = self._generate_key(node.parent.attrs["name"], node.attrs["name"], "get")
                 self.ATTR(getid = self.get_id(key))
             if "set" in node.attrs["access"]:
-                key = self.service_name + "." + node.parent.attrs["name"] + "." + node.attrs["name"] + ".set"
+                key = self._generate_key(node.parent.attrs["name"], node.attrs["name"], "set")
                 self.ATTR(setid = self.get_id(key))
             
             self.ATTR(get = "yes" if "get" in node.attrs["access"] else "no")
@@ -146,9 +147,7 @@ class IdlGenerator(object):
             self.emit_doc(node)
     
     def visit_MethodNode(self, node):
-        key = self.service_name + "." + node.parent.attrs["name"] + "." + node.attrs["name"]
-        if node.attrs["version"]:
-            key += ".%s" % (node.attrs["version"],)
+        key = self._generate_key(node.parent.attrs["name"], node.attrs["name"], node.attrs["version"])
 
         with self.BLOCK("method", name = node.attrs["name"], type = node.attrs["type"]):
             if not node.latest:
@@ -161,17 +160,11 @@ class IdlGenerator(object):
                 child.accept(self)
 
     def visit_StaticMethodNode(self, node):
-        if node.parent.parent.modinfo.attrs["namespace"]:
-            namespace = node.parent.parent.modinfo.attrs["namespace"] + "."
-        else:
-            namespace = ""
-        namespace += node.parent.attrs["name"]
-
         self.auto_generated_funcs.append(FuncInfo(
             name = node.attrs["name"], 
             type = node.attrs["type"],
             args = node.children,
-            namespace = namespace,
+            namespace = node.parent.attrs["name"],
             doc = node.doc,
             version = node.attrs["version"],
             latest = node.latest,
@@ -351,7 +344,7 @@ def main(rootdir, outdir = None, idlfile = None, serverfile = None, rootpackage 
     if not serverfile:
         serverfile = os.path.join(outdir, "%s_autogen_server.py" % (ast_root.service_name,))
     if not history_file:
-        history_file = os.path.join(rootdir, ".agnos-srcgen-history")
+        history_file = idlfile[:-4] + "_history"
     
     visitor = IdlGenerator(history_file)
     visitor.visit(ast_root)

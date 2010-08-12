@@ -22,8 +22,7 @@ class FileInfo(object):
     def __init__(self, filename):
         self.filename = filename
         self.lines = open(filename, "r").read().splitlines()
-
-
+        
 class SourceBlock(object):
     def __init__(self, lineno, indentation, text, fileinfo):
         self.lineno = lineno
@@ -32,6 +31,9 @@ class SourceBlock(object):
         self.text = text
         self.children = []
         self.stack = []
+    
+    def __str__(self):
+        return "%s(%s)" % (self.fileinfo.filename, self.lineno)
     
     def append(self, lineno, indentation, text):
         for i, blk in enumerate(self.stack):
@@ -306,14 +308,22 @@ class CtorNode(AstNode):
 
 def _get_versioned_members(node, members):
     for child in node.children:
-        if not isinstance(child, (FuncNode, MethodNode, StaticMethodNode, CtorNode)):
+        if isinstance(child, FuncNode):
+            if child.parent.modinfo.attrs["namespace"]:
+                name = child.parent.modinfo.attrs["namespace"] + "." + child.attrs["name"]
+            else:
+                name = child.attrs["name"]
+        elif isinstance(child, (MethodNode, StaticMethodNode, CtorNode)):
+            name = child.parent.attrs["name"] + "." + child.attrs["name"]
+        else:
             continue
-        name = child.attrs["name"]
+        
         ver = child.attrs["version"]
         if name not in members:
             members[name] = {}
         if members[name] and ver is None:
-            raise SourceError(child.block.srcblock, "function %r is duplicated but not versioned", name)
+            raise SourceError(child.block.srcblock, "function %r is duplicated but not versioned. other instances: %r", name, 
+                ", ".join(str(f.block.srcblock) for f in members[name].itervalues()))
         if ver in members[name]:
             raise SourceError(child.block.srcblock, "function %r is duplicated with the same version", name)
         members[name][ver] = child

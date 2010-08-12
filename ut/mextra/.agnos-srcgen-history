@@ -20,3 +20,5 @@
 800019 mextra.Pool.create_volume
 800020 mextra.Pool.delete
 800021 mextra.Volume.create_volume
+800022 mextra.Foo.bar
+800023 mextra.Flam.bar
