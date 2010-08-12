@@ -27,8 +27,6 @@ INFO_GENERAL = 1
 INFO_FUNCTIONS = 2
 INFO_FUNCCODES = 3
 
-AGNOS_MAGIC = 0x5af30cf7
-
 
 class PackedException(Exception):
     def __str__(self):
@@ -51,7 +49,11 @@ class GenericException(Exception):
 class ProtocolError(Exception):
     pass
 
-class HandshakeError(ProtocolError):
+class WrongAgnosVersion(ProtocolError):
+    pass
+class WrongServiceName(ProtocolError):
+    pass
+class IncompatibleServiceVersion(ProtocolError):
     pass
 
 
@@ -190,7 +192,7 @@ class BaseProcessor(object):
             info["INFO_META"] = INFO_META
             info["INFO_GENERAL"] = INFO_GENERAL
             info["INFO_FUNCTIONS"] = INFO_FUNCTIONS
-            info["INFO_FUNCCODES"] = INFO_FUNCTIONS
+            info["INFO_FUNCCODES"] = INFO_FUNCCODES
         
         Int8.pack(REPLY_SUCCESS, transport)
         BuiltinHeteroMapPacker.pack(info, transport)
@@ -337,7 +339,7 @@ class ClientUtils(object):
         with self.transport.writing(seq):
             Int8.pack(CMD_GETINFO, self.transport)
             Int32.pack(code, self.transport)
-        replies[seq] = (self.REPLY_SLOT_EMPTY, BuiltinHeteroMapPacker)
+        self.replies[seq] = (self.REPLY_SLOT_EMPTY, BuiltinHeteroMapPacker)
         return self.get_reply(seq)
 
     def process_incoming(self, timeout):

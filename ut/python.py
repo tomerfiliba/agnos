@@ -20,6 +20,8 @@ class FeatureTestClient(TargetTest):
             conn.close()
 
     def mytest(self, conn):
+        conn.assert_service_compatibility();
+
         eve = conn.Person.init("eve", None, None)
         adam = conn.Person.init("adam", None, None)
         eve.marry(adam)
@@ -30,7 +32,7 @@ class FeatureTestClient(TargetTest):
         
         everything = conn.func_of_everything(
             1, 2, 3, 4, 5.5, True, datetime.now(), "\xff\xee\xaa\xbb", "hello world", 
-            [1.3, FeatureTest.pi, 4.4], {34:"foo", 56:"bar"}, 
+            [1.3, FeatureTest.pi, 4.4], set([18,19,20]), {34:"foo", 56:"bar"}, 
             FeatureTest.Address(FeatureTest.State.NY, "albany", "microsoft drive", 1772),
             eve)
 

@@ -59,6 +59,7 @@
 		<attr name="some_buffer" type="buffer"/> 
 		<attr name="some_string" type="str"/> 
 		<attr name="some_list" type="list[float]"/> 
+		<attr name="some_set" type="set[int32]"/> 
 		<attr name="some_map" type="map[int32, str]"/> 
 		<attr name="some_record" type="Address"/> 
 		<attr name="some_class" type="Person"/> 
@@ -75,9 +76,10 @@
 		<arg name="h" type="buffer"/>
 		<arg name="i" type="str"/>
 		<arg name="j" type="list[float]"/>
-		<arg name="k" type="map[int32, str]"/>
-		<arg name="l" type="Address"/>
-		<arg name="m" type="Person"/>
+		<arg name="k" type="set[int]"/>
+		<arg name="l" type="map[int32, str]"/>
+		<arg name="m" type="Address"/>
+		<arg name="n" type="Person"/>
 	</func>
 	
 	<class name="ClassA">

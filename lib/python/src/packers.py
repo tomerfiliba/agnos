@@ -143,6 +143,34 @@ list_of_buffer = ListOf(806, Buffer)
 list_of_date = ListOf(807, Date)
 list_of_str = ListOf(808, Str)
 
+class SetOf(Packer):
+    __slots__ = ["id", "type"]
+    def __init__(self, id, type):
+        self.id = id
+        self.type = type
+    def get_id(self):
+        return self.id
+    def pack(self, obj, stream):
+        Int32.pack(len(obj), stream)
+        for item in obj:
+            self.type.pack(item, stream)
+    def unpack(self, stream):
+        length = Int32.unpack(stream)
+        obj = set()
+        for i in xrange(length):
+            obj.add(self.type.unpack(stream))
+        return obj
+
+set_of_int8 = SetOf(820, Int8)
+set_of_bool = SetOf(821, Bool)
+set_of_int16 = SetOf(822, Int16)
+set_of_int32 = SetOf(823, Int32)
+set_of_int64 = SetOf(824, Int64)
+set_of_float = SetOf(825, Float)
+set_of_buffer = SetOf(826, Buffer)
+set_of_date = SetOf(827, Date)
+set_of_str = SetOf(828, Str)
+
 class MapOf(Packer):
     __slots__ = ["id", "keytype", "valtype"]
     def __init__(self, id, keytype, valtype):
@@ -174,9 +202,15 @@ class HeteroMapPacker(Packer):
     BUILTIN_PACKERS_MAP = {
         1 : Int8, 2 : Bool, 3 : Int16, 4 : Int32, 5 : Int64,
         6 : Float, 7 : Buffer, 8 : Date, 9 : Str,
+        
         800 : list_of_int8, 801 : list_of_bool, 802 : list_of_int16, 
         803 : list_of_int32, 804 : list_of_int64, 805 : list_of_float, 
         806 : list_of_buffer, 807 : list_of_date, 808 : list_of_str,
+
+        820 : set_of_int8, 821 : set_of_bool, 822 : set_of_int16, 
+        823 : set_of_int32, 824 : set_of_int64, 825 : set_of_float, 
+        826 : set_of_buffer, 827 : set_of_date, 828 : set_of_str,
+        
         850 : map_of_int32_int32, 851 : map_of_int32_str, 
         852 : map_of_str_int32, 853 : map_of_str_str, 
     }
@@ -197,7 +231,7 @@ class HeteroMapPacker(Packer):
             valpacker.pack(val, stream)
     
     def unpack(self, stream):
-        length = Int32.pack(len(obj), stream)
+        length = Int32.unpack(stream)
         map = HeteroMap()
         for i in xrange(length):
             keypid = Int32.unpack(stream)
@@ -207,7 +241,7 @@ class HeteroMapPacker(Packer):
             valpacker = self._get_packer(valpid)
             val = valpacker.unpack(stream)
             map.add(key, keypacker, val, valpacker)
-        return obj
+        return map
 
     def _get_packer(self, id):
         if id == 998:

@@ -255,11 +255,11 @@ public class myserver
 
 		public FeatureTest.Everything func_of_everything(Byte a,
 				short b, int c, long d, double e, bool f, DateTime g,
-				byte[] h, string i, IList<double> j, IDictionary<int, string> k,
-				FeatureTest.Address l, FeatureTest.IPerson m)
+				byte[] h, string i, IList<double> j, ICollection<int> k, IDictionary<int, string> l,
+				FeatureTest.Address m, FeatureTest.IPerson n)
 				 {
 			return new FeatureTest.Everything(a, b, c, d, e, f, g, h,
-					i, j, k, l, m);
+					i, j, k, l, m, n);
 		}
 	}
 

@@ -475,11 +475,19 @@ namespace Agnos
 			{
 				if (obj == null) {
 					Int32.pack (0, stream);
-				} else {
-					IList val = (IList)obj;
-					Int32.pack (val.Count, stream);
-					foreach (object obj2 in val) {
-						type.pack (obj2, stream);
+				} 
+				else if (obj is T[]) {
+					T[] val = (T[])obj;
+					Int32.pack (val.Length, stream);
+					foreach (T item in val) {
+						type.pack (item, stream);
+					}
+				}
+				else {
+					IList<T> coll = (IList<T>)obj;
+					Int32.pack (coll.Count, stream);
+					foreach (T item in coll) {
+						type.pack (item, stream);
 					}
 				}
 			}
@@ -507,6 +515,59 @@ namespace Agnos
 		
 		/////////////////////////////////////////////////////////////////////
 
+		public class SetOf<T> : AbstractPacker
+		{
+            protected readonly AbstractPacker type;
+            protected readonly int id;
+
+			public SetOf (int id, AbstractPacker type)
+			{
+				this.type = type;
+				this.id = id;
+			}
+
+			public override int getId()
+			{
+				return id;
+			}
+			
+			public override void pack (object obj, Stream stream)
+			{
+				if (obj == null) {
+					Int32.pack (0, stream);
+				} 
+				else {
+					ICollection<T> coll = (ICollection<T>)obj;
+					Int32.pack (coll.Count, stream);
+					foreach (T item in coll) {
+						type.pack (item, stream);
+					}
+				}
+			}
+
+			public override object unpack (Stream stream)
+			{
+				int length = (int)Int32.unpack (stream);
+				HashSet<T> obj = new HashSet<T> ();
+				for (int i = 0; i < length; i++) {
+					obj.Add ((T)(type.unpack (stream)));
+				}
+				return obj;
+			}
+		}
+
+		public static readonly SetOf<byte> setOfInt8 = new SetOf<byte>(820, Int8);
+		public static readonly SetOf<bool> setOfBool = new SetOf<bool>(821, Bool);
+		public static readonly SetOf<short> setOfInt16 = new SetOf<short>(822, Int16);
+		public static readonly SetOf<int> setOfInt32 = new SetOf<int>(823, Int32);
+		public static readonly SetOf<long> setOfInt64 = new SetOf<long>(824, Int64);
+		public static readonly SetOf<double> setOfFloat = new SetOf<double>(825, Float);
+		public static readonly SetOf<byte[]> setOfBuffer = new SetOf<byte[]>(826, Buffer);
+		public static readonly SetOf<DateTime> setOfDate = new SetOf<DateTime>(827, Date);
+		public static readonly SetOf<string> setOfStr = new SetOf<string>(828, Str);
+		
+		/////////////////////////////////////////////////////////////////////
+
 		public class MapOf<K, V> : AbstractPacker
 		{
             protected readonly AbstractPacker keytype;
@@ -530,9 +591,9 @@ namespace Agnos
 				if (obj == null) {
 					Int32.pack (0, stream);
 				} else {
-					IDictionary val = (IDictionary)obj;
-					Int32.pack (val.Count, stream);
-					foreach (DictionaryEntry item in val) {
+					IDictionary coll = (IDictionary)obj;
+					Int32.pack (coll.Count, stream);
+					foreach (DictionaryEntry item in coll) {
 						keytype.pack (item.Key, stream);
 						valtype.pack (item.Value, stream);
 					}
@@ -653,7 +714,25 @@ namespace Agnos
 				case 807:
 					return listOfDate;
 				case 808:
-					return listOfStr;
+					return listOfStr;				
+				case 820:
+					return setOfInt8;
+				case 821:
+					return setOfBool;
+				case 822:
+					return setOfInt16;
+				case 823:
+					return setOfInt32;
+				case 824:
+					return setOfInt64;
+				case 825:
+					return setOfFloat;
+				case 826:
+					return setOfBuffer;
+				case 827:
+					return setOfDate;
+				case 828:
+					return setOfStr;
 				case 850:
 					return mapOfInt32Int32;
 				case 851:

@@ -19,29 +19,34 @@ namespace Agnos
 
 	public class ProtocolError : Exception
 	{
-		public ProtocolError (String message) : base(message)
-		{
-		}
+		public ProtocolError (string message) : base(message) {}
 	}
 
-	public class HandshakeError : ProtocolError
+	public class WrongAgnosVersion : ProtocolError
 	{
-		public HandshakeError (String message) : base(message)
-		{
-		}
+		public WrongAgnosVersion (string message) : base(message) {}
 	}
 
+	public class WrongServiceName : ProtocolError
+	{
+		public WrongServiceName (string message) : base(message) {}
+	}
 
+	public class IncompatibleServiceVersion : ProtocolError
+	{
+		public IncompatibleServiceVersion (string message) : base(message) {}
+	}
+	
 	public class GenericException : Exception
 	{
-		public String Traceback;
+		public string Traceback;
 
-		public GenericException (String message, String traceback) : base(message)
+		public GenericException (string message, string traceback) : base(message)
 		{
 			this.Traceback = traceback;
 		}
 
-		public override String ToString ()
+		public override string ToString ()
 		{
 			return String.Format ("Agnos.GenericException with remote backtrace:\n{0}\n{1}" + 
 			                      "\n------------------- end of remote traceback -------------------\n{2}", 
@@ -67,8 +72,6 @@ namespace Agnos
 		public const int INFO_GENERAL = 1;
 		public const int INFO_FUNCTIONS = 2;
 		public const int INFO_FUNCCODES = 3;
-
-		public const int AGNOS_MAGIC = 0x5af30cf7;
 
 		public abstract class BaseProcessor : Packers.ISerializer
 		{
@@ -226,7 +229,7 @@ namespace Agnos
 
 			protected void processPing (ITransport transport, int seq)
 			{
-				String message = (String)(Packers.Str.unpack (transport));
+				string message = (string)(Packers.Str.unpack (transport));
 				Packers.Int8.pack (REPLY_SUCCESS, transport);
 				Packers.Str.pack (message, transport);
 			}
@@ -391,7 +394,7 @@ namespace Agnos
 				replies[seq] = new ReplySlot (Packers.Str);
 				string reply;
 				try {
-					reply = (String)GetReply (seq, msecs);
+					reply = (string)GetReply (seq, msecs);
 				} catch (TimeoutException ex) {
 					DiscardReply (seq);
 					throw ex;
@@ -426,7 +429,7 @@ namespace Agnos
 
 			protected ProtocolError loadProtocolError ()
 			{
-				String message = (string)Packers.Str.unpack (transport);
+				string message = (string)Packers.Str.unpack (transport);
 				return new ProtocolError (message);
 			}
 

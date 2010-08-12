@@ -6,7 +6,7 @@ from .idl import parse_const, parse_template, IDLError
 
 
 ID_GENERATOR = itertools.count(900000)
-
+AGNOS_VERSION = "AGNOS-1.0"
 
 def is_complex_type(idltype):
     if isinstance(idltype, TList):
@@ -494,6 +494,23 @@ class TList(BuiltinType):
     def stringify(self):
         return "list_%s" % (self.oftype.stringify(),)
 
+class TSet(BuiltinType):
+    def __init__(self, oftype):
+        if oftype == t_void:
+            raise IDLError("set: contained type cannot be 'void'")
+        self.oftype = oftype
+        self.id = ID_GENERATOR.next()
+    @staticmethod
+    @memoized
+    def create(oftype):
+        return TSet(oftype)
+    def __repr__(self):
+        return "BuiltinType(set<%r>)" % (self.oftype,)
+    def __str__(self):
+        return "set[%s]" % (self.oftype,)
+    def stringify(self):
+        return "set_%s" % (self.oftype.stringify(),)
+
 class TMap(BuiltinType):
     def __init__(self, keytype, valtype):
         if keytype == t_void:
@@ -591,6 +608,7 @@ class Service(Element):
         "hmap" : t_heteromap,
         "hdict" : t_heteromap,
         "list" : None,
+        "set" : None,
         "map" : None,
         "dict" : None,
         "reflist" : None,
@@ -645,6 +663,12 @@ class Service(Element):
             head2, children2 = children[0]
             tp = self._get_type(head2, children2)
             return TList.create(tp)
+        elif head == "set":
+            if len(children) != 1:
+                raise IDLError("set template: wrong number of parameters: %r" % (text,))
+            head2, children2 = children[0]
+            tp = self._get_type(head2, children2)
+            return TSet.create(tp)
         elif head == "map" or head == "dict":
             if len(children) != 2:
                 raise IDLError("map template: wrong number of parameters: %r" % (text,))

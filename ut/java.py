@@ -24,8 +24,10 @@ class TestJava(TargetTest):
         self.run_cmdline(["mkdir", "build"], cwd=path)
         print "javac %s" % (path,)
         cmdline = ["javac", "-g", "-cp", ":".join(classpath), "-d", "build"]
+        srcs = set()
         for root, dirs, files in os.walk(path):
-            cmdline.extend(os.path.join(dir, fn) for dir, _, fns in os.walk(path) for fn in fns if fn.endswith(".java"))
+            srcs.update(os.path.join(dir, fn) for dir, _, fns in os.walk(path) for fn in fns if fn.endswith(".java"))
+        cmdline.extend(srcs)
         self.run_cmdline(cmdline, cwd=path)
         print "jar %s" % (path,)
         self.run_cmdline(["jar", "cf", "thejar.jar", "."], cwd=os.path.join(path, "build"))

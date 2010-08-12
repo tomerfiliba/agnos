@@ -486,11 +486,19 @@ public class Packers
 			if (obj == null) {
 				Int32.pack(0, stream);
 			}
+			else if (obj.getClass().isArray()) {
+				T[] arr = (T[])obj;
+				Int32.pack(arr.length, stream);
+
+				for (T item : arr) {
+					type.pack(item, stream);
+				}
+			}
 			else {
-				List lst = (List)obj;
+				List<T> lst = (List<T>)obj;
 				Int32.pack(lst.size(), stream);
 
-				for (Object item : lst) {
+				for (T item : lst) {
 					type.pack(item, stream);
 				}
 			}
@@ -517,6 +525,63 @@ public class Packers
 	public static final ListOf<Date> listOfDate = new ListOf<Date>(807, Date);
 	public static final ListOf<String> listOfStr = new ListOf<String>(808, Str);
 
+	// ////////////////////////////////////////////////////////////////////////
+
+	public static class SetOf<T> extends AbstractPacker
+	{
+		protected AbstractPacker type;
+		protected int id;
+
+		public SetOf(int id, AbstractPacker type)
+		{
+			if (type == null) {
+				throw new AssertionError("type is null!");
+			}
+			this.id = id;
+			this.type = type;
+		}
+
+		protected int getId()
+		{
+			return id;
+		}
+
+		public void pack(Object obj, OutputStream stream) throws IOException
+		{
+			if (obj == null) {
+				Int32.pack(0, stream);
+			}
+			else {
+				Set set = (Set)obj;
+				Int32.pack(set.size(), stream);
+
+				for (Object item : set) {
+					type.pack(item, stream);
+				}
+			}
+		}
+
+		public Object unpack(InputStream stream) throws IOException
+		{
+			int length = (Integer) Int32.unpack(stream);
+			Set<T> set = new HashSet<T>(length);
+			for (int i = 0; i < length; i++) {
+				set.add((T)(type.unpack(stream)));
+			}
+			return set;
+		}
+	}
+
+	public static final SetOf<Byte> setOfInt8 = new SetOf<Byte>(820, Int8);
+	public static final SetOf<Boolean> setOfBool = new SetOf<Boolean>(821, Bool);
+	public static final SetOf<Short> setOfInt16 = new SetOf<Short>(822, Int16);
+	public static final SetOf<Integer> setOfInt32 = new SetOf<Integer>(823, Int32);
+	public static final SetOf<Long> setOfInt64 = new SetOf<Long>(824, Int64);
+	public static final SetOf<Double> setOfFloat = new SetOf<Double>(825, Float);
+	public static final SetOf<byte[]> setOfBuffer = new SetOf<byte[]>(826, Buffer);
+	public static final SetOf<Date> setOfDate = new SetOf<Date>(827, Date);
+	public static final SetOf<String> setOfStr = new SetOf<String>(828, Str);
+	
 	// ////////////////////////////////////////////////////////////////////////
 
 	public static class MapOf<K, V> extends AbstractPacker
@@ -673,6 +738,24 @@ public class Packers
 				return listOfDate;
 			case 808:
 				return listOfStr;
+			case 820:
+				return setOfInt8;
+			case 821:
+				return setOfBool;
+			case 822:
+				return setOfInt16;
+			case 823:
+				return setOfInt32;
+			case 824:
+				return setOfInt64;
+			case 825:
+				return setOfFloat;
+			case 826:
+				return setOfBuffer;
+			case 827:
+				return setOfDate;
+			case 828:
+				return setOfStr;
 			case 850:
 				return mapOfInt32Int32;
 			case 851:

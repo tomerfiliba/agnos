@@ -222,11 +222,11 @@ public class myserver {
 
 		public FeatureTest.Everything func_of_everything(Byte a,
 				Short b, Integer c, Long d, Double e, Boolean f, Date g,
-				byte[] h, String i, List j, Map k,
-				FeatureTest.Address l, FeatureTest.IPerson m)
+				byte[] h, String i, List<Double> j, Set<Integer> k, Map<Integer, String> l,
+				FeatureTest.Address m, FeatureTest.IPerson n)
 				throws Exception {
 			return new FeatureTest.Everything(a, b, c, d, e, f, g, h,
-					i, j, k, l, m);
+					i, j, k, l, m, n);
 		}
 	}
 

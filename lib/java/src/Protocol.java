@@ -23,8 +23,6 @@ public class Protocol
 	public static final int		INFO_FUNCTIONS			= 2;
 	public static final int		INFO_FUNCCODES			= 3;
 
-	public static final int		AGNOS_MAGIC				= 0x5af30cf7;
-
 	public abstract static class PackedException extends Exception
 	{
 		public PackedException()
@@ -39,7 +37,31 @@ public class Protocol
 			super(message);
 		}
 	}
+	
+	public static class WrongAgnosVersion extends ProtocolError
+	{
+		public WrongAgnosVersion(String message)
+		{
+			super(message);
+		}
+	}
 
+	public static class WrongServiceName extends ProtocolError
+	{
+		public WrongServiceName(String message)
+		{
+			super(message);
+		}
+	}
+
+	public static class IncompatibleServiceVersion extends ProtocolError
+	{
+		public IncompatibleServiceVersion(String message)
+		{
+			super(message);
+		}
+	}
+	
 	public static class GenericException extends Exception
 	{
 		public String	message;
@@ -608,14 +630,11 @@ public class Protocol
 	{
 		public ClientUtils	_utils;
 
-		public HeteroMap getServiceInfo(int code) throws Exception
+		public HeteroMap getServiceInfo(int code) throws IOException,
+			ProtocolError, PackedException, GenericException
 		{
 			return _utils.getServiceInfo(code);
 		}
 
-		/*
-		 * public byte[] tunnelRequest(byte[] blob) throws Exception { int seq =
-		 * _utils.tunnelRequest(blob); return (byte[])_utils.getReply(seq); }
-		 */
 	}
 }

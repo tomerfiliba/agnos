@@ -21,6 +21,8 @@ public class myclient
 
 	protected static void test(FeatureTest.Client conn)
 	{
+		conn.AssertServiceCompatibility();
+	
 		var eve = conn.Person.init("eve", null,	null);
 		var adam = conn.Person.init("adam", null, null);
 		eve.marry(adam);

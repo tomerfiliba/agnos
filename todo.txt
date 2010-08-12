@@ -3,17 +3,15 @@
 	* check version compatibility on connection
 	* document agnos
 
-* intergrate with XSF
-	* buildbot tests+
-	* simple init+
-	* multiple versions+
-	* srcgen: read docstrings
+* srcgen
+	* include docstrings, comments
+	* simplify enums?
 
 * features:
-    * packers should operate on transports, not streams
 	* async, timed
 	* SSL
 	* rlist, rmap (by ref)
+    * add set[T]
 
 * targets:
 	1. HTML docs

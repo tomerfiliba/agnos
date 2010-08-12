@@ -97,7 +97,7 @@ class HeteroMap(object):
     def iter_fields(self):
         for k, v in self.fields.iteritems():
             vv, kp, vp = v
-            yield k, kp, vv, kp
+            yield k, kp, vv, vp
     def keys(self):
         return self.fields.keys()
     def pop(self, key, *default):

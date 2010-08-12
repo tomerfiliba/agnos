@@ -28,7 +28,7 @@ def type_to_packer(t):
         return "packers.Str"
     elif t == compiler.t_heteromap:
         return "heteroMapPacker"
-    elif isinstance(t, (compiler.TList, compiler.TMap)):
+    elif isinstance(t, (compiler.TList, compiler.TSet, compiler.TMap)):
         return "_%s" % (t.stringify(),)
     elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
         return "%sPacker" % (t.name,)
@@ -85,7 +85,7 @@ class PythonTarget(TargetBase):
             STMT("from functools import partial")
             SEP()
             
-            STMT("AGNOS_VERSION = 'Agnos 1.0'")
+            STMT("AGNOS_VERSION = '{0}'", compiler.AGNOS_VERSION)
             STMT("IDL_MAGIC = '{0}'", service.digest)
             if not service.clientversion:
                 STMT("CLIENT_VERSION = None")
@@ -138,6 +138,8 @@ class PythonTarget(TargetBase):
     def _generate_templated_packer_for_type(self, tp):
         if isinstance(tp, compiler.TList):
             return "packers.ListOf(%s, %s)" % (tp.id, self._generate_templated_packer_for_type(tp.oftype),)
+        if isinstance(tp, compiler.TSet):
+            return "packers.SetOf(%s, %s)" % (tp.id, self._generate_templated_packer_for_type(tp.oftype),)
         elif isinstance(tp, compiler.TMap):
             return "packers.MapOf(%s, %s, %s)" % (tp.id, self._generate_templated_packer_for_type(tp.keytype),
                 self._generate_templated_packer_for_type(tp.valtype))
@@ -150,7 +152,7 @@ class PythonTarget(TargetBase):
         SEP = module.sep
         
         for tp in service.all_types:
-            if isinstance(tp, (compiler.TList, compiler.TMap)):
+            if isinstance(tp, (compiler.TList, compiler.TSet, compiler.TMap)):
                 definition = self._generate_templated_packer_for_type(tp)
                 STMT("_{0} = {1}", tp.stringify(), definition)
 
@@ -337,7 +339,7 @@ class PythonTarget(TargetBase):
                         with BLOCK("anno = ", prefix = "{", suffix = "}"):
                             STMT('"{0}" : "{1}",', anno.name, repr(anno.value))
                         STMT('funcinfo.add("annotations", packers. anno, packers.map_of_str_str)')
-                    STMT('info.add({0}, packers.Str, funcinfo, packers.BuiltinHeteroMapPacker)', func.id)
+                    STMT('info.add({0}, packers.Int32, funcinfo, packers.BuiltinHeteroMapPacker)', func.id)
             SEP()
             with BLOCK("def process_get_function_codes(self, info)"):
                 for func in service.funcs.values():
@@ -384,57 +386,7 @@ class PythonTarget(TargetBase):
 
         with BLOCK("class Client(agnos.BaseClient)"):
             with BLOCK("def __init__(self, transport)"):
-                for member in service.types.values():
-                    if isinstance(member, compiler.Record):
-                        if is_complex_type(member):
-                            self.generate_record_packer(module, member)
-                            SEP()
-                STMT("packed_exceptions = {}")
-                STMT("self._utils = agnos.ClientUtils(transport, packed_exceptions)")
-                SEP()
-                STMT("storer = lambda proxy: -1 if proxy is None else proxy._objref")
-                for tp in service.types.values():
-                    if isinstance(tp, compiler.Class):
-                        STMT("{0}ObjRef = packers.ObjRef({1}, storer, partial(self._utils.get_proxy, {0}Proxy, self))", tp.name, tp.id)
-                SEP()
-                STMT("packers_map = {}")
-                STMT("heteroMapPacker = packers.HeteroMapPacker(999, packers_map)")
-                STMT("packers_map[999] = heteroMapPacker")
-                SEP()
-                self.generate_templated_packers(module, service)
-                SEP()
-                for mem in service.types.values():
-                    if isinstance(mem, compiler.Exception):
-                        STMT("packed_exceptions[{0}] = {1}", mem.id, type_to_packer(mem))
-                SEP()
-                for tp in service.types.values():
-                    STMT("packers_map[{0}] = {1}", tp.id, type_to_packer(tp))
-                SEP()
-                with BLOCK("class Functions(object)"):
-                    with BLOCK("def __init__(self, utils)"):
-                        STMT("self.utils = utils")
-                    for func in service.funcs.values():
-                        args = ", ".join(arg.name for arg in func.args)
-                        with BLOCK("def sync_{0}(_self, {1})", func.id, args):
-                            with BLOCK("with _self.utils.invocation({0}, {1}) as seq", func.id, type_to_packer(func.type)):
-                                if not func.args:
-                                    STMT("pass")
-                                else:
-                                    for arg in func.args:
-                                        STMT("{0}.pack({1}, _self.utils.transport)", type_to_packer(arg.type), arg.name)
-                            STMT("return _self.utils.get_reply(seq)")
-                SEP()
-                STMT("self._funcs = Functions(self._utils)")
-                SEP()
-                namespaces = set(func.namespace.split(".")[0] for func in service.funcs.values() 
-                    if func.namespace)
-                for ns in namespaces:
-                    STMT("self.{0} = agnos.Namespace()", ns.split(".")[0])
-                for func in service.funcs.values():
-                    if not func.namespace or not func.clientside:
-                        continue
-                    head, tail = (func.namespace + "." + func.name).split(".", 1)
-                    STMT("self.{0}['{1}'] = self._funcs.sync_{2}", head, tail, func.id)
+                self.generate_client_ctor(module, service)
             SEP()
             for func in service.funcs.values():
                 if not isinstance(func, compiler.Func) or func.namespace or not func.clientside:
@@ -442,6 +394,99 @@ class PythonTarget(TargetBase):
                 args = ", ".join(arg.name for arg in func.args)
                 with BLOCK("def {0}(_self, {1})", func.name, args):
                     STMT("return _self._funcs.sync_{0}({1})", func.id, args)
+            SEP()
+            self.generate_client_helpers(module, service)
+
+    def generate_client_ctor(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+
+        for member in service.types.values():
+            if isinstance(member, compiler.Record):
+                if is_complex_type(member):
+                    self.generate_record_packer(module, member)
+                    SEP()
+        STMT("packed_exceptions = {}")
+        STMT("self._utils = agnos.ClientUtils(transport, packed_exceptions)")
+        SEP()
+        STMT("storer = lambda proxy: -1 if proxy is None else proxy._objref")
+        for tp in service.types.values():
+            if isinstance(tp, compiler.Class):
+                STMT("{0}ObjRef = packers.ObjRef({1}, storer, partial(self._utils.get_proxy, {0}Proxy, self))", tp.name, tp.id)
+        SEP()
+        STMT("packers_map = {}")
+        STMT("heteroMapPacker = packers.HeteroMapPacker(999, packers_map)")
+        STMT("packers_map[999] = heteroMapPacker")
+        SEP()
+        self.generate_templated_packers(module, service)
+        SEP()
+        for mem in service.types.values():
+            if isinstance(mem, compiler.Exception):
+                STMT("packed_exceptions[{0}] = {1}", mem.id, type_to_packer(mem))
+        SEP()
+        for tp in service.types.values():
+            STMT("packers_map[{0}] = {1}", tp.id, type_to_packer(tp))
+        SEP()
+        with BLOCK("class Functions(object)"):
+            with BLOCK("def __init__(self, utils)"):
+                STMT("self.utils = utils")
+            for func in service.funcs.values():
+                args = ", ".join(arg.name for arg in func.args)
+                with BLOCK("def sync_{0}(_self, {1})", func.id, args):
+                    with BLOCK("with _self.utils.invocation({0}, {1}) as seq", func.id, type_to_packer(func.type)):
+                        if not func.args:
+                            STMT("pass")
+                        else:
+                            for arg in func.args:
+                                STMT("{0}.pack({1}, _self.utils.transport)", type_to_packer(arg.type), arg.name)
+                    STMT("return _self.utils.get_reply(seq)")
+        SEP()
+        STMT("self._funcs = Functions(self._utils)")
+        SEP()
+        namespaces = set(func.namespace.split(".")[0] for func in service.funcs.values() 
+            if func.namespace)
+        for ns in namespaces:
+            STMT("self.{0} = agnos.Namespace()", ns.split(".")[0])
+        for func in service.funcs.values():
+            if not func.namespace or not func.clientside:
+                continue
+            head, tail = (func.namespace + "." + func.name).split(".", 1)
+            STMT("self.{0}['{1}'] = self._funcs.sync_{2}", head, tail, func.id)        
+
+    def generate_client_helpers(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+
+        with BLOCK("def assert_service_compatibility(self)"):
+            STMT("info = self.get_service_info(agnos.INFO_GENERAL)")
+            
+            with BLOCK('if info["AGNOS_VERSION"] != AGNOS_VERSION'):
+                STMT('''raise agnos.WrongAgnosVersion("expected version '%s' found '%s'" % (AGNOS_VERSION, agnos_version))''')
+            with BLOCK('if info["SERVICE_NAME"] != "{0}"', service.name):
+                STMT('''raise agnos.WrongServiceName("expected service '{0}', found '%s'" % (info["SERVICE_NAME"],))''', service.name)
+            with BLOCK('if CLIENT_VERSION'):
+                STMT('supported_versions = info.get("SUPPORTED_VERSIONS", None)')
+                with BLOCK('if not supported_versions or CLIENT_VERSION not in supported_versions'):
+                    STMT('''raise agnos.IncompatibleServiceVersion("server does not support client version '%s'" % (CLIENT_VERSION,))''')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

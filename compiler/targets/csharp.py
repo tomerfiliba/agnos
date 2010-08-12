@@ -30,6 +30,8 @@ def type_to_cs(t, proxy = False):
         return "Agnos.HeteroMap"
     elif isinstance(t, compiler.TList):
         return "IList<%s>" % (type_to_cs(t.oftype, proxy = proxy),)
+    elif isinstance(t, compiler.TSet):
+        return "ICollection<%s>" % (type_to_cs(t.oftype, proxy = proxy),)
     elif isinstance(t, compiler.TMap):
         return "IDictionary<%s, %s>" % (type_to_cs(t.keytype, proxy = proxy), 
             type_to_cs(t.valtype, proxy = proxy))
@@ -66,7 +68,7 @@ def type_to_packer(t):
         return "Packers.Str"
     elif t == compiler.t_heteromap:
         return "heteroMapPacker"
-    elif isinstance(t, (compiler.TList, compiler.TMap)):
+    elif isinstance(t, (compiler.TList, compiler.TSet, compiler.TMap)):
         return "_%s" % (t.stringify(),)
     elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
         return "%sPacker" % (t.name,)
@@ -170,7 +172,7 @@ class CSharpTarget(TargetBase):
         
         with BLOCK("namespace ServerBindings"):
             with BLOCK("public static partial class {0}", service.name):
-                STMT('public const string AGNOS_VERSION = "Agnos 1.0"', service.digest)
+                STMT('public const string AGNOS_VERSION = "{0}"', compiler.AGNOS_VERSION)
                 STMT('public const string IDL_MAGIC = "{0}"', service.digest)
                 STMT('public static readonly List<string> SUPPORTED_VERSIONS = new List<string> {{ {0} }}',
                     ", ".join('"%s"' % (ver,) for ver in service.versions))
@@ -221,7 +223,7 @@ class CSharpTarget(TargetBase):
         
         with BLOCK("namespace ClientBindings"):
             with BLOCK("public static partial class {0}", service.name):
-                STMT('public const string AGNOS_VERSION = "Agnos 1.0"', service.digest)
+                STMT('public const string AGNOS_VERSION = "{0}"', compiler.AGNOS_VERSION)
                 STMT('public const string IDL_MAGIC = "{0}"', service.digest)
                 if not service.clientversion:
                     STMT("public const string CLIENT_VERSION = null")
@@ -269,6 +271,9 @@ class CSharpTarget(TargetBase):
         if isinstance(tp, compiler.TList):
             return "new Packers.ListOf<%s>(%s, %s)" % (type_to_cs(tp.oftype, proxy = proxy), 
                 tp.id, self._generate_templated_packer_for_type(tp.oftype, proxy = proxy))
+        elif isinstance(tp, compiler.TSet):
+            return "new Packers.SetOf<%s>(%s, %s)" % (type_to_cs(tp.oftype, proxy = proxy), 
+                tp.id, self._generate_templated_packer_for_type(tp.oftype, proxy = proxy))
         elif isinstance(tp, compiler.TMap):
             return "new Packers.MapOf<%s, %s>(%s, %s, %s)" % (
                 type_to_cs(tp.keytype, proxy = proxy), 
@@ -285,7 +290,7 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
         
         for tp in service.all_types:
-            if isinstance(tp, (compiler.TList, compiler.TMap)):
+            if isinstance(tp, (compiler.TList, compiler.TSet, compiler.TMap)):
                 if is_complex_type(tp):
                     STMT("internal readonly Packers.AbstractPacker _{0}", tp.stringify())
                 else:
@@ -298,7 +303,7 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
         
         for tp in service.all_types:
-            if isinstance(tp, (compiler.TList, compiler.TMap)) and is_complex_type(tp):
+            if isinstance(tp, (compiler.TList, compiler.TSet, compiler.TMap)) and is_complex_type(tp):
                 definition = self._generate_templated_packer_for_type(tp, proxy)
                 STMT("_{0} = {1}", tp.stringify(), definition)
 
@@ -731,7 +736,7 @@ class CSharpTarget(TargetBase):
             SEP()
             self.generate_client_funcs(module, service)
             SEP()
-            self.generate_client_factories(module, service)
+            self.generate_client_helpers(module, service)
 
     def generate_client_ctor(self, module, service, namespaces, generated_records):
         BLOCK = module.block
@@ -819,7 +824,7 @@ class CSharpTarget(TargetBase):
                     STMT("{0} = new _Namespace{1}(funcs)", name, id)
         STMT("public readonly _Namespace{0} {1}", root["__id__"], root["__name__"])
 
-    def generate_client_factories(self, module, service):
+    def generate_client_helpers(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
@@ -838,6 +843,23 @@ class CSharpTarget(TargetBase):
             STMT("return new Client(new HttpClientTransport(uri))")
         with BLOCK("public static Client ConnectUri(Uri uri)"):
             STMT("return new Client(new HttpClientTransport(uri))")
+
+        SEP()
+        with BLOCK("public void AssertServiceCompatibility()"):
+            STMT("HeteroMap info = GetServiceInfo(Protocol.INFO_GENERAL)")
+            STMT('string agnos_version = (string)info["AGNOS_VERSION"]')
+            STMT('string service_name = (string)info["SERVICE_NAME"]')
+            
+            with BLOCK('if (agnos_version != AGNOS_VERSION)'):
+                STMT('''throw new WrongAgnosVersion("expected version '" + AGNOS_VERSION + "', found '" + agnos_version + "'")''')
+            with BLOCK('if (service_name != "{0}")', service.name):
+                STMT('''throw new WrongServiceName("expected service '{0}', found '" + service_name + "'")''', service.name)
+            with BLOCK('if (CLIENT_VERSION != null)'):
+                STMT("object output = null")
+                STMT('info.TryGetValue("SUPPORTED_VERSIONS", out output)')
+                STMT('List<string> supported_versions = (List<string>)output')
+                with BLOCK('if (supported_versions == null || !supported_versions.Contains(CLIENT_VERSION))'):
+                    STMT('''throw new IncompatibleServiceVersion("server does not support client version '" + CLIENT_VERSION + "'")''')
     
     def generate_client_internal_funcs(self, module, service):
         BLOCK = module.block

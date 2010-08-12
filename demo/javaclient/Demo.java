@@ -21,6 +21,8 @@ public class Demo
 	{
 		System.out.println(conn.getServiceInfo(agnos.Protocol.INFO_GENERAL));
 		
+		conn.assertServiceCompatibility();
+		
 		Mextra.StorageSystemProxy sys = conn.get_system();
 		System.out.println(sys);
 		

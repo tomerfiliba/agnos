@@ -28,9 +28,11 @@ def type_to_java(t, proxy = False):
     elif t == compiler.t_buffer:
         return "byte[]"
     elif t == compiler.t_heteromap:
-        return "agnos.HeteroMap"
+        return "HeteroMap"
     elif isinstance(t, compiler.TList):
         return "List<%s>" % (type_to_java(t.oftype, proxy = proxy),)
+    elif isinstance(t, compiler.TSet):
+        return "Set<%s>" % (type_to_java(t.oftype, proxy = proxy),)
     elif isinstance(t, compiler.TMap):
         return "Map<%s, %s>" % (type_to_java(t.keytype, proxy = proxy), 
             type_to_java(t.valtype, proxy = proxy))
@@ -67,7 +69,7 @@ def type_to_packer(t):
         return "Packers.Str"
     elif t == compiler.t_heteromap:
         return "heteroMapPacker"
-    elif isinstance(t, (compiler.TList, compiler.TMap)):
+    elif isinstance(t, (compiler.TList, compiler.TSet, compiler.TMap)):
         return "_%s" % (t.stringify(),)
     elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
         return "%sPacker" % (t.name,)
@@ -158,7 +160,7 @@ class JavaTarget(TargetBase):
         DOC = module.doc
         
         with BLOCK("public final class {0}", service.name):
-            STMT('public static final String AGNOS_VERSION = "Agnos 1.0"')
+            STMT('public static final String AGNOS_VERSION = "{0}"', compiler.AGNOS_VERSION)
             STMT('public static final String IDL_MAGIC = "{0}"', service.digest)
             with BLOCK('public static final List<String> SUPPORTED_VERSIONS = new ArrayList<String>()',
                     prefix = "{{", suffix = "}};"):
@@ -212,7 +214,7 @@ class JavaTarget(TargetBase):
         DOC = module.doc
 
         with BLOCK("public final class {0}", service.name):
-            STMT('public static final String AGNOS_VERSION = "Agnos 1.0"')
+            STMT('public static final String AGNOS_VERSION = "{0}"', compiler.AGNOS_VERSION)
             STMT('public static final String IDL_MAGIC = "{0}"', service.digest)
             if not service.clientversion:
                 STMT("public static final String CLIENT_VERSION = null")
@@ -264,6 +266,9 @@ class JavaTarget(TargetBase):
         if isinstance(tp, compiler.TList):
             return "new Packers.ListOf<%s>(%s, %s)" % (type_to_java(tp, proxy = proxy), 
                 tp.id, self._generate_templated_packer_for_type(tp.oftype, proxy = proxy),)
+        elif isinstance(tp, compiler.TSet):
+            return "new Packers.SetOf<%s>(%s, %s)" % (type_to_java(tp, proxy = proxy), 
+                tp.id, self._generate_templated_packer_for_type(tp.oftype, proxy = proxy),)
         elif isinstance(tp, compiler.TMap):
             return "new Packers.MapOf<%s, %s>(%s, %s, %s)" % (type_to_java(tp.keytype, proxy = proxy), 
                 type_to_java(tp.valtype, proxy = proxy), 
@@ -279,7 +284,7 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         
         for tp in service.all_types:
-            if isinstance(tp, (compiler.TList, compiler.TMap)):
+            if isinstance(tp, (compiler.TList, compiler.TSet, compiler.TMap)):
                 STMT("protected final Packers.AbstractPacker _{0}", tp.stringify())
 
     def generate_templated_packers_impl(self, module, service, proxy):
@@ -288,7 +293,7 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         
         for tp in service.all_types:
-            if isinstance(tp, (compiler.TList, compiler.TMap)):
+            if isinstance(tp, (compiler.TList, compiler.TSet, compiler.TMap)):
                 STMT("_{0} = {1}", tp.stringify(), self._generate_templated_packer_for_type(tp, proxy = proxy))
     
     def generate_enum(self, module, enum):
@@ -715,7 +720,7 @@ class JavaTarget(TargetBase):
             SEP()
             self.generate_client_funcs(module, service)
             SEP()
-            self.generate_client_factories(module, service)
+            self.generate_client_helpers(module, service)
             SEP()
             DOC("$$extend-client$$")
             SEP()
@@ -808,7 +813,7 @@ class JavaTarget(TargetBase):
                     STMT("{0} = new _Namespace{1}(funcs)", name, id)
         STMT("public final _Namespace{0} {1}", root["__id__"], root["__name__"])
 
-    def generate_client_factories(self, module, service):
+    def generate_client_helpers(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
@@ -827,7 +832,22 @@ class JavaTarget(TargetBase):
             STMT("return new Client(new Transports.HttpClientTransport(url))")
         with BLOCK("public static Client connectUrl(URL url) throws Exception"):
             STMT("return new Client(new Transports.HttpClientTransport(url))")
-
+        
+        SEP()
+        with BLOCK("public void assertServiceCompatibility() throws IOException, Protocol.ProtocolError, Protocol.PackedException, Protocol.GenericException"):
+            STMT("HeteroMap info = getServiceInfo(Protocol.INFO_GENERAL)")
+            STMT('String agnos_version = (String)info.get("AGNOS_VERSION")')
+            STMT('String service_name = (String)info.get("SERVICE_NAME")')
+            
+            with BLOCK('if (!agnos_version.equals(AGNOS_VERSION))'):
+                STMT('''throw new Protocol.WrongAgnosVersion("expected version '" + AGNOS_VERSION + "', found '" + agnos_version + "'")''')
+            with BLOCK('if (!service_name.equals("{0}"))', service.name):
+                STMT('''throw new Protocol.WrongServiceName("expected service '{0}', found '" + service_name + "'")''', service.name)
+            with BLOCK('if (CLIENT_VERSION != null)'):
+                STMT('List<String> supported_versions = (List<String>)info.get("SUPPORTED_VERSIONS")')
+                with BLOCK('if (supported_versions == null || !supported_versions.contains(CLIENT_VERSION))'):
+                    STMT('''throw new Protocol.IncompatibleServiceVersion("server does not support client version '" + CLIENT_VERSION + "'")''')
+    
     def generate_client_internal_funcs(self, module, service):
         BLOCK = module.block
         STMT = module.stmt

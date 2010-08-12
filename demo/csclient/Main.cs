@@ -16,6 +16,8 @@ namespace csclient
 			
 			System.Console.WriteLine(conn.GetServiceInfo(Agnos.Protocol.INFO_GENERAL));
 			
+			conn.AssertServiceCompatibility();
+			
 			var sys = conn.get_system();
 			//var v = conn.Volume.create_volume();
 			

@@ -22,3 +22,6 @@
 bin
 obj
 build
+demo/autogen
+gen-*
+

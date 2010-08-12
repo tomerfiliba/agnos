@@ -21,6 +21,8 @@ public class myclient
 	protected static void test(FeatureTest.Client conn)
 			throws Exception
 	{
+		conn.assertServiceCompatibility();
+		
 		FeatureTest.PersonProxy eve = conn.Person.init("eve", null,
 				null);
 		FeatureTest.PersonProxy adam = conn.Person.init("adam", null,
