@@ -440,12 +440,12 @@ class RootNode(object):
                     classes[child2.attrs["name"]] = child2
 
         for cls in classes.values():
-            if cls.attrs["extends"]:
-                continue
-            cls.attrs["extends"] = []
-            for basename in cls.block.src_bases:
-                if basename in classes:
-                    cls.attrs["extends"].append(basename)
+            if not cls.attrs["extends"]:
+                cls.attrs["extends"] = []
+                for basename in cls.block.src_bases:
+                    if basename in classes:
+                        cls.attrs["extends"].append(basename)
+            cls.attrs["extends"] = [classes[basecls] for basecls in cls.attrs["extends"]]
 
         for versions in members.values():
             ordered = [n for v, n in sorted(versions.items())]

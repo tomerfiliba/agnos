@@ -102,11 +102,17 @@ class Element(object):
         self.doc = attrib.pop("doc", "").strip()
         self.annotations = annotations
         if "id" in attrib:
-            self.id = int(attrib.pop("id"))
+            if "id" not in self.ATTRS:
+                self.id = int(attrib.pop("id"))
         else:
             self.id = ID_GENERATOR.next()
         for name, checker in self.ATTRS.iteritems():
-            value = checker(name, attrib.pop(name, None)) 
+            try:
+                value = checker(name, attrib.pop(name, None))
+            except IDLError, ex:
+                print ex
+                print self.XML_TAG, attrib, members, annotations
+                raise
             setattr(self, name, value)
         if attrib:
             raise IDLError("unknown attributes: %r" % (attrib.keys(),))
@@ -328,7 +334,7 @@ class Class(Element):
         self.inherited_attrs = {}
         self.inherited_methods = {}
         for mem in members:
-            if isinstance(mem, InheritedAttr):
+            if mem.name in self.inherited_methods or mem.name in self.inherited_attrs:
                 if mem.name in self.inherited_attrs:
                     raise IDLError("inherited-attr %r already given" % (mem.name,))
                 self.inherited_attrs[mem.name] = (mem.getid, mem.setid)

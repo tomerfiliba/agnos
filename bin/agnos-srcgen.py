@@ -27,7 +27,7 @@ parser.add_option("-r", "--rootpackage", dest="rootpackage", default=None,
                   help="specify the root package name (by default, the top directory is used)", 
                   metavar="NAME")
 parser.add_option("--historyfile", dest="history_file", default=None,
-                  help="specify the history file to use (by default, '.agnos-srcgen-history' in the top directory is used)", 
+                  help="specify the history file to use (by default, '_history' is appended to the idlfile's name)", 
                   metavar="NAME")
 
 

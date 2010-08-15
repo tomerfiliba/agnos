@@ -1,6 +1,6 @@
 import os
 import itertools
-from .syntree import parse_source_files, SourceError
+from .syntree import parse_source_files, SourceError, MethodNode, ClassAttrNode
 from agnos_compiler.compiler.langs import python, xml
 from agnos_compiler.compiler import compile
 from agnos_compiler.compiler.targets import PythonTarget
@@ -56,6 +56,9 @@ class IdlGenerator(object):
     
     def BLOCK(self, *args, **kwargs):
         return self.doc.block(*args, **kwargs)
+    def LEAF(self, *args, **kwargs):
+        with self.doc.block(*args, **kwargs):
+            pass
     def ATTR(self, *args, **kwargs):
         return self.doc.attr(*args, **kwargs)
     def TEXT(self, *args, **kwargs):
@@ -104,6 +107,7 @@ class IdlGenerator(object):
     
     def _generate_key(self, *args):
         return self.service_name + "." + ".".join(a for a in args if a)
+        # return ".".join(a for a in args if a)
     
     def visit_FuncNode(self, node):
         key = self._generate_key(node.parent.modinfo.attrs["namespace"], node.attrs["name"], node.attrs["version"])
@@ -121,11 +125,35 @@ class IdlGenerator(object):
             for child in node.children:
                 child.accept(self)
     
+    def _get_derived_members(self, node, methods, attrs):
+        for child in node.children:
+            if isinstance(child, MethodNode):
+                methods[child.attrs["name"]] = child 
+            elif isinstance(child, ClassAttrNode):
+                attrs[child.attrs["name"]] = child
+        for basecls in node.attrs["extends"]:
+            self._get_derived_members(basecls, methods, attrs) 
+    
     def visit_ClassNode(self, node):
         with self.BLOCK("class", name = node.attrs["name"]):
+            inherited_methods = {}
+            inherited_attrs = {}
+
             if node.attrs["extends"]:
-                self.ATTR(extends = ",".join(node.attrs["extends"]))
+                self.ATTR(extends = ",".join(base.attrs["name"] for base in node.attrs["extends"]))
+                for basecls in node.attrs["extends"]:
+                    self._get_derived_members(basecls, inherited_methods, inherited_attrs)
+            
             self.emit_doc(node)
+            for name, method in inherited_methods.iteritems():
+                key = self._generate_key(node.attrs["name"], method.attrs["name"], method.attrs["version"])
+                self.LEAF("inherited-method", name = method.attrs["name"], id = self.get_id(key))
+
+            for name, attr in inherited_attrs.iteritems():
+                gkey = self._generate_key(node.attrs["name"], attr.attrs["name"], "get")
+                skey = self._generate_key(node.attrs["name"], attr.attrs["name"], "set")
+                self.LEAF("inherited-attr", name = attr.attrs["name"], getid = self.get_id(gkey), setid = self.get_id(skey))
+
             for child in node.children:
                 child.accept(self)
     
@@ -188,7 +216,7 @@ class IdlGenerator(object):
     def visit_RecordNode(self, node):
         with self.BLOCK("record", name = node.attrs["name"]):
             if node.attrs["extends"]:
-                self.ATTR(extends = ",".join(node.attrs["extends"]))
+                self.ATTR(extends = ",".join(base.attrs["name"] for base in node.attrs["extends"]))
             self.emit_doc(node)
             for child in node.children:
                 child.accept(self)
@@ -196,7 +224,7 @@ class IdlGenerator(object):
     def visit_ExceptionNode(self, node):
         with self.BLOCK("exception", name = node.attrs["name"]):
             if node.attrs["extends"]:
-                self.ATTR(extends = ",".join(node.attrs["extends"]))
+                self.ATTR(extends = ",".join(base.attrs["name"] for base in node.attrs["extends"]))
             self.emit_doc(node)
             for child in node.children:
                 child.accept(self)
