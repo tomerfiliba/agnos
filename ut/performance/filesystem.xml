@@ -1,0 +1,26 @@
+<service name="filesystem">
+	<class name="File">
+		<method name="read" type="buffer">
+			<arg name="count" type="int32"/>
+		</method>
+		<method name="write" type="void">
+			<arg name="data" type="buffer"/>
+		</method>
+		<method name="close" type="void"/>
+		<method name="seek" type="void">
+			<arg name="pos" type="int64"/>
+		</method>
+		<method name="tell" type="int64"/>
+	</class>
+	
+	<enum name="FileMode">
+		<member name="READ" value="1"/>
+		<member name="WRITE" value="2"/>
+		<member name="READWRITE" value="3"/>
+	</enum>
+	
+	<func name="open" type="File">
+		<arg name="filename" type="str"/>
+		<arg name="mode" type="FileMode"/>
+	</func>
+</service>

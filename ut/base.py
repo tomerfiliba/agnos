@@ -32,8 +32,9 @@ class TargetTest(unittest.TestCase):
 
     def run_agnosc(self, target, filename, outdir):
         print "agnosc %s --> %s" % (filename, outdir)
-        self.run_cmdline([sys.executable, "bin/agnosc.py", "-t", target, "-o", outdir, filename], cwd = self.ROOT_DIR)
-    
+        self.run_cmdline([sys.executable, "bin/agnosc.py", "-t", target, 
+            "-o", outdir, filename], cwd = self.ROOT_DIR)
+
 
 
 

@@ -1,17 +1,12 @@
-* TOP
-	* performance tests
-	* check version compatibility on connection
-	* document agnos
-
 * srcgen
 	* include docstrings, comments
 	* simplify enums?
 
 * features:
+	* document agnos
 	* async, timed
 	* SSL
 	* rlist, rmap (by ref)
-    * add set[T]
 
 * targets:
 	1. HTML docs
