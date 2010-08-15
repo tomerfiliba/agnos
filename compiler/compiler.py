@@ -123,6 +123,7 @@ class Element(object):
         e.__dict__.update(self.__dict__)
         e._resolved = False
         e._postprocessed = False
+        e.id = None
         for k, v in kwargs.iteritems():
             setattr(e, k, v)
         return e
