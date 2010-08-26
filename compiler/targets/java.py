@@ -1,9 +1,8 @@
 import itertools
 import os
-from contextlib import contextmanager
-from .base import TargetBase, is_complex_type, NOOP
-from ..langs import clike
+from .base import TargetBase, NOOP
 from .. import compiler
+from ..compiler import is_complex_type
 
 
 def type_to_java(t, proxy = False):
@@ -107,14 +106,8 @@ def const_to_java(typ, val):
 
 
 class JavaTarget(TargetBase):
-    DEFAULT_TARGET_DIR = "."
-    
-    @contextmanager
-    def new_module(self, filename):
-        mod = clike.Module()
-        yield mod
-        with self.open(filename, "w") as f:
-            f.write(mod.render())
+    from ..langs import clike
+    LANGUAGE = clike
 
     def generate(self, service):
         pkg = "%s.server_bindings" % (service.package,)
@@ -189,7 +182,7 @@ class JavaTarget(TargetBase):
             DOC("consts", spacer = True)
             for member in service.consts.values():
                 STMT("public static final {0} {1} = {2}", type_to_java(member.type), 
-                    member.name, const_to_java(member.type, member.value))
+                    member.fullname, const_to_java(member.type, member.value))
             SEP()
             
             DOC("classes", spacer = True)
@@ -243,8 +236,9 @@ class JavaTarget(TargetBase):
 
             DOC("consts", spacer = True)
             for member in service.consts.values():
-                STMT("public static final {0} {1} = {2}", type_to_java(member.type), 
-                    member.name, const_to_java(member.type, member.value))
+                if not member.namespace:
+                    STMT("public static final {0} {1} = {2}", type_to_java(member.type), 
+                        member.name, const_to_java(member.type, member.value))
             SEP()
             
             DOC("classes", spacer = True)
@@ -778,6 +772,19 @@ class JavaTarget(TargetBase):
                         node[part]["__name__"] = part
                     node = node[part]
                 node[func.name] = func
+
+        for const in service.consts.values():
+            if const.namespace:
+                node = root
+                fns = const.namespace.split(".")
+                for part in fns:
+                    if part not in node:
+                        node[part] = {}
+                        node[part]["__id__"] = nsid.next()
+                        node[part]["__name__"] = part
+                    node = node[part]
+                node[const.name] = const
+        
         roots = []
         for name, node in root.iteritems():
             if isinstance(node, dict):
@@ -789,7 +796,7 @@ class JavaTarget(TargetBase):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
-        with BLOCK("public final class _Namespace{0}", root["__id__"]):
+        with BLOCK("public static final class _Namespace{0}", root["__id__"]):
             subnamespaces = []
             STMT("protected final _Functions _funcs")
             SEP()
@@ -806,6 +813,12 @@ class JavaTarget(TargetBase):
                             STMT("_funcs.sync_{0}({1})", func.id, callargs)
                         else:
                             STMT("return _funcs.sync_{0}({1})", func.id, callargs)
+                elif isinstance(node, compiler.Const):
+                    STMT("public static final {0} {1} = {2}", type_to_java(node.type), 
+                        node.name, const_to_java(node.type, node.value))
+                else:
+                    pass
+                    #raise TypeError("expected func or const, not %r" % (type(node),))
             SEP()
             with BLOCK("protected _Namespace{0}(_Functions funcs)", root["__id__"]):
                 STMT("_funcs = funcs")

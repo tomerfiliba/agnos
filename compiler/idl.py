@@ -1,6 +1,8 @@
+"""
+a utility module for parsing consts and templated types (context-free grammar)
+"""
+
 WHITESPACE = " \t\n\r"
-IDENTIFIER_FIRST = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
-IDENTIFIER_REST = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789"
 
 class IDLError(Exception):
     pass

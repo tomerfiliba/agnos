@@ -1,11 +1,17 @@
+* priorities:
+	* HTML docs
+	* c++
+	* sphinx?
+
+=============================================================================
+
 * srcgen
 	* simplify enums?
 
 * features:
-	* document agnos
 	* async, timed
 	* SSL
-	* rlist, rmap (by ref)
+	* rlist, rset, rmap (by ref)
 
 * targets:
 	1. HTML docs

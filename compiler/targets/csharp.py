@@ -1,8 +1,7 @@
 import itertools
-from contextlib import contextmanager
-from .base import TargetBase, is_complex_type, NOOP
-from ..langs import clike
+from .base import TargetBase, NOOP
 from .. import compiler
+from ..compiler import is_complex_type
 
 
 def type_to_cs(t, proxy = False):
@@ -106,15 +105,9 @@ def const_to_cs(typ, val):
 
 
 class CSharpTarget(TargetBase):
-    DEFAULT_TARGET_DIR = "."
-
-    @contextmanager
-    def new_module(self, filename):
-        mod = clike.Module()
-        yield mod
-        with self.open(filename, "w") as f:
-            f.write(mod.render())
-
+    from ..langs import clike
+    LANGUAGE = clike
+    
     def generate(self, service):
         with self.new_module("%sBindings.cs" % (service.name,)) as module:
             BLOCK = module.block
@@ -200,7 +193,7 @@ class CSharpTarget(TargetBase):
                 DOC("consts", spacer = True)
                 for member in service.consts.values():
                     STMT("public const {0} {1} = {2}", type_to_cs(member.type), 
-                        member.name, const_to_cs(member.type, member.value))
+                        member.fullname, const_to_cs(member.type, member.value))
                 SEP()
                 
                 DOC("classes", spacer = True)
@@ -252,8 +245,9 @@ class CSharpTarget(TargetBase):
 
                 DOC("consts", spacer = True)
                 for member in service.consts.values():
-                    STMT("public const {0} {1} = {2}", type_to_cs(member.type), 
-                        member.name, const_to_cs(member.type, member.value))
+                    if not member.namespace:
+                        STMT("public const {0} {1} = {2}", type_to_cs(member.type), 
+                            member.name, const_to_cs(member.type, member.value))
                 SEP()
                 
                 DOC("classes", spacer = True)
@@ -789,6 +783,19 @@ class CSharpTarget(TargetBase):
                         node[part]["__name__"] = part
                     node = node[part]
                 node[func.name] = func
+
+        for const in service.consts.values():
+            if const.namespace:
+                node = root
+                fns = const.namespace.split(".")
+                for part in fns:
+                    if part not in node:
+                        node[part] = {}
+                        node[part]["__id__"] = nsid.next()
+                        node[part]["__name__"] = part
+                    node = node[part]
+                node[const.name] = const
+
         roots = []
         for name, node in root.iteritems():
             if isinstance(node, dict):
@@ -817,6 +824,11 @@ class CSharpTarget(TargetBase):
                             STMT("_funcs.sync_{0}({1})", func.id, callargs)
                         else:
                             STMT("return _funcs.sync_{0}({1})", func.id, callargs)
+                elif isinstance(node, compiler.Const):
+                    STMT("public const {0} {1} = {2}", type_to_cs(node.type), 
+                        node.name, const_to_cs(node.type, node.value))
+                else:
+                    pass
             SEP()
             with BLOCK("internal _Namespace{0}(_Functions funcs)", root["__id__"]):
                 STMT("_funcs = funcs")

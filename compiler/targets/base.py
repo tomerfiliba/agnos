@@ -1,5 +1,5 @@
 import os
-from .. import compiler, is_complex_type
+from contextlib import contextmanager
 
 
 class NOOP(object):
@@ -11,12 +11,21 @@ NOOP = NOOP()
 
 
 class TargetBase(object):
+    LANGUAGE = None
+    
     def __init__(self, path):
         self.path = path
         self.mkdir("")
-    
+
     def generate(self, service):
         raise NotImplementedError()
+
+    @contextmanager
+    def new_module(self, filename):
+        mod = self.LANGUAGE.Module()
+        yield mod
+        with self.open(filename, "w") as f:
+            f.write(mod.render())
     
     def mkdir(self, name):
         fullname = os.path.join(self.path, name)

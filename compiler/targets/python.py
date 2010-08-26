@@ -1,8 +1,6 @@
-import itertools
-from contextlib import contextmanager
-from .base import TargetBase, is_complex_type
-from ..langs.python import Module
+from .base import TargetBase
 from .. import compiler
+from ..compiler import is_complex_type
 
 
 def type_to_packer(t):
@@ -57,20 +55,14 @@ def const_to_python(typ, val):
     elif typ == compiler.t_string:
         return repr(val)
     elif isinstance(typ, compiler.TList):
-        return "[%s]" % (", ".join(const_to_cs(typ.oftype, item) for item in val),)
+        return "[%s]" % (", ".join(const_to_python(typ.oftype, item) for item in val),)
     else:
         raise IDLError("%r cannot be converted to a python const" % (val,))
 
 
 class PythonTarget(TargetBase):
-    DEFAULT_TARGET_DIR = "."
-
-    @contextmanager
-    def new_module(self, filename):
-        mod = Module()
-        yield mod
-        with self.open(filename, "w") as f:
-            f.write(mod.render())
+    from ..langs import python
+    LANGUAGE = python
 
     def generate(self, service):
         with self.new_module("%s_bindings.py" % (service.name,)) as module:
@@ -114,7 +106,7 @@ class PythonTarget(TargetBase):
             
             DOC("consts", spacer = True)
             for member in service.consts.values():
-                STMT("{0} = {1}", member.name, const_to_python(member.type, member.value))
+                STMT("{0} = {1}", member.fullname, const_to_python(member.type, member.value))
             SEP()
             
             DOC("classes", spacer = True)
@@ -444,15 +436,22 @@ class PythonTarget(TargetBase):
         SEP()
         STMT("self._funcs = Functions(self._utils)")
         SEP()
-        namespaces = set(func.namespace.split(".")[0] for func in service.funcs.values() 
+        namespaces1 = set(func.namespace.split(".")[0] for func in service.funcs.values() 
             if func.namespace)
-        for ns in namespaces:
+        namespaces2 = set(const.namespace.split(".")[0] for const in service.consts.values() 
+            if const.namespace)
+        for ns in namespaces1 | namespaces2:
             STMT("self.{0} = agnos.Namespace()", ns.split(".")[0])
         for func in service.funcs.values():
             if not func.namespace or not func.clientside:
                 continue
             head, tail = (func.namespace + "." + func.name).split(".", 1)
             STMT("self.{0}['{1}'] = self._funcs.sync_{2}", head, tail, func.id)        
+        for const in service.consts.values():
+            if not const.namespace:
+                continue
+            head, tail = (const.namespace + "." + const.name).split(".", 1)
+            STMT("self.{0}['{1}'] = {2}", head, tail, const_to_python(const.type, const.value))        
 
     def generate_client_helpers(self, module, service):
         BLOCK = module.block

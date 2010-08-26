@@ -59,7 +59,6 @@ if __name__ == "__main__":
                 outdir = os.path.dirname(filename)
                 if not outdir:
                     outdir = "."
-                outdir = os.path.join(outdir, target.DEFAULT_TARGET_DIR)
             compile(filename, target(outdir))
     except IDLError:
         raise

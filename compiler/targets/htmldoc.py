@@ -4,8 +4,6 @@ from .. import compiler
  
 
 class DocTarget(TargetBase):
-    DEFAULT_TARGET_DIR = "."
-    
     def generate(self, service):
         doc = html.HtmlDoc()
         self.docify_service(service, doc)

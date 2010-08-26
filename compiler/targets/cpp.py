@@ -5,6 +5,5 @@ from .. import compiler
 
 
 class CPPTarget(TargetBase):
-    DEFAULT_TARGET_DIR = "gen-cpp"
-
+    pass
 
