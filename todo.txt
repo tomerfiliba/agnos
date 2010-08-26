@@ -1,5 +1,4 @@
 * srcgen
-	* include docstrings, comments
 	* simplify enums?
 
 * features:

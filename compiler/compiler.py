@@ -149,7 +149,7 @@ class Element(object):
                 if "doc" in node.attrib:
                     raise IDLError("doc for %r given more than once" % (node.tag,))
                 node.attrib["doc"] = child.text
-            if child.tag == "annotation":
+            elif child.tag == "annotation":
                 annotations.append(Annotation(child.attrib["name"], child.attrib["value"]))
             elif child.tag not in mapping:
                 raise IDLError("invalid element %r inside %r" % (child.tag, cls))

@@ -106,8 +106,7 @@ class IdlGenerator(object):
             child.accept(self)
     
     def _generate_key(self, *args):
-        return self.service_name + "." + ".".join(a for a in args if a)
-        # return ".".join(a for a in args if a)
+        return self.service_name + "." + ".".join(str(a) for a in args if a)
     
     def visit_FuncNode(self, node):
         key = self._generate_key(node.parent.modinfo.attrs["namespace"], node.attrs["name"], node.attrs["version"])

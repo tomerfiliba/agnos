@@ -35,10 +35,14 @@ TheSystem = None
 
 #:: @func get_system type=StorageSystem version=1
 def old_get_system():
+    """this method is deprecated
+    and should not
+    be used by new clients""" 
     return 1/0
 
 #:: @func get_system type=StorageSystem version=2
 def get_system():
+    """this method returns the root system objects, which is a singleton""" 
     global TheSystem
     if not TheSystem:
         TheSystem = StorageSystem(1000 * VOL_SIZE_DIVISOR)

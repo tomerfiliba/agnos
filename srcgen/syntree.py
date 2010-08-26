@@ -45,17 +45,35 @@ class SourceBlock(object):
         parent.children.append(child)
         self.stack.append(child)
     
+    def get_immediate_lines(self):
+        depths = set()
+        l = self.fileinfo.lines[self.lineno]
+        min_ind = len(l) - len(l.lstrip())
+        for i in xrange(self.lineno + 1, len(self.fileinfo.lines)):
+            l = self.fileinfo.lines[i]
+            l2 = l.strip()
+            if not l2 or l2.startswith("#"):
+                continue
+            l3 = l.lstrip()
+            ind = len(l) - len(l3)
+            if ind < min_ind:
+                break
+            depths.add(ind)
+            if len(depths) > 2 or ind < max(depths):
+                break
+            yield i, ind, l3
+    
     @classmethod
     def blockify_source(cls, fileinfo):
         root = cls(None, None, None, fileinfo)
         for lineno, line in enumerate(fileinfo.lines):
-            line2 = line.strip()
+            line2 = line.lstrip()
             indentation = len(line) - len(line2)
             line = line2
             if not line.startswith("#::"):
                 continue
             line = line[3:]
-            line2 = line.strip()
+            line2 = line.lstrip()
             indentation += len(line) - len(line2)
             line = line2
             if not line:
@@ -141,8 +159,8 @@ class TokenizedBlock(object):
 def _get_src_name(blk):
     if blk.srcblock.lineno is None:
         return None, ()
-    for i in range(blk.srcblock.lineno + 1, len(blk.srcblock.fileinfo.lines)):
-        l = blk.srcblock.fileinfo.lines[i].strip()
+    for i, ind, line in blk.srcblock.get_immediate_lines():
+        l = line.strip()
         if l.startswith("def "):
             name = l.split()[1].split("(")[0]
             return name, ()
@@ -163,8 +181,8 @@ def auto_fill_name(argname, blk):
 def auto_enum_name(argname, blk):
     assert argname == "name"
     if argname not in blk.args:
-        for i in range(blk.srcblock.lineno + 1, len(blk.srcblock.fileinfo.lines)):
-            l = blk.srcblock.fileinfo.lines[i].strip()
+        for i, ind, line in blk.srcblock.get_immediate_lines():
+            l = line.strip()
             if "=" in l:
                 n, v = l.split("=", 1)
                 blk.args[argname] = n.strip()
@@ -176,8 +194,8 @@ def auto_enum_name(argname, blk):
 def auto_enum_value(argname, blk):
     assert argname == "value"
     if argname not in blk.args:
-        for i in range(blk.srcblock.lineno + 1, len(blk.srcblock.fileinfo.lines)):
-            l = blk.srcblock.fileinfo.lines[i].strip()
+        for i, ind, line in blk.srcblock.get_immediate_lines():
+            l = line.strip()
             if "=" in l:
                 n, v = l.split("=", 1)
                 blk.args[argname] = int(v.strip())
@@ -189,8 +207,8 @@ def auto_enum_value(argname, blk):
 def auto_const_name(argname, blk):
     assert argname == "name"
     if argname not in blk.args:
-        for i in range(blk.srcblock.lineno + 1, len(blk.srcblock.fileinfo.lines)):
-            l = blk.srcblock.fileinfo.lines[i].strip()
+        for i, ind, line in blk.srcblock.get_immediate_lines():
+            l = line.strip()
             if "=" in l:
                 n, v = l.split("=", 1)
                 blk.args[argname] = n.strip()
@@ -202,8 +220,8 @@ def auto_const_name(argname, blk):
 def auto_const_value(argname, blk):
     assert argname == "value"
     if argname not in blk.args:
-        for i in range(blk.srcblock.lineno + 1, len(blk.srcblock.fileinfo.lines)):
-            l = blk.srcblock.fileinfo.lines[i].strip()
+        for i, ind, line in blk.srcblock.get_immediate_lines():
+            l = line.strip()
             if "=" in l:
                 n, v = l.split("=", 1)
                 blk.args[argname] = v.strip()
@@ -240,6 +258,7 @@ class AstNode(object):
     TAG = None
     CHILDREN = []
     ATTRS = {}
+    GET_DOCSTRING = False
     
     def __init__(self, block, parent = None):
         assert block.tag == self.TAG, (block.tag, self.TAG)
@@ -249,7 +268,7 @@ class AstNode(object):
         self.attrs = {}
         self.children = []
         self.doc = block.doc
-        
+
         if "srcname" in block.args:
             self.block.src_name = block.args.pop("srcname")
         elif "src_name" in block.args:
@@ -270,6 +289,34 @@ class AstNode(object):
                 raise SourceError(self.block.srcblock, "tag %r is invalid in this context", child.tag,
                     parent_node = self)
             self.children.append(cls2(child, self))
+        
+        if self.GET_DOCSTRING and not self.doc:
+            self.doc = self._get_docstring(block)
+
+    def _get_docstring(self, block):
+        start_line = -1
+        for i, ind, line in block.srcblock.get_immediate_lines():
+            if line.startswith("'''") or line.startswith('"""'):
+                start_line = i
+                quote = line[:3]
+                break
+            elif line.startswith("'") or line.startswith('"'):
+                start_line = i
+                quote = line[:1]
+                break
+        if start_line < 0:
+            return ()
+        doclines = []
+        for i in range(start_line, len(block.srcblock.fileinfo.lines)):
+            l = block.srcblock.fileinfo.lines[i]
+            l2 = l.rstrip()
+            if l2.endswith(quote):
+                doclines.append(l2[:-len(quote)])
+                break
+            else:
+                doclines.append(l)
+        doclines[0] = doclines[0].lstrip()[len(quote):]
+        return doclines
     
     def postprocess(self):
         for child in self.children:
@@ -295,16 +342,19 @@ class MethodNode(AstNode):
     TAG = "method"
     ATTRS = dict(name = auto_fill_name, type = arg_default("void"), version = arg_default(None, int))
     CHILDREN = [MethodArgNode, AnnotationNode]
+    GET_DOCSTRING = True
 
 class StaticMethodNode(AstNode):
     TAG = "staticmethod"
     ATTRS = dict(name = auto_fill_name, type = arg_default("void"), version = arg_default(None, int))
     CHILDREN = [MethodArgNode, AnnotationNode]
+    GET_DOCSTRING = True
 
 class CtorNode(AstNode):
     TAG = "ctor"
     ATTRS = dict(version = arg_default(None, int))
     CHILDREN = [MethodArgNode, AnnotationNode]
+    GET_DOCSTRING = True
 
 def _get_versioned_members(node, members):
     for child in node.children:
@@ -332,7 +382,8 @@ class ClassNode(AstNode):
     TAG = "class"
     ATTRS = dict(name = auto_fill_name, extends = comma_sep_arg_value)
     CHILDREN = [ClassAttrNode, CtorNode, MethodNode, StaticMethodNode]
-
+    GET_DOCSTRING = True
+    
     def postprocess(self):
         members = {}
         _get_versioned_members(self, members)
@@ -351,6 +402,7 @@ class FuncNode(AstNode):
     TAG = "func"
     ATTRS = dict(name = auto_fill_name, type = arg_default("void"), version = arg_default(None, int))
     CHILDREN = [FuncArgNode, AnnotationNode]
+    GET_DOCSTRING = True
 
 class ServiceNode(AstNode):
     TAG = "service"
@@ -368,9 +420,11 @@ class RecordNode(AstNode):
     TAG = "record"
     ATTRS = dict(name = auto_fill_name, extends = comma_sep_arg_value)
     CHILDREN = [RecordAttrNode]
+    GET_DOCSTRING = True
 
 class ExceptionNode(RecordNode):
     TAG = "exception"
+    GET_DOCSTRING = True
 
 class EnumAttrNode(AstNode):
     TAG = "member"
