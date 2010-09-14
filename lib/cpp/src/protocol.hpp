@@ -95,16 +95,17 @@ namespace agnos
 
 			typedef map<objref_t, Cell> objmap_t;
 			objmap_t objmap;
+			shared_ptr<ITransport> transport;
 
 			void incref(objref_t id);
 			void decref(objref_t id);
-			void send_protocol_error(ITransport& transport, const ProtocolError& exc);
-			void send_generic_exception(ITransport& transport, const GenericException& exc);
-			void process_decref(ITransport& transport, int32_t seq);
-			void process_incref(ITransport& transport, int32_t seq);
-			void process_quit(ITransport& transport, int32_t seq);
-			void process_ping(ITransport& transport, int32_t seq);
-			void process_get_info(ITransport& transport, int32_t seq);
+			void send_protocol_error(const ProtocolError& exc);
+			void send_generic_exception(const GenericException& exc);
+			void process_decref(int32_t seq);
+			void process_incref(int32_t seq);
+			void process_quit(int32_t seq);
+			void process_ping(int32_t seq);
+			void process_get_info(int32_t seq);
 
 			virtual void store(objref_t oid, any obj);
 			virtual any load(objref_t oid);
@@ -112,13 +113,15 @@ namespace agnos
 			virtual void process_get_general_info(HeteroMap& map) = 0;
 			virtual void process_get_functions_info(HeteroMap& map) = 0;
 			virtual void process_get_function_codes(HeteroMap& map) = 0;
-			virtual void process_invoke(ITransport& transport, int32_t seq) = 0;
+			virtual void process_invoke(int32_t seq) = 0;
 
 		public:
-			BaseProcessor();
-			void process(ITransport& transport);
+			BaseProcessor(shared_ptr<ITransport> transport);
+			void process();
+			void serve();
 		};
 
+		//////////////////////////////////////////////////////////////////////
 
 		enum ReplySlotType
 		{
@@ -149,7 +152,7 @@ namespace agnos
 			packed_exceptions_map_type packed_exceptions_map;
 			map<int32_t, ReplySlot> replies;
 			map<objref_t, any> proxies;
-			int32_t _seq;
+			volatile int32_t _seq;
 
 			int32_t get_seq();
 			PackedException load_packed_exception();
@@ -157,9 +160,9 @@ namespace agnos
 			GenericException load_generic_exception();
 
 		public:
-			ITransport& transport;
+			shared_ptr<ITransport> transport;
 
-			ClientUtils(ITransport& transport, packed_exceptions_map_type packed_exceptions_map);
+			ClientUtils(shared_ptr<ITransport> transport, packed_exceptions_map_type packed_exceptions_map);
 
 			void close();
 

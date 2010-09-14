@@ -12,34 +12,34 @@ namespace Agnos.Servers
 {	
 	public abstract class BaseServer
 	{
-		protected Protocol.BaseProcessor processor;
+		protected Protocol.IProcessorFactory processorFactory;
 		protected ITransportFactory transportFactory;
 		
-		public BaseServer(Protocol.BaseProcessor processor, ITransportFactory transportFactory)
+		public BaseServer(Protocol.IProcessorFactory processorFactory, ITransportFactory transportFactory)
 		{
-			this.processor = processor;
+			this.processorFactory = processorFactory;
 			this.transportFactory = transportFactory;
 		}
 		
-		virtual public void serve()
+		virtual public void Serve()
 		{
 			while (true)
 			{
 				ITransport transport = transportFactory.Accept();
-				acceptClient(transport);
+				Protocol.BaseProcessor processor = processorFactory.Create(transport);
+				serveClient(processor);
 			}
 		}
 
-        protected abstract void acceptClient(ITransport transport);
+        protected abstract void serveClient(Protocol.BaseProcessor processor);
 
-        internal static void serveClient(Protocol.BaseProcessor processor, ITransport transport)
+        internal static void _serveClient(Protocol.BaseProcessor processor)
         {
             try
             {
-				//processor.handshake(transport);
                 while (true)
                 {
-                    processor.process(transport);
+                    processor.process();
                 }
             }
             catch (EndOfStreamException)
@@ -48,21 +48,21 @@ namespace Agnos.Servers
             }
 			finally 
 			{
-                transport.Close();
+                processor.transport.Close();
 			}
         }
     }
 
 	public class SimpleServer : BaseServer
 	{
-		public SimpleServer(Protocol.BaseProcessor processor, ITransportFactory transportFactory) :
-			base(processor, transportFactory)
+		public SimpleServer(Protocol.IProcessorFactory processorFactory, ITransportFactory transportFactory) :
+			base(processorFactory, transportFactory)
 		{
 		}
 
-        protected override void acceptClient(ITransport transport)
+        protected override void serveClient(Protocol.BaseProcessor processor)
 		{
-            serveClient(processor, transport);
+            _serveClient(processor);
 		}
 	}
 
@@ -70,39 +70,38 @@ namespace Agnos.Servers
     {
         //List<Thread> client_threads;
 
-        public ThreadedServer(Protocol.BaseProcessor processor, ITransportFactory transportFactory) :
-            base(processor, transportFactory)
+        public ThreadedServer(Protocol.IProcessorFactory processorFactory, ITransportFactory transportFactory) :
+            base(processorFactory, transportFactory)
         {
             //client_threads = new List<Thread>();
         }
 
-        protected override void acceptClient(ITransport transport)
+        protected override void serveClient(Protocol.BaseProcessor processor)
         {
             Thread t = new Thread(new ParameterizedThreadStart(threadproc));
             t.Start();
             //client_threads.Add(t);
-            //t.IsAlive
         }
 
         protected void threadproc(object obj)
         {
-            serveClient(processor, (ITransport)obj);
+            _serveClient((Protocol.BaseProcessor)obj);
         }
     }
 
     public class LibraryModeServer : BaseServer
     {
-		public LibraryModeServer(Protocol.BaseProcessor processor) : 
-			this(processor, new SocketTransportFactory("127.0.0.1", 0))
+		public LibraryModeServer(Protocol.IProcessorFactory processorFactory) : 
+			this(processorFactory, new SocketTransportFactory("127.0.0.1", 0))
         {
         }
 
-		public LibraryModeServer(Protocol.BaseProcessor processor, SocketTransportFactory transportFactory) :
-            base(processor, transportFactory)
+		public LibraryModeServer(Protocol.IProcessorFactory processorFactory, SocketTransportFactory transportFactory) :
+            base(processorFactory, transportFactory)
         {
         }
 
-        public override void serve()
+        public override void Serve()
         {
 			TcpListener listener = ((SocketTransportFactory)transportFactory).listener;
             IPEndPoint ep = (IPEndPoint)listener.LocalEndpoint;
@@ -116,17 +115,19 @@ namespace Agnos.Servers
             ITransport transport = transportFactory.Accept();
             transportFactory.Close();
 			
-            serveClient(processor, transport);
+            Protocol.BaseProcessor processor = processorFactory.Create(transport);
+            _serveClient(processor);
         }
 
-		protected override void acceptClient(ITransport transport)
+		protected override void serveClient(Protocol.BaseProcessor processor)
 		{
+			throw new InvalidOperationException("should never be called");
 		}
     }
 	
 	public class CmdlineServer
 	{
-		protected Protocol.BaseProcessor processor;
+		protected Protocol.IProcessorFactory processorFactory;
 		
 		protected delegate object ArgType(String value);
 		
@@ -188,9 +189,9 @@ namespace Agnos.Servers
 			LIB
 		}
 		
-		public CmdlineServer(Protocol.BaseProcessor processor)
+		public CmdlineServer(Protocol.IProcessorFactory processorFactory)
 		{
-			this.processor = processor;
+			this.processorFactory = processorFactory;
 		}
 		
 		public void Main(string[] args)
@@ -237,25 +238,25 @@ namespace Agnos.Servers
 					if ((int)options["port"] == 0) {
 						throw new ArgumentException("simple mode requires specifying a port");
 					}
-					server = new SimpleServer(processor, 
+					server = new SimpleServer(processorFactory, 
 					                          new SocketTransportFactory((string)options["host"], (int)options["port"]));
 					break;
 				case ServingMode.THREADED:
 					if ((int)options["port"] == 0) {
 						throw new ArgumentException("threaded mode requires specifying a port");
 					}
-					server = new ThreadedServer(processor, 
+					server = new ThreadedServer(processorFactory, 
 					                            new SocketTransportFactory((string)options["host"], (int)options["port"]));
 					break;
 				case ServingMode.LIB:
-					server = new LibraryModeServer(processor, 
+					server = new LibraryModeServer(processorFactory, 
 					                               new SocketTransportFactory((string)options["host"], (int)options["port"]));
 					break;
 				default:
 					throw new ArgumentException("invalid mode: " + mode);
 			}
 			
-			server.serve();
+			server.Serve();
 		}
 	}
 	

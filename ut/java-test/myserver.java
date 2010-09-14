@@ -232,7 +232,7 @@ public class myserver {
 
 	public static void main(String[] args) {
 		agnos.Servers.CmdlineServer server = new agnos.Servers.CmdlineServer(
-				new FeatureTest.Processor(new Handler()));
+				new FeatureTest.ProcessorFactory(new Handler()));
 		try {
 			server.main(args);
 		} catch (Exception ex) {

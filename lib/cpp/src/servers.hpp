@@ -18,28 +18,35 @@ namespace agnos
 		using agnos::transports::factories::SocketTransportFactory;
 
 
+		DEFINE_EXCEPTION(SwitchError);
+
 		class BaseServer
 		{
-		protected:
-			BaseProcessor& processor;
-			ITransportFactory& transport_factory;
+		public:
+			typedef shared_ptr<BaseProcessor> (*ProcessorFactory)(shared_ptr<ITransport>);
 
-			static void serve_client(BaseProcessor& processor, ITransport& transport);
-			virtual void accept_client(ITransport& transport) = 0;
+		protected:
+			ProcessorFactory processor_factory;
+			shared_ptr<ITransportFactory> transport_factory;
+
+			virtual void serve_client(shared_ptr<BaseProcessor> proc) = 0;
 
 		public:
-			BaseServer(BaseProcessor& processor, ITransportFactory& transport_factory);
+			BaseServer(ProcessorFactory processor_factory, shared_ptr<ITransportFactory> transport_factory);
 			virtual void serve();
+			virtual void close();
 		};
+
 
 		//////////////////////////////////////////////////////////////////////
 
 		class SimpleServer : public BaseServer
 		{
 		protected:
-			virtual void accept_client(ITransport& transport);
+			virtual void serve_client(shared_ptr<BaseProcessor> proc);
+
 		public:
-			SimpleServer(BaseProcessor& processor, ITransportFactory& transport_factory);
+			SimpleServer(ProcessorFactory processor_factory, shared_ptr<ITransportFactory> transport_factory);
 		};
 
 		//////////////////////////////////////////////////////////////////////
@@ -47,9 +54,12 @@ namespace agnos
 		class ThreadedServer : public BaseServer
 		{
 		protected:
-			virtual void accept_client(ITransport& transport);
+			vector<shared_ptr<boost::thread> > threads;
+
+			virtual void serve_client(shared_ptr<BaseProcessor> proc);
+
 		public:
-			ThreadedServer(BaseProcessor& processor, ITransportFactory& transport_factory);
+			ThreadedServer(ProcessorFactory processor_factory, shared_ptr<ITransportFactory> transport_factory);
 		};
 
 		//////////////////////////////////////////////////////////////////////
@@ -57,10 +67,11 @@ namespace agnos
 		class LibraryModeServer : public BaseServer
 		{
 		protected:
-			virtual void accept_client(ITransport& transport);
+			virtual void serve_client(shared_ptr<BaseProcessor> proc);
+
 		public:
-			LibraryModeServer(BaseProcessor& processor);
-			LibraryModeServer(BaseProcessor& processor, SocketTransportFactory& transport_factory);
+			LibraryModeServer(ProcessorFactory processor_factory);
+			LibraryModeServer(ProcessorFactory processor_factory, shared_ptr<SocketTransportFactory> transport_factory);
 			virtual void serve();
 		};
 
@@ -69,9 +80,10 @@ namespace agnos
 		class CmdlineServer
 		{
 		protected:
-			BaseProcessor& processor;
+			BaseServer::ProcessorFactory processor_factory;
+
 		public:
-			CmdlineServer(BaseProcessor& processor);
+			CmdlineServer(BaseServer::ProcessorFactory processor_factory);
 			int main(int argc, const char* argv[]);
 		};
 

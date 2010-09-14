@@ -195,6 +195,7 @@ class JavaTarget(TargetBase):
             self.generate_handler_interface(module, service)
             SEP()
             self.generate_processor(module, service)
+            self.generate_processor_factory(module, service)
             SEP()
             
             DOC("$$extend-main$$")
@@ -524,7 +525,8 @@ class JavaTarget(TargetBase):
             SEP()
             STMT("protected final Packers.HeteroMapPacker heteroMapPacker")
             SEP()
-            with BLOCK("public Processor(IHandler handler)"):
+            with BLOCK("public Processor(Transports.ITransport transport, IHandler handler)"):
+                STMT("super(transport)")
                 STMT("this.handler = handler")
                 for tp in service.types.values():
                     if isinstance(tp, compiler.Class):
@@ -546,6 +548,19 @@ class JavaTarget(TargetBase):
             SEP()
             DOC("$$extend-processor$$")
             SEP()
+        
+    def generate_processor_factory(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        
+        with BLOCK("public static class ProcessorFactory implements Protocol.IProcessorFactory"):
+            STMT("protected IHandler handler")
+            with BLOCK("public ProcessorFactory(IHandler handler)"):
+                STMT("this.handler = handler")
+            with BLOCK("public Protocol.BaseProcessor create(Transports.ITransport transport)"):
+                STMT("return new Processor(transport, this.handler)")
+        SEP()
 
     def generate_process_getinfo(self, module, service):
         BLOCK = module.block
@@ -587,7 +602,7 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
 
-        with BLOCK("protected void processInvoke(Transports.ITransport transport, int seq) throws Exception"):
+        with BLOCK("protected void processInvoke(int seq) throws Exception"):
             STMT("Packers.AbstractPacker packer = null")
             STMT("Object result = null")
             STMT("Object inst = null")

@@ -207,6 +207,7 @@ class CSharpTarget(TargetBase):
                 SEP()
                 
                 self.generate_processor(module, service)
+                self.generate_processor_factory(module, service)
     
     def generate_client_bindings(self, module, service):
         BLOCK = module.block
@@ -520,7 +521,7 @@ class CSharpTarget(TargetBase):
             SEP()
             STMT("protected readonly Packers.HeteroMapPacker heteroMapPacker")
             SEP()
-            with BLOCK("public Processor(IHandler handler)"):
+            with BLOCK("public Processor(ITransport transport, IHandler handler) : base(transport)"):
                 STMT("this.handler = handler")
                 for tp in service.types.values():
                     if isinstance(tp, compiler.Class):
@@ -539,6 +540,20 @@ class CSharpTarget(TargetBase):
             self.generate_process_getinfo(module, service)
             SEP()
             self.generate_process_invoke(module, service)
+            SEP()
+
+    def generate_processor_factory(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        
+        with BLOCK("public class ProcessorFactory : Protocol.IProcessorFactory"):
+            STMT("internal readonly IHandler handler")
+            with BLOCK("public ProcessorFactory(IHandler handler)"):
+                STMT("this.handler = handler")
+            with BLOCK("public Protocol.BaseProcessor Create(ITransport transport)"):
+                STMT("return new Processor(transport, this.handler)")
+        SEP()
 
     def generate_process_getinfo(self, module, service):
         BLOCK = module.block
@@ -587,7 +602,7 @@ class CSharpTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
 
-        with BLOCK("override protected void processInvoke(ITransport transport, int seq)"):
+        with BLOCK("override protected void processInvoke(int seq)"):
             STMT("Packers.AbstractPacker packer = null")
             STMT("object result = null")
             STMT("object inst = null")

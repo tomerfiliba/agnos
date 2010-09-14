@@ -13,6 +13,8 @@
 #include <boost/variant.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/weak_ptr.hpp>
+#include <boost/bind.hpp>
+#include <boost/scoped_ptr.hpp>
 //#include <boost/foreach.hpp>
 #include <boost/date_time.hpp>
 
@@ -35,6 +37,7 @@ namespace agnos
 	using boost::any;
 	using boost::shared_ptr;
 	using boost::weak_ptr;
+	using boost::scoped_ptr;
 	using boost::any_cast;
 	using boost::variant;
 

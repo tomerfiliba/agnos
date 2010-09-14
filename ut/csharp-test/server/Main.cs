@@ -265,7 +265,7 @@ public class myserver
 
 	public static void Main(string[] args) {
 		Agnos.Servers.CmdlineServer server = new Agnos.Servers.CmdlineServer(
-				new FeatureTest.Processor(new Handler()));
+				new FeatureTest.ProcessorFactory(new Handler()));
 		server.Main(args);
 	}
 

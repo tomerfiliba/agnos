@@ -73,6 +73,11 @@ namespace Agnos
 		public const int INFO_FUNCTIONS = 2;
 		public const int INFO_FUNCCODES = 3;
 
+		public interface IProcessorFactory
+		{
+			BaseProcessor Create(ITransport transport);
+		}
+		
 		public abstract class BaseProcessor : Packers.ISerializer
 		{
 			protected struct Cell
@@ -100,13 +105,16 @@ namespace Agnos
 			private ObjectIDGenerator idGenerator;
 			private int compacting_counter = 0;
 			private const int COMPACTING_THRESHOLD = 2000;
+			
+			public ITransport transport;
 
-			public BaseProcessor ()
+			public BaseProcessor (ITransport transport)
 			{
+				this.transport = transport;
 				idGenerator = new ObjectIDGenerator ();
 				cells = new Dictionary<long, Cell> ();
 			}
-
+			
 			public long store (Object obj)
 			{
 				if (obj == null) {
@@ -153,20 +161,20 @@ namespace Agnos
 				}
 			}
 
-			protected void sendProtocolError (ITransport transport, ProtocolError exc)
+			protected void sendProtocolError (ProtocolError exc)
 			{
 				Packers.Int8.pack (REPLY_PROTOCOL_ERROR, transport);
 				Packers.Str.pack (exc.ToString (), transport);
 			}
 
-			protected void sendGenericException (ITransport transport, GenericException exc)
+			protected void sendGenericException (GenericException exc)
 			{
 				Packers.Int8.pack (REPLY_GENERIC_EXCEPTION, transport);
 				Packers.Str.pack (exc.Message, transport);
 				Packers.Str.pack (exc.Traceback, transport);
 			}
 
-			public void process (ITransport transport)
+			public void process ()
 			{
 				int seq = transport.BeginRead ();
 				byte cmdid = (byte)(Packers.Int8.unpack (transport));
@@ -176,32 +184,32 @@ namespace Agnos
 				try {
 					switch (cmdid) {
 					case CMD_INVOKE:
-						processInvoke (transport, seq);
+						processInvoke (seq);
 						break;
 					case CMD_DECREF:
-						processDecref (transport, seq);
+						processDecref (seq);
 						break;
 					case CMD_INCREF:
-						processIncref (transport, seq);
+						processIncref (seq);
 						break;
 					case CMD_GETINFO:
-						processGetInfo (transport, seq);
+						processGetInfo (seq);
 						break;
 					case CMD_PING:
-						processPing (transport, seq);
+						processPing (seq);
 						break;
 					case CMD_QUIT:
-						processQuit (transport, seq);
+						processQuit (seq);
 						break;
 					default:
 						throw new ProtocolError ("unknown command code: " + cmdid);
 					}
 				} catch (ProtocolError exc) {
 					transport.Reset ();
-					sendProtocolError (transport, exc);
+					sendProtocolError (exc);
 				} catch (GenericException exc) {
 					transport.Reset ();
-					sendGenericException (transport, exc);
+					sendGenericException (exc);
 				} catch (Exception ex) {
 					transport.CancelWrite ();
 					throw ex;
@@ -211,30 +219,30 @@ namespace Agnos
 				transport.EndWrite ();
 			}
 
-			protected void processDecref (ITransport transport, int seq)
+			protected void processDecref (int seq)
 			{
 				long id = (long)(Packers.Int64.unpack (transport));
 				decref (id);
 			}
 
-			protected void processIncref (ITransport transport, int seq)
+			protected void processIncref (int seq)
 			{
 				long id = (long)(Packers.Int64.unpack (transport));
 				incref (id);
 			}
 
-			protected void processQuit (ITransport transport, int seq)
+			protected void processQuit (int seq)
 			{
 			}
 
-			protected void processPing (ITransport transport, int seq)
+			protected void processPing (int seq)
 			{
 				string message = (string)(Packers.Str.unpack (transport));
 				Packers.Int8.pack (REPLY_SUCCESS, transport);
 				Packers.Str.pack (message, transport);
 			}
 
-			protected void processGetInfo (ITransport transport, int seq)
+			protected void processGetInfo (int seq)
 			{
 				int code = (int)(Packers.Int32.unpack (transport));
 				HeteroMap info = new HeteroMap();
@@ -266,7 +274,7 @@ namespace Agnos
 			protected abstract void processGetFunctionsInfo (HeteroMap info);
 			protected abstract void processGetFunctionCodes (HeteroMap info);
 
-			protected abstract void processInvoke (ITransport transport, int seq);
+			protected abstract void processInvoke (int seq);
 		}
 
 		public class ClientUtils
@@ -292,7 +300,7 @@ namespace Agnos
 			}
 
 			public ITransport transport;
-			protected int seq;
+			protected int _seq;
 			protected Dictionary<int, ReplySlot> replies;
 			protected Dictionary<long, WeakReference> proxies;
 			protected Dictionary<int, Packers.AbstractPacker> packedExceptionsMap;
@@ -301,7 +309,7 @@ namespace Agnos
 			{
 				this.transport = transport;
 				this.packedExceptionsMap = packedExceptionsMap;
-				seq = 0;
+				_seq = 0;
 				replies = new Dictionary<int, ReplySlot> (128);
 				proxies = new Dictionary<long, WeakReference> ();
 			}
@@ -317,8 +325,8 @@ namespace Agnos
 			protected int getSeq ()
 			{
 				lock (this) {
-					seq += 1;
-					return seq;
+					_seq += 1;
+					return _seq;
 				}
 			}
 

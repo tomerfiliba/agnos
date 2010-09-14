@@ -3,6 +3,7 @@ package agnos;
 import java.io.*;
 import java.util.*;
 import java.lang.ref.*;
+import static agnos.Transports.ITransport;
 
 
 public class Protocol
@@ -132,15 +133,22 @@ public class Protocol
 		}
 	}
 
+	public interface IProcessorFactory
+	{
+		BaseProcessor create(ITransport transport);
+	}
+	
 	public static abstract class BaseProcessor implements Packers.ISerializer
 	{
 		protected Map<Long, Cell> cells;
 		protected ObjectIDGenerator idGenerator;
+		protected ITransport transport;
 
-		public BaseProcessor()
+		public BaseProcessor(ITransport transport)
 		{
 			cells = new HashMap<Long, Cell>();
 			idGenerator = new ObjectIDGenerator();
+			this.transport = transport;
 		}
 
 		public Long store(Object obj)
@@ -189,13 +197,13 @@ public class Protocol
 
 		protected static String getExceptionTraceback(Exception exc)
 		{
-			StringWriter sw = new StringWriter(2000);
+			StringWriter sw = new StringWriter(5000);
 			PrintWriter pw = new PrintWriter(sw, true);
 			exc.printStackTrace(pw);
 			pw.flush();
 			sw.flush();
 			String[] lines = sw.toString().split("\r\n|\r|\n");
-			StringWriter sw2 = new StringWriter(2000);
+			StringWriter sw2 = new StringWriter(5000);
 			// drop first line, it's the message, not traceback
 			for (int i = 1; i < lines.length; i++) {
 				sw2.write(lines[i]);
@@ -204,23 +212,20 @@ public class Protocol
 			return sw2.toString();
 		}
 
-		protected void sendProtocolError(Transports.ITransport transport,
-				ProtocolError exc) throws IOException
+		protected void sendProtocolError(ProtocolError exc) throws IOException
 		{
 			Packers.Int8.pack(REPLY_PROTOCOL_ERROR, transport);
 			Packers.Str.pack(exc.toString(), transport);
 		}
 
-		protected void sendGenericException(Transports.ITransport transport,
-				GenericException exc) throws IOException
+		protected void sendGenericException(GenericException exc) throws IOException
 		{
 			Packers.Int8.pack(REPLY_GENERIC_EXCEPTION, transport);
 			Packers.Str.pack(exc.message, transport);
 			Packers.Str.pack(exc.traceback, transport);
 		}
 
-		protected void process(Transports.ITransport transport)
-				throws Exception
+		protected void process() throws Exception
 		{
 			int seq = transport.beginRead();
 			int cmdid = (Byte) (Packers.Int8.unpack(transport));
@@ -230,32 +235,32 @@ public class Protocol
 			try {
 				switch (cmdid) {
 				case CMD_INVOKE:
-					processInvoke(transport, seq);
+					processInvoke(seq);
 					break;
 				case CMD_DECREF:
-					processDecref(transport, seq);
+					processDecref(seq);
 					break;
 				case CMD_INCREF:
-					processIncref(transport, seq);
+					processIncref(seq);
 					break;
 				case CMD_GETINFO:
-					processGetInfo(transport, seq);
+					processGetInfo(seq);
 					break;
 				case CMD_PING:
-					processPing(transport, seq);
+					processPing(seq);
 					break;
 				case CMD_QUIT:
-					processQuit(transport, seq);
+					processQuit(seq);
 					break;
 				default:
 					throw new ProtocolError("unknown command code: " + cmdid);
 				}
 			} catch (ProtocolError exc) {
 				transport.reset();
-				sendProtocolError(transport, exc);
+				sendProtocolError(exc);
 			} catch (GenericException exc) {
 				transport.reset();
-				sendGenericException(transport, exc);
+				sendGenericException(exc);
 			} catch (Exception ex) {
 				transport.cancelWrite();
 				throw ex;
@@ -265,35 +270,30 @@ public class Protocol
 			transport.endWrite();
 		}
 
-		protected void processDecref(Transports.ITransport transport,
-				Integer seq) throws IOException
+		protected void processDecref(Integer seq) throws IOException
 		{
 			Long id = (Long) (Packers.Int64.unpack(transport));
 			decref(id);
 		}
 
-		protected void processIncref(Transports.ITransport transport,
-				Integer seq) throws IOException
+		protected void processIncref(Integer seq) throws IOException
 		{
 			Long id = (Long) (Packers.Int64.unpack(transport));
 			incref(id);
 		}
 
-		protected void processQuit(Transports.ITransport transport, Integer seq)
-				throws IOException
+		protected void processQuit(Integer seq) throws IOException
 		{
 		}
 
-		protected void processPing(Transports.ITransport transport, Integer seq)
-				throws IOException
+		protected void processPing(Integer seq) throws IOException
 		{
 			String message = (String) (Packers.Str.unpack(transport));
 			Packers.Int8.pack(REPLY_SUCCESS, transport);
 			Packers.Str.pack(message, transport);
 		}
 
-		protected void processGetInfo(Transports.ITransport transport, int seq)
-				throws IOException
+		protected void processGetInfo(int seq) throws IOException
 		{
 			int code = (Integer) (Packers.Int32.unpack(transport));
 			HeteroMap map = new HeteroMap();
@@ -327,8 +327,7 @@ public class Protocol
 
 		protected abstract void processGetFunctionCodes(HeteroMap map);
 
-		abstract protected void processInvoke(Transports.ITransport transport,
-				int seq) throws Exception;
+		abstract protected void processInvoke(int seq) throws Exception;
 	}
 
 	protected enum ReplySlotType
@@ -361,8 +360,8 @@ public class Protocol
 		protected final Map<Integer, Packers.AbstractPacker> packedExceptionsMap;
 		protected final Map<Integer, ReplySlot> replies;
 		protected final Map<Long, WeakReference> proxies;
-		protected int seq;
-		public Transports.ITransport transport;
+		protected int _seq;
+		public ITransport transport;
 
 		public ClientUtils(Transports.ITransport transport,
 				Map<Integer, Packers.AbstractPacker> packedExceptionsMap)
@@ -370,7 +369,7 @@ public class Protocol
 		{
 			this.transport = transport;
 			this.packedExceptionsMap = packedExceptionsMap;
-			seq = 0;
+			_seq = 0;
 			replies = new HashMap<Integer, ReplySlot>(128);
 			proxies = new HashMap<Long, WeakReference>();
 		}
@@ -385,8 +384,8 @@ public class Protocol
 
 		protected synchronized int getSeq()
 		{
-			seq += 1;
-			return seq;
+			_seq += 1;
+			return _seq;
 		}
 
 		public Object getProxy(Long objref)

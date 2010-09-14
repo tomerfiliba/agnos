@@ -3,19 +3,24 @@ package agnos;
 import java.io.*;
 import java.util.*;
 import java.net.*;
+import static agnos.Protocol.IProcessorFactory;
+import static agnos.Protocol.BaseProcessor;
+import static agnos.Transports.ITransport;
+import static agnos.TransportFactories.ITransportFactory;
+import static agnos.TransportFactories.SocketTransportFactory;
 
 
 public class Servers
 {
 	public abstract static class BaseServer
 	{
-		protected Protocol.BaseProcessor processor;
-		protected TransportFactories.ITransportFactory transportFactory;
+		protected IProcessorFactory processorFactory;
+		protected ITransportFactory transportFactory;
 
-		public BaseServer(Protocol.BaseProcessor processor,
-				TransportFactories.ITransportFactory transportFactory)
+		public BaseServer(IProcessorFactory processorFactory,
+				ITransportFactory transportFactory)
 		{
-			this.processor = processor;
+			this.processorFactory = processorFactory;
 			this.transportFactory = transportFactory;
 		}
 
@@ -23,44 +28,41 @@ public class Servers
 		{
 			while (true) {
 				// System.err.println("accepting...");
-				Transports.ITransport transport = transportFactory.accept();
-				acceptClient(transport);
+				ITransport transport = transportFactory.accept();
+				BaseProcessor processor = processorFactory.create(transport);
+				serveClient(processor);
 			}
 		}
 
-		protected abstract void acceptClient(Transports.ITransport transport)
-				throws Exception;
+		protected abstract void serveClient(BaseProcessor processor) throws Exception;
 
-		protected static void serveClient(Protocol.BaseProcessor processor,
-				Transports.ITransport transport) throws Exception
+		protected static void _serveClient(BaseProcessor processor) throws Exception
 		{
 			try {
-				// processor.handshake(inStream, outStream);
 				while (true) {
-					processor.process(transport);
+					processor.process();
 				}
 			} catch (EOFException exc) {
 				// finish on EOF
 			} catch (SocketException exc) {
 				// System.out.println("!! SocketException: " + exc);
 			} finally {
-				transport.close();
+				processor.transport.close();
 			}
 		}
 	}
 
 	public static class SimpleServer extends BaseServer
 	{
-		public SimpleServer(Protocol.BaseProcessor processor,
-				TransportFactories.ITransportFactory transportFactory)
+		public SimpleServer(IProcessorFactory processorFactory,
+				ITransportFactory transportFactory)
 		{
-			super(processor, transportFactory);
+			super(processorFactory, transportFactory);
 		}
 
-		protected void acceptClient(Transports.ITransport transport)
-				throws Exception
+		protected void serveClient(BaseProcessor processor) throws Exception
 		{
-			serveClient(processor, transport);
+			_serveClient(processor);
 		}
 	}
 
@@ -68,73 +70,69 @@ public class Servers
 	{
 		protected static class ThreadProc extends Thread
 		{
-			protected Protocol.BaseProcessor processor;
-			protected Transports.ITransport transport;
+			protected BaseProcessor processor;
 
-			ThreadProc(Protocol.BaseProcessor processor,
-					Transports.ITransport transport)
+			ThreadProc(BaseProcessor processor)
 			{
 				this.processor = processor;
-				this.transport = transport;
 			}
 
 			public void run()
 			{
 				try {
-					BaseServer.serveClient(processor, transport);
+					BaseServer._serveClient(processor);
 				} catch (Exception ex) {
 					// should log this somehow
 				}
 			}
 		}
 
-		public ThreadedServer(Protocol.BaseProcessor processor,
-				TransportFactories.ITransportFactory transportFactory)
+		public ThreadedServer(IProcessorFactory processorFactory,
+				ITransportFactory transportFactory)
 		{
-			super(processor, transportFactory);
+			super(processorFactory, transportFactory);
 		}
 
-		protected void acceptClient(Transports.ITransport transport)
-				throws Exception
+		protected void serveClient(BaseProcessor processor) throws Exception
 		{
-			Thread t = new ThreadProc(processor, transport);
+			Thread t = new ThreadProc(processor);
 			t.start();
 		}
 	}
 
 	public static class LibraryModeServer extends BaseServer
 	{
-		public LibraryModeServer(Protocol.BaseProcessor processor)
+		public LibraryModeServer(IProcessorFactory processorFactory)
 				throws IOException, UnknownHostException
 		{
-			this(processor, new TransportFactories.SocketTransportFactory(
-					"127.0.0.1", 0));
+			this(processorFactory, new SocketTransportFactory("127.0.0.1", 0));
 		}
 
-		public LibraryModeServer(Protocol.BaseProcessor processor,
-				TransportFactories.SocketTransportFactory transportFactory)
+		public LibraryModeServer(IProcessorFactory processorFactory,
+				SocketTransportFactory transportFactory)
 				throws IOException
 		{
-			super(processor, transportFactory);
+			super(processorFactory, transportFactory);
 		}
 
 		public void serve() throws Exception
 		{
-			ServerSocket serverSocket = ((TransportFactories.SocketTransportFactory) transportFactory).serverSocket;
+			ServerSocket serverSocket = ((SocketTransportFactory) transportFactory).serverSocket;
 			System.out.println("AGNOS");
 			System.out.println(serverSocket.getInetAddress().getHostAddress());
 			System.out.println(serverSocket.getLocalPort());
 			System.out.flush();
 			System.out.close();
 
-			Transports.ITransport transport = transportFactory.accept();
+			ITransport transport = transportFactory.accept();
 			transportFactory.close();
-			serveClient(processor, transport);
+			BaseProcessor processor = processorFactory.create(transport);
+			_serveClient(processor);
 		}
 
-		protected void acceptClient(Transports.ITransport transport)
-				throws Exception
+		protected void serveClient(BaseProcessor processor) throws Exception
 		{
+			throw new AssertionError("should never be called");
 		}
 	}
 
@@ -148,16 +146,16 @@ public class Servers
 
 	public static class CmdlineServer
 	{
-		protected Protocol.BaseProcessor processor;
+		protected IProcessorFactory processorFactory;
 
 		protected static enum ServingMode
 		{
 			SIMPLE, THREADED, LIB
 		}
 
-		public CmdlineServer(Protocol.BaseProcessor processor)
+		public CmdlineServer(IProcessorFactory processorFactory)
 		{
-			this.processor = processor;
+			this.processorFactory = processorFactory;
 		}
 
 		public void main(String[] args) throws Exception
@@ -214,23 +212,20 @@ public class Servers
 					throw new SwitchException(
 							"simple server requires specifying a port");
 				}
-				server = new SimpleServer(processor,
-						new TransportFactories.SocketTransportFactory(host,
-								port));
+				server = new SimpleServer(processorFactory, 
+						new SocketTransportFactory(host, port));
 				break;
 			case THREADED:
 				if (port == 0) {
 					throw new SwitchException(
 							"threaded server requires specifying a port");
 				}
-				server = new ThreadedServer(processor,
-						new TransportFactories.SocketTransportFactory(host,
-								port));
+				server = new ThreadedServer(processorFactory,
+						new SocketTransportFactory(host, port));
 				break;
 			case LIB:
-				server = new LibraryModeServer(processor,
-						new TransportFactories.SocketTransportFactory(host,
-								port));
+				server = new LibraryModeServer(processorFactory,
+						new SocketTransportFactory(host, port));
 				break;
 			default:
 				throw new SwitchException("invalid mode: " + mode);

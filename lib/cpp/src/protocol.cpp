@@ -1,4 +1,5 @@
 #include "protocol.hpp"
+#include <boost/interprocess/detail/atomic.hpp>
 
 
 namespace agnos
@@ -28,49 +29,49 @@ namespace agnos
 			}
 		}
 
-		void BaseProcessor::send_protocol_error(ITransport& transport, const ProtocolError& exc)
+		void BaseProcessor::send_protocol_error(const ProtocolError& exc)
 		{
-			Int8Packer::pack(REPLY_PROTOCOL_ERROR, transport);
-			StringPacker::pack(exc.message, transport);
+			Int8Packer::pack(REPLY_PROTOCOL_ERROR, *transport);
+			StringPacker::pack(exc.message, *transport);
 		}
 
-		void BaseProcessor::send_generic_exception(ITransport& transport, const GenericException& exc)
+		void BaseProcessor::send_generic_exception(const GenericException& exc)
 		{
-			Int8Packer::pack(REPLY_GENERIC_EXCEPTION, transport);
-			StringPacker::pack(exc.message, transport);
-			StringPacker::pack(exc.traceback, transport);
+			Int8Packer::pack(REPLY_GENERIC_EXCEPTION, *transport);
+			StringPacker::pack(exc.message, *transport);
+			StringPacker::pack(exc.traceback, *transport);
 		}
 
-		void BaseProcessor::process_decref(ITransport& transport, int32_t seq)
+		void BaseProcessor::process_decref(int32_t seq)
 		{
 			objref_t oid;
-			Int64Packer::unpack(oid, transport);
+			Int64Packer::unpack(oid, *transport);
 			decref(oid);
 		}
 
-		void BaseProcessor::process_incref(ITransport& transport, int32_t seq)
+		void BaseProcessor::process_incref(int32_t seq)
 		{
 			objref_t oid;
-			Int64Packer::unpack(oid, transport);
+			Int64Packer::unpack(oid, *transport);
 			incref(oid);
 		}
 
-		void BaseProcessor::process_quit(ITransport& transport, int32_t seq)
+		void BaseProcessor::process_quit(int32_t seq)
 		{
 		}
 
-		void BaseProcessor::process_ping(ITransport& transport, int32_t seq)
+		void BaseProcessor::process_ping(int32_t seq)
 		{
 			string message;
-			StringPacker::unpack(message, transport);
-			Int8Packer::pack(REPLY_SUCCESS, transport);
-			StringPacker::pack(message, transport);
+			StringPacker::unpack(message, *transport);
+			Int8Packer::pack(REPLY_SUCCESS, *transport);
+			StringPacker::pack(message, *transport);
 		}
 
-		void BaseProcessor::process_get_info(ITransport& transport, int32_t seq)
+		void BaseProcessor::process_get_info(int32_t seq)
 		{
 			int32_t code;
-			Int32Packer::unpack(code, transport);
+			Int32Packer::unpack(code, *transport);
 			HeteroMap map;
 
 			switch (code) {
@@ -92,8 +93,8 @@ namespace agnos
 				break;
 			}
 
-			Int8Packer::pack(REPLY_SUCCESS, transport);
-			packers::builtin_heteromap_packer.pack(map, transport);
+			Int8Packer::pack(REPLY_SUCCESS, *transport);
+			packers::builtin_heteromap_packer.pack(map, *transport);
 		}
 
 		void BaseProcessor::store(objref_t oid, any obj)
@@ -112,64 +113,74 @@ namespace agnos
 
 		struct _TransportEndRead
 		{
-			ITransport& transport;
-			_TransportEndRead(ITransport& transport) : transport(transport)
+			shared_ptr<ITransport> transport;
+			_TransportEndRead(shared_ptr<ITransport> transport) : transport(transport)
 			{
 			}
 			~_TransportEndRead()
 			{
-				transport.end_read();
+				transport->end_read();
 			}
 		};
 
-		BaseProcessor::BaseProcessor() : objmap()
+		BaseProcessor::BaseProcessor(shared_ptr<ITransport> transport) :
+				objmap(), transport(transport)
 		{
 		}
 
-		void BaseProcessor::process(ITransport& transport)
+		void BaseProcessor::process()
 		{
-			int32_t seq = transport.begin_read();
+			int32_t seq = transport->begin_read();
 			_TransportEndRead finalizer(transport);
 			int8_t cmdid;
-			Int8Packer::unpack(cmdid, transport);
+			Int8Packer::unpack(cmdid, *transport);
 
-			transport.begin_write(seq);
+			transport->begin_write(seq);
 			try {
 				switch (cmdid) {
 				case CMD_INVOKE:
-					process_invoke(transport, seq);
+					process_invoke(seq);
 					break;
 				case CMD_DECREF:
-					process_decref(transport, seq);
+					process_decref(seq);
 					break;
 				case CMD_INCREF:
-					process_incref(transport, seq);
+					process_incref(seq);
 					break;
 				case CMD_GETINFO:
-					process_get_info(transport, seq);
+					process_get_info(seq);
 					break;
 				case CMD_PING:
-					process_ping(transport, seq);
+					process_ping(seq);
 					break;
 				case CMD_QUIT:
-					process_quit(transport, seq);
+					process_quit(seq);
 					break;
 				default:
 					throw ProtocolError("unknown command code: ");
 				}
 			} catch (ProtocolError exc) {
-				transport.reset();
-				send_protocol_error(transport, exc);
+				transport->reset();
+				send_protocol_error(exc);
 			} catch (GenericException exc) {
 				transport.reset();
-				send_generic_exception(transport, exc);
+				send_generic_exception(exc);
 			} catch (std::exception exc) {
-				transport.cancel_write();
+				transport->cancel_write();
 				throw exc;
 			}
 
-			transport.end_write();
+			transport->end_write();
 		}
+
+		void BaseProcessor::serve()
+		{
+			while (true) {
+				process();
+			}
+			transport->close();
+		}
+
 
 		//////////////////////////////////////////////////////////////////////
 		// ClientUtils
@@ -177,83 +188,82 @@ namespace agnos
 
 		int32_t ClientUtils::get_seq()
 		{
-			_seq += 1;
-			return _seq;
+			return boost::interprocess::detail::atomic_inc32((boost::uint32_t*)&_seq);
 		}
 
 		PackedException ClientUtils::load_packed_exception()
 		{
 			int32_t clsid;
-			Int32Packer::unpack(clsid, transport);
+			Int32Packer::unpack(clsid, *transport);
 			IPacker ** packer = map_get(*packed_exceptions_map, clsid, false);
 			if (packer == NULL) {
 				throw ProtocolError("unknown exception class id: ");
 			}
-			return (**packer).unpack_as<PackedException>(transport);
+			return (**packer).unpack_as<PackedException>(*transport);
 		}
 
 		ProtocolError ClientUtils::load_protocol_error()
 		{
 			string message;
-			StringPacker::unpack(message, transport);
+			StringPacker::unpack(message, *transport);
 			return ProtocolError(message);
 		}
 
 		GenericException ClientUtils::load_generic_exception()
 		{
 			string message;
-			StringPacker::unpack(message, transport);
+			StringPacker::unpack(message, *transport);
 			string traceback;
-			StringPacker::unpack(traceback, transport);
+			StringPacker::unpack(traceback, *transport);
 			return GenericException(message, traceback);
 		}
 
-		ClientUtils::ClientUtils(ITransport& transport, packed_exceptions_map_type packed_exceptions_map) :
+		ClientUtils::ClientUtils(shared_ptr<ITransport> transport, packed_exceptions_map_type packed_exceptions_map) :
 				packed_exceptions_map(packed_exceptions_map), transport(transport)
 		{
 		}
 
 		void ClientUtils::close()
 		{
-			transport.close();
+			transport->close();
 		}
 
 		void ClientUtils::decref(objref_t oid)
 		{
 			int32_t seq = get_seq();
-			transport.begin_write(seq);
-			Int8Packer::pack(CMD_DECREF, transport);
-			Int64Packer::pack(oid, transport);
-			transport.end_write();
+			transport->begin_write(seq);
+			Int8Packer::pack(CMD_DECREF, *transport);
+			Int64Packer::pack(oid, *transport);
+			transport->end_write();
 		}
 
 		int32_t ClientUtils::begin_call(int32_t funcid, IPacker& packer)
 		{
 			int32_t seq = get_seq();
-			transport.begin_write(seq);
-			Int8Packer::pack(CMD_INVOKE, transport);
-			Int32Packer::pack(funcid, transport);
+			transport->begin_write(seq);
+			Int8Packer::pack(CMD_INVOKE, *transport);
+			Int32Packer::pack(funcid, *transport);
 			map_put(replies, seq, ReplySlot(&packer));
 			return seq;
 		}
 
 		void ClientUtils::end_call()
 		{
-			transport.end_write();
+			transport->end_write();
 		}
 
 		void ClientUtils::cancel_call()
 		{
-			transport.cancel_write();
+			transport->cancel_write();
 		}
 
 		int ClientUtils::ping(string payload, int msecs)
 		{
 			int seq = get_seq();
-			transport.begin_write(seq);
-			Int8Packer::pack(CMD_PING, transport);
-			StringPacker::pack(payload, transport);
-			transport.end_write();
+			transport->begin_write(seq);
+			Int8Packer::pack(CMD_PING, *transport);
+			StringPacker::pack(payload, *transport);
+			transport->end_write();
 			map_put(replies, seq, ReplySlot(&string_packer));
 			string reply = get_reply_as<string>(seq, msecs);
 			if (reply != payload) {
@@ -265,10 +275,10 @@ namespace agnos
 		HeteroMap ClientUtils::get_service_info(int code)
 		{
 			int32_t seq = get_seq();
-			transport.begin_write(seq);
-			Int8Packer::pack(CMD_GETINFO, transport);
-			Int32Packer::pack(code, transport);
-			transport.end_write();
+			transport->begin_write(seq);
+			Int8Packer::pack(CMD_GETINFO, *transport);
+			Int32Packer::pack(code, *transport);
+			transport->end_write();
 			map_put(replies, seq, ReplySlot(&builtin_heteromap_packer));
 			return get_reply_as<HeteroMap>(seq);
 		}
