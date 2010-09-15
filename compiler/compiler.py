@@ -96,9 +96,10 @@ class Element(object):
     CHILDREN = []
     ATTRS = {}
     
-    def __init__(self, attrib, members, annotations):
+    def __init__(self, tag, attrib, members, annotations):
         self._resolved = False
         self._postprocessed = False
+        self.tag = tag
         self.doc = attrib.pop("doc", "").strip()
         self.annotations = annotations
         if "id" in attrib:
@@ -111,7 +112,7 @@ class Element(object):
                 value = checker(name, attrib.pop(name, None))
             except IDLError, ex:
                 print ex
-                print self.XML_TAG, attrib, members, annotations
+                print self.tag, attrib, members, annotations
                 raise
             setattr(self, name, value)
         if attrib:
@@ -144,10 +145,12 @@ class Element(object):
         """
         creates a compiler Element from the given XML element (node)
         """
-        if node.tag != cls.XML_TAG:
+        if node.tag not in cls.XML_TAG:
             raise IDLError("expected %r, not %r" % (cls.XML_TAG, node.tag,))
 
-        mapping = dict((childclass.XML_TAG, childclass) for childclass in cls.CHILDREN)
+        mapping = dict((tag, childclass) 
+            for childclass in cls.CHILDREN 
+                for tag in childclass.XML_TAG)
         members = []
         annotations = []
         for child in node:
@@ -158,10 +161,10 @@ class Element(object):
             elif child.tag == "annotation":
                 annotations.append(Annotation(child.attrib["name"], child.attrib["value"]))
             elif child.tag not in mapping:
-                raise IDLError("invalid element %r inside %r" % (child.tag, cls))
+                raise IDLError("invalid element %r inside %r" % (child.tag, cls.XML_TAG))
             else: 
                 members.append(mapping[child.tag].load(child))
-        return cls(node.attrib, members, annotations)
+        return cls(node.tag, node.attrib, members, annotations)
     
     def resolve(self, service):
         """resolve all type references (convert a type name to a type object)"""
@@ -189,7 +192,7 @@ class Element(object):
         """override me"""
 
 class EnumMember(Element):
-    XML_TAG = "member"
+    XML_TAG = ["member"]
     ATTRS = dict(name = IDENTIFIER, value = DEFAULT(None))
     
     def fixate(self, value):
@@ -200,7 +203,7 @@ class EnumMember(Element):
         return self.value
 
 class Enum(Element):
-    XML_TAG = "enum"
+    XML_TAG = ["enum"]
     CHILDREN = [EnumMember]
     ATTRS = dict(name = IDENTIFIER)
 
@@ -214,11 +217,11 @@ class Enum(Element):
             next = member.fixate(next) + 1
 
 class Typedef(Element):
-    XML_TAG = "typedef"
+    XML_TAG = ["typedef"]
     ATTRS = dict(name = IDENTIFIER, type = TYPENAME_NONVOID)
 
 class Const(Element):
-    XML_TAG = "const"
+    XML_TAG = ["const"]
     ATTRS = dict(name = IDENTIFIER, type = TYPENAME_NONVOID, value = REQUIRED, namespace = DEFAULT(None))
     
     def _resolve(self, service):
@@ -241,11 +244,11 @@ class Const(Element):
 
 
 class RecordMember(Element):
-    XML_TAG = "attr"
+    XML_TAG = ["attr"]
     ATTRS = dict(name = IDENTIFIER, type = TYPENAME_NONVOID)
 
 class Record(Element):
-    XML_TAG = "record"
+    XML_TAG = ["record"]
     CHILDREN = [RecordMember]
     ATTRS = dict(name = IDENTIFIER, extends = TYPENAME_COMMA_SEP)
 
@@ -282,10 +285,10 @@ class Record(Element):
         self.members = members
 
 class Exception(Record):
-    XML_TAG = "exception"
+    XML_TAG = ["exception"]
 
 class ClassAttr(Element):
-    XML_TAG = "attr"
+    XML_TAG = ["attr"]
     ATTRS = dict(name = IDENTIFIER, type = TYPENAME_NONVOID, 
         get = STR_TO_BOOL(True), set = STR_TO_BOOL(True), 
         getid = DEFAULT(None), setid = DEFAULT(None))
@@ -308,11 +311,11 @@ class ClassAttr(Element):
         service.known_ids.add(self.setid)
 
 class MethodArg(Element):
-    XML_TAG = "arg"
+    XML_TAG = ["arg"]
     ATTRS = dict(name = IDENTIFIER, type = TYPENAME_NONVOID)
 
 class ClassMethod(Element):
-    XML_TAG = "method"
+    XML_TAG = ["method"]
     CHILDREN = [MethodArg]
     ATTRS = dict(name = IDENTIFIER, type = TYPENAME, clientside = STR_TO_BOOL(True))
 
@@ -326,15 +329,15 @@ class ClassMethod(Element):
             arg.resolve(service)
 
 class InheritedAttr(Element):
-    XML_TAG = "inherited-attr"
+    XML_TAG = ["inherited-attr"]
     ATTRS = dict(name = IDENTIFIER, getid = DEFAULT(None), setid = DEFAULT(None))
     
 class InheritedMethod(Element):
-    XML_TAG = "inherited-method"
+    XML_TAG = ["inherited-method"]
     ATTRS = dict(name = IDENTIFIER, id = REQUIRED)
 
 class Class(Element):
-    XML_TAG = "class"
+    XML_TAG = ["class"]
     CHILDREN = [ClassMethod, ClassAttr, InheritedMethod, InheritedAttr]
     ATTRS = dict(name = IDENTIFIER, extends = TYPENAME_COMMA_SEP)
     
@@ -439,11 +442,11 @@ class Class(Element):
         return bases
 
 class FuncArg(Element):
-    XML_TAG = "arg"
+    XML_TAG = ["arg"]
     ATTRS = dict(name = IDENTIFIER, type = TYPENAME_NONVOID)
 
 class Func(Element):
-    XML_TAG = "func"
+    XML_TAG = ["func", "function"]
     CHILDREN = [FuncArg]
     ATTRS = dict(name = IDENTIFIER, type = TYPENAME, namespace = DEFAULT(None),
         clientside = STR_TO_BOOL(True))
@@ -688,7 +691,7 @@ class Service(Element):
     this is where everything is done: loading of all the sub-elements,
     followed by type resolution and post-processing
     """
-    XML_TAG = "service"
+    XML_TAG = ["service"]
     CHILDREN = [Typedef, Const, Enum, Record, Exception, Class, Func]
     ATTRS = dict(name = IDENTIFIER, package = DEFAULT(None), versions = COMMA_SEP, 
         clientversion = DEFAULT(None))

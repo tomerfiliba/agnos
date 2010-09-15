@@ -140,12 +140,12 @@ public class HeteroMap implements Map
 		Packers.AbstractPacker keypacker = getPackerForBuiltinType(key);
 		Packers.AbstractPacker valpacker = getPackerForBuiltinType(value);
 		
-		if (keypacker == null) {
+		/*if (keypacker == null) {
 			keypacker = getKeyPacker(key);
 		}
 		if (valpacker == null) {
 			valpacker = getValuePacker(key);
-		}
+		}*/
 		if (keypacker == null || valpacker == null) {
 			throw new IllegalArgumentException("cannot deduce key or value packer, use the 4-argument put()");
 		}

@@ -4,24 +4,25 @@ import java.io.*;
 import java.util.*;
 import java.lang.ref.*;
 
+
 public class Protocol
 {
-	public static final byte	CMD_PING				= 0;
-	public static final byte	CMD_INVOKE				= 1;
-	public static final byte	CMD_QUIT				= 2;
-	public static final byte	CMD_DECREF				= 3;
-	public static final byte	CMD_INCREF				= 4;
-	public static final byte	CMD_GETINFO				= 5;
+	public static final byte CMD_PING = 0;
+	public static final byte CMD_INVOKE = 1;
+	public static final byte CMD_QUIT = 2;
+	public static final byte CMD_DECREF = 3;
+	public static final byte CMD_INCREF = 4;
+	public static final byte CMD_GETINFO = 5;
 
-	public static final byte	REPLY_SUCCESS			= 0;
-	public static final byte	REPLY_PROTOCOL_ERROR	= 1;
-	public static final byte	REPLY_PACKED_EXCEPTION	= 2;
-	public static final byte	REPLY_GENERIC_EXCEPTION	= 3;
+	public static final byte REPLY_SUCCESS = 0;
+	public static final byte REPLY_PROTOCOL_ERROR = 1;
+	public static final byte REPLY_PACKED_EXCEPTION = 2;
+	public static final byte REPLY_GENERIC_EXCEPTION = 3;
 
-	public static final int		INFO_META				= 0;
-	public static final int		INFO_GENERAL			= 1;
-	public static final int		INFO_FUNCTIONS			= 2;
-	public static final int		INFO_FUNCCODES			= 3;
+	public static final int INFO_META = 0;
+	public static final int INFO_GENERAL = 1;
+	public static final int INFO_FUNCTIONS = 2;
+	public static final int INFO_FUNCCODES = 3;
 
 	public abstract static class PackedException extends Exception
 	{
@@ -37,7 +38,7 @@ public class Protocol
 			super(message);
 		}
 	}
-	
+
 	public static class WrongAgnosVersion extends ProtocolError
 	{
 		public WrongAgnosVersion(String message)
@@ -61,11 +62,11 @@ public class Protocol
 			super(message);
 		}
 	}
-	
+
 	public static class GenericException extends Exception
 	{
-		public String	message;
-		public String	traceback;
+		public String message;
+		public String traceback;
 
 		public GenericException(String message, String traceback)
 		{
@@ -85,8 +86,8 @@ public class Protocol
 
 	public static final class ObjectIDGenerator
 	{
-		protected Map<Object, Long>	map;
-		protected Long				counter;
+		protected Map<Object, Long> map;
+		protected Long counter;
 
 		public ObjectIDGenerator()
 		{
@@ -110,8 +111,8 @@ public class Protocol
 
 	protected static final class Cell
 	{
-		public int			refcount;
-		public final Object	obj;
+		public int refcount;
+		public final Object obj;
 
 		public Cell(Object obj)
 		{
@@ -133,8 +134,8 @@ public class Protocol
 
 	public static abstract class BaseProcessor implements Packers.ISerializer
 	{
-		protected Map<Long, Cell>	cells;
-		protected ObjectIDGenerator	idGenerator;
+		protected Map<Long, Cell> cells;
+		protected ObjectIDGenerator idGenerator;
 
 		public BaseProcessor()
 		{
@@ -228,27 +229,26 @@ public class Protocol
 
 			try {
 				switch (cmdid) {
-					case CMD_INVOKE:
-						processInvoke(transport, seq);
-						break;
-					case CMD_DECREF:
-						processDecref(transport, seq);
-						break;
-					case CMD_INCREF:
-						processIncref(transport, seq);
-						break;
-					case CMD_GETINFO:
-						processGetInfo(transport, seq);
-						break;
-					case CMD_PING:
-						processPing(transport, seq);
-						break;
-					case CMD_QUIT:
-						processQuit(transport, seq);
-						break;
-					default:
-						throw new ProtocolError("unknown command code: "
-								+ cmdid);
+				case CMD_INVOKE:
+					processInvoke(transport, seq);
+					break;
+				case CMD_DECREF:
+					processDecref(transport, seq);
+					break;
+				case CMD_INCREF:
+					processIncref(transport, seq);
+					break;
+				case CMD_GETINFO:
+					processGetInfo(transport, seq);
+					break;
+				case CMD_PING:
+					processPing(transport, seq);
+					break;
+				case CMD_QUIT:
+					processQuit(transport, seq);
+					break;
+				default:
+					throw new ProtocolError("unknown command code: " + cmdid);
 				}
 			} catch (ProtocolError exc) {
 				transport.reset();
@@ -299,22 +299,22 @@ public class Protocol
 			HeteroMap map = new HeteroMap();
 
 			switch (code) {
-				case INFO_GENERAL:
-					processGetGeneralInfo(map);
-					break;
-				case INFO_FUNCTIONS:
-					processGetFunctionsInfo(map);
-					break;
-				case INFO_FUNCCODES:
-					processGetFunctionCodes(map);
-					break;
-				case INFO_META:
-				default:
-					map.put("INFO_META", INFO_META);
-					map.put("INFO_GENERAL", INFO_GENERAL);
-					map.put("INFO_FUNCTIONS", INFO_FUNCTIONS);
-					map.put("INFO_FUNCCODES", INFO_FUNCCODES);
-					break;
+			case INFO_GENERAL:
+				processGetGeneralInfo(map);
+				break;
+			case INFO_FUNCTIONS:
+				processGetFunctionsInfo(map);
+				break;
+			case INFO_FUNCCODES:
+				processGetFunctionCodes(map);
+				break;
+			case INFO_META:
+			default:
+				map.put("INFO_META", INFO_META);
+				map.put("INFO_GENERAL", INFO_GENERAL);
+				map.put("INFO_FUNCTIONS", INFO_FUNCTIONS);
+				map.put("INFO_FUNCCODES", INFO_FUNCCODES);
+				break;
 			}
 
 			Packers.Int8.pack(REPLY_SUCCESS, transport);
@@ -336,7 +336,7 @@ public class Protocol
 		SLOT_EMPTY(false), SLOT_DISCARDED(false), SLOT_VALUE(true), SLOT_GENERIC_EXCEPTION(
 				true), SLOT_PACKED_EXCEPTION(true);
 
-		public boolean	ready;
+		public final boolean ready;
 
 		private ReplySlotType(boolean ready)
 		{
@@ -346,8 +346,8 @@ public class Protocol
 
 	protected static class ReplySlot
 	{
-		public ReplySlotType	type;
-		public Object			value;
+		public ReplySlotType type;
+		public Object value;
 
 		public ReplySlot(Packers.AbstractPacker packer)
 		{
@@ -358,11 +358,11 @@ public class Protocol
 
 	public static final class ClientUtils
 	{
-		protected final Map<Integer, Packers.AbstractPacker>	packedExceptionsMap;
-		protected final Map<Integer, ReplySlot>					replies;
-		protected final Map<Long, WeakReference>				proxies;
-		protected int											seq;
-		public Transports.ITransport							transport;
+		protected final Map<Integer, Packers.AbstractPacker> packedExceptionsMap;
+		protected final Map<Integer, ReplySlot> replies;
+		protected final Map<Long, WeakReference> proxies;
+		protected int seq;
+		public Transports.ITransport transport;
 
 		public ClientUtils(Transports.ITransport transport,
 				Map<Integer, Packers.AbstractPacker> packedExceptionsMap)
@@ -538,28 +538,28 @@ public class Protocol
 				Packers.AbstractPacker packer = (Packers.AbstractPacker) slot.value;
 
 				switch (code) {
-					case REPLY_SUCCESS:
-						if (packer == null) {
-							slot.value = null;
-						}
-						else {
-							slot.value = packer.unpack(transport);
-						}
-						slot.type = ReplySlotType.SLOT_VALUE;
-						break;
-					case REPLY_PROTOCOL_ERROR:
-						throw (ProtocolError) (loadProtocolError()
-								.fillInStackTrace());
-					case REPLY_PACKED_EXCEPTION:
-						slot.type = ReplySlotType.SLOT_PACKED_EXCEPTION;
-						slot.value = loadPackedException();
-						break;
-					case REPLY_GENERIC_EXCEPTION:
-						slot.type = ReplySlotType.SLOT_GENERIC_EXCEPTION;
-						slot.value = loadGenericException();
-						break;
-					default:
-						throw new ProtocolError("unknown reply code: " + code);
+				case REPLY_SUCCESS:
+					if (packer == null) {
+						slot.value = null;
+					}
+					else {
+						slot.value = packer.unpack(transport);
+					}
+					slot.type = ReplySlotType.SLOT_VALUE;
+					break;
+				case REPLY_PROTOCOL_ERROR:
+					throw (ProtocolError) (loadProtocolError()
+							.fillInStackTrace());
+				case REPLY_PACKED_EXCEPTION:
+					slot.type = ReplySlotType.SLOT_PACKED_EXCEPTION;
+					slot.value = loadPackedException();
+					break;
+				case REPLY_GENERIC_EXCEPTION:
+					slot.type = ReplySlotType.SLOT_GENERIC_EXCEPTION;
+					slot.value = loadGenericException();
+					break;
+				default:
+					throw new ProtocolError("unknown reply code: " + code);
 				}
 
 				if (discard) {
@@ -628,10 +628,10 @@ public class Protocol
 
 	public static class BaseClient
 	{
-		public ClientUtils	_utils;
+		public ClientUtils _utils;
 
 		public HeteroMap getServiceInfo(int code) throws IOException,
-			ProtocolError, PackedException, GenericException
+				ProtocolError, PackedException, GenericException
 		{
 			return _utils.getServiceInfo(code);
 		}

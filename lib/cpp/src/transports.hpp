@@ -1,55 +1,150 @@
-#ifndef AGNOS_LIB_TRANSPORTS_H_INCLUDED
-#define AGNOS_LIB_TRANSPORTS_H_INCLUDED
+#ifndef AGNOS_TRANSPORTS_HPP_INCLUDED
+#define AGNOS_TRANSPORTS_HPP_INCLUDED
 
-#include <iostream>
-#include <string>
+#include "objtypes.hpp"
+#include "utils.hpp"
 #include <boost/asio.hpp>
 
-using boost::asio::ip::tcp;
 
-namespace agnos { namespace transports {
-
-class ITransport
+namespace agnos
 {
-public:
-	virtual void close() = 0;
-
-	virtual int begin_read() = 0;
-	virtual int read(char * buf, size_t size) = 0;
-	virtual void end_read();
-
-	virtual void begin_write(int seq) = 0;
-	virtual void write(char * buf, size_t size) = 0;
-	virtual void end_write();
-	virtual void reset();
-	virtual void cancel_write();
-};
-
-class BaseTransport : public ITransport
-{
-protected:
-	std::istream& input_stream;
-	std::ostream& output_stream;
-	std::stringstream buffer;
-
-public:
-	BaseTransport(const std::istream& input_stream, const std::ostream& output_stream);
-};
-
-class SocketTransport : public BaseTransport
-{
-public:
-	SocketTransport(std::string& host, int port) :
-		BaseTransport(NULL, NULL)
+	namespace transports
 	{
-		tcp::iostream stream(host, port);
-		tcp::iostream stream(host, port);
-		input_stream = stream;
-		output_stream = stream;
+		using boost::asio::ip::tcp;
+
+		DEFINE_EXCEPTION(TransportError)
+
+		class ITransport
+		{
+		public:
+			virtual void close() = 0;
+
+			virtual int32_t begin_read() = 0;
+			virtual size_t read(char * buf, size_t size) = 0;
+			virtual void end_read() = 0;
+
+			virtual void begin_write(int32_t seq) = 0;
+			virtual void write(const char * buf, size_t size) = 0;
+			virtual void reset() = 0;
+			virtual void end_write() = 0;
+			virtual void cancel_write() = 0;
+		};
+
+		//////////////////////////////////////////////////////////////////////
+
+		class WrappedTransport : public ITransport
+		{
+		protected:
+			shared_ptr<ITransport> transport;
+
+		public:
+			WrappedTransport(shared_ptr<ITransport> transport) : transport(transport)
+			{
+			}
+			virtual void close()
+			{
+				transport->close();
+			}
+			virtual int32_t begin_read()
+			{
+				return transport->begin_read();
+			}
+			virtual size_t read(char * buf, size_t size)
+			{
+				return transport->read(buf, size);
+			}
+			virtual void end_read()
+			{
+				transport->end_read();
+			}
+			virtual void begin_write(int32_t seq)
+			{
+				transport->begin_write(seq);
+			}
+			virtual void write(const char * buf, size_t size)
+			{
+				transport->write(buf, size);
+			}
+			virtual void reset()
+			{
+				transport->reset();
+			}
+			virtual void end_write()
+			{
+				transport->end_write();
+			}
+			virtual void cancel_write()
+			{
+				transport->cancel_write();
+			}
+		};
+
+		//////////////////////////////////////////////////////////////////////
+
+		class DebugTransport : public ITransport
+		{
+		protected:
+			const char * readbuf;
+			size_t bufsize;
+			size_t offset;
+
+		public:
+			DebugTransport(const char * readbuf, size_t size);
+
+			virtual void close();
+
+			virtual int32_t begin_read();
+			virtual size_t read(char * buf, size_t size);
+			virtual void end_read();
+
+			virtual void begin_write(int32_t seq);
+			virtual void write(const char * buf, size_t size);
+			virtual void reset();
+			virtual void end_write();
+			virtual void cancel_write();
+		};
+
+		//////////////////////////////////////////////////////////////////////
+
+		class SocketTransport : public ITransport
+		{
+		protected:
+			static const size_t DEFAULT_BUFFER_SIZE = 128 * 1024;
+
+			shared_ptr<tcp::iostream> sockstream;
+
+			utils::Mutex wlock;
+			vector<char> wbuf;
+			int32_t wseq;
+
+			utils::Mutex rlock;
+			int32_t rseq;
+			size_t rpos;
+			size_t rlength;
+
+		public:
+			SocketTransport(const char * hostname, unsigned short port);
+			SocketTransport(shared_ptr<tcp::iostream> sockstream);
+
+			virtual void close();
+
+			virtual int32_t begin_read();
+			virtual size_t read(char * buf, size_t size);
+			virtual void end_read();
+
+			virtual void begin_write(int32_t seq);
+			virtual void write(const char * buf, size_t size);
+			virtual void reset();
+			virtual void end_write();
+			virtual void cancel_write();
+		};
+
+
 	}
-};
-
-} }
+}
 
 
-#endif
+
+#endif // AGNOS_TRANSPORTS_HPP_INCLUDED
+
+

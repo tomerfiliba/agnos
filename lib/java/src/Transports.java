@@ -25,7 +25,6 @@ public class Transports
 		int beginRead() throws IOException;
 		int beginRead(int msecs) throws IOException;
 		int read(byte[] data, int offset, int len) throws IOException;
-		//byte[] readAll() throws IOException;
 		void endRead() throws IOException;
 		
 		// write interface
@@ -168,13 +167,6 @@ public class Transports
 			return actually_read;
 		}
 		
-		/*public byte[] readAll() throws IOException
-		{
-			byte[] data = new byte[rlength - rpos];
-			read(data, 0, data.length);
-			return data;
-		}*/
-		
 		public synchronized void endRead() throws IOException
 		{
 			assertBeganRead();
@@ -260,9 +252,6 @@ public class Transports
 		public int read(byte[] data, int offset, int len) throws IOException {
 			return transport.read(data, offset, len);
 		}
-		/*public byte[] readAll() throws IOException {
-			return transport.readAll();
-		}*/
 		public void endRead() throws IOException {
 			transport.endRead();
 		}
