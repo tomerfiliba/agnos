@@ -292,7 +292,7 @@ class ServerGenerator(object):
         self.SEP()
         
         with self.BLOCK("if __name__ == '__main__'"):
-            self.STMT("agnos.servers.server_main({0}_bindings.Processor(Handler(), exception_map))", 
+            self.STMT("agnos.servers.server_main({0}_bindings.ProcessorFactory(Handler(), exception_map))", 
                 node.service_name)
         self.SEP()
     

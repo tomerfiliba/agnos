@@ -275,8 +275,8 @@ class PythonTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         with BLOCK("class Processor(agnos.BaseProcessor)"):
-            with BLOCK("def __init__(self, handler, exception_map = {})"):
-                STMT("agnos.BaseProcessor.__init__(self)")
+            with BLOCK("def __init__(self, transport, handler, exception_map = {})"):
+                STMT("agnos.BaseProcessor.__init__(self, transport)")
                 for func in service.funcs.values():
                     self._generate_processor_function(module, func)
                     self._generate_processor_unpacker(module, func)
@@ -335,7 +335,10 @@ class PythonTarget(TargetBase):
             SEP()
             with BLOCK("def process_get_function_codes(self, info)"):
                 for func in service.funcs.values():
-                    STMT('info["{0}"] = {1}', func.name, func.id)    
+                    STMT('info["{0}"] = {1}', func.name, func.id)
+        SEP()
+        with BLOCK("def ProcessorFactory(handler, exception_map = {})"):
+            STMT("return lambda transport: Processor(transport, handler, exception_map)")
     
     def _generate_processor_function(self, module, func):
         BLOCK = module.block
@@ -363,13 +366,13 @@ class PythonTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        with BLOCK("def _unpack_{0}(transport)", func.id):
+        with BLOCK("def _unpack_{0}()", func.id):
             if not func.args:
                 STMT("return []")
                 return 
             with BLOCK("return ", prefix = "[", suffix="]"):
                 for arg in func.args:
-                    STMT("{0}.unpack(transport),", type_to_packer(arg.type))
+                    STMT("{0}.unpack(self.transport),", type_to_packer(arg.type))
     
     def generate_client(self, module, service):
         BLOCK = module.block

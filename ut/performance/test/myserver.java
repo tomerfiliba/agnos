@@ -60,7 +60,7 @@ public class myserver
 	public static void main(String[] args)
 	{
 		agnos.Servers.CmdlineServer server = new agnos.Servers.CmdlineServer(
-				new filesystem.Processor(new Handler()));
+				new filesystem.ProcessorFactory(new Handler()));
 		try {
 			server.main(args);
 		} catch (Exception ex) {

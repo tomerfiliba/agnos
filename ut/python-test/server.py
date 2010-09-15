@@ -71,7 +71,7 @@ class Handler(FeatureTest.IHandler):
 
 if __name__ == "__main__":
     from agnos.servers import server_main
-    server_main(FeatureTest.Processor(Handler()))
+    server_main(FeatureTest.ProcessorFactory(Handler()))
 
 
 

@@ -24,4 +24,5 @@ obj
 build
 demo/autogen
 gen-*
-
+.settings
+doc/_build

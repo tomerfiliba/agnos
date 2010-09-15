@@ -81,7 +81,8 @@ class BaseProxy(object):
 
 
 class BaseProcessor(object):
-    def __init__(self):
+    def __init__(self, transport):
+        self.transport = transport
         self.cells = {}
     
     def post_init(self, func_mapping, packed_exceptions, exception_map):
@@ -120,66 +121,66 @@ class BaseProcessor(object):
         ref, obj = self.cells[oid]
         self.cells[oid] = (ref + 1, obj)
 
-    def send_protocol_error(self, transport, exc):
+    def send_protocol_error(self, exc):
         Int8.pack(REPLY_PROTOCOL_ERROR, transport)
-        Str.pack(str(exc), transport)
+        Str.pack(str(exc), self.transport)
     
-    def send_generic_exception(self, transport, exc): 
-        Int8.pack(REPLY_GENERIC_EXCEPTION, transport)
-        Str.pack(exc.msg, transport)
-        Str.pack(exc.traceback, transport)
+    def send_generic_exception(self, exc): 
+        Int8.pack(REPLY_GENERIC_EXCEPTION, self.transport)
+        Str.pack(exc.msg, self.transport)
+        Str.pack(exc.traceback, self.transport)
 
-    def send_packed_exception(self, transport, exc): 
-        Int8.pack(REPLY_PACKED_EXCEPTION, transport)
-        Int32.pack(exc._recid, transport)
+    def send_packed_exception(self, exc): 
+        Int8.pack(REPLY_PACKED_EXCEPTION, self.transport)
+        Int32.pack(exc._recid, self.transport)
         packer = self.packed_exceptions[type(exc)]
-        packer.pack(exc, transport)
+        packer.pack(exc, self.transport)
     
-    def process(self, transport):
-        with transport.reading() as seq:
-            cmd = Int8.unpack(transport)
-            with transport.writing(seq):
+    def process(self):
+        with self.transport.reading() as seq:
+            cmd = Int8.unpack(self.transport)
+            with self.transport.writing(seq):
                 try:
                     if cmd == CMD_INVOKE:
-                        self.process_invoke(transport, seq)
+                        self.process_invoke(seq)
                     elif cmd == CMD_PING:
-                        self.process_ping(transport, seq)
+                        self.process_ping(seq)
                     elif cmd == CMD_DECREF:
-                        self.process_decref(transport, seq)
+                        self.process_decref(seq)
                     elif cmd == CMD_QUIT:
-                        self.process_quit(transport, seq)
+                        self.process_quit(seq)
                     elif cmd == CMD_GETINFO:
-                        self.process_get_info(transport, seq)
+                        self.process_get_info(seq)
                     else:
                         raise ProtocolError("unknown command code: %d" % (cmd,))
                 except ProtocolError, ex:
-                    transport.reset()
-                    self.send_protocol_error(transport, ex)
+                    self.transport.reset()
+                    self.send_protocol_error(ex)
                 except GenericException, ex:
-                    transport.reset()
-                    self.send_generic_exception(transport, ex)
+                    self.transport.reset()
+                    self.send_generic_exception(ex)
                 except PackedException, ex:
-                    transport.reset()
-                    self.send_packed_exception(transport, ex)
+                    self.transport.reset()
+                    self.send_packed_exception(ex)
 
-    def process_ping(self, transport, seq):
-        msg = Str.unpack(transport)
-        Int8.pack(REPLY_SUCCESS, transport)
-        Str.pack(msg, transport)
+    def process_ping(self, seq):
+        msg = Str.unpack(self.transport)
+        Int8.pack(REPLY_SUCCESS, self.transport)
+        Str.pack(msg, self.transport)
 
-    def process_decref(self, transport, seq):
-        oid = Int64.unpack(transport)
+    def process_decref(self, seq):
+        oid = Int64.unpack(self.transport)
         self.decref(oid)
 
-    def process_incref(self, transport, seq):
-        oid = Int64.unpack(transport)
+    def process_incref(self, seq):
+        oid = Int64.unpack(self.transport)
         self.incref(oid)
 
-    def process_quit(self, transport, seq):
+    def process_quit(self, seq):
         raise KeyboardInterrupt()
 
-    def process_get_info(self, transport, seq):
-        code = Int32.unpack(transport)
+    def process_get_info(self, seq):
+        code = Int32.unpack(self.transport)
         info = utils.HeteroMap()
         
         if code == INFO_GENERAL:
@@ -194,16 +195,16 @@ class BaseProcessor(object):
             info["INFO_FUNCTIONS"] = INFO_FUNCTIONS
             info["INFO_FUNCCODES"] = INFO_FUNCCODES
         
-        Int8.pack(REPLY_SUCCESS, transport)
-        BuiltinHeteroMapPacker.pack(info, transport)
+        Int8.pack(REPLY_SUCCESS, self.transport)
+        BuiltinHeteroMapPacker.pack(info, self.transport)
 
-    def process_invoke(self, transport, seq):
-        funcid = Int32.unpack(transport)
+    def process_invoke(self, seq):
+        funcid = Int32.unpack(self.transport)
         try:
             func, unpack_args, res_packer = self.func_mapping[funcid]
         except KeyError:
             raise ProtocolError("unknown function id: %d" % (funcid,))
-        args = unpack_args(transport)
+        args = unpack_args()
         try:
             res = func(args)
         except PackedException, ex:
@@ -213,9 +214,9 @@ class BaseProcessor(object):
         except Exception, ex:
             raise self.pack_exception(*sys.exc_info())
         else:
-            Int8.pack(REPLY_SUCCESS, transport)
+            Int8.pack(REPLY_SUCCESS, self.transport)
             if res_packer:
-                res_packer.pack(res, transport)
+                res_packer.pack(res, self.transport)
     
     def pack_exception(self, typ, val, tb):
         if typ not in self.exception_map:

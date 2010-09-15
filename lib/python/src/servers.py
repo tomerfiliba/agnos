@@ -5,35 +5,40 @@ from optparse import OptionParser
 from .transports import SocketTransportFactory
 
 
+def _serve_client(processor):
+    try:
+        while True:
+            processor.process()
+    except EOFError:
+        pass
+    finally:
+        processor.transport.close()
+
+
 class BaseServer(object):
-    def __init__(self, processor, transport_factory):
-        self.processor = processor
+    def __init__(self, processor_factory, transport_factory):
+        self.processor_factory = processor_factory
         self.transport_factory = transport_factory
+    
+    def close(self):
+        self.transport_factory.close()
     
     def serve(self):
         while True:
             trans = self.transport_factory.accept()
-            self._accept_client(trans)
-
-    def _accept_client(self, transport):
+            processor = processor_factory(trans)
+            self._serve_client(processor)
+        
+    def _serve_client(self, processor):
         raise NotImplementedError()
 
-    def _serve_client(self, transport):
-        try:
-            while True:
-                self.processor.process(transport)
-        except EOFError:
-            pass
-        finally:
-            transport.close()
-
 class SimpleServer(BaseServer):
-    def _accept_client(self, transport):
-        self._serve_client(transport)
+    def _serve_client(self, processor):
+        _serve_client(processor)
 
 class ThreadedServer(BaseServer):
-    def _accept_client(self, transport):
-        t = threading.Thread(target = self._serve_client, args = (transport,))
+    def _serve_client(self, processor):
+        t = threading.Thread(target = _serve_client, args = (processor,))
         t.start()
 
 class LibraryModeServer(BaseServer):
@@ -42,9 +47,11 @@ class LibraryModeServer(BaseServer):
         sys.stdout.flush()
         sys.stdout.close()
         trans = self.transport_factory.accept()
-        self._serve_client(trans)
+        self.transport_factory.close()
+        processor = self.processor_factory(trans)
+        _serve_client(processor)
 
-def server_main(processor, mode = "simple", port = 0, host = "localhost"):
+def server_main(processor_factory, mode = "simple", port = 0, host = "localhost"):
     parser = OptionParser(conflict_handler="resolve")
     parser.add_option("-m", "--mode", dest="mode", default=mode,
                       help="server mode (simple, threaded, library)",  
@@ -61,17 +68,17 @@ def server_main(processor, mode = "simple", port = 0, host = "localhost"):
         parser.error("server does not take positional arguments")
     options.mode = options.mode.lower()
 
-    transfactory = SocketTransportFactory(int(options.port), options.host)
+    transport_factory = SocketTransportFactory(int(options.port), options.host)
     if options.mode == "lib" or options.mode == "library":
-        s = LibraryModeServer(processor, transfactory)
+        s = LibraryModeServer(processor_factory, transport_factory)
     elif options.mode == "simple":
         if int(options.port) == 0:
             parser.error("must specify port for simple mode")
-        s = SimpleServer(processor, transfactory)
+        s = SimpleServer(processor_factory, transport_factory)
     elif options.mode == "threaded":
         if int(options.port) == 0:
             parser.error("must specify port for threaded mode")
-        s = ThreadedServer(processor, transfactory)
+        s = ThreadedServer(processor_factory, transport_factory)
     else:
         parser.error("invalid mode: %r" % (options.mode,))
     try:
