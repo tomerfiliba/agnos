@@ -2,26 +2,32 @@
 #include <boost/detail/endian.hpp>
 
 #if defined(BOOST_BIG_ENDIAN)
-#	define ntohs(n) (n)
-#	define htons(n) (n)
-#	define ntohl(n) (n)
-#	define htonl(n) (n)
-#	define ntohll(n) (n)
-#	define htonll(n) (n)
+#	ifndef ntohs
+#		define ntohs(n) (n)
+#		define htons(n) (n)
+#	endif
+#	ifndef ntohl
+#		define ntohl(n) (n)
+#		define htonl(n) (n)
+#	endif
+#	ifndef ntohll
+#		define ntohll(n) (n)
+#		define htonll(n) (n)
+#	endif
 #elif defined(BOOST_LITTLE_ENDIAN)
 
-static inline int16_t bswap_16(int16_t n)
+static inline int16_t _bswap_16(int16_t n)
 {
 	return ((n & 0x00ffu) << 8) | ((n & 0xff00u) >> 8);
 }
 
-static inline int32_t bswap_32(int32_t n)
+static inline int32_t _bswap_32(int32_t n)
 {
 	return ((n & 0x000000fful) << 24) | ((n & 0x0000ff00ul) << 8) | ((n
 	        & 0x00ff0000ul) >> 8) | ((n & 0xff000000ul) >> 24);
 }
 
-static inline int64_t bswap_64(int64_t n)
+static inline int64_t _bswap_64(int64_t n)
 {
 	return ((n & 0xff00000000000000ull) >> 56) | ((n & 0x00ff000000000000ull)
 	        >> 40) | ((n & 0x0000ff0000000000ull) >> 24) | ((n
@@ -31,12 +37,18 @@ static inline int64_t bswap_64(int64_t n)
 	        | ((n & 0x00000000000000ffull) << 56);
 }
 
-#	define ntohs(n)  bswap_16(n)
-#	define htons(n)  bswap_16(n)
-#	define ntohl(n)  bswap_32(n)
-#	define htonl(n)  bswap_32(n)
-#	define ntohll(n) bswap_64(n)
-#	define htonll(n) bswap_64(n)
+#	ifndef ntohs
+#		define ntohs(n)  _bswap_16(n)
+#		define htons(n)  _bswap_16(n)
+#	endif
+#	ifndef ntohl
+#		define ntohl(n)  _bswap_32(n)
+#		define htonl(n)  _bswap_32(n)
+#	endif
+#	ifndef ntohll
+#		define ntohll(n) _bswap_64(n)
+#		define htonll(n) _bswap_64(n)
+#	endif
 #else
 #	error "unknown machine endianity"
 #endif // BOOST_BYTE_ORDER
@@ -218,7 +230,7 @@ namespace agnos
 
 		void FloatPacker::pack(const double& obj, ITransport& transport)
 		{
-			int64_t tmp = *(int64_t*) ((void*) &obj);
+			int64_t tmp = *(reinterpret_cast<const int64_t*>(&obj));
 			Int64Packer::pack(tmp, transport);
 		}
 
@@ -226,7 +238,7 @@ namespace agnos
 		{
 			int64_t tmp;
 			Int64Packer::unpack(tmp, transport);
-			obj = *(double*) ((void*) &tmp);
+			obj = *(reinterpret_cast<double*>(&tmp));
 		}
 
 		//////////////////////////////////////////////////////////////////////
@@ -280,7 +292,7 @@ namespace agnos
 			Int64Packer::unpack(val, transport);
 			val -= microsecs_from_epoch;
 
-			// urrgh, boost::posix_time::microseconds accepts only int32!
+			// urrgh, boost::posix_time::microseconds only accepts int32!
 			timespan dur = boost::posix_time::microseconds(val % 1000000);
 			val /= 1000000;
 			dur += boost::posix_time::seconds(val % 60);
@@ -294,31 +306,30 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
-		ListOfInt8Packer list_of_int8_packer;
-		ListOfBoolPacker list_of_bool_packer;
-		ListOfInt16Packer list_of_int16_packer;
-		ListOfInt32Packer list_of_int32_packer;
-		ListOfInt64Packer list_of_int64_packer;
-		ListOfFloatPacker list_of_float_packer;
-		ListOfBufferPacker list_of_buffer_packer;
-		ListOfDatePacker list_of_date_packer;
-		ListOfStringPacker list_of_string_packer;
+		ListPacker<int8_t, 800> list_of_int8_packer(int8_packer);
+		ListPacker<bool, 801> list_of_bool_packer(bool_packer);
+		ListPacker<int16_t, 802> list_of_int16_packer(int16_packer);
+		ListPacker<int32_t, 803> list_of_int32_packer(int32_packer);
+		ListPacker<int64_t, 804> list_of_int64_packer(int64_packer);
+		ListPacker<double, 805> list_of_float_packer(float_packer);
+		ListPacker<string, 806> list_of_buffer_packer(buffer_packer);
+		ListPacker<datetime, 807> list_of_date_packer(date_packer);
+		ListPacker<string, 808> list_of_string_packer(string_packer);
 
-		SetOfInt8Packer set_of_int8_packer;
-		SetOfBoolPacker set_of_bool_packer;
-		SetOfInt16Packer set_of_int16_packer;
-		SetOfInt32Packer set_of_int32_packer;
-		SetOfInt64Packer set_of_int64_packer;
-		SetOfFloatPacker set_of_float_packer;
-		SetOfBufferPacker set_of_buffer_packer;
-		SetOfDatePacker set_of_date_packer;
-		SetOfStringPacker set_of_string_packer;
+		SetPacker<int8_t, 820> set_of_int8_packer(int8_packer);
+		SetPacker<bool, 821> set_of_bool_packer(bool_packer);
+		SetPacker<int16_t, 822> set_of_int16_packer(int16_packer);
+		SetPacker<int32_t, 823> set_of_int32_packer(int32_packer);
+		SetPacker<int64_t, 824> set_of_int64_packer(int64_packer);
+		SetPacker<double, 825> set_of_float_packer(float_packer);
+		SetPacker<string, 826> set_of_buffer_packer(buffer_packer);
+		SetPacker<datetime, 827> set_of_date_packer(date_packer);
+		SetPacker<string, 828> set_of_string_packer(string_packer);
 
-		MapOfInt32Int32Packer map_of_int32_int32_packer;
-		MapOfInt32StringPacker map_of_int32_string_packer;
-		MapOfStringInt32Packer map_of_string_int32_packer;
-		MapOfStringStringPacker map_of_string_string_packer;
-
+		MapPacker<int32_t, int32_t, 850> map_of_int32_int32_packer(int32_packer, int32_packer);
+		MapPacker<int32_t, string, 851> map_of_int32_string_packer(string_packer, int32_packer);
+		MapPacker<string, int32_t, 852> map_of_string_int32_packer(int32_packer, string_packer);
+		MapPacker<string, string, 853> map_of_string_string_packer(string_packer, string_packer);
 
 	}
 }

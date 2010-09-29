@@ -198,19 +198,15 @@ namespace agnos
 	{
 		class HeteroMapPacker : public IPacker
 		{
-		public:
-			typedef map<int32_t, IPacker&> packers_map_type;
-			typedef shared_ptr<packers_map_type> packers_map_ptr;
-			typedef HeteroMap data_type;
-
 		protected:
 			int32_t id;
-			packers_map_ptr packers_map;
 			const IPacker& get_packer(int32_t packerid) const;
 
 		public:
+			map<int32_t, IPacker*> packers_map;
+			typedef HeteroMap data_type;
+
 			HeteroMapPacker(int32_t id);
-			HeteroMapPacker(int32_t id, packers_map_ptr packers_map);
 
 			virtual int32_t get_id() const;
 

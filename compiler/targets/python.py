@@ -87,33 +87,29 @@ class PythonTarget(TargetBase):
             SEP()
             
             DOC("enums", spacer = True)
-            for member in service.types.values():
-                if isinstance(member, compiler.Enum):
-                    self.generate_enum(module, member)
-                    SEP()
+            for enum in service.enums():
+                self.generate_enum(module, enum)
+                SEP()
             
             DOC("records", spacer = True)
-            for member in service.types.values():
-                if isinstance(member, compiler.Record):
-                    self.generate_record_class(module, member)
-                    SEP()
+            for rec in service.records():
+                self.generate_record_class(module, rec)
+                SEP()
             
-            for member in service.types.values():
-                if isinstance(member, compiler.Record):
-                    if not is_complex_type(member):
-                        self.generate_record_packer(module, member)
-                        SEP()
+            for rec in service.records(lambda mem: not is_complex_type(mem)):
+                self.generate_record_packer(module, rec)
+                SEP()
             
             DOC("consts", spacer = True)
             for member in service.consts.values():
-                STMT("{0} = {1}", member.fullname, const_to_python(member.type, member.value))
+                STMT("{0} = {1}", member.fullname, 
+                    const_to_python(member.type, member.value))
             SEP()
             
             DOC("classes", spacer = True)
-            for member in service.types.values():
-                if isinstance(member, compiler.Class):
-                    self.generate_class_proxy(module, service, member)
-                    SEP()
+            for cls in service.classes():
+                self.generate_class_proxy(module, service, cls)
+                SEP()
             SEP()
             
             DOC("server", spacer = True)
@@ -129,11 +125,14 @@ class PythonTarget(TargetBase):
 
     def _generate_templated_packer_for_type(self, tp):
         if isinstance(tp, compiler.TList):
-            return "packers.ListOf(%s, %s)" % (tp.id, self._generate_templated_packer_for_type(tp.oftype),)
+            return "packers.ListOf(%s, %s)" % (tp.id, 
+                self._generate_templated_packer_for_type(tp.oftype),)
         if isinstance(tp, compiler.TSet):
-            return "packers.SetOf(%s, %s)" % (tp.id, self._generate_templated_packer_for_type(tp.oftype),)
+            return "packers.SetOf(%s, %s)" % (tp.id, 
+                self._generate_templated_packer_for_type(tp.oftype),)
         elif isinstance(tp, compiler.TMap):
-            return "packers.MapOf(%s, %s, %s)" % (tp.id, self._generate_templated_packer_for_type(tp.keytype),
+            return "packers.MapOf(%s, %s, %s)" % (tp.id, 
+                self._generate_templated_packer_for_type(tp.keytype),
                 self._generate_templated_packer_for_type(tp.valtype))
         else:
             return type_to_packer(tp)
@@ -284,19 +283,16 @@ class PythonTarget(TargetBase):
                 STMT("self.exception_map = exception_map")
                 STMT("storer = self.store")
                 STMT("loader = self.load")
-                for tp in service.types.values():
-                    if isinstance(tp, compiler.Class):
-                        STMT("{0}ObjRef = packers.ObjRef({1}, storer, loader)", tp.name, tp.id)
+                for cls in service.classes():
+                    STMT("{0}ObjRef = packers.ObjRef({1}, storer, loader)", cls.name, cls.id)
                 SEP()
                 STMT("packers_map = {}")
                 STMT("heteroMapPacker = packers.HeteroMapPacker(999, packers_map)")
                 STMT("packers_map[999] = heteroMapPacker")
                 SEP()
-                for member in service.types.values():
-                    if isinstance(member, compiler.Record):
-                        if is_complex_type(member):
-                            self.generate_record_packer(module, member)
-                            SEP()
+                for rec in service.records(is_complex_type):
+                    self.generate_record_packer(module, rec)
+                    SEP()
                 self.generate_templated_packers(module, service)
                 SEP()
                 with BLOCK("self.func_mapping = ", prefix = "{", suffix = "}"):
@@ -305,9 +301,8 @@ class PythonTarget(TargetBase):
                             func.id, type_to_packer(func.type))
                 SEP()
                 with BLOCK("self.packed_exceptions = ", prefix = "{", suffix = "}"):
-                    for mem in service.types.values():
-                        if isinstance(mem, compiler.Exception):
-                            STMT("{0} : {1},", mem.name, type_to_packer(mem))
+                    for exc in service.exceptions():
+                        STMT("{0} : {1},", exc.name, type_to_packer(exc))
                 SEP()
                 for tp in service.types.values():
                     STMT("packers_map[{0}] = {1}", tp.id, type_to_packer(tp))
@@ -397,18 +392,16 @@ class PythonTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
 
-        for member in service.types.values():
-            if isinstance(member, compiler.Record):
-                if is_complex_type(member):
-                    self.generate_record_packer(module, member)
-                    SEP()
+        for rec in service.records(is_complex_type):
+            self.generate_record_packer(module, rec)
+            SEP()
         STMT("packed_exceptions = {}")
         STMT("self._utils = agnos.ClientUtils(transport, packed_exceptions)")
         SEP()
         STMT("storer = lambda proxy: -1 if proxy is None else proxy._objref")
-        for tp in service.types.values():
-            if isinstance(tp, compiler.Class):
-                STMT("{0}ObjRef = packers.ObjRef({1}, storer, partial(self._utils.get_proxy, {0}Proxy, self))", tp.name, tp.id)
+        for cls in service.classes():
+            STMT("{0}ObjRef = packers.ObjRef({1}, storer, partial("
+                "self._utils.get_proxy, {0}Proxy, self))", cls.name, cls.id)
         SEP()
         STMT("packers_map = {}")
         STMT("heteroMapPacker = packers.HeteroMapPacker(999, packers_map)")
@@ -416,9 +409,8 @@ class PythonTarget(TargetBase):
         SEP()
         self.generate_templated_packers(module, service)
         SEP()
-        for mem in service.types.values():
-            if isinstance(mem, compiler.Exception):
-                STMT("packed_exceptions[{0}] = {1}", mem.id, type_to_packer(mem))
+        for exc in service.exceptions():
+            STMT("packed_exceptions[{0}] = {1}", exc.id, type_to_packer(exc))
         SEP()
         for tp in service.types.values():
             STMT("packers_map[{0}] = {1}", tp.id, type_to_packer(tp))
@@ -429,12 +421,14 @@ class PythonTarget(TargetBase):
             for func in service.funcs.values():
                 args = ", ".join(arg.name for arg in func.args)
                 with BLOCK("def sync_{0}(_self, {1})", func.id, args):
-                    with BLOCK("with _self.utils.invocation({0}, {1}) as seq", func.id, type_to_packer(func.type)):
+                    with BLOCK("with _self.utils.invocation({0}, {1}) as seq", 
+                            func.id, type_to_packer(func.type)):
                         if not func.args:
                             STMT("pass")
                         else:
                             for arg in func.args:
-                                STMT("{0}.pack({1}, _self.utils.transport)", type_to_packer(arg.type), arg.name)
+                                STMT("{0}.pack({1}, _self.utils.transport)", 
+                                    type_to_packer(arg.type), arg.name)
                     STMT("return _self.utils.get_reply(seq)")
         SEP()
         STMT("self._funcs = Functions(self._utils)")

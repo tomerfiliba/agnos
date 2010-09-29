@@ -123,7 +123,7 @@ namespace agnos
 			size_t rlength;
 
 		public:
-			SocketTransport(const char * hostname, unsigned short port);
+			SocketTransport(const string& hostname, unsigned short port);
 			SocketTransport(shared_ptr<tcp::iostream> sockstream);
 
 			virtual void close();

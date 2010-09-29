@@ -3,7 +3,12 @@ from contextlib import contextmanager
 
 class Stmt(object):
     def __init__(self, text, *args, **kwargs):
-        self.suffix = kwargs.pop("suffix", ";")
+        if text:
+            stripped = text.strip()
+            default_suffix = "" if stripped.startswith("#") or stripped.endswith(":") else ";"
+        else:
+            default_suffix = ";" 
+        self.suffix = kwargs.pop("suffix", default_suffix)
         if kwargs:
             raise TypeError("invalid keyword arguments %r" % (kwargs.keys(),))
         if args:
@@ -35,7 +40,9 @@ class Doc(object):
 class Block(object):
     def __init__(self, text, *args, **kwargs):
         self.prefix = kwargs.pop("prefix", "{")
-        self.suffix = kwargs.pop("suffix", "}")
+        token = text.split()[0] if text else None
+        default_suffix = "};" if token in ["class", "struct", "enum"] else "}" 
+        self.suffix = kwargs.pop("suffix", default_suffix)
         if kwargs:
             raise TypeError("invalid keyword arguments %r" % (kwargs.keys(),))
         self.title = Stmt(text, *args, suffix = "")

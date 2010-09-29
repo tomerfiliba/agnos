@@ -13,6 +13,7 @@ namespace agnos
 	namespace servers
 	{
 		using agnos::protocol::BaseProcessor;
+		using agnos::protocol::IProcessorFactory;
 		using agnos::transports::ITransport;
 		using agnos::transports::factories::ITransportFactory;
 		using agnos::transports::factories::SocketTransportFactory;
@@ -22,17 +23,14 @@ namespace agnos
 
 		class BaseServer
 		{
-		public:
-			typedef shared_ptr<BaseProcessor> (*ProcessorFactory)(shared_ptr<ITransport>);
-
 		protected:
-			ProcessorFactory processor_factory;
+			IProcessorFactory& processor_factory;
 			shared_ptr<ITransportFactory> transport_factory;
 
 			virtual void serve_client(shared_ptr<BaseProcessor> proc) = 0;
 
 		public:
-			BaseServer(ProcessorFactory processor_factory, shared_ptr<ITransportFactory> transport_factory);
+			BaseServer(IProcessorFactory& processor_factory, shared_ptr<ITransportFactory> transport_factory);
 			virtual void serve();
 			virtual void close();
 		};
@@ -46,7 +44,7 @@ namespace agnos
 			virtual void serve_client(shared_ptr<BaseProcessor> proc);
 
 		public:
-			SimpleServer(ProcessorFactory processor_factory, shared_ptr<ITransportFactory> transport_factory);
+			SimpleServer(IProcessorFactory& processor_factory, shared_ptr<ITransportFactory> transport_factory);
 		};
 
 		//////////////////////////////////////////////////////////////////////
@@ -59,7 +57,7 @@ namespace agnos
 			virtual void serve_client(shared_ptr<BaseProcessor> proc);
 
 		public:
-			ThreadedServer(ProcessorFactory processor_factory, shared_ptr<ITransportFactory> transport_factory);
+			ThreadedServer(IProcessorFactory& processor_factory, shared_ptr<ITransportFactory> transport_factory);
 		};
 
 		//////////////////////////////////////////////////////////////////////
@@ -70,8 +68,8 @@ namespace agnos
 			virtual void serve_client(shared_ptr<BaseProcessor> proc);
 
 		public:
-			LibraryModeServer(ProcessorFactory processor_factory);
-			LibraryModeServer(ProcessorFactory processor_factory, shared_ptr<SocketTransportFactory> transport_factory);
+			LibraryModeServer(IProcessorFactory& processor_factory);
+			LibraryModeServer(IProcessorFactory& processor_factory, shared_ptr<SocketTransportFactory> transport_factory);
 			virtual void serve();
 		};
 
@@ -80,10 +78,10 @@ namespace agnos
 		class CmdlineServer
 		{
 		protected:
-			BaseServer::ProcessorFactory processor_factory;
+			IProcessorFactory& processor_factory;
 
 		public:
-			CmdlineServer(BaseServer::ProcessorFactory processor_factory);
+			CmdlineServer(IProcessorFactory& processor_factory);
 			int main(int argc, const char* argv[]);
 		};
 

@@ -37,12 +37,7 @@ namespace agnos
 	namespace packers
 	{
 		HeteroMapPacker::HeteroMapPacker(int32_t id) :
-			id(id), packers_map(new HeteroMapPacker::packers_map_type())
-		{
-		}
-
-		HeteroMapPacker::HeteroMapPacker(int32_t id, HeteroMapPacker::packers_map_ptr packers_map) :
-			id(id), packers_map(packers_map)
+			id(id), packers_map()
 		{
 		}
 
@@ -125,13 +120,11 @@ namespace agnos
 					return builtin_heteromap_packer;
 
 				default:
-					packers_map_type::const_iterator it = packers_map->find(packerid);
-					if (it == packers_map->end()) {
+					IPacker** pkr = map_get(packers_map, packerid, false);
+					if (pkr == NULL) {
 						throw HeteroMapError("unknown packer id");
 					}
-					else {
-						return it->second;
-					}
+					return **pkr;
 			}
 		}
 

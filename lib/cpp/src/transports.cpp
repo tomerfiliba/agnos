@@ -89,7 +89,7 @@ namespace agnos
 		// SocketTransport
 		//////////////////////////////////////////////////////////////////////
 
-		SocketTransport::SocketTransport(const char * hostname, unsigned short port) :
+		SocketTransport::SocketTransport(const string& hostname, unsigned short port) :
 				wlock(), wbuf(), wseq(0),
 				rlock(), rseq(0), rpos(0), rlength(0)
 		{

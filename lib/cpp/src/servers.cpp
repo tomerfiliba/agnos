@@ -13,7 +13,7 @@ namespace agnos
 		// BaseServer
 		//////////////////////////////////////////////////////////////////////
 
-		BaseServer::BaseServer(ProcessorFactory processor_factory, shared_ptr<ITransportFactory> transport_factory) :
+		BaseServer::BaseServer(IProcessorFactory& processor_factory, shared_ptr<ITransportFactory> transport_factory) :
 				processor_factory(processor_factory), transport_factory(transport_factory)
 		{
 		}
@@ -27,7 +27,7 @@ namespace agnos
 		{
 			while (true) {
 				shared_ptr<ITransport> transport = transport_factory->accept();
-				shared_ptr<BaseProcessor> proc = processor_factory(transport);
+				shared_ptr<BaseProcessor> proc = processor_factory.create(transport);
 				serve_client(proc);
 			}
 		}
@@ -36,7 +36,7 @@ namespace agnos
 		// SimpleServer
 		//////////////////////////////////////////////////////////////////////
 
-		SimpleServer::SimpleServer(ProcessorFactory processor_factory, shared_ptr<ITransportFactory> transport_factory) :
+		SimpleServer::SimpleServer(IProcessorFactory& processor_factory, shared_ptr<ITransportFactory> transport_factory) :
 				BaseServer(processor_factory, transport_factory)
 		{
 		}
@@ -50,7 +50,7 @@ namespace agnos
 		// ThreadedServer
 		//////////////////////////////////////////////////////////////////////
 
-		ThreadedServer::ThreadedServer(ProcessorFactory processor_factory, shared_ptr<ITransportFactory> transport_factory) :
+		ThreadedServer::ThreadedServer(IProcessorFactory& processor_factory, shared_ptr<ITransportFactory> transport_factory) :
 				BaseServer(processor_factory, transport_factory)
 		{
 		}
@@ -69,13 +69,13 @@ namespace agnos
 		//////////////////////////////////////////////////////////////////////
 		// LibraryModeServer
 		//////////////////////////////////////////////////////////////////////
-		LibraryModeServer::LibraryModeServer(ProcessorFactory processor_factory) :
+		LibraryModeServer::LibraryModeServer(IProcessorFactory& processor_factory) :
 				BaseServer(processor_factory,
 					shared_ptr<SocketTransportFactory>(new SocketTransportFactory("127.0.0.1", 0)))
 		{
 		}
 
-		LibraryModeServer::LibraryModeServer(ProcessorFactory processor_factory, shared_ptr<SocketTransportFactory> transport_factory) :
+		LibraryModeServer::LibraryModeServer(IProcessorFactory& processor_factory, shared_ptr<SocketTransportFactory> transport_factory) :
 				BaseServer(processor_factory, transport_factory)
 		{
 		}
@@ -97,7 +97,7 @@ namespace agnos
 			shared_ptr<ITransport> transport = factory->accept();
 			factory->close();
 
-			shared_ptr<BaseProcessor> proc = processor_factory(transport);
+			shared_ptr<BaseProcessor> proc = processor_factory.create(transport);
 			proc->serve();
 		}
 
@@ -113,7 +113,7 @@ namespace agnos
 			MODE_LIB,
 		};
 
-		CmdlineServer::CmdlineServer(BaseServer::ProcessorFactory processor_factory) :
+		CmdlineServer::CmdlineServer(IProcessorFactory& processor_factory) :
 				processor_factory(processor_factory)
 		{
 		}

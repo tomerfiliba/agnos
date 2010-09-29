@@ -136,27 +136,6 @@ class CSharpTarget(TargetBase):
                 self.generate_client_bindings(module, service)
                 SEP()
 
-    def generate_shared_bindings(self, module, service):
-        BLOCK = module.block
-        STMT = module.stmt
-        SEP = module.sep
-        DOC = module.doc
-        
-        with BLOCK("namespace SharedBindings", service.name):
-            pass
-            DOC("enums", spacer = True)
-            for member in service.types.values():
-                if isinstance(member, compiler.Enum):
-                    self.generate_enum(module, member)
-                    SEP()
-            
-            DOC("records", spacer = True)
-            for member in service.types.values():
-                if isinstance(member, compiler.Record) and not is_complex_type(member):
-                    self.generate_record_class(module, member, proxy = False)
-                    self.generate_record_packer(module, member, static = True, proxy = False)
-                    SEP()
-
     def generate_server_bindings(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
@@ -173,22 +152,18 @@ class CSharpTarget(TargetBase):
                 SEP()
 
                 DOC("enums", spacer = True)
-                for member in service.types.values():
-                    if isinstance(member, compiler.Enum):
-                        self.generate_enum(module, member)
-                        SEP()
+                for enum in service.enums():
+                    self.generate_enum(module, enum)
+                    SEP()
                 
                 DOC("records", spacer = True)
-                for member in service.types.values():
-                    if isinstance(member, compiler.Record):
-                        self.generate_record_class(module, member, proxy = False)
-                        SEP()
+                for rec in service.records():
+                    self.generate_record_class(module, rec, proxy = False)
+                    SEP()
                 
-                for member in service.types.values():
-                    if isinstance(member, compiler.Record):
-                        if not is_complex_type(member):
-                            self.generate_record_packer(module, member, static = True, proxy = False)
-                            SEP()
+                for rec in service.records(lambda mem: not is_complex_type(mem)):
+                    self.generate_record_packer(module, rec, static = True, proxy = False)
+                    SEP()
 
                 DOC("consts", spacer = True)
                 for member in service.consts.values():
@@ -197,10 +172,9 @@ class CSharpTarget(TargetBase):
                 SEP()
                 
                 DOC("classes", spacer = True)
-                for member in service.types.values():
-                    if isinstance(member, compiler.Class):
-                        self.generate_class_interface(module, member)
-                        SEP()
+                for cls in service.classes():
+                    self.generate_class_interface(module, cls)
+                    SEP()
 
                 DOC("server implementation", spacer = True)
                 self.generate_handler_interface(module, service)
@@ -227,22 +201,18 @@ class CSharpTarget(TargetBase):
                 SEP()
 
                 DOC("enums", spacer = True)
-                for member in service.types.values():
-                    if isinstance(member, compiler.Enum):
-                        self.generate_enum(module, member)
-                        SEP()
+                for enum in service.enums():
+                    self.generate_enum(module, enum)
+                    SEP()
                 
                 DOC("records", spacer = True)
-                for member in service.types.values():
-                    if isinstance(member, compiler.Record):
-                        self.generate_record_class(module, member, proxy = True)
-                        SEP()
+                for rec in service.records():
+                    self.generate_record_class(module, rec, proxy = True)
+                    SEP()
                 
-                for member in service.types.values():
-                    if isinstance(member, compiler.Record):
-                        if not is_complex_type(member):
-                            self.generate_record_packer(module, member, static = True, proxy = True)
-                            SEP()
+                for rec in service.records(lambda mem: not is_complex_type(mem)):
+                    self.generate_record_packer(module, rec, static = True, proxy = True)
+                    SEP()
 
                 DOC("consts", spacer = True)
                 for member in service.consts.values():
@@ -254,10 +224,9 @@ class CSharpTarget(TargetBase):
                 DOC("classes", spacer = True)
                 self.generate_base_class_proxy(module, service)
                 SEP()
-                for member in service.types.values():
-                    if isinstance(member, compiler.Class):
-                        self.generate_class_proxy(module, service, member)
-                        SEP()
+                for cls in service.classes():
+                    self.generate_class_proxy(module, service, cls)
+                    SEP()
 
                 DOC("client", spacer = True)
                 self.generate_client(module, service)
@@ -290,7 +259,8 @@ class CSharpTarget(TargetBase):
                     STMT("internal readonly Packers.AbstractPacker _{0}", tp.stringify())
                 else:
                     definition = self._generate_templated_packer_for_type(tp, proxy)
-                    STMT("internal static readonly Packers.AbstractPacker _{0} = {1}", tp.stringify(), definition)
+                    STMT("internal static readonly Packers.AbstractPacker _{0} = {1}", 
+                        tp.stringify(), definition)
             
     def generate_templated_packers_impl(self, module, service, proxy):
         BLOCK = module.block
@@ -336,7 +306,8 @@ class CSharpTarget(TargetBase):
             with BLOCK("public {0}()", rec.name):
                 pass
             if rec.members:
-                args = ", ".join("%s %s" % (type_to_cs(mem.type, proxy = proxy), mem.name) for mem in rec.members)
+                args = ", ".join("%s %s" % (type_to_cs(mem.type, proxy = proxy), mem.name) 
+                    for mem in rec.members)
                 with BLOCK("public {0}({1})", rec.name, args):
                     for mem in rec.members:
                         STMT("this.{0} = {0}", mem.name)
@@ -345,7 +316,8 @@ class CSharpTarget(TargetBase):
                 if not rec.members:
                     STMT('return "{0}()"', rec.name)
                 else:
-                    STMT('return "{0}(" + {1} + ")"', rec.name, ' + ", " + '.join(mem.name  for mem in rec.members))
+                    STMT('return "{0}(" + {1} + ")"', rec.name, ' + ", " + '.join(mem.name
+                        for mem in rec.members))
 
     def generate_record_packer(self, module, rec, static, proxy):
         BLOCK = module.block
@@ -357,7 +329,8 @@ class CSharpTarget(TargetBase):
                 complex_types = rec.get_complex_types()
                 for tp in complex_types:
                     STMT("internal Packers.AbstractPacker {0}", type_to_packer(tp))
-                args =  ", ".join("Packers.AbstractPacker %s" % (type_to_packer(tp),) for tp in complex_types)
+                args =  ", ".join("Packers.AbstractPacker %s" % (type_to_packer(tp),) 
+                    for tp in complex_types)
                 with BLOCK("public _{0}Packer({1})", rec.name, args):
                     for tp in complex_types:
                         STMT("this.{0} = {0}", type_to_packer(tp))
@@ -441,7 +414,8 @@ class CSharpTarget(TargetBase):
             if cls.methods:
                 DOC("methods")
             for method in cls.methods:
-                args = ", ".join("%s %s" % (type_to_cs(arg.type), arg.name) for arg in method.args)
+                args = ", ".join("%s %s" % (type_to_cs(arg.type), arg.name) 
+                    for arg in method.args)
                 STMT("{0} {1}({2})", type_to_cs(method.type), method.name, args)
 
     def generate_class_proxy(self, module, service, cls):
@@ -467,7 +441,8 @@ class CSharpTarget(TargetBase):
             for method in cls.all_methods:
                 if not method.clientside:
                     continue
-                args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) for arg in method.args)
+                args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) 
+                    for arg in method.args)
                 with BLOCK("public {0} {1}({2})", type_to_cs(method.type, proxy = True), method.name, args):
                     callargs = ["this"] + [arg.name for arg in method.args]
                     if method.type == compiler.t_void:
@@ -495,7 +470,8 @@ class CSharpTarget(TargetBase):
         with BLOCK("public interface IHandler"):
             for member in service.funcs.values():
                 if isinstance(member, compiler.Func):
-                    args = ", ".join("%s %s" % (type_to_cs(arg.type), arg.name) for arg in member.args)
+                    args = ", ".join("%s %s" % (type_to_cs(arg.type), arg.name) 
+                        for arg in member.args)
                     STMT("{0} {1}({2})", type_to_cs(member.type), member.fullname, args)
 
     def generate_processor(self, module, service):
@@ -506,33 +482,30 @@ class CSharpTarget(TargetBase):
         with BLOCK("public partial class Processor : Protocol.BaseProcessor"):
             STMT("internal readonly IHandler handler")
             SEP()
-            for tp in service.types.values():
-                if isinstance(tp, compiler.Class):
-                    STMT("internal readonly Packers.ObjRef {0}ObjRef", tp.name)
+            for cls in service.classes():
+                STMT("internal readonly Packers.ObjRef {0}ObjRef", cls.name)
             SEP()
             generated_records = []
-            for member in service.types.values():
-                if isinstance(member, compiler.Record):
-                    if is_complex_type(member):
-                        self.generate_record_packer(module, member, static = False, proxy = False)
-                        generated_records.append(member)
-                        SEP()
+            for rec in service.records(is_complex_type):
+                self.generate_record_packer(module, rec, static = False, proxy = False)
+                generated_records.append(rec)
+                SEP()
             self.generate_templated_packers_decl(module, service, proxy = False)
             SEP()
             STMT("protected readonly Packers.HeteroMapPacker heteroMapPacker")
             SEP()
             with BLOCK("public Processor(ITransport transport, IHandler handler) : base(transport)"):
                 STMT("this.handler = handler")
-                for tp in service.types.values():
-                    if isinstance(tp, compiler.Class):
-                        STMT("{0}ObjRef = new Packers.ObjRef({1}, this)", tp.name, tp.id)
+                for cls in service.classes():
+                    STMT("{0}ObjRef = new Packers.ObjRef({1}, this)", cls.name, cls.id)
                 for rec in generated_records:
                     complex_types = rec.get_complex_types()
-                    STMT("{0}Packer = new _{0}Packer({1})", rec.name, ", ".join(type_to_packer(tp) for tp in complex_types))
+                    STMT("{0}Packer = new _{0}Packer({1})", rec.name, ", ".join(type_to_packer(tp) 
+                        for tp in complex_types))
                 self.generate_templated_packers_impl(module, service, proxy = False)
                 SEP()
                 STMT("Dictionary<int, Packers.AbstractPacker> packersMap = new Dictionary<int, Packers.AbstractPacker>()")
-                for tp in service.types.values():
+                for tp in service.ordered_types:
                     STMT("packersMap[{0}] = {1}", tp.id, type_to_packer(tp))
                 STMT("heteroMapPacker = new Packers.HeteroMapPacker(999, packersMap)")
                 STMT("packersMap[999] = heteroMapPacker")
@@ -609,7 +582,7 @@ class CSharpTarget(TargetBase):
             STMT("object[] args = null")
             STMT("Stream stream = transport.GetStream()")
             STMT("int funcid = (int){0}.unpack(stream)", type_to_packer(compiler.t_int32))
-            packed_exceptions = [tp for tp in service.types.values() if isinstance(tp, compiler.Exception)]
+            packed_exceptions = service.exceptions()
 
             with BLOCK("try") if packed_exceptions else NOOP:
                 with BLOCK("switch (funcid)"):
@@ -628,7 +601,8 @@ class CSharpTarget(TargetBase):
             for tp in packed_exceptions:
                 with BLOCK("catch ({0} ex)", tp.name):
                     STMT("transport.Reset()")
-                    STMT("{0}.pack((byte)Protocol.REPLY_PACKED_EXCEPTION, stream)", type_to_packer(compiler.t_int8))
+                    STMT("{0}.pack((byte)Protocol.REPLY_PACKED_EXCEPTION, stream)", 
+                        type_to_packer(compiler.t_int8))
                     STMT("{0}.pack({1}, stream)", type_to_packer(compiler.t_int32), tp.id)
                     STMT("{0}.pack(ex, stream)", type_to_packer(tp))
 
@@ -645,7 +619,8 @@ class CSharpTarget(TargetBase):
                     if func.args:
                         arg = func.args[-1]
                         STMT("{0}.unpack(stream)", type_to_packer(arg.type), suffix = ",")
-            callargs = ", ".join("(%s)args[%s]" % (type_to_cs(arg.type), i) for i, arg in enumerate(func.args))
+            callargs = ", ".join("(%s)args[%s]" % (type_to_cs(arg.type), i) 
+                for i, arg in enumerate(func.args))
             if func.type == compiler.t_void:
                 invocation = "handler.%s(%s)" % (func.fullname, callargs) 
             else:
@@ -666,7 +641,8 @@ class CSharpTarget(TargetBase):
             
             if isinstance(func.origin, compiler.ClassAttr):
                 if func.type == compiler.t_void:
-                    invocation = "((%s)inst).%s = (%s)args[0]" % (type_to_cs(insttype), func.origin.name, type_to_cs(func.origin.type))
+                    invocation = "((%s)inst).%s = (%s)args[0]" % (type_to_cs(insttype), 
+                        func.origin.name, type_to_cs(func.origin.type))
                 else:
                     invocation = "result = ((%s)inst).%s" % (type_to_cs(insttype), func.origin.name)
             else:
@@ -693,17 +669,14 @@ class CSharpTarget(TargetBase):
         DOC = module.doc
         
         with BLOCK("public partial class Client : Protocol.BaseClient"):
-            for tp in service.types.values():
-                if isinstance(tp, compiler.Class):
-                    STMT("internal readonly Packers.ObjRef {0}ObjRef", tp.name)
+            for cls in service.classes():
+                STMT("internal readonly Packers.ObjRef {0}ObjRef", cls.name)
             SEP()
             generated_records = []
-            for member in service.types.values():
-                if isinstance(member, compiler.Record):
-                    if is_complex_type(member):
-                        self.generate_record_packer(module, member, static = False, proxy = True)
-                        generated_records.append(member)
-                        SEP()
+            for rec in service.records(is_complex_type):
+                self.generate_record_packer(module, rec, static = False, proxy = True)
+                generated_records.append(rec)
+                SEP()
             self.generate_templated_packers_decl(module, service, proxy = True)
             SEP()
             with BLOCK("internal abstract class ClientSerializer : Packers.ISerializer"):
@@ -727,13 +700,12 @@ class CSharpTarget(TargetBase):
                     STMT("return proxy")
                 STMT("protected abstract object newProxy(long id)")
             SEP()
-            for tp in service.types.values():
-                if isinstance(tp, compiler.Class):
-                    with BLOCK("internal class {0}ClientSerializer : ClientSerializer", tp.name):
-                        with BLOCK("public {0}ClientSerializer(Client client) : base(client)", tp.name):
-                            pass
-                        with BLOCK("protected override object newProxy(long id)"):
-                            STMT("return new {0}(client, id, true)", type_to_cs(tp, proxy = True))
+            for cls in service.classes():
+                with BLOCK("internal class {0}ClientSerializer : ClientSerializer", cls.name):
+                    with BLOCK("public {0}ClientSerializer(Client client) : base(client)", cls.name):
+                        pass
+                    with BLOCK("protected override object newProxy(long id)"):
+                        STMT("return new {0}(client, id, true)", type_to_cs(cls, proxy = True))
             SEP()
             STMT("protected readonly Packers.HeteroMapPacker heteroMapPacker")
             SEP()
@@ -758,18 +730,17 @@ class CSharpTarget(TargetBase):
             STMT("_utils = new Protocol.ClientUtils(transport, pem)")
             STMT("_funcs = new _Functions(this)")
             SEP()
-            for tp in service.types.values():
-                if isinstance(tp, compiler.Class):
-                    STMT("{0}ObjRef = new Packers.ObjRef({1}, new {0}ClientSerializer(this))", tp.name, tp.id) 
+            for cls in service.classes():
+                STMT("{0}ObjRef = new Packers.ObjRef({1}, new {0}ClientSerializer(this))", cls.name, cls.id) 
             
             for rec in generated_records:
                 complex_types = rec.get_complex_types()
-                STMT("{0}Packer = new _{0}Packer({1})", rec.name, ", ".join(type_to_packer(tp) for tp in complex_types))
+                STMT("{0}Packer = new _{0}Packer({1})", rec.name, ", ".join(type_to_packer(tp) 
+                    for tp in complex_types))
             SEP()
             
-            for mem in service.types.values():
-                if isinstance(mem, compiler.Exception):
-                    STMT("pem[{0}] = {1}Packer", mem.id, mem.name)
+            for exc in service.exceptions():
+                STMT("pem[{0}] = {1}Packer", exc.id, exc.name)
             SEP()
             
             for name, id in namespaces:
@@ -779,7 +750,7 @@ class CSharpTarget(TargetBase):
             SEP()
             
             STMT("Dictionary<int, Packers.AbstractPacker> packersMap = new Dictionary<int, Packers.AbstractPacker>()")
-            for tp in service.types.values():
+            for tp in service.ordered_types:
                 STMT("packersMap[{0}] = {1}", tp.id, type_to_packer(tp))
             STMT("heteroMapPacker = new Packers.HeteroMapPacker(999, packersMap)")
             STMT("packersMap[999] = heteroMapPacker")
@@ -832,7 +803,8 @@ class CSharpTarget(TargetBase):
                     subnamespaces.append((name, node["__id__"]))
                 elif isinstance(node, compiler.Func):
                     func = node
-                    args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) for arg in func.args)
+                    args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) 
+                        for arg in func.args)
                     callargs = ", ".join(arg.name for arg in func.args)
                     with BLOCK("public {0} {1}({2})", type_to_cs(func.type, proxy = True), func.name, args):
                         if func.type == compiler.t_void:
@@ -881,7 +853,7 @@ class CSharpTarget(TargetBase):
                 STMT('''throw new WrongAgnosVersion("expected version '" + AGNOS_VERSION + "', found '" + agnos_version + "'")''')
             with BLOCK('if (service_name != "{0}")', service.name):
                 STMT('''throw new WrongServiceName("expected service '{0}', found '" + service_name + "'")''', service.name)
-            with BLOCK('if (CLIENT_VERSION != null)'):
+            if service.clientversion:
                 STMT("object output = null")
                 STMT('info.TryGetValue("SUPPORTED_VERSIONS", out output)')
                 STMT('List<string> supported_versions = (List<string>)output')
@@ -899,12 +871,16 @@ class CSharpTarget(TargetBase):
                 STMT("this.client = client")
             SEP()
             for func in service.funcs.values():
-                args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) for arg in func.args)
-                with BLOCK("public {0} sync_{1}({2})", type_to_cs(func.type, proxy = True), func.id, args):
+                args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) 
+                    for arg in func.args)
+                with BLOCK("public {0} sync_{1}({2})", type_to_cs(func.type, proxy = True), 
+                        func.id, args):
                     if is_complex_type(func.type):
-                        STMT("int seq = client._utils.BeginCall({0}, client.{1})", func.id, type_to_packer(func.type))
+                        STMT("int seq = client._utils.BeginCall({0}, client.{1})", 
+                            func.id, type_to_packer(func.type))
                     else:
-                        STMT("int seq = client._utils.BeginCall({0}, {1})", func.id, type_to_packer(func.type))
+                        STMT("int seq = client._utils.BeginCall({0}, {1})", func.id, 
+                            type_to_packer(func.type))
                     if func.args:
                         STMT("Stream stream = client._utils.transport.GetStream()")
                         with BLOCK("try"):
@@ -933,7 +909,8 @@ class CSharpTarget(TargetBase):
         for func in service.funcs.values():
             if not isinstance(func, compiler.Func) or func.namespace or not func.clientside:
                 continue
-            args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) for arg in func.args)
+            args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) 
+                for arg in func.args)
             callargs = ", ".join(arg.name for arg in func.args)
             with BLOCK("public {0} {1}({2})", type_to_cs(func.type, proxy = True), func.name, args):
                 if func.type == compiler.t_void:

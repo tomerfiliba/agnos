@@ -10,16 +10,16 @@
 
 namespace agnos
 {
-	DEFINE_EXCEPTION(PackedException)
-	DEFINE_EXCEPTION(ProtocolError)
-	DEFINE_EXCEPTION2(WrongAgnosVersion, ProtocolError)
-	DEFINE_EXCEPTION2(WrongServiceName, ProtocolError)
-	DEFINE_EXCEPTION2(IncompatibleServiceVersion, ProtocolError)
+	DEFINE_EXCEPTION(PackedException);
+	DEFINE_EXCEPTION(ProtocolError);
+	DEFINE_EXCEPTION2(WrongAgnosVersion, ProtocolError);
+	DEFINE_EXCEPTION2(WrongServiceName, ProtocolError);
+	DEFINE_EXCEPTION2(IncompatibleServiceVersion, ProtocolError);
 
 	class GenericException : public std::exception
 	{
 	protected:
-		string formatted;
+		mutable string formatted;
 	public:
 		string message;
 		string traceback;
@@ -27,11 +27,6 @@ namespace agnos
 		GenericException(const string& message, const string& traceback) :
 			message(message), traceback(traceback)
 		{
-			formatted = "agnos.GenericException: ";
-			formatted += message;
-			formatted += " with remote backtrace:\n";
-			formatted += traceback;
-			formatted += "\t------------------- end of remote traceback -------------------";
 		}
 
 		~GenericException() throw()
@@ -40,6 +35,11 @@ namespace agnos
 
 		virtual const char* what() const throw ()
 		{
+			formatted = "agnos.GenericException: ";
+			formatted += message;
+			formatted += " with remote backtrace:\n";
+			formatted += traceback;
+			formatted += "\t------------------- end of remote traceback -------------------";
 			return formatted.c_str();
 		}
 	};
@@ -65,8 +65,6 @@ namespace agnos
 		const int32_t INFO_GENERAL = 1;
 		const int32_t INFO_FUNCTIONS = 2;
 		const int32_t INFO_FUNCCODES = 3;
-
-		typedef int64_t objref_t;
 
 		class BaseProcessor : protected ISerializer
 		{
@@ -107,8 +105,8 @@ namespace agnos
 			void process_ping(int32_t seq);
 			void process_get_info(int32_t seq);
 
-			virtual void store(objref_t oid, any obj);
-			virtual any load(objref_t oid);
+			objref_t store(objref_t oid, any obj);
+			any load(objref_t oid);
 
 			virtual void process_get_general_info(HeteroMap& map) = 0;
 			virtual void process_get_functions_info(HeteroMap& map) = 0;
@@ -119,6 +117,13 @@ namespace agnos
 			BaseProcessor(shared_ptr<ITransport> transport);
 			void process();
 			void serve();
+		};
+
+
+		class IProcessorFactory
+		{
+		public:
+			virtual shared_ptr<BaseProcessor> create(shared_ptr<ITransport> transport) = 0;
 		};
 
 		//////////////////////////////////////////////////////////////////////
@@ -146,11 +151,10 @@ namespace agnos
 		class ClientUtils
 		{
 		public:
-			typedef shared_ptr< map<int32_t, IPacker*> > packed_exceptions_map_type;
+			map<int32_t, IPacker*> packed_exceptions_map;
 
 		protected:
-			packed_exceptions_map_type packed_exceptions_map;
-			map<int32_t, ReplySlot> replies;
+			map<int32_t, shared_ptr<ReplySlot> > replies;
 			map<objref_t, any> proxies;
 			volatile int32_t _seq;
 
@@ -162,7 +166,7 @@ namespace agnos
 		public:
 			shared_ptr<ITransport> transport;
 
-			ClientUtils(shared_ptr<ITransport> transport, packed_exceptions_map_type packed_exceptions_map);
+			ClientUtils(shared_ptr<ITransport> transport);
 
 			void close();
 
@@ -175,9 +179,9 @@ namespace agnos
 				return wp.lock();
 			}
 
-			template<typename T> void cache_proxy(objref_t oid, shared_ptr<T> proxy)
+			template<typename T> void cache_proxy(shared_ptr<T> proxy)
 			{
-				map_put(proxies, oid, weak_ptr<T>(proxy));
+				map_put(proxies, proxy->_oid, any(weak_ptr<T>(proxy)));
 			}
 
 			void decref(objref_t oid);
@@ -187,12 +191,12 @@ namespace agnos
 			void cancel_call();
 
 			int ping(string payload, int msecs);
-			HeteroMap get_service_info(int code);
+			shared_ptr<HeteroMap> get_service_info(int code);
 
 			void process_incoming(int32_t msecs);
 			bool is_reply_ready(int32_t seq);
 			void discard_reply(int32_t seq);
-			ReplySlot& wait_reply(int32_t seq, int msecs);
+			shared_ptr<ReplySlot> wait_reply(int32_t seq, int msecs);
 			any get_reply(int32_t seq, int msecs = -1);
 
 			template<typename T> inline T get_reply_as(int32_t seq, int msecs = -1)
@@ -200,6 +204,16 @@ namespace agnos
 				return any_cast<T>(get_reply(seq, msecs));
 			}
 		};
+
+		class BaseClient
+		{
+		public:
+			ClientUtils _utils;
+
+			BaseClient(shared_ptr<ITransport> transport);
+			shared_ptr<HeteroMap> get_service_info(int code);
+		};
+
 	}
 }
 

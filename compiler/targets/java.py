@@ -162,22 +162,18 @@ class JavaTarget(TargetBase):
             SEP()
             
             DOC("enums", spacer = True)
-            for member in service.types.values():
-                if isinstance(member, compiler.Enum):
-                    self.generate_enum(module, member)
-                    SEP()
+            for enum in service.enums():
+                self.generate_enum(module, enum)
+                SEP()
             
             DOC("records", spacer = True)
-            for member in service.types.values():
-                if isinstance(member, compiler.Record):
-                    self.generate_record_class(module, member, proxy = False)
-                    SEP()
+            for rec in service.records():
+                self.generate_record_class(module, rec, proxy = False)
+                SEP()
             
-            for member in service.types.values():
-                if isinstance(member, compiler.Record):
-                    if not is_complex_type(member):
-                        self.generate_record_packer(module, member, static = True, proxy = False)
-                        SEP()
+            for rec in service.records(lambda mem: not is_complex_type(mem)):
+                self.generate_record_packer(module, rec, static = True, proxy = False)
+                SEP()
 
             DOC("consts", spacer = True)
             for member in service.consts.values():
@@ -186,10 +182,9 @@ class JavaTarget(TargetBase):
             SEP()
             
             DOC("classes", spacer = True)
-            for member in service.types.values():
-                if isinstance(member, compiler.Class):
-                    self.generate_class_interface(module, member)
-                    SEP()
+            for cls in service.classes():
+                self.generate_class_interface(module, cls)
+                SEP()
 
             DOC("server implementation", spacer = True)
             self.generate_handler_interface(module, service)
@@ -218,22 +213,18 @@ class JavaTarget(TargetBase):
             SEP()
             
             DOC("enums", spacer = True)
-            for member in service.types.values():
-                if isinstance(member, compiler.Enum):
-                    self.generate_enum(module, member)
-                    SEP()
+            for enum in service.enums():
+                self.generate_enum(module, enum)
+                SEP()
             
             DOC("records", spacer = True)
-            for member in service.types.values():
-                if isinstance(member, compiler.Record):
-                    self.generate_record_class(module, member, proxy = True)
-                    SEP()
+            for rec in service.records():
+                self.generate_record_class(module, rec, proxy = True)
+                SEP()
             
-            for member in service.types.values():
-                if isinstance(member, compiler.Record):
-                    if not is_complex_type(member):
-                        self.generate_record_packer(module, member, static = True, proxy = True)
-                        SEP()
+            for rec in service.records(lambda mem: not is_complex_type(mem)):
+                self.generate_record_packer(module, rec, static = True, proxy = True)
+                SEP()
 
             DOC("consts", spacer = True)
             for member in service.consts.values():
@@ -245,10 +236,9 @@ class JavaTarget(TargetBase):
             DOC("classes", spacer = True)
             self.generate_base_class_proxy(module, service)
             SEP()
-            for member in service.types.values():
-                if isinstance(member, compiler.Class):
-                    self.generate_class_proxy(module, service, member)
-                    SEP()
+            for cls in service.classes():
+                self.generate_class_proxy(module, service, cls)
+                SEP()
             
             DOC("client", spacer = True)
             self.generate_client(module, service)
@@ -337,7 +327,8 @@ class JavaTarget(TargetBase):
             with BLOCK("public {0}()", rec.name):
                 pass
             if rec.members:
-                args = ", ".join("%s %s" % (type_to_java(mem.type, proxy = proxy), mem.name) for mem in rec.members)
+                args = ", ".join("%s %s" % (type_to_java(mem.type, proxy = proxy), mem.name) 
+                    for mem in rec.members)
                 with BLOCK("public {0}({1})", rec.name, args):
                     for mem in rec.members:
                         STMT("this.{0} = {0}", mem.name)
@@ -345,7 +336,8 @@ class JavaTarget(TargetBase):
                 if not rec.members:
                     STMT('return "{0}()"', rec.name)
                 else:
-                    STMT('return "{0}(" + {1} + ")"', rec.name, ' + ", " + '.join(mem.name  for mem in rec.members))
+                    STMT('return "{0}(" + {1} + ")"', rec.name, 
+                        ' + ", " + '.join(mem.name  for mem in rec.members))
     
     def generate_record_packer(self, module, rec, static, proxy):
         BLOCK = module.block
@@ -390,14 +382,17 @@ class JavaTarget(TargetBase):
                 if attr.get:
                     STMT("{0} get_{1}() throws Exception", type_to_java(attr.type), attr.name)
                 if attr.set:
-                    STMT("void set_{0}({1} value) throws Exception", attr.name, type_to_java(attr.type))
+                    STMT("void set_{0}({1} value) throws Exception", attr.name, 
+                        type_to_java(attr.type))
             if cls.attrs:
                 SEP()
             if cls.methods:
                 DOC("methods")
             for method in cls.methods:
-                args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) for arg in method.args)
-                STMT("{0} {1}({2}) throws Exception", type_to_java(method.type), method.name, args)
+                args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) 
+                    for arg in method.args)
+                STMT("{0} {1}({2}) throws Exception", type_to_java(method.type), 
+                    method.name, args)
 
     def generate_base_class_proxy(self, module, service):
         BLOCK = module.block
@@ -459,7 +454,8 @@ class JavaTarget(TargetBase):
             for attr in cls.all_attrs:
                 if attr.get:
                     #self.emit_javadoc(["Getter for %s" % (attr.name,), attr.doc], module)
-                    with BLOCK("public {0} get_{1}() throws Exception", type_to_java(attr.type, proxy = True), attr.name):
+                    with BLOCK("public {0} get_{1}() throws Exception", 
+                            type_to_java(attr.type, proxy = True), attr.name):
                         STMT("return _client._funcs.sync_{0}(this)", attr.getter.id)
                 if attr.set:
                     #self.emit_javadoc(["Setter for %s" % (attr.name,), attr.doc], module)
@@ -471,8 +467,10 @@ class JavaTarget(TargetBase):
                 if not method.clientside:
                     continue
                 #self.emit_func_javadoc(method, module)
-                args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in method.args)
-                with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(method.type, proxy = True), method.name, args):
+                args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) 
+                    for arg in method.args)
+                with BLOCK("public {0} {1}({2}) throws Exception", 
+                        type_to_java(method.type, proxy = True), method.name, args):
                     callargs = ["this"] + [arg.name for arg in method.args]
                     if method.type == compiler.t_void:
                         STMT("_client._funcs.sync_{0}({1})", method.func.id, ", ".join(callargs))
@@ -498,8 +496,10 @@ class JavaTarget(TargetBase):
         with BLOCK("public interface IHandler"):
             for member in service.funcs.values():
                 if isinstance(member, compiler.Func):
-                    args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) for arg in member.args)
-                    STMT("{0} {1}({2}) throws Exception", type_to_java(member.type), member.fullname, args)
+                    args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) 
+                        for arg in member.args)
+                    STMT("{0} {1}({2}) throws Exception", type_to_java(member.type),
+                        member.fullname, args)
 
     def generate_processor(self, module, service):
         BLOCK = module.block
@@ -510,17 +510,14 @@ class JavaTarget(TargetBase):
         with BLOCK("public static class Processor extends Protocol.BaseProcessor"):
             STMT("protected final IHandler handler")
             SEP()
-            for tp in service.types.values():
-                if isinstance(tp, compiler.Class):
-                    STMT("protected final Packers.ObjRef {0}ObjRef", tp.name)
+            for cls in service.classes():
+                STMT("protected final Packers.ObjRef {0}ObjRef", cls.name)
             SEP()
             generated_records = []
-            for member in service.types.values():
-                if isinstance(member, compiler.Record):
-                    if is_complex_type(member):
-                        self.generate_record_packer(module, member, static = False, proxy = False)
-                        generated_records.append(member)
-                        SEP()
+            for rec in service.records(is_complex_type):
+                self.generate_record_packer(module, rec, static = False, proxy = False)
+                generated_records.append(rec)
+                SEP()
             self.generate_templated_packers_decl(module, service)
             SEP()
             STMT("protected final Packers.HeteroMapPacker heteroMapPacker")
@@ -528,9 +525,8 @@ class JavaTarget(TargetBase):
             with BLOCK("public Processor(Transports.ITransport transport, IHandler handler)"):
                 STMT("super(transport)")
                 STMT("this.handler = handler")
-                for tp in service.types.values():
-                    if isinstance(tp, compiler.Class):
-                        STMT("{0}ObjRef = new Packers.ObjRef({1}, this)", tp.name, tp.id)
+                for cls in service.classes():
+                    STMT("{0}ObjRef = new Packers.ObjRef({1}, this)", cls.name, cls.id)
                 for rec in generated_records:
                     STMT("{0}Packer = new _{0}Packer()", rec.name)
                 self.generate_templated_packers_impl(module, service, proxy = False)
@@ -610,7 +606,7 @@ class JavaTarget(TargetBase):
             STMT("InputStream inStream = transport.getInputStream()")
             STMT("OutputStream outStream = transport.getOutputStream()")
             STMT("int funcid = (Integer){0}.unpack(inStream)", type_to_packer(compiler.t_int32))
-            packed_exceptions = [tp for tp in service.types.values() if isinstance(tp, compiler.Exception)]
+            packed_exceptions = service.exceptions()
 
             with BLOCK("try") if packed_exceptions else NOOP:
                 with BLOCK("switch (funcid)"):
@@ -623,13 +619,15 @@ class JavaTarget(TargetBase):
                     with BLOCK("default:", prefix = None, suffix = None):
                         STMT('throw new Protocol.ProtocolError("unknown function id: " + funcid)')
                 SEP()
-                STMT("{0}.pack(new Byte((byte)Protocol.REPLY_SUCCESS), outStream)", type_to_packer(compiler.t_int8))
+                STMT("{0}.pack(new Byte((byte)Protocol.REPLY_SUCCESS), outStream)", 
+                    type_to_packer(compiler.t_int8))
                 with BLOCK("if (packer != null)"):
                     STMT("packer.pack(result, outStream)")
             for tp in packed_exceptions:
                 with BLOCK("catch ({0} ex)", tp.name):
                     STMT("transport.reset()")
-                    STMT("{0}.pack(new Byte((byte)Protocol.REPLY_PACKED_EXCEPTION), outStream)", type_to_packer(compiler.t_int8))
+                    STMT("{0}.pack(new Byte((byte)Protocol.REPLY_PACKED_EXCEPTION), outStream)", 
+                        type_to_packer(compiler.t_int8))
                     STMT("{0}.pack({1}, outStream)", type_to_packer(compiler.t_int32), tp.id)
                     STMT("{0}.pack(ex, outStream)", type_to_packer(tp))
 
@@ -646,7 +644,8 @@ class JavaTarget(TargetBase):
                     if func.args:
                         arg = func.args[-1]
                         STMT("{0}.unpack(inStream)", type_to_packer(arg.type), suffix = ",")
-            callargs = ", ".join("(%s)args[%s]" % (type_to_java(arg.type), i) for i, arg in enumerate(func.args))
+            callargs = ", ".join("(%s)args[%s]" % (type_to_java(arg.type), i) 
+                for i, arg in enumerate(func.args))
             if func.type == compiler.t_void:
                 invocation = "handler.%s" % (func.fullname,) 
             else:
@@ -662,7 +661,8 @@ class JavaTarget(TargetBase):
                         STMT("{0}.unpack(inStream)", type_to_packer(arg.type), suffix = ",")
                     arg = func.args[-1]
                     STMT("{0}.unpack(inStream)", type_to_packer(arg.type), suffix = ",")
-            callargs = ", ".join("(%s)args[%s]" % (type_to_java(arg.type), i) for i, arg in enumerate(func.args[1:]))
+            callargs = ", ".join("(%s)args[%s]" % (type_to_java(arg.type), i) 
+                for i, arg in enumerate(func.args[1:]))
             
             if isinstance(func.origin, compiler.ClassAttr):
                 if func.type == compiler.t_void:
@@ -693,17 +693,14 @@ class JavaTarget(TargetBase):
         DOC = module.doc
         
         with BLOCK("public static class Client extends Protocol.BaseClient"):
-            for tp in service.types.values():
-                if isinstance(tp, compiler.Class):
-                    STMT("protected Packers.ObjRef {0}ObjRef", tp.name)
+            for cls in service.classes():
+                STMT("protected Packers.ObjRef {0}ObjRef", cls.name)
             SEP()
             generated_records = []
-            for member in service.types.values():
-                if isinstance(member, compiler.Record):
-                    if is_complex_type(member):
-                        self.generate_record_packer(module, member, static = False, proxy = True)
-                        generated_records.append(member)
-                        SEP()
+            for rec in service.records(is_complex_type):
+                self.generate_record_packer(module, rec, static = False, proxy = True)
+                generated_records.append(rec)
+                SEP()
             self.generate_templated_packers_decl(module, service)
             SEP()
             with BLOCK("protected abstract class ClientSerializer implements Packers.ISerializer"):
@@ -745,24 +742,22 @@ class JavaTarget(TargetBase):
             STMT("_funcs = new _Functions(_utils)")
             SEP()
             STMT("final Client the_client = this")
-            for tp in service.types.values():
-                if isinstance(tp, compiler.Class):
-                    with BLOCK("{0}ObjRef = new Packers.ObjRef({1}, new ClientSerializer() {2}", 
-                            tp.name, tp.id, "{", prefix = "", suffix = "});"):
-                        with BLOCK("protected Object _get_proxy(Long id)"):
-                            STMT("Object proxy = the_client._utils.getProxy(id)")
-                            with BLOCK("if (proxy == null)"):
-                                STMT("proxy = new {0}(the_client, id, true)", type_to_java(tp, proxy = True))
-                                STMT("the_client._utils.cacheProxy(id, proxy)")
-                            STMT("return proxy")
+            for cls in service.classes():
+                with BLOCK("{0}ObjRef = new Packers.ObjRef({1}, new ClientSerializer() {2}", 
+                        cls.name, cls.id, "{", prefix = "", suffix = "});"):
+                    with BLOCK("protected Object _get_proxy(Long id)"):
+                        STMT("Object proxy = the_client._utils.getProxy(id)")
+                        with BLOCK("if (proxy == null)"):
+                            STMT("proxy = new {0}(the_client, id, true)", type_to_java(cls, proxy = True))
+                            STMT("the_client._utils.cacheProxy(id, proxy)")
+                        STMT("return proxy")
                     SEP()
             for rec in generated_records:
                 STMT("{0}Packer = new _{0}Packer()", rec.name)
             self.generate_templated_packers_impl(module, service, proxy = True)
             SEP()
-            for mem in service.types.values():
-                if isinstance(mem, compiler.Exception):
-                    STMT("pem.put({0}, {1}Packer)", mem.id, mem.name)
+            for exc in service.exceptions():
+                STMT("pem.put({0}, {1}Packer)", exc.id, exc.name)
             SEP()
             for name, id in namespaces:
                 STMT("{0} = new _Namespace{1}(_funcs)", name, id)
@@ -821,9 +816,11 @@ class JavaTarget(TargetBase):
                     subnamespaces.append((name, node["__id__"]))
                 elif isinstance(node, compiler.Func):
                     func = node
-                    args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in func.args)
+                    args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) 
+                        for arg in func.args)
                     callargs = ", ".join(arg.name for arg in func.args)
-                    with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(func.type, proxy = True), func.name, args):
+                    with BLOCK("public {0} {1}({2}) throws Exception", 
+                            type_to_java(func.type, proxy = True), func.name, args):
                         if func.type == compiler.t_void:
                             STMT("_funcs.sync_{0}({1})", func.id, callargs)
                         else:
@@ -871,7 +868,7 @@ class JavaTarget(TargetBase):
                 STMT('''throw new Protocol.WrongAgnosVersion("expected version '" + AGNOS_VERSION + "', found '" + agnos_version + "'")''')
             with BLOCK('if (!service_name.equals("{0}"))', service.name):
                 STMT('''throw new Protocol.WrongServiceName("expected service '{0}', found '" + service_name + "'")''', service.name)
-            with BLOCK('if (CLIENT_VERSION != null)'):
+            if service.clientversion:
                 STMT('List<String> supported_versions = (List<String>)info.get("SUPPORTED_VERSIONS")')
                 with BLOCK('if (supported_versions == null || !supported_versions.contains(CLIENT_VERSION))'):
                     STMT('''throw new Protocol.IncompatibleServiceVersion("server does not support client version '" + CLIENT_VERSION + "'")''')
@@ -887,8 +884,10 @@ class JavaTarget(TargetBase):
                 STMT("this.utils = utils")
             SEP()
             for func in service.funcs.values():
-                args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in func.args)
-                with BLOCK("public {0} sync_{1}({2}) throws Exception", type_to_java(func.type, proxy = True), func.id, args):
+                args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) 
+                    for arg in func.args)
+                with BLOCK("public {0} sync_{1}({2}) throws Exception", 
+                        type_to_java(func.type, proxy = True), func.id, args):
                     STMT("int seq = utils.beginCall({0}, {1})", func.id, type_to_packer(func.type))
                     STMT("OutputStream outStream = utils.transport.getOutputStream()")
                     with BLOCK("try"):
@@ -916,13 +915,14 @@ class JavaTarget(TargetBase):
             args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in func.args)
             callargs = ", ".join(arg.name for arg in func.args)
             #self.emit_func_javadoc(func, module)
-            with BLOCK("public {0} {1}({2}) throws Exception", type_to_java(func.type, proxy = True), func.name, args):
+            with BLOCK("public {0} {1}({2}) throws Exception", 
+                    type_to_java(func.type, proxy = True), func.name, args):
                 if func.type == compiler.t_void:
                     STMT("_funcs.sync_{0}({1})", func.id, callargs)
                 else:
                     STMT("return _funcs.sync_{0}({1})", func.id, callargs)
             SEP()
-    
+
 
 
 

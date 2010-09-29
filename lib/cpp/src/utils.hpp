@@ -13,9 +13,9 @@ namespace agnos
 		m.insert(typename map<K, V>::value_type(k, v));
 	}
 
-	template<typename K, typename V> inline static V * map_get(map<K, V>& m, const K& k, bool raise = true)
+	template<typename K, typename V> inline static V * map_get(const map<K, V>& m, const K& k, bool raise = true)
 	{
-		typename map<K, V>::iterator it = m.find(k);
+		typename map<K, V>::const_iterator it = m.find(k);
 		if (it == m.end()) {
 			if (raise) {
 				throw std::out_of_range("key not found");
@@ -24,7 +24,7 @@ namespace agnos
 				return NULL;
 			}
 		}
-		return &it->second;
+		return const_cast<V*>(&it->second);
 	}
 
 	namespace utils

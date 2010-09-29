@@ -97,9 +97,10 @@ namespace agnos
 			packers::builtin_heteromap_packer.pack(map, *transport);
 		}
 
-		void BaseProcessor::store(objref_t oid, any obj)
+		objref_t BaseProcessor::store(objref_t oid, any obj)
 		{
 			map_put(objmap, oid, Cell(obj));
+			return oid;
 		}
 
 		any BaseProcessor::load(objref_t oid)
@@ -195,7 +196,7 @@ namespace agnos
 		{
 			int32_t clsid;
 			Int32Packer::unpack(clsid, *transport);
-			IPacker ** packer = map_get(*packed_exceptions_map, clsid, false);
+			IPacker ** packer = map_get(packed_exceptions_map, clsid, false);
 			if (packer == NULL) {
 				throw ProtocolError("unknown exception class id: ");
 			}
@@ -218,8 +219,8 @@ namespace agnos
 			return GenericException(message, traceback);
 		}
 
-		ClientUtils::ClientUtils(shared_ptr<ITransport> transport, packed_exceptions_map_type packed_exceptions_map) :
-				packed_exceptions_map(packed_exceptions_map), transport(transport)
+		ClientUtils::ClientUtils(shared_ptr<ITransport> transport) :
+				packed_exceptions_map(), transport(transport)
 		{
 		}
 
@@ -243,7 +244,7 @@ namespace agnos
 			transport->begin_write(seq);
 			Int8Packer::pack(CMD_INVOKE, *transport);
 			Int32Packer::pack(funcid, *transport);
-			map_put(replies, seq, ReplySlot(&packer));
+			map_put(replies, seq, shared_ptr<ReplySlot>(new ReplySlot(&packer)));
 			return seq;
 		}
 
@@ -264,7 +265,7 @@ namespace agnos
 			Int8Packer::pack(CMD_PING, *transport);
 			StringPacker::pack(payload, *transport);
 			transport->end_write();
-			map_put(replies, seq, ReplySlot(&string_packer));
+			map_put(replies, seq, shared_ptr<ReplySlot>(new ReplySlot(&string_packer)));
 			string reply = get_reply_as<string>(seq, msecs);
 			if (reply != payload) {
 				throw ProtocolError("reply does not match payload!");
@@ -272,49 +273,121 @@ namespace agnos
 			return 0;
 		}
 
-		HeteroMap ClientUtils::get_service_info(int code)
+		shared_ptr<HeteroMap> ClientUtils::get_service_info(int code)
 		{
 			int32_t seq = get_seq();
 			transport->begin_write(seq);
 			Int8Packer::pack(CMD_GETINFO, *transport);
 			Int32Packer::pack(code, *transport);
 			transport->end_write();
-			map_put(replies, seq, ReplySlot(&builtin_heteromap_packer));
-			return get_reply_as<HeteroMap>(seq);
+			map_put(replies, seq, shared_ptr<ReplySlot>(new ReplySlot(&builtin_heteromap_packer)));
+			return get_reply_as< shared_ptr<HeteroMap> >(seq);
 		}
 
 		void ClientUtils::process_incoming(int32_t msecs)
 		{
+			int32_t seq = transport->begin_read();
+			_TransportEndRead finalizer(transport);
+
+			int8_t code;
+			Int8Packer::unpack(code, *transport);
+			shared_ptr<ReplySlot> * slot = map_get(replies, seq, false);
+
+			if (slot == NULL || ((**slot).type != SLOT_EMPTY && (**slot).type != SLOT_DISCARDED)) {
+				throw new ProtocolError("invalid reply sequence: ");
+			}
+			bool discard = ((**slot).type == SLOT_DISCARDED);
+			IPacker* packer = any_cast<IPacker*>((**slot).value);
+
+			switch (code) {
+			case REPLY_SUCCESS:
+				if (packer == NULL) {
+					(**slot).value = NULL;
+				}
+				else {
+					(**slot).value = packer->unpack_any(*transport);
+				}
+				(**slot).type = SLOT_VALUE;
+				break;
+			case REPLY_PROTOCOL_ERROR:
+				throw load_protocol_error();
+			case REPLY_PACKED_EXCEPTION:
+				(**slot).type = SLOT_PACKED_EXCEPTION;
+				(**slot).value = load_packed_exception();
+				break;
+			case REPLY_GENERIC_EXCEPTION:
+				(**slot).type = SLOT_GENERIC_EXCEPTION;
+				(**slot).value = load_generic_exception();
+				break;
+			default:
+				throw ProtocolError("unknown reply code: ");
+			}
+
+			if (discard) {
+				replies.erase(seq);
+			}
 		}
 
 		bool ClientUtils::is_reply_ready(int32_t seq)
 		{
-			ReplySlot * slot = map_get(replies, seq);
+			shared_ptr<ReplySlot> slot = *map_get(replies, seq);
 			return (slot->type == SLOT_VALUE || slot->type == SLOT_GENERIC_EXCEPTION || slot->type == SLOT_PACKED_EXCEPTION);
 		}
 
 		void ClientUtils::discard_reply(int32_t seq)
 		{
-			ReplySlot* slot = map_get(replies, seq, false);
+			shared_ptr<ReplySlot> * slot = map_get(replies, seq, false);
 			if (slot == NULL) {
 				return;
 			}
-			if (slot->type == SLOT_VALUE || slot->type == SLOT_GENERIC_EXCEPTION || slot->type == SLOT_PACKED_EXCEPTION) {
+			if ((**slot).type == SLOT_VALUE || (**slot).type == SLOT_GENERIC_EXCEPTION || (**slot).type == SLOT_PACKED_EXCEPTION) {
 				replies.erase(seq);
 			}
 			else {
-				slot->type = SLOT_DISCARDED;
+				(**slot).type = SLOT_DISCARDED;
 			}
 		}
 
-		ReplySlot& ClientUtils::wait_reply(int32_t seq, int msecs)
+		shared_ptr<ReplySlot> ClientUtils::wait_reply(int32_t seq, int msecs)
 		{
-			return *map_get(replies, seq);
+			while (!is_reply_ready(seq)) {
+				process_incoming(msecs);
+			}
+			shared_ptr<ReplySlot> slot = *map_get(replies, seq);
+			replies.erase(seq);
+			return slot;
 		}
 
 		any ClientUtils::get_reply(int32_t seq, int msecs)
 		{
-			return 0;
+			shared_ptr<ReplySlot> slot = wait_reply(seq, msecs);
+
+			if (slot->type == SLOT_VALUE) {
+				return slot->value;
+			}
+			else if (slot->type == SLOT_PACKED_EXCEPTION) {
+				throw any_cast<PackedException>(slot->value);
+			}
+			else if (slot->type == SLOT_GENERIC_EXCEPTION) {
+				throw any_cast<GenericException>(slot->value);
+			}
+			else {
+				throw std::runtime_error("invalid slot type: ");
+			}
 		}
+
+		////////////////////////////////////////////////////////////////////////
+		// BaseClient
+		////////////////////////////////////////////////////////////////////////
+		BaseClient::BaseClient(shared_ptr<ITransport> transport) :
+				_utils(transport)
+		{
+		}
+
+		shared_ptr<HeteroMap> BaseClient::get_service_info(int code)
+		{
+			return _utils.get_service_info(code);
+		}
+
 	}
 }

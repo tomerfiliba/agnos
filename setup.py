@@ -2,12 +2,12 @@
 from distutils.core import setup
 
 setup(name='agnos_compiler',
-    version='1.0',
+    version='1.0.0',
     description='Agnos Compiler library',
     author=['Tomer Filiba'],
-    author_email=['tomerfiliba@gmail.com'],
+    author_email=['tomerf@il.ibm.com'],
     url='None',
-    license='MIT',
+    license='Apache License 2.0',
     packages=['agnos_compiler'],
     package_dir={'agnos_compiler' : '.'},
 )

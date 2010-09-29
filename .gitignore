@@ -5,6 +5,7 @@
 *.jar
 *.so
 *.o
+*.a
 *.dll
 *.exe
 *.suo

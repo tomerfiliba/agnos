@@ -20,6 +20,12 @@ namespace agnos
 			virtual void pack_any(const any& obj, ITransport& transport) const = 0;
 			virtual any unpack_any(ITransport& transport) const = 0;
 			virtual any unpack_shared(ITransport& transport) const = 0;
+
+			/*template<typename T> void pack_as(const T& obj, ITransport& transport) const
+			{
+
+			}*/
+
 			template<typename T> T unpack_as(ITransport& transport) const
 			{
 				return any_cast<T>(unpack_any(transport));
@@ -30,23 +36,22 @@ namespace agnos
 			CLS(); \
 			static const int _id = ID; \
 			typedef TYPE data_type; \
-			virtual int32_t get_id() const; \
-			virtual void pack_any(const any& obj, ITransport& transport) const; \
-			virtual any unpack_any(ITransport& transport) const; \
-			virtual any unpack_shared(ITransport& transport) const; \
+			int32_t get_id() const; \
+			void pack_any(const any& obj, ITransport& transport) const; \
+			any unpack_any(ITransport& transport) const; \
+			any unpack_shared(ITransport& transport) const; \
 			static void pack(shared_ptr<data_type> obj, ITransport& transport); \
 			static void unpack(shared_ptr<data_type>& obj, ITransport& transport); \
 			static void pack(const data_type& obj, ITransport& transport); \
 			static void unpack(data_type& obj, ITransport& transport);
 
-		#define IPACKER_TEMPLATED_DECL(CLS, TYPE, ID) \
+		#define IPACKER_TEMPLATED_DECL(TYPE) \
 			typedef TYPE data_type; \
-			CLS() {} \
-			virtual int32_t get_id() const \
+			int32_t get_id() const \
 			{ \
 				return ID; \
 			} \
-			virtual void pack_any(const any& obj, ITransport& transport) const \
+			void pack_any(const any& obj, ITransport& transport) const \
 			{ \
 				if (obj.type() == typeid(shared_ptr<data_type>)) { \
 					shared_ptr<data_type> tmp = any_cast< shared_ptr<data_type> >(obj); \
@@ -56,23 +61,23 @@ namespace agnos
 					pack(any_cast<data_type>(obj), transport); \
 				} \
 			} \
-			virtual any unpack_any(ITransport& transport) const \
+			any unpack_any(ITransport& transport) const \
 			{ \
 				data_type tmp; \
 				unpack(tmp, transport); \
 				return tmp; \
 			} \
-			virtual any unpack_shared(ITransport& transport) const \
+			any unpack_shared(ITransport& transport) const \
 			{ \
 				shared_ptr<data_type> obj(new data_type()); \
 				unpack(*obj, transport); \
 				return obj; \
 			} \
-			static void pack(shared_ptr<data_type> obj, ITransport& transport) \
+			void pack(shared_ptr<data_type> obj, ITransport& transport) const \
 			{ \
 				pack(*obj, transport); \
 			} \
-			static void unpack(shared_ptr<data_type>& obj, ITransport& transport) \
+			void unpack(shared_ptr<data_type>& obj, ITransport& transport) const \
 			{ \
 				obj.reset(new TYPE()); \
 				unpack(*obj, transport); \
@@ -83,10 +88,10 @@ namespace agnos
 		class VoidPacker :  public IPacker
 		{
 		public:
-			virtual int32_t get_id() const;
-			virtual void pack_any(const any& obj, ITransport& transport) const;
-			virtual any unpack_any(ITransport& transport) const;
-			virtual any unpack_shared(ITransport& transport) const;
+			int32_t get_id() const;
+			void pack_any(const any& obj, ITransport& transport) const;
+			any unpack_any(ITransport& transport) const;
+			any unpack_shared(ITransport& transport) const;
 		};
 
 		extern VoidPacker void_packer;
@@ -185,138 +190,194 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
-		template<typename PKR, int ID> class ListPacker :  public IPacker
+		template<typename TYPE, int ID> class ListPacker :  public IPacker
 		{
-		public:
-			typedef typename PKR::data_type element_type;
-			IPACKER_TEMPLATED_DECL(ListPacker, vector<element_type>, ID);
+		protected:
+			const IPacker& packer;
 
-			static void pack(const data_type& obj, ITransport& transport)
+		public:
+			typedef TYPE element_type;
+			IPACKER_TEMPLATED_DECL(vector<element_type>);
+
+			ListPacker(IPacker& packer) : packer(packer)
+			{
+			}
+
+			void pack(const data_type& obj, ITransport& transport) const
 			{
 				int32_t size = obj.size();
 				Int32Packer::pack(size, transport);
 				for (int i = 0; i < size; i++) {
-					PKR::pack(obj[i], transport);
+					packer.pack_any(obj[i], transport);
 				}
 			}
 
-			static void unpack(data_type& obj, ITransport& transport)
+			void unpack(data_type& obj, ITransport& transport) const
 			{
 				int32_t size;
 				Int32Packer::unpack(size, transport);
-				obj.resize(size);
+				obj.clear();
+				obj.reserve(size);
 				for (int i = 0; i < size; i++) {
-					PKR::unpack(obj[i], transport);
+					obj.push_back(packer.unpack_as<element_type>(transport));
 				}
 			}
 		};
 
-		#define LIST_OF(PKR, ID, NAME) \
-			typedef ListPacker<PKR, ID> ListOf ## PKR; \
-			extern ListOf ## PKR list_of_ ## NAME ## _packer
-		LIST_OF(Int8Packer, 800, int8);
-		LIST_OF(BoolPacker, 801, bool);
-		LIST_OF(Int16Packer, 802, int16);
-		LIST_OF(Int32Packer, 803, int32);
-		LIST_OF(Int64Packer, 804, int64);
-		LIST_OF(FloatPacker, 805, float);
-		LIST_OF(BufferPacker, 806, buffer);
-		LIST_OF(DatePacker, 807, date);
-		LIST_OF(StringPacker, 808, string);
-		#undef LIST_OF
+		extern ListPacker<int8_t, 800> list_of_int8_packer;
+		extern ListPacker<bool, 801> list_of_bool_packer;
+		extern ListPacker<int16_t, 802> list_of_int16_packer;
+		extern ListPacker<int32_t, 803> list_of_int32_packer;
+		extern ListPacker<int64_t, 804> list_of_int64_packer;
+		extern ListPacker<double, 805> list_of_float_packer;
+		extern ListPacker<string, 806> list_of_buffer_packer;
+		extern ListPacker<datetime, 807> list_of_date_packer;
+		extern ListPacker<string, 808> list_of_string_packer;
 
 		//////////////////////////////////////////////////////////////////////
 
-		template<typename PKR, int ID> class SetPacker :  public IPacker
+		template<typename TYPE, int ID> class SetPacker :  public IPacker
 		{
-		public:
-			typedef typename PKR::data_type element_type;
-			IPACKER_TEMPLATED_DECL(SetPacker, set<element_type>, ID);
+		protected:
+			const IPacker& packer;
 
-			static void pack(const data_type& obj, ITransport& transport)
+		public:
+			typedef TYPE element_type;
+			IPACKER_TEMPLATED_DECL(set<element_type>);
+
+			SetPacker(IPacker& packer) : packer(packer)
+			{
+			}
+
+			void pack(const data_type& obj, ITransport& transport) const
 			{
 				Int32Packer::pack(obj.size(), transport);
 				typename data_type::const_iterator it;
 				for (it = obj.begin(); it != obj.end(); it++) {
-					PKR::pack(*it, transport);
+					packer.pack_any(*it, transport);
 				}
 			}
 
-			static void unpack(data_type& obj, ITransport& transport)
+			void unpack(data_type& obj, ITransport& transport) const
 			{
 				int32_t size;
 				Int32Packer::unpack(size, transport);
 				obj.clear();
 				for (int i = 0; i < size; i++) {
-					element_type tmp;
-					PKR::unpack(tmp, transport);
-					obj.insert(tmp);
+					obj.insert(packer.unpack_as<element_type>(transport));
 				}
 			}
 		};
 
-		#define SET_OF(PKR, ID, NAME) \
-			typedef SetPacker<PKR, ID> SetOf ## PKR; \
-			extern SetOf ## PKR set_of_ ## NAME ## _packer
-		SET_OF(Int8Packer, 820, int8);
-		SET_OF(BoolPacker, 821, bool);
-		SET_OF(Int16Packer, 822, int16);
-		SET_OF(Int32Packer, 823, int32);
-		SET_OF(Int64Packer, 824, int64);
-		SET_OF(FloatPacker, 825, float);
-		SET_OF(BufferPacker, 826, buffer);
-		SET_OF(DatePacker, 827, date);
-		SET_OF(StringPacker, 828, string);
-		#undef SET_OF
+		extern SetPacker<int8_t, 820> set_of_int8_packer;
+		extern SetPacker<bool, 821> set_of_bool_packer;
+		extern SetPacker<int16_t, 822> set_of_int16_packer;
+		extern SetPacker<int32_t, 823> set_of_int32_packer;
+		extern SetPacker<int64_t, 824> set_of_int64_packer;
+		extern SetPacker<double, 825> set_of_float_packer;
+		extern SetPacker<string, 826> set_of_buffer_packer;
+		extern SetPacker<datetime, 827> set_of_date_packer;
+		extern SetPacker<string, 828> set_of_string_packer;
 
 		//////////////////////////////////////////////////////////////////////
 
-		template<typename KEYPKR, typename VALPKR, int ID> class MapPacker :  public IPacker
+		template<typename KEYTYPE, typename VALTYPE, int ID> class MapPacker :  public IPacker
 		{
 		public:
-			typedef typename KEYPKR::data_type key_type;
-			typedef typename VALPKR::data_type val_type;
+			typedef KEYTYPE key_type;
+			typedef VALTYPE val_type;
+
 		protected:
 			typedef map<key_type, val_type> _datatype;
-		public:
-			IPACKER_TEMPLATED_DECL(MapPacker, _datatype, ID);
+			const IPacker& key_packer;
+			const IPacker& val_packer;
 
-			static void pack(const data_type& obj, ITransport& transport)
+		public:
+			IPACKER_TEMPLATED_DECL(_datatype);
+
+			MapPacker(const IPacker& key_packer, const IPacker& val_packer) : key_packer(key_packer), val_packer(val_packer)
+			{
+			}
+
+			void pack(const data_type& obj, ITransport& transport) const
 			{
 				Int32Packer::pack(obj.size(), transport);
 				typename data_type::const_iterator it;
 				for (it = obj.begin(); it != obj.end(); it++) {
-					KEYPKR::pack(it->first, transport);
-					VALPKR::pack(it->second, transport);
+					key_packer.pack_any(it->first, transport);
+					val_packer.pack_any(it->second, transport);
 				}
 			}
 
-			static void unpack(data_type& obj, ITransport& transport)
+			void unpack(data_type& obj, ITransport& transport) const
 			{
 				int32_t size;
 				Int32Packer::unpack(size, transport);
 				obj.clear();
 				for (int i = 0; i < size; i++) {
-					key_type k;
-					val_type v;
-					KEYPKR::unpack(k, transport);
-					VALPKR::unpack(v, transport);
-					obj.insert(typename data_type::value_type(k, v));
+					key_type k = key_packer.unpack_as<key_type>(transport);
+					val_type v = val_packer.unpack_as<val_type>(transport);
+					map_put(obj, k, v);
 				}
 			}
 		};
 
-		typedef MapPacker<Int32Packer, Int32Packer, 850> MapOfInt32Int32Packer;
-		extern MapOfInt32Int32Packer map_of_int32_int32_packer;
+		extern MapPacker<int32_t, int32_t, 850> map_of_int32_int32_packer;
+		extern MapPacker<int32_t, string, 851> map_of_int32_string_packer;
+		extern MapPacker<string, int32_t, 852> map_of_string_int32_packer;
+		extern MapPacker<string, string, 853> map_of_string_string_packer;
 
-		typedef MapPacker<Int32Packer, StringPacker, 851> MapOfInt32StringPacker;
-		extern MapOfInt32StringPacker map_of_int32_string_packer;
+		//////////////////////////////////////////////////////////////////////
 
-		typedef MapPacker<StringPacker, Int32Packer, 852> MapOfStringInt32Packer;
-		extern MapOfStringInt32Packer map_of_string_int32_packer;
+		template<typename IMPL, typename TYPE, int ID> class RecordPacker : public IPacker
+		{
+		public:
+			typedef TYPE data_type;
 
-		typedef MapPacker<StringPacker, StringPacker, 853> MapOfStringStringPacker;
-		extern MapOfStringStringPacker map_of_string_string_packer;
+			RecordPacker()
+			{
+			}
+
+			int32_t get_id() const
+			{
+				return ID;
+			}
+
+			void pack_any(const any& obj, ITransport& transport) const
+			{
+				if (obj.type() == typeid(shared_ptr<data_type>)) {
+					shared_ptr<data_type> tmp = any_cast< shared_ptr<data_type> >(obj);
+					IMPL::pack(*tmp, transport);
+				}
+				else {
+					IMPL::pack(any_cast<data_type>(obj), transport);
+				}
+			}
+
+			any unpack_any(ITransport& transport) const
+			{
+				data_type tmp;
+				IMPL::unpack(tmp, transport);
+				return tmp;
+			}
+
+			any unpack_shared(ITransport& transport) const
+			{
+				shared_ptr<data_type> obj(new data_type());
+				IMPL::unpack(*obj, transport);
+				return obj;
+			}
+
+			static void pack(shared_ptr<data_type> obj, ITransport& transport)
+			{
+				IMPL::pack(*obj, transport);
+			}
+			static void unpack(shared_ptr<data_type>& obj, ITransport& transport)
+			{
+				obj.reset(new TYPE());
+				IMPL::unpack(*obj, transport);
+			}
+		};
 
 
 		//////////////////////////////////////////////////////////////////////
@@ -324,16 +385,16 @@ namespace agnos
 		class ISerializer
 		{
 		public:
-			virtual void store(objref_t oid, any obj) = 0;
+			virtual objref_t store(objref_t oid, any obj) = 0;
 			virtual any load(objref_t oid) = 0;
 		};
 
 		//--
 
-		template<typename T, int ID> class ObjrefPacker :  public IPacker
+		template<typename TYPE, int ID> class ObjrefPacker :  public IPacker
 		{
 		public:
-			typedef shared_ptr<T> data_type;
+			typedef shared_ptr<TYPE> data_type;
 
 		protected:
 			ISerializer& ser;
@@ -348,7 +409,7 @@ namespace agnos
 			{
 			}
 
-			virtual int32_t get_id() const
+			int32_t get_id() const
 			{
 				return ID;
 			}
@@ -358,11 +419,11 @@ namespace agnos
 			void pack(data_type obj, ITransport& transport) const
 			{
 				objref_t oid = get_oid(obj);
-				ser.store(oid, obj);
+				oid = ser.store(oid, obj);
 				int64_packer.pack(oid, transport);
 			}
 
-			virtual void pack_any(const any& obj, ITransport& transport) const
+			void pack_any(const any& obj, ITransport& transport) const
 			{
 				pack(any_cast<data_type>(obj), transport);
 			}
@@ -376,14 +437,14 @@ namespace agnos
 				obj = any_cast<data_type>(ser.load(oid));
 			}
 
-			virtual any unpack_any(ITransport& transport) const
+			any unpack_any(ITransport& transport) const
 			{
 				objref_t oid;
 				int64_packer.unpack(oid, transport);
 				return ser.load(oid);
 			}
 
-			virtual any unpack_shared(ITransport& transport) const
+			any unpack_shared(ITransport& transport) const
 			{
 				return unpack_any(transport);
 			}

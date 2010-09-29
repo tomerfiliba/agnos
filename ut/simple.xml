@@ -1,0 +1,17 @@
+<service name="simple">
+	<record name="Address">
+		<attr name="country" type="str" />
+		<attr name="city" type="str" />
+		<attr name="street" type="str" />
+		<attr name="num" type="int32" />
+	</record>
+
+	<func name="get_address" type="Address">
+	</func>
+	
+	<class name="Person">
+		<attr name="name" type="str" />
+		<attr name="address" type="Address" />
+	</class>
+	
+</service>

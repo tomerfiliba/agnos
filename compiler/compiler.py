@@ -669,7 +669,7 @@ class TRefMap(BuiltinType):
 def is_complex_type(idltype):
     """determines whether the given type is complex (meaning, it is a by-reference
     type or contains a by-reference type)"""
-    if isinstance(idltype, TList):
+    if isinstance(idltype, (TList, TSet)):
         return is_complex_type(idltype.oftype)
     elif isinstance(idltype, TMap):
         return is_complex_type(idltype.keytype) or is_complex_type(idltype.valtype)
@@ -680,11 +680,56 @@ def is_complex_type(idltype):
     else:
         return False
 
+def is_builtin_type(idltype):
+    """determines whether the given type is builtin (e.g., int8, list[int8], etc.)"""
+    if idltype in (t_int8, t_bool, t_int16, t_int32, t_int64, t_float, t_buffer, t_date, t_string, t_void, t_heteromap):
+        return True
+    elif isinstance(idltype, (TList, TSet)):
+        return is_builtin_type(idltype.oftype)
+    elif isinstance(idltype, TMap):
+        return is_builtin_type(idltype.keytype) and is_builtin_type(idltype.valtype)
+    else:
+        return False
+
+def _add_dependencies(coll, *types):
+    for tp in types:
+        if not is_builtin_type(tp):
+            coll.add(tp)
+    return coll
+
+def _get_depedencies_tree(members):
+    deptree = {}
+    for mem in members:
+        if isinstance(mem, Record):
+            deptree[mem] = _add_dependencies(set(), *(attr.type for attr in mem.members))
+            _add_dependencies(deptree[mem], *mem.extends)
+        elif isinstance(mem, Class):
+            deptree[mem] = _add_dependencies(set(), *(attr.type for attr in mem.attrs)) 
+            for meth in mem.methods:
+                _add_dependencies(deptree[mem], meth.type) 
+                _add_dependencies(deptree[mem], *(arg.type for arg in meth.args))
+            _add_dependencies(deptree[mem], *mem.extends)
+    return deptree
+
+def _toposort(node, deptree, order, visited):
+    if node in visited:
+        return
+    visited.add(node)
+    for child in deptree.get(node, ()):
+        _toposort(child, deptree, order, visited)
+    order.append(node)
+
+def toposort(members):
+    deptree = _get_depedencies_tree(members)
+    order = []
+    visited = set()
+    for node in deptree:
+        _toposort(node, deptree, order, visited)
+    return order
 
 #===============================================================================
 # the service object
 #===============================================================================
-
 class Service(Element):
     """
     the service element, which is the root of the XML document. basically,
@@ -710,8 +755,6 @@ class Service(Element):
         "string" : t_string,
         "heteromap" : t_heteromap,
         "heterodict" : t_heteromap,
-        "hmap" : t_heteromap,
-        "hdict" : t_heteromap,
         # templated types
         "list" : None,
         "set" : None,
@@ -719,13 +762,9 @@ class Service(Element):
         "dict" : None,
         # by-ref templated types
         "reflist" : None,
-        "rlist" : None,
         "refset" : None,
-        "rset" : None,
         "refmap" : None,
         "refdict" : None,
-        "rmap" : None,
-        "rdict" : None,
     }
     
     def build_members(self, members):
@@ -791,19 +830,19 @@ class Service(Element):
             ktp = self._get_type(khead, kchildren)
             vtp = self._get_type(vhead, vchildren)
             return TMap.create(ktp, vtp)
-        elif head == "reflist" or head == "rlist":
+        elif head == "reflist":
             if len(children) != 1:
                 raise IDLError("reflist template: wrong number of parameters: %r" % (text,))
             head2, children2 = children[0]
             tp = self._get_type(head2, children2)
             return TRefList.create(tp)
-        elif head == "refset" or head == "rset":
+        elif head == "refset":
             if len(children) != 1:
                 raise IDLError("refset template: wrong number of parameters: %r" % (text,))
             head2, children2 = children[0]
             tp = self._get_type(head2, children2)
             return TRefSet.create(tp)
-        elif head == "refmap" or head == "refdict" or head == "rmap" or head == "rdict":
+        elif head == "refmap" or head == "refdict":
             if len(children) != 2:
                 raise IDLError("refmap template: wrong number of parameters: %r" % (text,))
             khead, kchildren = children[0]
@@ -861,6 +900,24 @@ class Service(Element):
             mem.resolve(self)
         for mem in self.types.values():
             mem.postprocess(self)
+        self.ordered_types = toposort(self.types.values())
+    
+    def _get_filtered(self, *predicates):
+        return [mem for mem in self.ordered_types 
+            if all(pred(mem) for pred in predicates)]
+
+    def enums(self, *predicates):
+        return self._get_filtered(lambda mem: isinstance(mem, Enum), *predicates)
+    
+    def classes(self, *predicates):
+        return self._get_filtered(lambda mem: isinstance(mem, Class), *predicates)
+
+    def records(self, *predicates):
+        return self._get_filtered(lambda mem: isinstance(mem, Record), *predicates)
+
+    def exceptions(self, *predicates):
+        return self._get_filtered(lambda mem: isinstance(mem, Exception), *predicates)
+
 
 
 #===============================================================================
