@@ -263,6 +263,11 @@ class Record(Element):
             set(mem.type for mem in self.members if is_complex_type(mem.type)),
             key = lambda tp: tp.stringify())
 
+    def get_complicated_types(self):
+        return sorted(
+            set(mem.type for mem in self.members if is_complicated_type(mem.type)),
+            key = lambda tp: tp.stringify())
+
     def _resolve(self, service):
         names = set()
         members = []
@@ -679,6 +684,9 @@ def is_complex_type(idltype):
         return any(is_complex_type(mem.type) for mem in idltype.members)
     else:
         return False
+
+def is_complicated_type(idltype):
+    return is_complex_type(idltype) or isinstance(idltype, (TList, TSet, TMap))
 
 def is_builtin_type(idltype):
     """determines whether the given type is builtin (e.g., int8, list[int8], etc.)"""

@@ -12,6 +12,19 @@
 	<class name="Person">
 		<attr name="name" type="str" />
 		<attr name="address" type="Address" />
+		
+		<method name="marry" type="void">
+			<arg name="spouse" type="Person"/>
+		</method>
+
+		<method name="give_birth" type="Person">
+			<arg name="name" type="str"/>
+		</method>
+
+		<method name="get_children" type="list[Person]" />
+
 	</class>
+	
+	<const name="pi" type="float" value="3.1415926535"/>
 	
 </service>

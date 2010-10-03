@@ -10,11 +10,23 @@
 
 namespace agnos
 {
-	DEFINE_EXCEPTION(PackedException);
+	//DEFINE_EXCEPTION(PackedException);
 	DEFINE_EXCEPTION(ProtocolError);
 	DEFINE_EXCEPTION2(WrongAgnosVersion, ProtocolError);
 	DEFINE_EXCEPTION2(WrongServiceName, ProtocolError);
 	DEFINE_EXCEPTION2(IncompatibleServiceVersion, ProtocolError);
+
+	class PackedException : public std::exception
+	{
+	public:
+		PackedException()
+		{
+		}
+
+		~PackedException() throw()
+		{
+		}
+	};
 
 	class GenericException : public std::exception
 	{

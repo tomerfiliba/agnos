@@ -2,11 +2,11 @@ from .base import TargetBase, NOOP
 from contextlib import contextmanager
 import itertools
 from .. import compiler
-from ..compiler import is_complex_type
+from ..compiler import is_complex_type, is_complicated_type
 
 
 
-def type_to_cpp(t, proxy = False):
+def type_to_cpp(t, proxy = False, shared = True, arg = False):
     if t == compiler.t_void:
         return "void"
     elif t == compiler.t_bool:
@@ -22,29 +22,47 @@ def type_to_cpp(t, proxy = False):
     elif t == compiler.t_float:
         return "double"
     elif t == compiler.t_string:
-        return "string"
+        if arg:
+            return "const string&"
+        else:
+            return "string"
     elif t == compiler.t_date:
-        return "datetime"
+        if arg:
+            return "const datetime&"
+        else:
+            return "datetime"
     elif t == compiler.t_buffer:
-        return "string"
+        if arg:
+            return "const string&"
+        else:
+            return "string"
     elif t == compiler.t_heteromap:
-        return "HeteroMap"
+        return "shared_ptr<HeteroMap>"
     elif isinstance(t, compiler.TList):
-        return "vector< %s >" % (type_to_cpp(t.oftype, proxy = proxy),)
+        return "shared_ptr< vector< %s > >" % (type_to_cpp(t.oftype, proxy = proxy, shared = shared, arg = False),)
     elif isinstance(t, compiler.TSet):
-        return "set< %s >" % (type_to_cpp(t.oftype, proxy = proxy),)
+        return "shared_ptr< set< %s > >" % (type_to_cpp(t.oftype, proxy = proxy, shared = shared, arg = False),)
     elif isinstance(t, compiler.TMap):
-        return "map< %s, %s >" % (type_to_cpp(t.keytype, proxy = proxy), 
+        return "shared_ptr< map< %s, %s > >" % (type_to_cpp(t.keytype, proxy = proxy, shared = shared, arg = False), 
             type_to_cpp(t.valtype, proxy = proxy))
     elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
-        return "%s" % (t.name,)
+        if arg:
+            return "const %s&" % (t.name,)
+        else:
+            return "%s" % (t.name,)
     elif isinstance(t, compiler.Class):
         if proxy:
             return "%sProxy" % (t.name,)
+        elif shared:
+            return "shared_ptr< I%s >" % (t.name,)
         else:
-            return "I%s" % (t.name,)
+            if arg:
+                return "const I%s&" % (t.name,)
+            else:
+                return "I%s" % (t.name,)
     else:
         return "%s@@@type" % (t,)
+ 
 
 def type_to_packer(t):
     if t == compiler.t_void:
@@ -76,6 +94,45 @@ def type_to_packer(t):
     elif isinstance(t, compiler.Class):
         return "_%s_objref" % (t.name,)
     return "%r@@@packer" % (t,)
+
+def type_to_packer_type(t, proxy = False):
+    if t == compiler.t_void:
+        return "VoidPacker"
+    elif t == compiler.t_bool:
+        return "BoolPacker"
+    elif t == compiler.t_int8:
+        return "Int8Packer"
+    elif t == compiler.t_int16:
+        return "Int16Packer"
+    elif t == compiler.t_int32:
+        return "Int32Packer"
+    elif t == compiler.t_int64:
+        return "Int64Packer"
+    elif t == compiler.t_float:
+        return "FloatPacker"
+    elif t == compiler.t_date:
+        return "DatePacker"
+    elif t == compiler.t_buffer:
+        return "BufferPacker"
+    elif t == compiler.t_string:
+        return "StringPacker"
+    elif t == compiler.t_heteromap:
+        return "HeteroMapPacker"
+    elif isinstance(t, compiler.TList):
+        return "ListPacker< %s, %s >" % (type_to_cpp(t.oftype, proxy = proxy), t.id)
+    elif isinstance(t, compiler.TSet):
+        return "SetPacker< %s, %s >" % (type_to_cpp(t.oftype, proxy = proxy), t.id)
+    elif isinstance(t, compiler.TMap):
+        return "MapPacker< %s, %s, %s >" % (type_to_cpp(t.keytype, proxy = proxy), 
+            type_to_cpp(t.valtype, proxy = proxy), t.id)
+    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
+        return "_%sPacker" % (t.name,)
+    elif isinstance(t, compiler.Class):
+        if proxy:
+            return "ObjrefPacker< _%s, %s >" % (type_to_cpp(t, shared = False, proxy = True), t.id)
+        else:
+            return "ObjrefPacker< %s, %s >" % (type_to_cpp(t, shared = False), t.id)
+    return "%r@@@packer_type" % (t,)
 
 def const_to_cpp(typ, val):
     if val is None:
@@ -153,6 +210,13 @@ class CPPTarget(TargetBase):
         with self.multinamespace(module, service.package, "ServerBindings"):
             self.generate_header_signature(module, service)
             SEP()
+            
+            for tp in service.records():
+                STMT("class {0}", type_to_cpp(tp))
+            for tp in service.classes():
+                STMT("class {0}", type_to_cpp(tp, shared = False))
+            SEP()
+            
             DOC("enums", spacer = True)
             for enum in service.enums():
                 self.generate_header_enum(module, enum)
@@ -178,7 +242,8 @@ class CPPTarget(TargetBase):
             SEP()
             
             self.generate_header_processor_factory(module, service)
-
+            SEP()
+            
             DOC("$$extend-main$$")
             SEP()
             
@@ -199,22 +264,39 @@ class CPPTarget(TargetBase):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
-        is_exc = isinstance(rec, compiler.Exception)
-
-        with BLOCK("class {0}{1}", rec.name, " : public PackedException" if is_exc else ""):
-            STMT("public:")
-            for mem in rec.members:
-                STMT("{0} {1}", type_to_cpp(mem.type, proxy = proxy), mem.name)
-            SEP()
-            with BLOCK("{0}()", rec.name):
-                pass
-            if rec.members:
-                args = ", ".join("const %s & %s" % (type_to_cpp(mem.type, proxy = proxy), mem.name) 
-                    for mem in rec.members)
-                init = ", ".join("%s(%s)" % (mem.name, mem.name) for mem in rec.members)
-                with BLOCK("{0}({1}) : {2}", rec.name, args, init):
+        if isinstance(rec, compiler.Exception):
+            with BLOCK("class {0} : public PackedException", rec.name):
+                STMT("public:")
+                for mem in rec.members:
+                    STMT("{0} {1}", type_to_cpp(mem.type, proxy = proxy), mem.name)
+                SEP()
+                with BLOCK("{0}()", rec.name):
                     pass
-            SEP()
+                if rec.members:
+                    args = ", ".join("%s %s" % (type_to_cpp(mem.type, proxy = proxy, arg = True), mem.name) 
+                        for mem in rec.members)
+                    init = ", ".join("%s(%s)" % (mem.name, mem.name) for mem in rec.members)
+                    with BLOCK("{0}({1}) : {2}", rec.name, args, init):
+                        pass
+                with BLOCK("~{0}() throw()", rec.name):
+                    pass
+                with BLOCK("virtual const char* what() const throw ()"):
+                    STMT('return "{0}"', rec.name) 
+        else:
+            with BLOCK("class {0}", rec.name):
+                STMT("public:")
+                for mem in rec.members:
+                    STMT("{0} {1}", type_to_cpp(mem.type, proxy = proxy), mem.name)
+                SEP()
+                with BLOCK("{0}()", rec.name):
+                    pass
+                if rec.members:
+                    args = ", ".join("%s %s" % (type_to_cpp(mem.type, proxy = proxy, arg = True), mem.name) 
+                        for mem in rec.members)
+                    init = ", ".join("%s(%s)" % (mem.name, mem.name) for mem in rec.members)
+                    with BLOCK("{0}({1}) : {2}", rec.name, args, init):
+                        pass
+        SEP()
 
     def generate_header_class_interface(self, module, cls):
         BLOCK = module.block
@@ -223,7 +305,7 @@ class CPPTarget(TargetBase):
         DOC = module.doc
         
         if cls.extends:
-            extends = " : " + ", ".join("I%s" % (c.name,) for c in cls.extends)
+            extends = " : " + ", ".join("public I%s" % (c.name,) for c in cls.extends)
         else:
             extends = ""
 
@@ -235,12 +317,12 @@ class CPPTarget(TargetBase):
                 if attr.get:
                     STMT("virtual {0} get_{1}() = 0", type_to_cpp(attr.type), attr.name)
                 if attr.set:
-                    STMT("virtual void set_{0}(const {1} & value) = 0", attr.name, type_to_cpp(attr.type))
+                    STMT("virtual void set_{0}({1} value) = 0", attr.name, type_to_cpp(attr.type, arg = True))
             SEP()
             if cls.methods:
                 DOC("methods")
             for method in cls.methods:
-                args = ", ".join("const %s & %s" % (type_to_cpp(arg.type), arg.name) 
+                args = ", ".join("%s %s" % (type_to_cpp(arg.type, arg = True), arg.name) 
                     for arg in method.args)
                 STMT("virtual {0} {1}({2}) = 0", type_to_cpp(method.type), method.name, args)
     
@@ -254,7 +336,7 @@ class CPPTarget(TargetBase):
             STMT("public:")
             for member in service.funcs.values():
                 if isinstance(member, compiler.Func):
-                    args = ", ".join("const %s & %s" % (type_to_cpp(arg.type), arg.name) 
+                    args = ", ".join("%s %s" % (type_to_cpp(arg.type, arg = True), arg.name) 
                         for arg in member.args)
                     STMT("virtual {0} {1}({2}) = 0", type_to_cpp(member.type), member.fullname, args)
 
@@ -305,7 +387,7 @@ class CPPTarget(TargetBase):
             
             DOC("records", spacer = True)
             for rec in service.records(lambda mem: not is_complex_type(mem)):
-                self.generate_module_record(module, rec, static = True, proxy = False)
+                self.generate_module_record_cls_and_body(module, rec, static = True, proxy = False)
                 SEP()
     
             DOC("consts", spacer = True)
@@ -328,33 +410,32 @@ class CPPTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        with BLOCK("class _{0}Packer : public RecordPacker< _{0}Packer, {0}, {1} >", 
-                enum.name, enum.id, suffix = "} %s;" % (type_to_packer(enum),)):
+        with BLOCK("class {0} : public IPacker", type_to_packer_type(enum), suffix = "} %s;" % (type_to_packer(enum),)):
             STMT("public:")
-            with BLOCK("static void pack(const data_type& obj, ITransport& transport)"):
+            STMT("RECORD_PACKER_IMPL({0}, {1})", enum.name, enum.id)
+            SEP()
+            with BLOCK("void pack(const data_type& obj, ITransport& transport) const"):
                 STMT("{0}.pack((int32_t)obj, transport)", type_to_packer(compiler.t_int32))
-            with BLOCK("static void unpack(data_type& obj, ITransport& transport)"):
+            with BLOCK("void unpack(data_type& obj, ITransport& transport) const"):
                 STMT("int32_t tmp")
                 STMT("{0}.unpack(tmp, transport)", type_to_packer(compiler.t_int32))
                 STMT("obj = ({0})tmp", enum.name)
-    
-    def generate_module_record(self, module, rec, static, proxy):
+
+    def generate_module_record_cls_and_body(self, module, rec, static, proxy):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
 
-        with BLOCK("class _{0}Packer : public RecordPacker< _{0}Packer, {0}, {1} >", 
-                rec.name, rec.id, suffix = "} %s;" % (type_to_packer(rec),)):
-
+        with BLOCK("class {0} : public IPacker", type_to_packer_type(rec), suffix = "} %s;" % (type_to_packer(rec),)):
             if not static:
                 STMT("protected:")
-                complex_types = rec.get_complex_types()
-                for tp in complex_types:
-                    STMT("const IPacker& {0}", type_to_packer(tp))
-                args =  ", ".join("const IPacker& %s" % (type_to_packer(tp),) 
-                    for tp in complex_types)
+                complicated_types = rec.get_complicated_types()
+                for tp in complicated_types:
+                    STMT("const {0}& {1}", type_to_packer_type(tp, proxy = proxy), type_to_packer(tp))
+                args =  ", ".join("const %s& %s" % (type_to_packer_type(tp, proxy = proxy), type_to_packer(tp)) 
+                    for tp in complicated_types)
                 argsinit = ", ".join("%s(%s)" % (type_to_packer(tp), type_to_packer(tp)) 
-                    for tp in complex_types)
+                    for tp in complicated_types)
                 STMT("public:")
                 with BLOCK("_{0}Packer({1}) : {2}", rec.name, args, argsinit):
                     pass
@@ -362,15 +443,64 @@ class CPPTarget(TargetBase):
             else:
                 STMT("public:")
 
-            with BLOCK("static void pack(const data_type& obj, ITransport& transport)"):
+            STMT("RECORD_PACKER_IMPL({0}, {1})", rec.name, rec.id)
+            SEP()
+
+            with BLOCK("void pack(const data_type& obj, ITransport& transport) const"):
                 for mem in rec.members:
-                    STMT("{0}.pack_any(obj.{1}, transport)", type_to_packer(mem.type), 
-                        mem.name)
+                    STMT("{0}.pack(obj.{1}, transport)", type_to_packer(mem.type), mem.name)
             
-            with BLOCK("static void unpack(data_type& obj, ITransport& transport)"):
+            with BLOCK("void unpack(data_type& obj, ITransport& transport) const"):
                 for mem in rec.members:
                     STMT("{0}.unpack(obj.{1}, transport)", type_to_packer(mem.type), mem.name) 
 
+    def generate_module_record_cls(self, module, rec, static, proxy):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+
+        with BLOCK("class {0} : public IPacker", type_to_packer_type(rec), suffix = "} %s;" % (type_to_packer(rec),)):
+            if not static:
+                STMT("protected:")
+                complicated_types = rec.get_complicated_types()
+                for tp in complicated_types:
+                    STMT("const {0}& {1}", type_to_packer_type(tp, proxy = proxy), type_to_packer(tp))
+                args =  ", ".join("const %s& %s" % (type_to_packer_type(tp, proxy = proxy), type_to_packer(tp)) 
+                    for tp in complicated_types)
+                argsinit = ", ".join("%s(%s)" % (type_to_packer(tp), type_to_packer(tp)) 
+                    for tp in complicated_types)
+                STMT("public:")
+                with BLOCK("_{0}Packer({1}) : {2}", rec.name, args, argsinit):
+                    pass
+                SEP()
+            else:
+                STMT("public:")
+
+            STMT("RECORD_PACKER_IMPL({0}, {1})", rec.name, rec.id)
+            SEP()
+
+            STMT("void pack(const data_type& obj, ITransport& transport) const")
+            STMT("void unpack(data_type& obj, ITransport& transport) const")
+    
+    def generate_module_record_body(self, module, rec, namespace = None):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        
+        if namespace:
+            ns = "%s::%s" % (namespace, type_to_packer_type(rec))
+        else:
+            ns = type_to_packer_type(rec)
+
+        with BLOCK("void {0}::pack(const data_type& obj, ITransport& transport) const", ns):
+            for mem in rec.members:
+                STMT("{0}.pack(obj.{1}, transport)", type_to_packer(mem.type), mem.name)
+        
+        with BLOCK("void {0}::unpack(data_type& obj, ITransport& transport) const", ns):
+            for mem in rec.members:
+                STMT("{0}.unpack(obj.{1}, transport)", type_to_packer(mem.type), mem.name) 
+   
+    
     def generate_module_processor_factory(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
@@ -393,21 +523,16 @@ class CPPTarget(TargetBase):
 
             SEP()
             for cls in service.classes():
-                STMT("ObjrefPacker< {0}, {1} > {2}", type_to_cpp(cls), cls.id, type_to_packer(cls))
+                STMT("{0} {1}", type_to_packer_type(cls), type_to_packer(cls))
             SEP()
             generated_records = []
             for rec in service.records(is_complex_type):
-                self.generate_module_record(module, rec, static = False, proxy = False)
+                self.generate_module_record_cls_and_body(module, rec, static = False, proxy = False)
                 generated_records.append(rec)
                 SEP()
             for tp in service.all_types:
-                if isinstance(tp, compiler.TList):
-                    STMT("ListPacker< {0}, {1} > _{2}_packer", type_to_cpp(tp.oftype), tp.id, tp.stringify())
-                elif isinstance(tp, compiler.TSet):
-                    STMT("SetPacker< {0}, {1} > _{2}_packer", type_to_cpp(tp.oftype), tp.id, tp.stringify())
-                elif isinstance(tp, compiler.TMap):
-                    STMT("MapPacker< {0}, {1}, {2} > _{3}_packer", type_to_cpp(tp.keytype), 
-                        type_to_cpp(tp.valtype), tp.id, tp.stringify())
+                if isinstance(tp, (compiler.TList, compiler.TSet, compiler.TMap)):
+                    STMT("{0} {1}", type_to_packer_type(tp), type_to_packer(tp))
             SEP()
             STMT("HeteroMapPacker _heteromap_packer")
             STMT("shared_ptr<IHandler> handler")
@@ -419,14 +544,14 @@ class CPPTarget(TargetBase):
                 STMT("BaseProcessor(transport)", suffix = ",")
                 for tp in service.all_types:
                     if isinstance(tp, (compiler.TList, compiler.TSet)):
-                        STMT("_{0}_packer({1})", tp.stringify(), type_to_packer(tp.oftype), suffix = ",")
+                        STMT("{0}({1})", type_to_packer(tp), type_to_packer(tp.oftype), suffix = ",")
                     elif isinstance(tp, compiler.TMap):
-                        STMT("_{0}_packer({1}, {2})", tp.stringify(), type_to_packer(tp.keytype), 
+                        STMT("{0}({1}, {2})", type_to_packer(tp), type_to_packer(tp.keytype), 
                             type_to_packer(tp.valtype), suffix = ",")
                 for cls in service.classes():
                     STMT("{0}(*this)", type_to_packer(cls), suffix = ",")
                 for rec in generated_records:
-                    args = ", ".join(type_to_packer(tp) for tp in rec.get_complex_types())
+                    args = ", ".join(type_to_packer(tp) for tp in rec.get_complicated_types())
                     STMT("{0}({1})", type_to_packer(rec), args, suffix = ",")
                 STMT("_heteromap_packer(999)", suffix=",")
                 STMT("handler(handler)", suffix = "")
@@ -490,7 +615,7 @@ class CPPTarget(TargetBase):
                     with BLOCK("case {0}:", func.id):
                         self.generate_invocation_case(module, func)
                         if func.type != compiler.t_void:
-                            STMT("packer = &{0}", type_to_packer(func.type))
+                            STMT("packer = static_cast<IPacker*>(&{0})", type_to_packer(func.type))
                         STMT("break")
                 with BLOCK("default:", prefix = None, suffix = None):
                     STMT('throw ProtocolError("unknown function id: ")')
@@ -516,13 +641,14 @@ class CPPTarget(TargetBase):
                 invocation = "result = handler->%s(%s)" % (func.fullname, callargs)
         else:
             insttype = func.args[0].type
-            STMT("shared_ptr< {0} > inst", type_to_cpp(insttype));
+            STMT("{0} inst", type_to_cpp(insttype));
             STMT("{0}.unpack(inst, *transport)", type_to_packer(insttype))
             
             for arg in func.args[1:]:
                 STMT("args.push_back({0}.unpack_any(*transport))", type_to_packer(arg.type))
+            
             callargs = ", ".join("any_cast< %s >(args[%s])" % (type_to_cpp(arg.type), i) 
-                for i, arg in enumerate(func.args))
+                for i, arg in enumerate(func.args[1:]))
             
             if isinstance(func.origin, compiler.ClassAttr):
                 if func.type == compiler.t_void:
@@ -558,6 +684,14 @@ class CPPTarget(TargetBase):
         with self.multinamespace(module, service.package, "ClientBindings"):
             self.generate_header_signature(module, service)
             SEP()
+            
+            for tp in service.records():
+                STMT("class {0}", type_to_cpp(tp, proxy = True))
+            for tp in service.classes():
+                STMT("class _{0}", type_to_cpp(tp, proxy = True))
+                STMT("typedef shared_ptr< _{0} > {0}", type_to_cpp(tp, proxy = True))
+            SEP()
+            
             DOC("enums", spacer = True)
             for enum in service.enums():
                 self.generate_header_enum(module, enum)
@@ -565,7 +699,7 @@ class CPPTarget(TargetBase):
 
             DOC("records", spacer = True)
             for rec in service.records():
-                self.generate_header_record(module, rec, proxy = False)
+                self.generate_header_record(module, rec, proxy = True)
                 SEP()
 
             DOC("consts", spacer = True)
@@ -620,13 +754,11 @@ class CPPTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         
-        STMT("class _{0}Proxy", cls.name)
-        STMT("typedef shared_ptr< _{0}Proxy > {0}Proxy", cls.name)
+        #STMT("class _{0}Proxy", cls.name)
         
         with BLOCK("class _{0}Proxy : public BaseProxy", cls.name):
             STMT("public:")
-            with BLOCK("_{0}Proxy(Client& client, objref_t oid, bool owns_ref) : BaseProxy(client, oid, owns_ref)", cls.name):
-                pass
+            STMT("_{0}Proxy(Client& client, objref_t oid, bool owns_ref)", cls.name)
             for attr in cls.all_attrs:
                 if attr.get:
                     STMT("{0} get_{1}()", type_to_cpp(attr.type, proxy = True), attr.name)
@@ -636,7 +768,7 @@ class CPPTarget(TargetBase):
             for method in cls.all_methods:
                 if not method.clientside:
                     continue
-                args = ", ".join("const %s & %s" % (type_to_cpp(arg.type, proxy = True), arg.name) 
+                args = ", ".join("%s %s" % (type_to_cpp(arg.type, proxy = True, arg = True), arg.name) 
                     for arg in method.args)
                 STMT("{0} {1}({2})", type_to_cpp(method.type, proxy = True), method.name, args)
             if cls.all_derived:
@@ -665,19 +797,14 @@ class CPPTarget(TargetBase):
             STMT("friend class _Functions")
             SEP()
             for cls in service.classes():
-                STMT("ObjrefPacker< {0}, {1} > {2}", type_to_cpp(cls, proxy = True), cls.id, type_to_packer(cls))
+                STMT("{0} {1}", type_to_packer_type(cls, proxy = True), type_to_packer(cls))
             SEP()
             for rec in service.records(is_complex_type):
-                self.generate_module_record(module, rec, static = False, proxy = False)
+                self.generate_module_record_cls(module, rec, static = False, proxy = True)
                 SEP()
             for tp in service.all_types:
-                if isinstance(tp, compiler.TList):
-                    STMT("ListPacker< {0}, {1} > _{2}_packer", type_to_cpp(tp.oftype), tp.id, tp.stringify())
-                elif isinstance(tp, compiler.TSet):
-                    STMT("SetPacker< {0}, {1} > _{2}_packer", type_to_cpp(tp.oftype), tp.id, tp.stringify())
-                elif isinstance(tp, compiler.TMap):
-                    STMT("MapPacker< {0}, {1}, {2} > _{3}_packer", type_to_cpp(tp.keytype), 
-                        type_to_cpp(tp.valtype), tp.id, tp.stringify())
+                if isinstance(tp, (compiler.TList, compiler.TSet, compiler.TMap)):
+                    STMT("{0} {1}", type_to_packer_type(tp, proxy = True), type_to_packer(tp))
             SEP()
             STMT("HeteroMapPacker _heteromap_packer")
             SEP()
@@ -724,11 +851,11 @@ class CPPTarget(TargetBase):
             SEP()
             for func in service.funcs.values():
                 if isinstance(func, compiler.Func):
-                    args = ", ".join("const %s & %s" % (type_to_cpp(arg.type, proxy = True), arg.name) 
+                    args = ", ".join("%s %s" % (type_to_cpp(arg.type, proxy = True, arg = True), arg.name) 
                         for arg in func.args)
                 else:
                     args = ["objref_t _oid"]
-                    args.extend("const %s & %s" % (type_to_cpp(arg.type, proxy = True), arg.name) 
+                    args.extend("%s %s" % (type_to_cpp(arg.type, proxy = True, arg = True), arg.name) 
                         for arg in func.args[1:])
                     args = ", ".join(args)                
                 STMT("{0} sync_{1}({2})", type_to_cpp(func.type, proxy = True), func.id, args)
@@ -783,7 +910,7 @@ class CPPTarget(TargetBase):
                     subnamespaces.append((name, node["__id__"]))
                 elif isinstance(node, compiler.Func):
                     func = node
-                    args = ", ".join("const %s & %s" % (type_to_cpp(arg.type, proxy = True), arg.name) 
+                    args = ", ".join("%s %s" % (type_to_cpp(arg.type, proxy = True, arg = True), arg.name) 
                         for arg in func.args)
                     callargs = ", ".join(arg.name for arg in func.args)
                     with BLOCK("{0} {1}({2})", type_to_cpp(func.type, proxy = True), func.name, args):
@@ -813,7 +940,7 @@ class CPPTarget(TargetBase):
         for func in service.funcs.values():
             if not isinstance(func, compiler.Func) or func.namespace or not func.clientside:
                 continue
-            args = ", ".join("const %s & %s" % (type_to_cpp(arg.type, proxy = True), arg.name) 
+            args = ", ".join("%s %s" % (type_to_cpp(arg.type, proxy = True, arg = True), arg.name) 
                 for arg in func.args)
             callargs = ", ".join(arg.name for arg in func.args)
             STMT("{0} {1}({2})", type_to_cpp(func.type, proxy = True), func.name, args)
@@ -823,7 +950,7 @@ class CPPTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        STMT("static Client connect_sock(const string& host, int port)")
+        STMT("static Client connect_sock(const string& host, unsigned short port)")
         STMT("static Client connect_proc(const string& executable)")
         STMT("static Client connect_uri(const string& uri)")
         STMT("void assert_service_compatibility()")
@@ -849,7 +976,7 @@ class CPPTarget(TargetBase):
             
             DOC("records", spacer = True)
             for rec in service.records(lambda mem: not is_complex_type(mem)):
-                self.generate_module_record(module, rec, static = True, proxy = False)
+                self.generate_module_record_cls_and_body(module, rec, static = True, proxy = False)
                 SEP()
     
             DOC("consts", spacer = True)
@@ -912,6 +1039,9 @@ class CPPTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         
+        with BLOCK("_{0}Proxy::_{0}Proxy(Client& client, objref_t oid, bool owns_ref) : BaseProxy(client, oid, owns_ref)", cls.name):
+            pass
+        SEP()
         for attr in cls.all_attrs:
             if attr.get:
                 with BLOCK("{1} _{0}Proxy::get_{2}()", cls.name, type_to_cpp(attr.type, proxy = True), attr.name):
@@ -923,7 +1053,7 @@ class CPPTarget(TargetBase):
         for method in cls.all_methods:
             if not method.clientside:
                 continue
-            args = ", ".join("const %s & %s" % (type_to_cpp(arg.type, proxy = True), arg.name) 
+            args = ", ".join("%s %s" % (type_to_cpp(arg.type, proxy = True, arg = True), arg.name) 
                 for arg in method.args)
             with BLOCK("{0} _{1}Proxy::{2}({3})", type_to_cpp(method.type, proxy = True), cls.name, method.name, args):
                 callargs = ["_oid"] + [arg.name for arg in method.args]
@@ -933,11 +1063,11 @@ class CPPTarget(TargetBase):
                     STMT("return _client._funcs.sync_{0}({1})", method.func.id, ", ".join(callargs))
         if cls.all_derived:
             for cls2 in cls.all_derived:
-                with BLOCK("{0} _{1}Proxy::cast_to_{1}()", type_to_cpp(cls2, proxy = True), cls.name, cls2.name):
+                with BLOCK("{0} _{1}Proxy::cast_to_{2}()", type_to_cpp(cls2, proxy = True), cls.name, cls2.name):
                     STMT("return shared_ptr<_{0}Proxy>(new _{0}Proxy(_client, _oid, false))", cls2.name)
         if cls.all_bases:
             for cls2 in cls.all_bases:
-                with BLOCK("{0} _{1}Proxy::cast_to_{1}()", type_to_cpp(cls2, proxy = True), cls.name, cls2.name):
+                with BLOCK("{0} _{1}Proxy::cast_to_{2}()", type_to_cpp(cls2, proxy = True), cls.name, cls2.name):
                     STMT("return shared_ptr<_{0}Proxy>(new _{0}Proxy(_client, _oid, false))", cls2.name)
     
     def generate_module_client(self, module, service):
@@ -950,21 +1080,26 @@ class CPPTarget(TargetBase):
         SEP()
         self.generate_module_client_internal_functions(module, service)
         SEP()
+        for rec in service.records(is_complex_type):
+            self.generate_module_record_body(module, rec, "Client")
+        SEP()
         with BLOCK("Client::Client(shared_ptr<ITransport> transport) :", prefix = "", suffix = ""):
             STMT("BaseClient(transport)", suffix = ",")
             STMT("_funcs(*this)", suffix=",")
             for tp in service.all_types:
                 if isinstance(tp, (compiler.TList, compiler.TSet)):
-                    STMT("_{0}_packer({1})", tp.stringify(), type_to_packer(tp.oftype), suffix = ",")
+                    STMT("{0}({1})", type_to_packer(tp), type_to_packer(tp.oftype), suffix = ",")
                 elif isinstance(tp, compiler.TMap):
-                    STMT("_{0}_packer({1}, {2})", tp.stringify(), type_to_packer(tp.keytype), 
+                    STMT("{0}({1}, {2})", type_to_packer(tp), type_to_packer(tp.keytype), 
                         type_to_packer(tp.valtype), suffix = ",")
             for cls in service.classes():
                 STMT("_{0}_proxy_serializer(*this)", cls.name, suffix=",")
                 STMT("{0}(_{1}_proxy_serializer)", type_to_packer(cls), cls.name, suffix = ",")
             for rec in service.records(is_complex_type):
-                args = ", ".join(type_to_packer(tp) for tp in rec.get_complex_types())
+                args = ", ".join(type_to_packer(tp) for tp in rec.get_complicated_types())
                 STMT("{0}({1})", type_to_packer(rec), args, suffix = ",")
+            for name, id in self.namespaces:
+                STMT("{0}(_funcs)", name, suffix = ",")
             STMT("_heteromap_packer(999)", suffix="")
             STMT("{", suffix = "")
             for tp in service.ordered_types:
@@ -992,17 +1127,17 @@ class CPPTarget(TargetBase):
         for func in service.funcs.values():
             if isinstance(func, compiler.Func):
                 method = False
-                args = ", ".join("const %s & %s" % (type_to_cpp(arg.type, proxy = True), arg.name) 
+                args = ", ".join("%s %s" % (type_to_cpp(arg.type, proxy = True, arg = True), arg.name) 
                     for arg in func.args)
             else:
                 method = True
                 args = ["objref_t _oid"]
-                args.extend("const %s & %s" % (type_to_cpp(arg.type, proxy = True), arg.name) 
+                args.extend("%s %s" % (type_to_cpp(arg.type, proxy = True, arg = True), arg.name) 
                     for arg in func.args[1:])
                 args = ", ".join(args)
             with BLOCK("{0} _Functions::sync_{1}({2})", type_to_cpp(func.type, proxy = True), 
                     func.id, args):
-                if is_complex_type(func.type):
+                if is_complicated_type(func.type):
                     STMT("int seq = client._utils.begin_call({0}, client.{1})", 
                         func.id, type_to_packer(func.type))
                 else:
@@ -1013,8 +1148,8 @@ class CPPTarget(TargetBase):
                         if method:
                             STMT("int64_packer.pack(_oid, *client._utils.transport)")
                         for arg in func.args[1:] if method else func.args:
-                            if is_complex_type(arg.type):
-                                STMT("client.{0}.pack_any({1}, *client._utils.transport)", 
+                            if is_complicated_type(arg.type):
+                                STMT("client.{0}.pack({1}, *client._utils.transport)", 
                                     type_to_packer(arg.type), arg.name)
                             else:
                                 STMT("{0}.pack({1}, *client._utils.transport)", 
@@ -1034,7 +1169,7 @@ class CPPTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        with BLOCK("Client Client::connect_sock(const string& host, int port)"):
+        with BLOCK("Client Client::connect_sock(const string& host, unsigned short port)"):
             STMT("shared_ptr<transports::SocketTransport> trns(new transports::SocketTransport(host, port))")
             STMT("return Client(trns)")
         SEP()
@@ -1073,7 +1208,7 @@ class CPPTarget(TargetBase):
         for func in service.funcs.values():
             if not isinstance(func, compiler.Func) or func.namespace or not func.clientside:
                 continue
-            args = ", ".join("const %s & %s" % (type_to_cpp(arg.type, proxy = True), arg.name) 
+            args = ", ".join("%s %s" % (type_to_cpp(arg.type, proxy = True, arg = True), arg.name) 
                 for arg in func.args)
             callargs = ", ".join(arg.name for arg in func.args)
             with BLOCK("{0} Client::{1}({2})", type_to_cpp(func.type, proxy = True), func.name, args):
@@ -1081,14 +1216,6 @@ class CPPTarget(TargetBase):
                     STMT("_funcs.sync_{0}({1})", func.id, callargs)
                 else:
                     STMT("return _funcs.sync_{0}({1})", func.id, callargs)
-
-
-
-
-
-
-
-
 
 
 

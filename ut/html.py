@@ -8,8 +8,7 @@ from base import TargetTest
 
 class TestCSharp(TargetTest):
     def runTest(self):
-        #self.run_agnosc("c++", "ut/simple.xml", "ut/cpp-test/bindings")
-        self.run_agnosc("c++", "ut/features.xml", "ut/cpp-test/bindings")
+        self.run_agnosc("doc", "ut/features.xml", "ut/gen-html")
 
 
 

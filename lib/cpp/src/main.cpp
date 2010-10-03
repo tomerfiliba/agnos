@@ -8,6 +8,26 @@ using std::cin;
 using std::endl;
 using namespace agnos;
 
+class A
+{
+	class B
+	{
+		void bar();
+	};
+
+	void foo();
+};
+
+void A::foo()
+{
+
+}
+
+void A::B::bar()
+{
+
+}
+
 
 
 

@@ -120,6 +120,10 @@ class DocTarget(TargetBase):
                 TEXT("List<")
                 cls.link_type(tp.oftype, doc)
                 TEXT(">")
+            if isinstance(tp, compiler.TSet):
+                TEXT("Set<")
+                cls.link_type(tp.oftype, doc)
+                TEXT(">")
             elif isinstance(tp, compiler.TMap):
                 TEXT("Map<")
                 cls.link_type(tp.keytype, doc)
@@ -127,7 +131,7 @@ class DocTarget(TargetBase):
                 cls.link_type(tp.valtype, doc)
                 TEXT(">")
             elif isinstance(tp, compiler.BuiltinType):
-                TEXT(tp.name)
+                TEXT(tp.stringify())
             else:
                 TEXT('<a href="#{0}">{0}</a>', tp.name, escape = False)
     

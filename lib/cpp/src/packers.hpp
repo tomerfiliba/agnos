@@ -329,55 +329,43 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
-		template<typename IMPL, typename TYPE, int ID> class RecordPacker : public IPacker
-		{
-		public:
-			typedef TYPE data_type;
-
-			RecordPacker()
-			{
+		#define RECORD_PACKER_IMPL(TYPE, ID) \
+			typedef TYPE data_type; \
+			int32_t get_id() const \
+			{ \
+				return ID; \
+			} \
+			void pack_any(const any& obj, ITransport& transport) const \
+			{ \
+				if (obj.type() == typeid(shared_ptr<data_type>)) { \
+					shared_ptr<data_type> tmp = any_cast< shared_ptr<data_type> >(obj); \
+					pack(*tmp, transport); \
+				} \
+				else { \
+					pack(any_cast<data_type>(obj), transport); \
+				} \
+			} \
+			any unpack_any(ITransport& transport) const \
+			{ \
+				data_type tmp; \
+				unpack(tmp, transport); \
+				return tmp; \
+			} \
+			any unpack_shared(ITransport& transport) const \
+			{ \
+				shared_ptr<data_type> obj(new data_type()); \
+				unpack(*obj, transport); \
+				return obj; \
+			} \
+			void pack(shared_ptr<data_type> obj, ITransport& transport) const \
+			{ \
+				pack(*obj, transport); \
+			} \
+			void unpack(shared_ptr<data_type>& obj, ITransport& transport) const \
+			{ \
+				obj.reset(new TYPE()); \
+				unpack(*obj, transport); \
 			}
-
-			int32_t get_id() const
-			{
-				return ID;
-			}
-
-			void pack_any(const any& obj, ITransport& transport) const
-			{
-				if (obj.type() == typeid(shared_ptr<data_type>)) {
-					shared_ptr<data_type> tmp = any_cast< shared_ptr<data_type> >(obj);
-					IMPL::pack(*tmp, transport);
-				}
-				else {
-					IMPL::pack(any_cast<data_type>(obj), transport);
-				}
-			}
-
-			any unpack_any(ITransport& transport) const
-			{
-				data_type tmp;
-				IMPL::unpack(tmp, transport);
-				return tmp;
-			}
-
-			any unpack_shared(ITransport& transport) const
-			{
-				shared_ptr<data_type> obj(new data_type());
-				IMPL::unpack(*obj, transport);
-				return obj;
-			}
-
-			static void pack(shared_ptr<data_type> obj, ITransport& transport)
-			{
-				IMPL::pack(*obj, transport);
-			}
-			static void unpack(shared_ptr<data_type>& obj, ITransport& transport)
-			{
-				obj.reset(new TYPE());
-				IMPL::unpack(*obj, transport);
-			}
-		};
 
 
 		//////////////////////////////////////////////////////////////////////
