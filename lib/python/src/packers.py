@@ -224,7 +224,7 @@ class HeteroMapPacker(Packer):
     
     def pack(self, obj, stream):
         Int32.pack(len(obj), stream)
-        for key, keypacker, val, valpacker in obj.iter_fields():
+        for key, keypacker, val, valpacker in obj.iterfields():
             Int32.pack(keypacker.get_id(), stream)
             keypacker.pack(key, stream)
             Int32.pack(valpacker.get_id(), stream)

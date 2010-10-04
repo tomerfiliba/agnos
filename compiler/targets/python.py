@@ -324,7 +324,8 @@ class PythonTarget(TargetBase):
                     STMT('funcinfo.add("args", packers.Str, args, packers.BuiltinHeteroMapPacker)')
                     if func.annotations:
                         with BLOCK("anno = ", prefix = "{", suffix = "}"):
-                            STMT('"{0}" : "{1}",', anno.name, repr(anno.value))
+                            for anno in func.annotations:
+                                STMT('"{0}" : "{1}",', anno.name, repr(anno.value))
                         STMT('funcinfo.add("annotations", packers. anno, packers.map_of_str_str)')
                     STMT('info.add({0}, packers.Int32, funcinfo, packers.BuiltinHeteroMapPacker)', func.id)
             SEP()

@@ -76,8 +76,14 @@ class HeteroMap(object):
             self.fields = {}
         else:
             self.fields = fields
+    
+    def __repr__(self):
+        text = "HeteroMap:\n" + "\n".join("%r = %r" % (k, v) for k, v in self.iteritems())
+        return text.replace("\n", "\n  ")
+    
     def add(self, key, keypacker, val, valpacker):
         self.fields[key] = (val, keypacker, valpacker)
+        return val
     def clear(self):
         self.fields.clear()
     def copy(self):
@@ -94,7 +100,7 @@ class HeteroMap(object):
     def itervalues(self):
         for v in self.fields.itervalues():
             yield v[0]
-    def iter_fields(self):
+    def iterfields(self):
         for k, v in self.fields.iteritems():
             vv, kp, vp = v
             yield k, kp, vv, vp

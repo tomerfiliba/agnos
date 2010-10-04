@@ -1,11 +1,18 @@
 from .base import TargetBase
-from ..langs import xml as html
+from ..langs.xml import HtmlDoc, xml_escape
 from .. import compiler
- 
+
+
+def text_to_html(text):
+    #if ">>>" in text:
+    #    return "<pre>" + xml_escape(text.strip()) + "</pre>"
+    #else:
+    return xml_escape(text).replace("\n", "<br/>")
+
 
 class DocTarget(TargetBase):
     def generate(self, service):
-        doc = html.HtmlDoc()
+        doc = HtmlDoc()
         self.docify_service(service, doc)
         with self.open("%s.html" % (service.name,)) as f:
             f.write(doc.render())
@@ -120,7 +127,7 @@ class DocTarget(TargetBase):
                 TEXT("List<")
                 cls.link_type(tp.oftype, doc)
                 TEXT(">")
-            if isinstance(tp, compiler.TSet):
+            elif isinstance(tp, compiler.TSet):
                 TEXT("Set<")
                 cls.link_type(tp.oftype, doc)
                 TEXT(">")
@@ -147,7 +154,7 @@ class DocTarget(TargetBase):
                 with BLOCK("dd"):
                     if mem.doc:
                         with BLOCK("p"):
-                            TEXT("{0}", mem.doc)
+                            TEXT(text_to_html(mem.doc), escape = False)
                     TEXT("An alias to ")
                     self.link_type(mem.type, doc)
     
@@ -163,7 +170,7 @@ class DocTarget(TargetBase):
                 with BLOCK("dd"):
                     if mem.doc:
                         with BLOCK("p"):
-                            TEXT("{0}", mem.doc)
+                            TEXT(text_to_html(mem.doc), escape = False)
                     with BLOCK("p"):
                         with BLOCK("h4"):
                             TEXT("Members:")
@@ -179,7 +186,7 @@ class DocTarget(TargetBase):
                                     with BLOCK("code"):
                                         TEXT(m.value)
                                 with BLOCK("td"):
-                                    TEXT(m.doc)
+                                    TEXT(text_to_html(m.doc), escape = False)
     
     def docify_record(self, mem, doc):
         BLOCK = doc.block
@@ -196,7 +203,7 @@ class DocTarget(TargetBase):
                 with BLOCK("dd"):
                     if mem.doc:
                         with BLOCK("p"):
-                            TEXT("{0}", mem.doc)
+                            TEXT(text_to_html(mem.doc), escape = False)
                     with BLOCK("dl"):
                         with BLOCK("dt"):
                             with BLOCK("h4"):
@@ -209,7 +216,7 @@ class DocTarget(TargetBase):
                                         with BLOCK("b"):
                                             TEXT(m.name)
                                     with BLOCK("dd"):
-                                        TEXT(m.doc)
+                                        TEXT(text_to_html(m.doc), escape = False)
     
     def docify_class(self, mem, doc):
         BLOCK = doc.block
@@ -223,7 +230,7 @@ class DocTarget(TargetBase):
                 with BLOCK("dd"):
                     if mem.doc:
                         with BLOCK("p"):
-                            TEXT("{0}", mem.doc)
+                            TEXT(text_to_html(mem.doc), escape = False)
                     
                     if mem.attrs:
                         with BLOCK("dl"):
@@ -238,7 +245,7 @@ class DocTarget(TargetBase):
                                             with BLOCK("b"):
                                                 TEXT(m.name)
                                         with BLOCK("dd"):
-                                            TEXT(m.doc)
+                                            TEXT(text_to_html(m.doc), escape = False)
                     
                     if mem.methods:
                         with BLOCK("dl"):
@@ -261,7 +268,7 @@ class DocTarget(TargetBase):
                                             TEXT(")")
                                         with BLOCK("dd"):
                                             with BLOCK("p"):
-                                                TEXT(m.doc)
+                                                TEXT(text_to_html(m.doc), escape = False)
                                             if m.args:
                                                 with BLOCK("dl"):
                                                     with BLOCK("dt"):
@@ -274,7 +281,7 @@ class DocTarget(TargetBase):
                                                                     with BLOCK("code"):
                                                                         TEXT(arg.name)
                                                                 with BLOCK("dd"):
-                                                                    TEXT(arg.doc)
+                                                                    TEXT(text_to_html(arg.doc), escape = False)
     
     
     def docify_const(self, mem, doc):
@@ -285,9 +292,10 @@ class DocTarget(TargetBase):
             with BLOCK("dl"):
                 with BLOCK("dt"):
                     with BLOCK("h3", style="background-color: #EEEECC"):
-                        TEXT(mem.name)
+                        TEXT(mem.dotted_fullname)
                 with BLOCK("dd"):
                     with BLOCK("p"):
+                        TEXT("value: ")
                         with BLOCK("code"):
                             TEXT(repr(mem.value))
                         TEXT("(")
@@ -295,7 +303,7 @@ class DocTarget(TargetBase):
                         TEXT(")")
                     if mem.doc:
                         with BLOCK("p"):
-                            TEXT(mem.doc)
+                            TEXT(text_to_html(mem.doc), escape = False)
     
     def docify_func(self, mem, doc):
         BLOCK = doc.block
@@ -305,7 +313,7 @@ class DocTarget(TargetBase):
             with BLOCK("dl"):
                 with BLOCK("dt"):
                     with BLOCK("h3", style="background-color: #EEEECC"):
-                        TEXT(mem.name)
+                        TEXT(mem.dotted_fullname)
                     self.link_type(mem.type, doc)
                     with BLOCK("b"):
                         TEXT("{0} ", mem.name)
@@ -320,7 +328,7 @@ class DocTarget(TargetBase):
                 with BLOCK("dd"):
                     if mem.doc:
                         with BLOCK("p"):
-                            TEXT(mem.doc)
+                            TEXT(text_to_html(mem.doc), escape = False)
                     
                     if mem.args:
                         with BLOCK("dl"):
@@ -333,7 +341,7 @@ class DocTarget(TargetBase):
                                             with BLOCK("code"):
                                                 TEXT(arg.name)
                                         with BLOCK("dd"):
-                                            TEXT(arg.doc)
+                                            TEXT(text_to_html(arg.doc), escape = False)
     
 
 

@@ -7,7 +7,7 @@ from agnos_compiler.compiler.targets import PythonTarget
 
 
 class FuncInfo(object):
-    def __init__(self, name, type, args, namespace = None, doc = None, version = None, latest = True):
+    def __init__(self, name, type, args, namespace = None, doc = None, version = None, latest = True, anno = {}):
         self.name = name
         self.type = type
         self.args = args
@@ -15,6 +15,7 @@ class FuncInfo(object):
         self.doc = None
         self.version = version
         self.latest = latest
+        self.anno = anno
 
 
 class IdlGenerator(object):
@@ -100,6 +101,11 @@ class IdlGenerator(object):
                     with self.BLOCK("arg", name = arginfo.attrs["name"], 
                             type = arginfo.attrs["type"]):
                         self.emit_doc(arginfo)
+
+                for k, v in info.anno.iteritems():
+                    with self.BLOCK("annotation", name=k, value=v):
+                        pass
+
 
     def visit_ModuleNode(self, node):
         for child in node.children:
@@ -195,6 +201,7 @@ class IdlGenerator(object):
             doc = node.doc,
             version = node.attrs["version"],
             latest = node.latest,
+            anno = dict(info = "static_method"),
             ))
     
     def visit_CtorNode(self, node):
@@ -206,6 +213,7 @@ class IdlGenerator(object):
             doc = node.doc,
             version = node.attrs["version"],
             latest = node.latest,
+            anno = dict(info = "ctor_method"),
             ))
     
     def visit_FuncArgNode(self, node):
