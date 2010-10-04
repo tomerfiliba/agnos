@@ -6,7 +6,7 @@ from ..compiler import is_complex_type, is_complicated_type
 
 
 
-def type_to_cpp(t, proxy = False, shared = True, arg = False):
+def type_to_cpp(t, proxy = False, shared = True, arg = False, ret = False):
     if t == compiler.t_void:
         return "void"
     elif t == compiler.t_bool:
@@ -24,6 +24,8 @@ def type_to_cpp(t, proxy = False, shared = True, arg = False):
     elif t == compiler.t_string:
         if arg:
             return "const string&"
+        elif ret:
+            return "shared_ptr<string>"
         else:
             return "string"
     elif t == compiler.t_date:
@@ -34,32 +36,37 @@ def type_to_cpp(t, proxy = False, shared = True, arg = False):
     elif t == compiler.t_buffer:
         if arg:
             return "const string&"
+        elif ret:
+            return "shared_ptr<string>"
         else:
             return "string"
     elif t == compiler.t_heteromap:
         return "shared_ptr<HeteroMap>"
     elif isinstance(t, compiler.TList):
-        return "shared_ptr< vector< %s > >" % (type_to_cpp(t.oftype, proxy = proxy, shared = shared, arg = False),)
+        return "shared_ptr< vector< %s > >" % (type_to_cpp(t.oftype, proxy = proxy, shared = shared),)
     elif isinstance(t, compiler.TSet):
-        return "shared_ptr< set< %s > >" % (type_to_cpp(t.oftype, proxy = proxy, shared = shared, arg = False),)
+        return "shared_ptr< set< %s > >" % (type_to_cpp(t.oftype, proxy = proxy, shared = shared),)
     elif isinstance(t, compiler.TMap):
-        return "shared_ptr< map< %s, %s > >" % (type_to_cpp(t.keytype, proxy = proxy, shared = shared, arg = False), 
-            type_to_cpp(t.valtype, proxy = proxy))
-    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
+        return "shared_ptr< map< %s, %s > >" % (type_to_cpp(t.keytype, proxy = proxy, shared = shared), 
+            type_to_cpp(t.valtype, proxy = proxy, shared = shared))
+    elif isinstance(t, compiler.Enum):
+        return t.name
+    elif isinstance(t, (compiler.Record, compiler.Exception)):
         if arg:
             return "const %s&" % (t.name,)
+        elif ret:
+            return "shared_ptr<%s>" % (t.name,)
         else:
-            return "%s" % (t.name,)
+            return t.name
     elif isinstance(t, compiler.Class):
         if proxy:
             return "%sProxy" % (t.name,)
         elif shared:
-            return "shared_ptr< I%s >" % (t.name,)
+            return "shared_ptr<I%s>" % (t.name,)
+        elif arg:
+            return "const I%s&" % (t.name,)
         else:
-            if arg:
-                return "const I%s&" % (t.name,)
-            else:
-                return "I%s" % (t.name,)
+            return "I%s" % (t.name,)
     else:
         return "%s@@@type" % (t,)
  
@@ -315,7 +322,7 @@ class CPPTarget(TargetBase):
                 DOC("attributes")
             for attr in cls.attrs:
                 if attr.get:
-                    STMT("virtual {0} get_{1}() = 0", type_to_cpp(attr.type), attr.name)
+                    STMT("virtual {0} get_{1}() = 0", type_to_cpp(attr.type, ret = True), attr.name)
                 if attr.set:
                     STMT("virtual void set_{0}({1} value) = 0", attr.name, type_to_cpp(attr.type, arg = True))
             SEP()
@@ -324,7 +331,7 @@ class CPPTarget(TargetBase):
             for method in cls.methods:
                 args = ", ".join("%s %s" % (type_to_cpp(arg.type, arg = True), arg.name) 
                     for arg in method.args)
-                STMT("virtual {0} {1}({2}) = 0", type_to_cpp(method.type), method.name, args)
+                STMT("virtual {0} {1}({2}) = 0", type_to_cpp(method.type, ret = True), method.name, args)
     
     def generate_header_handler_interface(self, module, service):
         BLOCK = module.block
@@ -338,7 +345,8 @@ class CPPTarget(TargetBase):
                 if isinstance(member, compiler.Func):
                     args = ", ".join("%s %s" % (type_to_cpp(arg.type, arg = True), arg.name) 
                         for arg in member.args)
-                    STMT("virtual {0} {1}({2}) = 0", type_to_cpp(member.type), member.fullname, args)
+                    STMT("virtual {0} {1}({2}) = 0", type_to_cpp(member.type, ret = True), 
+                        member.fullname, args)
 
     def generate_header_processor_factory(self, module, service):
         BLOCK = module.block
@@ -761,16 +769,16 @@ class CPPTarget(TargetBase):
             STMT("_{0}Proxy(Client& client, objref_t oid, bool owns_ref)", cls.name)
             for attr in cls.all_attrs:
                 if attr.get:
-                    STMT("{0} get_{1}()", type_to_cpp(attr.type, proxy = True), attr.name)
+                    STMT("{0} get_{1}()", type_to_cpp(attr.type, proxy = True, ret = True), attr.name)
                 if attr.set:
-                    STMT("void set_{0}({1} value)", attr.name, type_to_cpp(attr.type, proxy = True))
+                    STMT("void set_{0}({1} value)", attr.name, type_to_cpp(attr.type, proxy = True, arg = True))
             SEP()
             for method in cls.all_methods:
                 if not method.clientside:
                     continue
                 args = ", ".join("%s %s" % (type_to_cpp(arg.type, proxy = True, arg = True), arg.name) 
                     for arg in method.args)
-                STMT("{0} {1}({2})", type_to_cpp(method.type, proxy = True), method.name, args)
+                STMT("{0} {1}({2})", type_to_cpp(method.type, proxy = True, ret = True), method.name, args)
             if cls.all_derived:
                 SEP()
                 DOC("downcasts")
@@ -858,7 +866,7 @@ class CPPTarget(TargetBase):
                     args.extend("%s %s" % (type_to_cpp(arg.type, proxy = True, arg = True), arg.name) 
                         for arg in func.args[1:])
                     args = ", ".join(args)                
-                STMT("{0} sync_{1}({2})", type_to_cpp(func.type, proxy = True), func.id, args)
+                STMT("{0} sync_{1}({2})", type_to_cpp(func.type, proxy = True, ret = True), func.id, args)
 
     def generate_client_namespaces(self, module, service):
         nsid = itertools.count(0)
@@ -913,7 +921,7 @@ class CPPTarget(TargetBase):
                     args = ", ".join("%s %s" % (type_to_cpp(arg.type, proxy = True, arg = True), arg.name) 
                         for arg in func.args)
                     callargs = ", ".join(arg.name for arg in func.args)
-                    with BLOCK("{0} {1}({2})", type_to_cpp(func.type, proxy = True), func.name, args):
+                    with BLOCK("{0} {1}({2})", type_to_cpp(func.type, proxy = True, ret = True), func.name, args):
                         if func.type == compiler.t_void:
                             STMT("_funcs.sync_{0}({1})", func.id, callargs)
                         else:
@@ -943,7 +951,7 @@ class CPPTarget(TargetBase):
             args = ", ".join("%s %s" % (type_to_cpp(arg.type, proxy = True, arg = True), arg.name) 
                 for arg in func.args)
             callargs = ", ".join(arg.name for arg in func.args)
-            STMT("{0} {1}({2})", type_to_cpp(func.type, proxy = True), func.name, args)
+            STMT("{0} {1}({2})", type_to_cpp(func.type, proxy = True, ret = True), func.name, args)
 
     def generate_header_client_helpers(self, module, service):
         BLOCK = module.block
@@ -1044,10 +1052,12 @@ class CPPTarget(TargetBase):
         SEP()
         for attr in cls.all_attrs:
             if attr.get:
-                with BLOCK("{1} _{0}Proxy::get_{2}()", cls.name, type_to_cpp(attr.type, proxy = True), attr.name):
+                with BLOCK("{1} _{0}Proxy::get_{2}()", cls.name, 
+                        type_to_cpp(attr.type, proxy = True, ret = True), attr.name):
                     STMT("return _client._funcs.sync_{0}(_oid)", attr.getter.id)
             if attr.set:
-                with BLOCK("void _{0}Proxy::set_{1}({2} value)", cls.name, attr.name, type_to_cpp(attr.type, proxy = True)):
+                with BLOCK("void _{0}Proxy::set_{1}({2} value)", cls.name, attr.name, 
+                        type_to_cpp(attr.type, proxy = True, arg = True)):
                     STMT("_client._funcs.sync_{0}(_oid, value)", attr.setter.id)
         SEP()
         for method in cls.all_methods:
@@ -1055,7 +1065,7 @@ class CPPTarget(TargetBase):
                 continue
             args = ", ".join("%s %s" % (type_to_cpp(arg.type, proxy = True, arg = True), arg.name) 
                 for arg in method.args)
-            with BLOCK("{0} _{1}Proxy::{2}({3})", type_to_cpp(method.type, proxy = True), cls.name, method.name, args):
+            with BLOCK("{0} _{1}Proxy::{2}({3})", type_to_cpp(method.type, proxy = True, ret = True), cls.name, method.name, args):
                 callargs = ["_oid"] + [arg.name for arg in method.args]
                 if method.type == compiler.t_void:
                     STMT("_client._funcs.sync_{0}({1})", method.func.id, ", ".join(callargs))
@@ -1135,7 +1145,7 @@ class CPPTarget(TargetBase):
                 args.extend("%s %s" % (type_to_cpp(arg.type, proxy = True, arg = True), arg.name) 
                     for arg in func.args[1:])
                 args = ", ".join(args)
-            with BLOCK("{0} _Functions::sync_{1}({2})", type_to_cpp(func.type, proxy = True), 
+            with BLOCK("{0} _Functions::sync_{1}({2})", type_to_cpp(func.type, proxy = True, ret = True), 
                     func.id, args):
                 if is_complicated_type(func.type):
                     STMT("int seq = client._utils.begin_call({0}, client.{1})", 
@@ -1161,7 +1171,8 @@ class CPPTarget(TargetBase):
                 if func.type == compiler.t_void:
                     STMT("client._utils.get_reply(seq)")
                 else:
-                    STMT("return client._utils.get_reply_as< {0} >(seq)", type_to_cpp(func.type, proxy = True))
+                    STMT("return client._utils.get_reply_as< {0} >(seq)", 
+                        type_to_cpp(func.type, proxy = True, ret = True))
             SEP()    
     
     def generate_module_client_helpers(self, module, service):
@@ -1198,7 +1209,8 @@ class CPPTarget(TargetBase):
                             STMT("found = true")
                             STMT("break")
                 with BLOCK("if (!found)"):
-                    STMT('''throw IncompatibleServiceVersion("server does not support client version '{0}'")''', service.clientversion)
+                    STMT('''throw IncompatibleServiceVersion("server does not support client version '{0}'")''', 
+                        service.clientversion)
 
     def generate_module_client_funcs(self, module, service):
         BLOCK = module.block
@@ -1211,7 +1223,8 @@ class CPPTarget(TargetBase):
             args = ", ".join("%s %s" % (type_to_cpp(arg.type, proxy = True, arg = True), arg.name) 
                 for arg in func.args)
             callargs = ", ".join(arg.name for arg in func.args)
-            with BLOCK("{0} Client::{1}({2})", type_to_cpp(func.type, proxy = True), func.name, args):
+            with BLOCK("{0} Client::{1}({2})", type_to_cpp(func.type, proxy = True, ret = True), 
+                    func.name, args):
                 if func.type == compiler.t_void:
                     STMT("_funcs.sync_{0}({1})", func.id, callargs)
                 else:

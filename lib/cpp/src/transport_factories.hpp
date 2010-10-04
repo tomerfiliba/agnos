@@ -25,12 +25,10 @@ namespace agnos
 
 			class SocketTransportFactory : public ITransportFactory
 			{
-			protected:
-				shared_ptr<tcp::acceptor> acceptor;
-
 			public:
 				static const int DEFAULT_BACKLOG = 10;
 				tcp::endpoint endpoint;
+				shared_ptr<tcp::acceptor> acceptor;
 
 				SocketTransportFactory(unsigned short port, int backlog = DEFAULT_BACKLOG);
 				SocketTransportFactory(const char * host, unsigned short port, int backlog = DEFAULT_BACKLOG);

@@ -107,12 +107,19 @@ namespace agnos
 
 		void SocketTransport::close()
 		{
+#ifdef AGNOS_DEBUG
+			std::cout << ":: close()" << std::endl;
+#endif
+
 			sockstream->rdbuf()->shutdown(tcp::socket::shutdown_both);
 			sockstream->close();
 		}
 
 		int SocketTransport::begin_read()
 		{
+#ifdef AGNOS_DEBUG
+			std::cout << ":: begin_read()" << std::endl;;
+#endif
 			if (rlock.is_held_by_current_thread()) {
 				throw TransportError("begin_read is not reentrant");
 			}
@@ -124,7 +131,9 @@ namespace agnos
 			sockstream->read((char*)&tmp, sizeof(tmp));
 			rseq = ntohl(tmp);
 			rpos = 0;
-
+#ifdef AGNOS_DEBUG
+			std::cout << "length = " << rlength << ", seq = " << rseq << std::endl;
+#endif
 			return rseq;
 		}
 
@@ -137,6 +146,9 @@ namespace agnos
 
 		size_t SocketTransport::read(char * buf, size_t size)
 		{
+#ifdef AGNOS_DEBUG
+			std::cout << ":: read(" << size << ")" << std::endl;
+#endif
 			_assert_began_read(rlock);
 			if (rpos + size > rlength) {
 				throw TransportError("request to read more than available");
@@ -144,11 +156,17 @@ namespace agnos
 			sockstream->read(buf, size);
 			size_t actually_read = sockstream->gcount();
 			rpos += actually_read;
+#ifdef AGNOS_DEBUG
+			std::cout << "data(" << actually_read << ") : " << repr(buf, actually_read) << std::endl;
+#endif
 			return actually_read;
 		}
 
 		void SocketTransport::end_read()
 		{
+#ifdef AGNOS_DEBUG
+			std::cout << ":: end_read()" << std::endl;
+#endif
 			_assert_began_read(rlock);
 			sockstream->ignore(rlength - rpos);
 			rlock.unlock();
@@ -156,6 +174,9 @@ namespace agnos
 
 		void SocketTransport::begin_write(int32_t seq)
 		{
+#ifdef AGNOS_DEBUG
+			std::cout << ":: begin_write(" << seq << ")" << std::endl;
+#endif
 			if (wlock.is_held_by_current_thread()) {
 				throw TransportError("begin_write is not reentrant");
 			}
@@ -174,12 +195,18 @@ namespace agnos
 
 		void SocketTransport::write(const char * buf, size_t size)
 		{
+#ifdef AGNOS_DEBUG
+			std::cout << ":: write(" << size << ") : " <<repr(buf, size) << std::endl;
+#endif
 			_assert_began_write(wlock);
 			wbuf.insert(wbuf.end(), buf, buf + size);
 		}
 
 		void SocketTransport::reset()
 		{
+#ifdef AGNOS_DEBUG
+			std::cout << ":: reset()" << std::endl;
+#endif
 			_assert_began_write(wlock);
 			wbuf.clear();
 			wbuf.reserve(DEFAULT_BUFFER_SIZE);
@@ -187,6 +214,9 @@ namespace agnos
 
 		void SocketTransport::end_write()
 		{
+#ifdef AGNOS_DEBUG
+			std::cout << ":: end_write()" << std::endl;
+#endif
 			int32_t tmp;
 			_assert_began_write(wlock);
 			if (wbuf.size() > 0) {
@@ -205,6 +235,9 @@ namespace agnos
 
 		void SocketTransport::cancel_write()
 		{
+#ifdef AGNOS_DEBUG
+			std::cout << ":: cancel_write()" << std::endl;
+#endif
 			_assert_began_write(wlock);
 			wbuf.clear();
 			wbuf.reserve(DEFAULT_BUFFER_SIZE);

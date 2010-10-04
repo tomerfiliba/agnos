@@ -89,8 +89,8 @@ namespace agnos
 		{
 			shared_ptr<SocketTransportFactory> factory = boost::shared_static_cast<SocketTransportFactory>(transport_factory);
 			std::cout << "AGNOS" << std::endl;
-			std::cout << factory->endpoint.address().to_string() << std::endl;
-			std::cout << factory->endpoint.port() << std::endl;
+			std::cout << factory->acceptor->local_endpoint().address().to_string() << std::endl;
+			std::cout << factory->acceptor->local_endpoint().port() << std::endl;
 			std::cout.flush();
 			::fclose(::stdout);
 
@@ -124,8 +124,10 @@ namespace agnos
 			string host = "127.0.0.1";
 			unsigned short port = 0;
 
-			for (int i = 0; i < argc; i++) {
+			// start from 1, to skip arg[0]
+			for (int i = 1; i < argc; i++) {
 				string arg = argv[i];
+
 				if (arg.compare("-m") == 0) {
 					i += 1;
 					if (i >= argc) {

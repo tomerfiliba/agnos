@@ -1,0 +1,6 @@
+Library('agnos', 
+	Glob('src/*.cpp'), 
+	CPPDEFINES = {"AGNOS_DEBUG" : None}
+)
+
+Decider('MD5')

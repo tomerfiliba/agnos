@@ -21,7 +21,7 @@ namespace agnos
 	class HeteroMap
 	{
 	public:
-		typedef variant<int32_t, int64_t, string, datetime, double> key_type;
+		typedef variant<bool, int32_t, int64_t, string, datetime, double> key_type;
 		typedef any mapped_type;
 
 	protected:

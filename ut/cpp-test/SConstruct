@@ -1,0 +1,23 @@
+SConscript(['../../lib/cpp/SConstruct'])
+
+Program('myserver', 
+	[
+		"bindings/FeatureTest_server_bindings.cpp", 
+		"myserver.cpp",
+	],
+	CPPPATH='../../lib/cpp/src',
+	LIBS = ["agnos", "boost_thread", "boost_date_time", "boost_iostreams", "boost_system"],
+	LIBPATH = ['../../lib/cpp'],
+)
+
+Program('myclient', 
+	[
+		"bindings/FeatureTest_client_bindings.cpp", 
+		"myclient.cpp",
+	],
+	CPPPATH='../../lib/cpp/src',
+	LIBS = ["agnos", "boost_thread", "boost_date_time", "boost_iostreams", "boost_system"],
+	LIBPATH = ['../../lib/cpp'],
+)
+
+Decider('MD5')
