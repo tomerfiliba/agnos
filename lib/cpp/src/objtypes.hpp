@@ -17,6 +17,8 @@
 #include <boost/scoped_ptr.hpp>
 //#include <boost/foreach.hpp>
 #include <boost/date_time.hpp>
+#include <boost/utility.hpp>
+
 
 #ifdef _MSC_VER
 typedef __int8 int8_t;

@@ -174,11 +174,43 @@ namespace agnos
 			transport->end_write();
 		}
 
+
+		struct _TransportClose
+		{
+			shared_ptr<ITransport> transport;
+			_TransportClose(shared_ptr<ITransport> transport) : transport(transport)
+			{
+			}
+			~_TransportClose()
+			{
+				transport->close();
+			}
+		};
+
+
 		void BaseProcessor::serve()
 		{
-			while (true) {
-				process();
+			// automatically close the transport at exit
+			_TransportClose finalizer(transport);
+
+			try {
+				while (true) {
+					process();
+				}
 			}
+			catch (transports::TransportEOFError& ex) {
+				// this is expected
+			}
+			catch (transports::TransportError& ex) {
+				// this might happen
+#ifdef AGNOS_DEBUG
+				std::cout << "got a TransportError: " << ex.what() << std::endl;
+#endif
+			}
+		}
+
+		void BaseProcessor::close()
+		{
 			transport->close();
 		}
 
@@ -186,6 +218,15 @@ namespace agnos
 		//////////////////////////////////////////////////////////////////////
 		// ClientUtils
 		//////////////////////////////////////////////////////////////////////
+
+		ClientUtils::ClientUtils(shared_ptr<ITransport> transport) :
+				packed_exceptions_map(),
+				transport(transport),
+				replies(),
+				proxies(),
+				_seq(0)
+		{
+		}
 
 		int32_t ClientUtils::get_seq()
 		{
@@ -217,11 +258,6 @@ namespace agnos
 			string traceback;
 			StringPacker::unpack(traceback, *transport);
 			return GenericException(message, traceback);
-		}
-
-		ClientUtils::ClientUtils(shared_ptr<ITransport> transport) :
-				packed_exceptions_map(), transport(transport)
-		{
 		}
 
 		void ClientUtils::close()

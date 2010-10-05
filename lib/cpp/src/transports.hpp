@@ -12,9 +12,11 @@ namespace agnos
 	{
 		using boost::asio::ip::tcp;
 
-		DEFINE_EXCEPTION(TransportError)
+		DEFINE_EXCEPTION(TransportError);
+		DEFINE_EXCEPTION2(TransportEOFError, TransportError);
+		DEFINE_EXCEPTION2(SocketTransportError, TransportError);
 
-		class ITransport
+		class ITransport : public boost::noncopyable
 		{
 		public:
 			virtual void close() = 0;
@@ -122,8 +124,13 @@ namespace agnos
 			size_t rpos;
 			size_t rlength;
 
+			void _assert_good();
+			void _assert_began_read();
+			void _assert_began_write();
+
 		public:
 			SocketTransport(const string& hostname, unsigned short port);
+			SocketTransport(const string& hostname, const string& port);
 			SocketTransport(shared_ptr<tcp::iostream> sockstream);
 
 			virtual void close();

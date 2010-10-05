@@ -78,7 +78,7 @@ namespace agnos
 		const int32_t INFO_FUNCTIONS = 2;
 		const int32_t INFO_FUNCCODES = 3;
 
-		class BaseProcessor : protected ISerializer
+		class BaseProcessor : protected ISerializer, public boost::noncopyable
 		{
 		protected:
 			struct Cell
@@ -129,6 +129,7 @@ namespace agnos
 			BaseProcessor(shared_ptr<ITransport> transport);
 			void process();
 			void serve();
+			void close();
 		};
 
 
@@ -160,10 +161,11 @@ namespace agnos
 			}
 		};
 
-		class ClientUtils
+		class ClientUtils : public boost::noncopyable
 		{
 		public:
 			map<int32_t, IPacker*> packed_exceptions_map;
+			shared_ptr<ITransport> transport;
 
 		protected:
 			map<int32_t, shared_ptr<ReplySlot> > replies;
@@ -176,8 +178,6 @@ namespace agnos
 			GenericException load_generic_exception();
 
 		public:
-			shared_ptr<ITransport> transport;
-
 			ClientUtils(shared_ptr<ITransport> transport);
 
 			void close();
@@ -217,7 +217,7 @@ namespace agnos
 			}
 		};
 
-		class BaseClient
+		class BaseClient : public boost::noncopyable
 		{
 		public:
 			ClientUtils _utils;

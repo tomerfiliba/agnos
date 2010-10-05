@@ -13,7 +13,7 @@ namespace agnos
 
 		DEFINE_EXCEPTION(PackerError);
 
-		class IPacker
+		class IPacker : public boost::noncopyable
 		{
 		public:
 			virtual int32_t get_id() const = 0;

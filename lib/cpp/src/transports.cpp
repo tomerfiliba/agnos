@@ -1,9 +1,9 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <cstdlib>
 #include "string.h"
 #include "transports.hpp"
-
 
 
 namespace agnos
@@ -89,12 +89,47 @@ namespace agnos
 		// SocketTransport
 		//////////////////////////////////////////////////////////////////////
 
+		template <class T> inline string to_string(const T& value)
+		{
+			// apparently this is the easiest and most portable way to convert
+			// and integer to a string. who'd have thought.
+			std::stringstream ss;
+			ss << value;
+			return ss.str();
+		}
+
 		SocketTransport::SocketTransport(const string& hostname, unsigned short port) :
 				wlock(), wbuf(), wseq(0),
 				rlock(), rseq(0), rpos(0), rlength(0)
 		{
-			sockstream = shared_ptr<tcp::iostream>(new tcp::iostream(hostname, port));
+			// ugh! the port must be a string, or it silently fails
+			string portstr = to_string(port);
+			sockstream = shared_ptr<tcp::iostream>(new tcp::iostream(hostname, portstr.c_str()));
+			if (!sockstream->good()) {
+				throw SocketTransportError("failed connecting the socket to " + hostname + " : " + portstr);
+			}
 			wbuf.reserve(DEFAULT_BUFFER_SIZE);
+		}
+
+		SocketTransport::SocketTransport(const string& hostname, const string& port) :
+				wlock(), wbuf(), wseq(0),
+				rlock(), rseq(0), rpos(0), rlength(0)
+		{
+			sockstream = shared_ptr<tcp::iostream>(new tcp::iostream(hostname, port.c_str()));
+			if (!sockstream->good()) {
+				throw SocketTransportError("failed connecting the socket to " + hostname + " : " + port);
+			}
+			wbuf.reserve(DEFAULT_BUFFER_SIZE);
+		}
+
+		inline void SocketTransport::_assert_good()
+		{
+			if (sockstream->eof()) {
+				throw TransportEOFError("socket is closed");
+			}
+			if (!sockstream->good()) {
+				throw SocketTransportError("sockstream is fail()ed");
+			}
 		}
 
 		SocketTransport::SocketTransport(shared_ptr<tcp::iostream> sockstream) :
@@ -102,6 +137,7 @@ namespace agnos
 				wlock(), wbuf(), wseq(0),
 				rlock(), rseq(0), rpos(0), rlength(0)
 		{
+			_assert_good();
 			wbuf.reserve(DEFAULT_BUFFER_SIZE);
 		}
 
@@ -110,9 +146,9 @@ namespace agnos
 #ifdef AGNOS_DEBUG
 			std::cout << ":: close()" << std::endl;
 #endif
-
 			sockstream->rdbuf()->shutdown(tcp::socket::shutdown_both);
 			sockstream->close();
+			sockstream.reset();
 		}
 
 		int SocketTransport::begin_read()
@@ -124,22 +160,29 @@ namespace agnos
 				throw TransportError("begin_read is not reentrant");
 			}
 			rlock.lock();
+			_assert_good();
 
 			int32_t tmp;
 			sockstream->read((char*)&tmp, sizeof(tmp));
+			_assert_good();
 			rlength = ntohl(tmp);
-			sockstream->read((char*)&tmp, sizeof(tmp));
-			rseq = ntohl(tmp);
-			rpos = 0;
 #ifdef AGNOS_DEBUG
-			std::cout << "length = " << rlength << ", seq = " << rseq << std::endl;
+			std::cout << "R " << repr((char*)&tmp, sizeof(tmp)) << std::endl;
 #endif
+			sockstream->read((char*)&tmp, sizeof(tmp));
+			_assert_good();
+			rseq = ntohl(tmp);
+#ifdef AGNOS_DEBUG
+			std::cout << "R " << repr((char*)&tmp, sizeof(tmp)) << std::endl;
+			std::cout << "rlength = " << rlength << ", rseq = " << rseq << std::endl;
+#endif
+			rpos = 0;
 			return rseq;
 		}
 
-		static inline void _assert_began_read(utils::Mutex& mutex)
+		inline void SocketTransport::_assert_began_read()
 		{
-			if (!mutex.is_held_by_current_thread()) {
+			if (!rlock.is_held_by_current_thread()) {
 				throw TransportError("thread must first call begin_read");
 			}
 		}
@@ -149,7 +192,8 @@ namespace agnos
 #ifdef AGNOS_DEBUG
 			std::cout << ":: read(" << size << ")" << std::endl;
 #endif
-			_assert_began_read(rlock);
+			_assert_began_read();
+			_assert_good();
 			if (rpos + size > rlength) {
 				throw TransportError("request to read more than available");
 			}
@@ -157,7 +201,7 @@ namespace agnos
 			size_t actually_read = sockstream->gcount();
 			rpos += actually_read;
 #ifdef AGNOS_DEBUG
-			std::cout << "data(" << actually_read << ") : " << repr(buf, actually_read) << std::endl;
+			std::cout << "R(" << actually_read << ") " << repr(buf, actually_read) << std::endl;
 #endif
 			return actually_read;
 		}
@@ -167,7 +211,8 @@ namespace agnos
 #ifdef AGNOS_DEBUG
 			std::cout << ":: end_read()" << std::endl;
 #endif
-			_assert_began_read(rlock);
+			_assert_began_read();
+			_assert_good();
 			sockstream->ignore(rlength - rpos);
 			rlock.unlock();
 		}
@@ -181,14 +226,15 @@ namespace agnos
 				throw TransportError("begin_write is not reentrant");
 			}
 			wlock.lock();
+			_assert_good();
 			wseq = seq;
 			wbuf.clear();
 			wbuf.reserve(DEFAULT_BUFFER_SIZE);
 		}
 
-		static inline void _assert_began_write(utils::Mutex& mutex)
+		inline void SocketTransport::_assert_began_write()
 		{
-			if (!mutex.is_held_by_current_thread()) {
+			if (!wlock.is_held_by_current_thread()) {
 				throw TransportError("thread must first call begin_write");
 			}
 		}
@@ -196,9 +242,10 @@ namespace agnos
 		void SocketTransport::write(const char * buf, size_t size)
 		{
 #ifdef AGNOS_DEBUG
-			std::cout << ":: write(" << size << ") : " <<repr(buf, size) << std::endl;
+			std::cout << ":: write(" << size << "): " <<repr(buf, size) << std::endl;
 #endif
-			_assert_began_write(wlock);
+			_assert_began_write();
+			_assert_good();
 			wbuf.insert(wbuf.end(), buf, buf + size);
 		}
 
@@ -207,7 +254,7 @@ namespace agnos
 #ifdef AGNOS_DEBUG
 			std::cout << ":: reset()" << std::endl;
 #endif
-			_assert_began_write(wlock);
+			_assert_began_write();
 			wbuf.clear();
 			wbuf.reserve(DEFAULT_BUFFER_SIZE);
 		}
@@ -218,13 +265,24 @@ namespace agnos
 			std::cout << ":: end_write()" << std::endl;
 #endif
 			int32_t tmp;
-			_assert_began_write(wlock);
+			_assert_began_write();
+			_assert_good();
+
 			if (wbuf.size() > 0) {
 				tmp = htonl(wbuf.size());
+#ifdef AGNOS_DEBUG
+				std::cout << "W " << repr((const char*)&tmp, sizeof(tmp)) << std::endl;
+#endif
 				sockstream->write((const char*)&tmp, sizeof(tmp));
 				tmp = htonl(wseq);
+#ifdef AGNOS_DEBUG
+				std::cout << "W " << repr((const char*)&tmp, sizeof(tmp)) << std::endl;
+#endif
 				sockstream->write((const char*)&tmp, sizeof(tmp));
 
+#ifdef AGNOS_DEBUG
+				std::cout << "W(" << wbuf.size() << ") " << repr(&wbuf[0], wbuf.size()) << std::endl;
+#endif
 				sockstream->write(&wbuf[0], wbuf.size());
 				sockstream->flush();
 				wbuf.clear();
@@ -238,7 +296,7 @@ namespace agnos
 #ifdef AGNOS_DEBUG
 			std::cout << ":: cancel_write()" << std::endl;
 #endif
-			_assert_began_write(wlock);
+			_assert_began_write();
 			wbuf.clear();
 			wbuf.reserve(DEFAULT_BUFFER_SIZE);
 			wlock.unlock();

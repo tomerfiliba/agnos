@@ -1,6 +1,7 @@
 Library('agnos', 
 	Glob('src/*.cpp'), 
-	CPPDEFINES = {"AGNOS_DEBUG" : None}
+	CPPDEFINES = {"AGNOS_DEBUG" : None},
+	CCFLAGS = "-Werror",
 )
 
 Decider('MD5')

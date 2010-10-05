@@ -14,7 +14,7 @@ namespace agnos
 		{
 			using boost::asio::ip::tcp;
 
-			class ITransportFactory
+			class ITransportFactory : public boost::noncopyable
 			{
 			public:
 				virtual void close() = 0;
@@ -41,18 +41,6 @@ namespace agnos
 		}
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 #endif // AGNOS_TRANSPORT_FACTORIES_HPP_INCLUDED

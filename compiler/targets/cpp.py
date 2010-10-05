@@ -958,9 +958,9 @@ class CPPTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        STMT("static Client connect_sock(const string& host, unsigned short port)")
-        STMT("static Client connect_proc(const string& executable)")
-        STMT("static Client connect_uri(const string& uri)")
+        STMT("static shared_ptr<Client> connect_sock(const string& host, unsigned short port)")
+        #STMT("static Client connect_proc(const string& executable)")
+        #STMT("static Client connect_uri(const string& uri)")
         STMT("void assert_service_compatibility()")
     
     ############################################################################
@@ -1180,16 +1180,17 @@ class CPPTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        with BLOCK("Client Client::connect_sock(const string& host, unsigned short port)"):
+        with BLOCK("shared_ptr<Client> Client::connect_sock(const string& host, unsigned short port)"):
             STMT("shared_ptr<transports::SocketTransport> trns(new transports::SocketTransport(host, port))")
-            STMT("return Client(trns)")
+            STMT("shared_ptr<Client> client(new Client(trns))")
+            STMT("return client")
         SEP()
-        with BLOCK("Client Client::connect_proc(const string& executable)"):
-            STMT('throw std::runtime_error("not implemented")')
-        SEP()
-        with BLOCK("Client Client::connect_uri(const string& uri)"):
-            STMT('throw std::runtime_error("not implemented")')
-        SEP()
+        #with BLOCK("Client Client::connect_proc(const string& executable)"):
+        #    STMT('throw std::runtime_error("not implemented")')
+        #SEP()
+        #with BLOCK("Client Client::connect_uri(const string& uri)"):
+        #    STMT('throw std::runtime_error("not implemented")')
+        #SEP()
         with BLOCK("void Client::assert_service_compatibility()"):
             STMT("shared_ptr<HeteroMap> info = get_service_info(INFO_GENERAL)")
             STMT('string agnos_version = info->get_as<string>("AGNOS_VERSION")')

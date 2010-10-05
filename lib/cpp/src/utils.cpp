@@ -23,12 +23,16 @@ namespace agnos
 
 		boost::thread::id INVALID_ID;
 
-		Mutex::Mutex() : _real_mutex(), _tid(INVALID_ID)
+		Mutex::Mutex() : _real_mutex(), _tid(INVALID_ID), _lock_depth(0)
 		{
 		}
 
 		Mutex::~Mutex()
 		{
+			// on death, just unlock the mutex as many times as necessary
+			for (; _lock_depth > 0; _lock_depth -= 1) {
+				_real_mutex.unlock();
+			}
 		}
 
 		void Mutex::lock()
@@ -38,6 +42,7 @@ namespace agnos
 			}
 			_real_mutex.lock();
 			_tid = boost::this_thread::get_id();
+			_lock_depth += 1;
 		}
 
 		void Mutex::unlock()
@@ -46,6 +51,7 @@ namespace agnos
 				throw MutexError("thread does not own mutex");
 			}
 			_tid = INVALID_ID;
+			_lock_depth -= 1;
 			_real_mutex.unlock();
 		}
 
@@ -54,9 +60,5 @@ namespace agnos
 			return _tid == boost::this_thread::get_id();
 		}
 
-		void * get_ptr_from_any(const any& obj)
-		{
-			return boost::unsafe_any_cast<shared_ptr<void> >(const_cast<any*>(&obj))->get();
-		}
 	}
 }

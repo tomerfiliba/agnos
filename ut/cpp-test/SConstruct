@@ -1,23 +1,33 @@
-SConscript(['../../lib/cpp/SConstruct'])
+import os
+
+SConscript(["../../lib/cpp/SConstruct"])
+
+agnos_outdir = "bindings"
+client_bindings = os.path.join(agnos_outdir, "simple_client_bindings.cpp")
+server_bindings = os.path.join(agnos_outdir, "simple_server_bindings.cpp")
+
+def build_agnos(target, source, env):
+    from agnos_compiler.compiler import compile
+    from agnos_compiler.compiler.targets import CPPTarget
+    compile(source[0].path, CPPTarget(agnos_outdir))
+
+env = Environment()
+env.Command([client_bindings, server_bindings], "../simple.xml", build_agnos)
 
 Program('myserver', 
-	[
-		"bindings/FeatureTest_server_bindings.cpp", 
-		"myserver.cpp",
-	],
-	CPPPATH='../../lib/cpp/src',
-	LIBS = ["agnos", "boost_thread", "boost_date_time", "boost_iostreams", "boost_system"],
-	LIBPATH = ['../../lib/cpp'],
+    [server_bindings, "myserver.cpp"], 
+	CCFLAGS = "-Werror",
+    CPPPATH = ['../../lib/cpp/src'],
+    LIBPATH = ['../../lib/cpp'],
+    LIBS = ["agnos", "boost_thread", "boost_date_time", "boost_iostreams", "boost_system"],
 )
 
 Program('myclient', 
-	[
-		"bindings/FeatureTest_client_bindings.cpp", 
-		"myclient.cpp",
-	],
-	CPPPATH='../../lib/cpp/src',
-	LIBS = ["agnos", "boost_thread", "boost_date_time", "boost_iostreams", "boost_system"],
-	LIBPATH = ['../../lib/cpp'],
+    [client_bindings, "myclient.cpp"], 
+	CCFLAGS = "-Werror",
+    CPPPATH = ['../../lib/cpp/src'],
+    LIBPATH = ['../../lib/cpp'],
+    LIBS = ["agnos", "boost_thread", "boost_date_time", "boost_iostreams", "boost_system"],
 )
 
 Decider('MD5')

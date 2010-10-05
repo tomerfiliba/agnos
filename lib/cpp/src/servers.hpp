@@ -21,7 +21,7 @@ namespace agnos
 
 		DEFINE_EXCEPTION(SwitchError);
 
-		class BaseServer
+		class BaseServer : public boost::noncopyable
 		{
 		protected:
 			IProcessorFactory& processor_factory;
@@ -75,7 +75,7 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
-		class CmdlineServer
+		class CmdlineServer : public boost::noncopyable
 		{
 		protected:
 			IProcessorFactory& processor_factory;

@@ -61,6 +61,7 @@ namespace agnos
 		protected:
 			boost::mutex _real_mutex;
 			boost::thread::id _tid;
+			int _lock_depth;
 
 		public:
 			Mutex();
@@ -70,8 +71,6 @@ namespace agnos
 			void unlock();
 			bool is_held_by_current_thread() const;
 		};
-
-		void * get_ptr_from_any(const any& obj);
 
 	}
 }
