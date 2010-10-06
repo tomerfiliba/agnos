@@ -174,7 +174,7 @@ namespace agnos
 
 				Int32Packer::unpack(key_id, transport);
 				const IPacker& key_pkr = get_packer(key_id);
-				HeteroMap::key_type key = any_cast<HeteroMap::key_type>(key_pkr.unpack_any(transport));
+				HeteroMap::key_type key = key_pkr.unpack_as<HeteroMap::key_type>(transport);
 
 				Int32Packer::unpack(val_id, transport);
 				const IPacker& val_pkr = get_packer(val_id);
@@ -191,11 +191,9 @@ namespace agnos
 				pack(*tmp, transport);
 			}
 			else {
-				pack(any_cast<HeteroMap>(obj), transport);
+				const HeteroMap &tmp = any_cast<HeteroMap>(obj);
+				pack(tmp, transport);
 			}
-
-			const HeteroMap &hm = any_cast<HeteroMap>(obj);
-			pack(hm, transport);
 		}
 
 		any HeteroMapPacker::unpack_any(ITransport& transport) const

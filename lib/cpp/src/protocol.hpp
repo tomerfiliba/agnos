@@ -143,7 +143,8 @@ namespace agnos
 
 		enum ReplySlotType
 		{
-			SLOT_EMPTY,
+			SLOT_PACKER,
+			SLOT_PACKER_SHARED,
 			SLOT_DISCARDED,
 			SLOT_VALUE,
 			SLOT_GENERIC_EXCEPTION,
@@ -155,8 +156,8 @@ namespace agnos
 			ReplySlotType type;
 			any value;
 
-			ReplySlot(IPacker * packer) :
-				type(SLOT_EMPTY), value(packer)
+			ReplySlot(bool shared, IPacker * packer) :
+				type(shared ? SLOT_PACKER_SHARED : SLOT_PACKER), value(packer)
 			{
 			}
 		};
@@ -198,7 +199,7 @@ namespace agnos
 
 			void decref(objref_t oid);
 
-			int32_t begin_call(int32_t funcid, IPacker& packer);
+			int32_t begin_call(int32_t funcid, IPacker& packer, bool shared);
 			void end_call();
 			void cancel_call();
 

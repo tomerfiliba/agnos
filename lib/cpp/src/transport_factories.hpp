@@ -3,6 +3,7 @@
 
 #include "objtypes.hpp"
 #include "transports.hpp"
+#include "utils.hpp"
 #include <boost/asio.hpp>
 
 

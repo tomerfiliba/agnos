@@ -30,7 +30,11 @@ namespace agnos
 			virtual void reset() = 0;
 			virtual void end_write() = 0;
 			virtual void cancel_write() = 0;
+
+			virtual string to_string() const = 0;
 		};
+
+		std::ostream& operator<< (std::ostream& stream, const ITransport& trns);
 
 		//////////////////////////////////////////////////////////////////////
 
@@ -79,31 +83,10 @@ namespace agnos
 			{
 				transport->cancel_write();
 			}
-		};
-
-		//////////////////////////////////////////////////////////////////////
-
-		class DebugTransport : public ITransport
-		{
-		protected:
-			const char * readbuf;
-			size_t bufsize;
-			size_t offset;
-
-		public:
-			DebugTransport(const char * readbuf, size_t size);
-
-			virtual void close();
-
-			virtual int32_t begin_read();
-			virtual size_t read(char * buf, size_t size);
-			virtual void end_read();
-
-			virtual void begin_write(int32_t seq);
-			virtual void write(const char * buf, size_t size);
-			virtual void reset();
-			virtual void end_write();
-			virtual void cancel_write();
+			virtual string to_string()
+			{
+				return transport->to_string();
+			}
 		};
 
 		//////////////////////////////////////////////////////////////////////
@@ -144,6 +127,8 @@ namespace agnos
 			virtual void reset();
 			virtual void end_write();
 			virtual void cancel_write();
+
+			virtual string to_string() const;
 		};
 
 

@@ -3,10 +3,10 @@ ROOT=`pwd`/..
 export PATH=$PATH:$ROOT/bin
 
 echo "generating IDL"
-agnos-srcgen.py mextra -o autogen
+agnosc-py mextra -o autogen
 
 if [ $? -ne 0 ]; then
-	echo "srcgen failed!!"
+	echo "pysrcgen failed!!"
 	exit 1
 fi
 

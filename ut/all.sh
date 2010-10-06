@@ -11,7 +11,7 @@ python csharp.py
 if [ ! $? -eq 0 ] ; then
 	exit 1
 fi
-python srcgen.py
+python pysrcgen.py
 if [ ! $? -eq 0 ] ; then
 	exit 1
 fi

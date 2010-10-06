@@ -11,6 +11,11 @@ public:
 	{
 		return a + b;
 	}
+
+	shared_ptr<Address> get_address()
+	{
+		return shared_ptr<Address>(new Address("israel", "tel aviv", "menahem begin", 132));
+	}
 };
 
 

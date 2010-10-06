@@ -27,6 +27,12 @@ namespace agnos
 		return const_cast<V*>(&it->second);
 	}
 
+#ifdef AGNOS_DEBUG
+#define DEBUG_LOG(text) std::cout << "[" << __FUNCTION__ << "(" << __LINE__ << ")" << "] " << text << std::endl;
+#else
+#define DEBUG_LOG(text)
+#endif
+
 	namespace utils
 	{
 		class Exception: public std::exception

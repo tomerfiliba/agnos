@@ -68,8 +68,15 @@ def type_to_cpp(t, proxy = False, shared = True, arg = False, ret = False):
         else:
             return "I%s" % (t.name,)
     else:
-        return "%s@@@type" % (t,)
- 
+        assert False
+
+def is_type_shared_ptr(t):
+    if isinstance(t, compiler.Enum) or t in [compiler.t_void, compiler.t_bool, 
+            compiler.t_int8, compiler.t_int16, compiler.t_int32, compiler.t_int64, 
+            compiler.t_float, compiler.t_date]:
+        return "false"
+    else:
+        return "true"
 
 def type_to_packer(t):
     if t == compiler.t_void:
@@ -100,7 +107,8 @@ def type_to_packer(t):
         return "_%s_packer" % (t.name,)
     elif isinstance(t, compiler.Class):
         return "_%s_objref" % (t.name,)
-    return "%r@@@packer" % (t,)
+    else:
+        assert False
 
 def type_to_packer_type(t, proxy = False):
     if t == compiler.t_void:
@@ -139,7 +147,8 @@ def type_to_packer_type(t, proxy = False):
             return "ObjrefPacker< _%s, %s >" % (type_to_cpp(t, shared = False, proxy = True), t.id)
         else:
             return "ObjrefPacker< %s, %s >" % (type_to_cpp(t, shared = False), t.id)
-    return "%r@@@packer_type" % (t,)
+    else:
+        assert False
 
 def const_to_cpp(typ, val):
     if val is None:
@@ -829,7 +838,8 @@ class CPPTarget(TargetBase):
             self.generate_header_client_funcs(module, service)
             SEP()
             self.generate_header_client_helpers(module, service)
-            SEP()
+        SEP()
+        self.generate_header_client_factories(module, service)
 
     def generate_header_client_proxy_serializer(self, module, service):
         BLOCK = module.block
@@ -844,6 +854,15 @@ class CPPTarget(TargetBase):
             STMT("ProxySerializer(Client& client)")
             STMT("objref_t store(objref_t oid, any obj)")
             STMT("any load(objref_t oid)")
+    
+    def generate_header_client_factories(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        with BLOCK("class SocketClient : public Client"):
+            STMT("public:")
+            STMT("SocketClient(const string& host, unsigned short port)")
+            STMT("SocketClient(const string& host, const string& port)")
     
     def generate_header_client_internal_functions(self, module, service):
         BLOCK = module.block
@@ -958,7 +977,7 @@ class CPPTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        STMT("static shared_ptr<Client> connect_sock(const string& host, unsigned short port)")
+        #STMT("static shared_ptr<Client> connect_sock(const string& host, unsigned short port)")
         #STMT("static Client connect_proc(const string& executable)")
         #STMT("static Client connect_uri(const string& uri)")
         STMT("void assert_service_compatibility()")
@@ -1148,11 +1167,11 @@ class CPPTarget(TargetBase):
             with BLOCK("{0} _Functions::sync_{1}({2})", type_to_cpp(func.type, proxy = True, ret = True), 
                     func.id, args):
                 if is_complicated_type(func.type):
-                    STMT("int seq = client._utils.begin_call({0}, client.{1})", 
-                        func.id, type_to_packer(func.type))
+                    STMT("int seq = client._utils.begin_call({0}, client.{1}, {2})", 
+                        func.id, type_to_packer(func.type), is_type_shared_ptr(func.type))
                 else:
-                    STMT("int seq = client._utils.begin_call({0}, {1})", func.id, 
-                        type_to_packer(func.type))
+                    STMT("int seq = client._utils.begin_call({0}, {1}, {2})", func.id, 
+                        type_to_packer(func.type), is_type_shared_ptr(func.type))
                 if func.args:
                     with BLOCK("try"):
                         if method:

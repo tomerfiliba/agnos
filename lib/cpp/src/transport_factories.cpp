@@ -44,15 +44,13 @@ namespace agnos
 
 			shared_ptr<ITransport> SocketTransportFactory::accept()
 			{
-#ifdef AGNOS_DEBUG
-				std::cout << ":: accept()" << std::endl;
-#endif
+				DEBUG_LOG("accepting...");
 				shared_ptr<tcp::iostream> sockstream(new tcp::iostream());
 				acceptor->accept(*(sockstream->rdbuf()));
-#ifdef AGNOS_DEBUG
-				std::cout << "got a connection" << std::endl;
-#endif
-				return shared_ptr<ITransport>(new SocketTransport(sockstream));
+				shared_ptr<ITransport> trns(new SocketTransport(sockstream));
+				DEBUG_LOG("accepted " << *trns);
+
+				return trns;
 			}
 		}
 	}

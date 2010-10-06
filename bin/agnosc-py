@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 example usage:
-    agnos-srcgen /path/to/my/package -o /another/path
+    agnos-py /path/to/my/package -o /another/path
 which results in the following files under /another/path:
     * myservice.xml - the idl of myservice
     * myservice_bindings.py - agnos-generated binding code
@@ -10,7 +10,7 @@ which results in the following files under /another/path:
 import os
 import sys
 from optparse import OptionParser
-from agnos_compiler.srcgen.generator import main 
+from agnos_compiler.pysrcgen.generator import main 
 
 
 parser = OptionParser()

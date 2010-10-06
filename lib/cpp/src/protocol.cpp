@@ -200,12 +200,11 @@ namespace agnos
 			}
 			catch (transports::TransportEOFError& ex) {
 				// this is expected
+				DEBUG_LOG("got an EOF");
 			}
 			catch (transports::TransportError& ex) {
 				// this might happen
-#ifdef AGNOS_DEBUG
-				std::cout << "got a TransportError: " << ex.what() << std::endl;
-#endif
+				DEBUG_LOG("got a TransportError: " << ex.what());
 			}
 		}
 
@@ -274,13 +273,13 @@ namespace agnos
 			transport->end_write();
 		}
 
-		int32_t ClientUtils::begin_call(int32_t funcid, IPacker& packer)
+		int32_t ClientUtils::begin_call(int32_t funcid, IPacker& packer, bool shared)
 		{
 			int32_t seq = get_seq();
 			transport->begin_write(seq);
 			Int8Packer::pack(CMD_INVOKE, *transport);
 			Int32Packer::pack(funcid, *transport);
-			map_put(replies, seq, shared_ptr<ReplySlot>(new ReplySlot(&packer)));
+			map_put(replies, seq, shared_ptr<ReplySlot>(new ReplySlot(shared, &packer)));
 			return seq;
 		}
 
@@ -301,7 +300,7 @@ namespace agnos
 			Int8Packer::pack(CMD_PING, *transport);
 			StringPacker::pack(payload, *transport);
 			transport->end_write();
-			map_put(replies, seq, shared_ptr<ReplySlot>(new ReplySlot(&string_packer)));
+			map_put(replies, seq, shared_ptr<ReplySlot>(new ReplySlot(false, &string_packer)));
 			string reply = get_reply_as<string>(seq, msecs);
 			if (reply != payload) {
 				throw ProtocolError("reply does not match payload!");
@@ -316,7 +315,7 @@ namespace agnos
 			Int8Packer::pack(CMD_GETINFO, *transport);
 			Int32Packer::pack(code, *transport);
 			transport->end_write();
-			map_put(replies, seq, shared_ptr<ReplySlot>(new ReplySlot(&builtin_heteromap_packer)));
+			map_put(replies, seq, shared_ptr<ReplySlot>(new ReplySlot(true, &builtin_heteromap_packer)));
 			return get_reply_as< shared_ptr<HeteroMap> >(seq);
 		}
 
@@ -329,7 +328,7 @@ namespace agnos
 			Int8Packer::unpack(code, *transport);
 			shared_ptr<ReplySlot> * slot = map_get(replies, seq, false);
 
-			if (slot == NULL || ((**slot).type != SLOT_EMPTY && (**slot).type != SLOT_DISCARDED)) {
+			if (slot == NULL || ((**slot).type != SLOT_PACKER && (**slot).type != SLOT_PACKER_SHARED && (**slot).type != SLOT_DISCARDED)) {
 				throw new ProtocolError("invalid reply sequence: ");
 			}
 			bool discard = ((**slot).type == SLOT_DISCARDED);
@@ -340,8 +339,14 @@ namespace agnos
 				if (packer == NULL) {
 					(**slot).value = NULL;
 				}
-				else {
+				else if ((**slot).type == SLOT_PACKER) {
 					(**slot).value = packer->unpack_any(*transport);
+				}
+				else if ((**slot).type == SLOT_PACKER_SHARED) {
+					(**slot).value = packer->unpack_shared(*transport);
+				}
+				else {
+					throw std::runtime_error("invalid slot type");
 				}
 				(**slot).type = SLOT_VALUE;
 				break;
@@ -397,6 +402,9 @@ namespace agnos
 		any ClientUtils::get_reply(int32_t seq, int msecs)
 		{
 			shared_ptr<ReplySlot> slot = wait_reply(seq, msecs);
+
+			DEBUG_LOG("slot type = " << slot->type);
+			DEBUG_LOG("value type = " << slot->value.type().name());
 
 			if (slot->type == SLOT_VALUE) {
 				return slot->value;

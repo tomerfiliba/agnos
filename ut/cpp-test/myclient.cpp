@@ -16,5 +16,9 @@ int main(int argc, const char * argv[])
 
 	shared_ptr<Client> client = Client::connect_sock(argv[1], (unsigned short)::atoi(argv[2]));
 	cout << "result = " << client->add(5, 6) << endl;
+
+	shared_ptr<Address> addr = client->get_address("israel", "tel aviv", "menahem begin", 132);
+	cout << "city = " << addr->city << endl;
+
 	return 0;
 }

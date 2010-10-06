@@ -11,6 +11,13 @@
 		<arg name="b" type="int32"/>
 	</func>
 
+	<func name="get_address" type="Address">
+		<arg name="country" type="str"/>
+		<arg name="city" type="str"/>
+		<arg name="street" type="str"/>
+		<arg name="num" type="int32"/>
+	</func>
+	
 	<const name="pi" type="float" value="3.1415926535"/>
 	
 </service>

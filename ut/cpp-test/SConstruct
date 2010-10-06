@@ -14,6 +14,9 @@ def build_agnos(target, source, env):
 env = Environment()
 env.Command([client_bindings, server_bindings], "../simple.xml", build_agnos)
 
+Depends(client_bindings, '../../compiler/targets/cpp.py')
+Depends(server_bindings, '../../compiler/targets/cpp.py')
+
 Program('myserver', 
     [server_bindings, "myserver.cpp"], 
 	CCFLAGS = "-Werror",
