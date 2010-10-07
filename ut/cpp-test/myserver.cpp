@@ -12,10 +12,16 @@ public:
 		return a + b;
 	}
 
-	shared_ptr<Address> get_address()
+	shared_ptr<Address> get_address(const string& country, const string& city, const string& street, int32_t num)
 	{
-		return shared_ptr<Address>(new Address("israel", "tel aviv", "menahem begin", 132));
+		return shared_ptr<Address>(new Address(country, city, street, num + 1));
 	}
+
+	shared_ptr<Address> modify_address(const Address& addr)
+	{
+		return shared_ptr<Address>(new Address(addr.country, addr.city, addr.street, addr.num * 2));
+	}
+
 };
 
 

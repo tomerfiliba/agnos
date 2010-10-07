@@ -1,5 +1,4 @@
 #include <iostream>
-#include <cstdlib>
 #include "bindings/simple_client_bindings.hpp"
 
 using namespace std;
@@ -14,11 +13,19 @@ int main(int argc, const char * argv[])
 		return 1;
 	}
 
-	shared_ptr<Client> client = Client::connect_sock(argv[1], (unsigned short)::atoi(argv[2]));
-	cout << "result = " << client->add(5, 6) << endl;
+	SocketClient client(argv[1], argv[2]);
 
-	shared_ptr<Address> addr = client->get_address("israel", "tel aviv", "menahem begin", 132);
+	/*cout << "result = " << client.add(5, 6) << endl;
+
+	shared_ptr<Address> addr = client.get_address("israel", "tel aviv", "menahem begin", 132);
 	cout << "city = " << addr->city << endl;
+	cout << "num = " << addr->num << endl;
+
+	shared_ptr<Address> addr2 = client.modify_address(*addr);
+	cout << "num = " << addr2->num << endl;*/
+
+	shared_ptr<HeteroMap> hm = client.get_service_info(agnos::protocol::INFO_GENERAL);
+	cout << hm->get_as<string>("IDL_MAGIC") << endl;
 
 	return 0;
 }

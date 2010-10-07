@@ -17,6 +17,10 @@
 		<arg name="street" type="str"/>
 		<arg name="num" type="int32"/>
 	</func>
+
+	<func name="modify_address" type="Address">
+		<arg name="addr" type="Address"/>
+	</func>
 	
 	<const name="pi" type="float" value="3.1415926535"/>
 	

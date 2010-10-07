@@ -1,6 +1,13 @@
 import os
 
-SConscript(["../../lib/cpp/SConstruct"])
+Decider('MD5')
+
+env = Environment(
+    CPPDEFINES = {"AGNOS_DEBUG" : None}, 
+    CCFLAGS = "-Werror",
+)
+
+SConscript(["../../lib/cpp/SConstruct"], exports="env")
 
 agnos_outdir = "bindings"
 client_bindings = os.path.join(agnos_outdir, "simple_client_bindings.cpp")
@@ -11,13 +18,12 @@ def build_agnos(target, source, env):
     from agnos_compiler.compiler.targets import CPPTarget
     compile(source[0].path, CPPTarget(agnos_outdir))
 
-env = Environment()
 env.Command([client_bindings, server_bindings], "../simple.xml", build_agnos)
 
 Depends(client_bindings, '../../compiler/targets/cpp.py')
 Depends(server_bindings, '../../compiler/targets/cpp.py')
 
-Program('myserver', 
+env.Program('myserver', 
     [server_bindings, "myserver.cpp"], 
 	CCFLAGS = "-Werror",
     CPPPATH = ['../../lib/cpp/src'],
@@ -25,12 +31,10 @@ Program('myserver',
     LIBS = ["agnos", "boost_thread", "boost_date_time", "boost_iostreams", "boost_system"],
 )
 
-Program('myclient', 
+env.Program('myclient', 
     [client_bindings, "myclient.cpp"], 
-	CCFLAGS = "-Werror",
     CPPPATH = ['../../lib/cpp/src'],
     LIBPATH = ['../../lib/cpp'],
     LIBS = ["agnos", "boost_thread", "boost_date_time", "boost_iostreams", "boost_system"],
 )
 
-Decider('MD5')

@@ -855,15 +855,6 @@ class CPPTarget(TargetBase):
             STMT("objref_t store(objref_t oid, any obj)")
             STMT("any load(objref_t oid)")
     
-    def generate_header_client_factories(self, module, service):
-        BLOCK = module.block
-        STMT = module.stmt
-        SEP = module.sep
-        with BLOCK("class SocketClient : public Client"):
-            STMT("public:")
-            STMT("SocketClient(const string& host, unsigned short port)")
-            STMT("SocketClient(const string& host, const string& port)")
-    
     def generate_header_client_internal_functions(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
@@ -981,6 +972,26 @@ class CPPTarget(TargetBase):
         #STMT("static Client connect_proc(const string& executable)")
         #STMT("static Client connect_uri(const string& uri)")
         STMT("void assert_service_compatibility()")
+
+    def generate_header_client_factories(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        with BLOCK("class SocketClient : public Client"):
+            STMT("public:")
+            STMT("SocketClient(shared_ptr<transports::SocketTransport> trns)")
+            STMT("SocketClient(const string& host, unsigned short port)")
+            STMT("SocketClient(const string& host, const string& port)")
+        SEP()
+        with BLOCK("class URLClient : public Client"):
+            STMT("public:")
+            STMT("URLClient(const string& url)")
+        SEP()
+        with BLOCK("class SubprocClient : public Client"):
+            STMT("public:")
+            STMT("SubprocClient(const string& executable)")
+            STMT("SubprocClient(const string& executable, const vector<string> args)")
+
     
     ############################################################################
     
@@ -1021,6 +1032,8 @@ class CPPTarget(TargetBase):
             
             DOC("client implementation", spacer = True)
             self.generate_module_client(module, service)
+            SEP()
+            self.generate_module_client_factories(module, service)
             SEP()
             
             DOC("$$extend-main$$")
@@ -1199,11 +1212,11 @@ class CPPTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        with BLOCK("shared_ptr<Client> Client::connect_sock(const string& host, unsigned short port)"):
-            STMT("shared_ptr<transports::SocketTransport> trns(new transports::SocketTransport(host, port))")
-            STMT("shared_ptr<Client> client(new Client(trns))")
-            STMT("return client")
-        SEP()
+        #with BLOCK("shared_ptr<Client> Client::connect_sock(const string& host, unsigned short port)"):
+        #    STMT("shared_ptr<transports::SocketTransport> trns(new transports::SocketTransport(host, port))")
+        #    STMT("shared_ptr<Client> client(new Client(trns))")
+        #    STMT("return client")
+        #SEP()
         #with BLOCK("Client Client::connect_proc(const string& executable)"):
         #    STMT('throw std::runtime_error("not implemented")')
         #SEP()
@@ -1231,6 +1244,18 @@ class CPPTarget(TargetBase):
                 with BLOCK("if (!found)"):
                     STMT('''throw IncompatibleServiceVersion("server does not support client version '{0}'")''', 
                         service.clientversion)
+
+    def generate_module_client_factories(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        
+        with BLOCK("SocketClient::SocketClient(shared_ptr<transports::SocketTransport> trns) :", prefix = "", suffix = "{}"):
+            STMT("Client(trns)", suffix = "")
+        with BLOCK("SocketClient::SocketClient(const string& host, unsigned short port) :", prefix = "", suffix = "{}"):
+            STMT("Client(shared_ptr<transports::SocketTransport>(new transports::SocketTransport(host, port)))", suffix = "")
+        with BLOCK("SocketClient::SocketClient(const string& host, const string& port) :", prefix = "", suffix = "{}"):
+            STMT("Client(shared_ptr<transports::SocketTransport>(new transports::SocketTransport(host, port)))", suffix = "")
 
     def generate_module_client_funcs(self, module, service):
         BLOCK = module.block

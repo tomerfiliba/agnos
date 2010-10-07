@@ -1,7 +1,11 @@
-Library('agnos', 
-	Glob('src/*.cpp'), 
-	CPPDEFINES = {"AGNOS_DEBUG" : None},
-	CCFLAGS = "-Werror",
-)
+from SCons.Errors import UserError
+
+try:
+	Import("env")
+except UserError:
+	env = DefaultEnvironment()
 
 Decider('MD5')
+
+env.Library('agnos', Glob('src/*.cpp')) 
+

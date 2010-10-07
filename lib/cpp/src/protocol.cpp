@@ -76,15 +76,20 @@ namespace agnos
 
 			switch (code) {
 			case INFO_GENERAL:
+				DEBUG_LOG("INFO_GENERAL");
 				process_get_general_info(map);
 				break;
 			case INFO_FUNCTIONS:
+				DEBUG_LOG("INFO_FUNCTIONS");
 				process_get_functions_info(map);
 				break;
 			case INFO_FUNCCODES:
+				DEBUG_LOG("INFO_FUNCCODES");
 				process_get_function_codes(map);
 				break;
 			case INFO_META:
+				DEBUG_LOG("INFO_META");
+				// fall-through
 			default:
 				map.put("INFO_META", INFO_META);
 				map.put("INFO_GENERAL", INFO_GENERAL);
@@ -93,6 +98,7 @@ namespace agnos
 				break;
 			}
 
+			DEBUG_LOG("starting to pack");
 			Int8Packer::pack(REPLY_SUCCESS, *transport);
 			packers::builtin_heteromap_packer.pack(map, *transport);
 		}
@@ -161,12 +167,16 @@ namespace agnos
 					throw ProtocolError("unknown command code: ");
 				}
 			} catch (ProtocolError exc) {
+				DEBUG_LOG("got a ProtocolError: " << exc.what());
 				transport->reset();
 				send_protocol_error(exc);
 			} catch (GenericException exc) {
+				DEBUG_LOG("got a GenericException: " << exc.what());
 				transport.reset();
 				send_generic_exception(exc);
 			} catch (std::exception exc) {
+				DEBUG_LOG("got an unknown exception: " << exc.what());
+				DEBUG_LOG("typeinfo = " << typeid(exc).name() );
 				transport->cancel_write();
 				throw exc;
 			}
