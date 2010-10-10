@@ -245,7 +245,8 @@ namespace agnos
 #ifdef BOOST_PROCESS_SUPPORTED
 		ProcTransport::ProcTransport(boost::process::child& proc, shared_ptr<ITransport> transport) :
 				WrappedTransport(transport),
-				proc(proc)
+				proc(proc),
+				_closed(false)
 		{
 		}
 
@@ -256,9 +257,13 @@ namespace agnos
 
 		void ProcTransport::close()
 		{
+			if (_closed) {
+				return;
+			}
 			DEBUG_LOG("ProcTransport::close");
 			WrappedTransport::close();
 			proc.terminate(false);
+			_closed = true;
 		}
 
 		shared_ptr<ProcTransport> ProcTransport::connect(const string& executable)

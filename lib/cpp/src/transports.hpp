@@ -157,6 +157,7 @@ namespace agnos
 		{
 		protected:
 			boost::process::child proc;
+			bool _closed;
 
 		public:
 			ProcTransport(boost::process::child& proc, shared_ptr<ITransport> transport);
