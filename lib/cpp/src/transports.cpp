@@ -90,17 +90,30 @@ namespace agnos
 			wbuf.reserve(DEFAULT_BUFFER_SIZE);
 		}
 
+		SocketTransport::~SocketTransport()
+		{
+			close();
+		}
+
 		string SocketTransport::to_string() const
 		{
 			std::stringstream ss;
-			ss << "<SocketTransport " << sockstream->rdbuf()->remote_endpoint().address().to_string()
+			if (sockstream) {
+				ss << "<SocketTransport " << sockstream->rdbuf()->remote_endpoint().address().to_string()
 					<< ":" << sockstream->rdbuf()->remote_endpoint().port() << ">";
+			}
+			else {
+				ss << "<SocketTransport (closed)>";
+			}
 			return ss.str();
 		}
 
 		void SocketTransport::close()
 		{
-			DEBUG_LOG("");
+			if (sockstream.get() == NULL) {
+				return;
+			}
+			DEBUG_LOG("SocketTransport::close");
 			sockstream->rdbuf()->shutdown(tcp::socket::shutdown_both);
 			sockstream->close();
 			sockstream.reset();
@@ -236,8 +249,14 @@ namespace agnos
 		{
 		}
 
+		ProcTransport::~ProcTransport()
+		{
+			close();
+		}
+
 		void ProcTransport::close()
 		{
+			DEBUG_LOG("ProcTransport::close");
 			WrappedTransport::close();
 			proc.terminate(false);
 		}
@@ -245,17 +264,18 @@ namespace agnos
 		shared_ptr<ProcTransport> ProcTransport::connect(const string& executable)
 		{
 			vector<string> args;
+			args.push_back(executable);
 			args.push_back("-m");
-			args.push_back("-lib");
+			args.push_back("lib");
 			return connect(executable, args);
 		}
 
 		shared_ptr<ProcTransport> ProcTransport::connect(const string& executable, const vector<string>& args)
 		{
 			boost::process::context ctx;
-			ctx.stdout_behavior = boost::process::capture_stream();
-			ctx.stderr_behavior = boost::process::capture_stream();
 			ctx.stdin_behavior = boost::process::capture_stream();
+			ctx.stdout_behavior = boost::process::capture_stream();
+			ctx.stderr_behavior = boost::process::inherit_stream();
 			ctx.environment = boost::process::self::get_environment();
 			return connect(executable, args, ctx);
 		}
@@ -264,6 +284,11 @@ namespace agnos
 				const boost::process::context& ctx)
 		{
 			boost::process::child proc = boost::process::launch(executable, args, ctx);
+			string sargs;
+			for (int i = 0; i < args.size(); i++) {
+				sargs += args[i] + " ";
+			}
+			DEBUG_LOG("launched process " << executable << ", args = " << sargs);
 			return connect(proc);
 		}
 
@@ -275,6 +300,8 @@ namespace agnos
 			memset(buf, 0, sizeof(buf));
 			stdout.getline(buf, sizeof(buf));
 			string magic(buf);
+			DEBUG_LOG("magic = " << magic);
+
 			if (magic.compare("AGNOS") != 0) {
 				throw ProcTransportError("process either failed to start or is not an agnos server");
 			}
@@ -282,10 +309,12 @@ namespace agnos
 			memset(buf, 0, sizeof(buf));
 			stdout.getline(buf, sizeof(buf));
 			string hostname(buf);
+			DEBUG_LOG("hostname = " << hostname);
 
 			memset(buf, 0, sizeof(buf));
 			stdout.getline(buf, sizeof(buf));
 			string port(buf);
+			DEBUG_LOG("port = " << port);
 
 			shared_ptr<ITransport> trns(new SocketTransport(hostname, port));
 			shared_ptr<ProcTransport> proctrns(new ProcTransport(proc, trns));

@@ -29,7 +29,7 @@ namespace agnos
 	}
 
 #ifdef AGNOS_DEBUG
-#define DEBUG_LOG(text) std::cout << "[" << __FUNCTION__ << "(" << __LINE__ << ")" << "] " << text << std::endl;
+#define DEBUG_LOG(text) std::cerr << "[" << __FUNCTION__ << "(" << __LINE__ << ")" << "] " << text << std::endl;
 #else
 #define DEBUG_LOG(text)
 #endif

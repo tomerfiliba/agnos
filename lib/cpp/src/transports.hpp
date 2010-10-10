@@ -133,6 +133,8 @@ namespace agnos
 			SocketTransport(const string& hostname, const string& port);
 			SocketTransport(shared_ptr<tcp::iostream> sockstream);
 
+			~SocketTransport();
+
 			void close();
 
 			int32_t begin_read();
@@ -158,6 +160,8 @@ namespace agnos
 
 		public:
 			ProcTransport(boost::process::child& proc, shared_ptr<ITransport> transport);
+			~ProcTransport();
+
 			void close();
 
 			static shared_ptr<ProcTransport> connect(const string& executable);

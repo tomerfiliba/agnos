@@ -24,7 +24,7 @@ namespace agnos
 		map_put(packers_info, key, PackerInfo(keypacker, valpacker));
 	}
 
-	any& HeteroMap::get(const HeteroMap::key_type& key)
+	inline any& HeteroMap::get(const HeteroMap::key_type& key)
 	{
 		return *map_get(data, key);
 	}
@@ -153,32 +153,22 @@ namespace agnos
 
 		void HeteroMapPacker::pack(const HeteroMap& obj, ITransport& transport) const
 		{
-			DEBUG_LOG("in HeteroMapPacker::pack");
-
 			Int32Packer::pack(obj.size(), transport);
 
 			for (HeteroMap::const_iterator it = obj.begin(); it != obj.end(); it++) {
 				const HeteroMap::PackerInfo& pkr = obj.packers_info.find(it->first)->second;
 
-				DEBUG_LOG("=====");
 				Int32Packer::pack(pkr.keypacker.get_id(), transport);
-
-				DEBUG_LOG("writing key: " << it->first << " type = " << typeid(it->first).name());
 				HeteroMapKeyPackerVisitor visitor(pkr.keypacker, transport);
 				boost::apply_visitor(visitor, it->first);
 
-				DEBUG_LOG("writing value");
 				Int32Packer::pack(pkr.valpacker.get_id(), transport);
 				pkr.valpacker.pack_any(it->second, transport);
 			}
-
-			DEBUG_LOG("leaving HeteroMapPacker::pack");
 		}
 
 		void HeteroMapPacker::unpack(HeteroMap& obj, ITransport& transport) const
 		{
-			DEBUG_LOG("in HeteroMapPacker::unpack");
-
 			int32_t size;
 			Int32Packer::unpack(size, transport);
 
@@ -186,8 +176,6 @@ namespace agnos
 
 			for (int i = 0; i < size; i++) {
 				int32_t key_id, val_id;
-
-				DEBUG_LOG("====");
 
 				Int32Packer::unpack(key_id, transport);
 
@@ -224,8 +212,6 @@ namespace agnos
 
 				obj.put(key, key_pkr, value, val_pkr);
 			}
-
-			DEBUG_LOG("leaving HeteroMapPacker::unpack");
 		}
 
 		void HeteroMapPacker::pack_any(const any& obj, ITransport& transport) const

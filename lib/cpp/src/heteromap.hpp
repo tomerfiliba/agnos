@@ -226,10 +226,6 @@ namespace agnos
 			put(key, packers::string_packer, value, packers::bool_packer);
 		}
 
-		/*
-		 * for some reason, 'const char *' prefers to coerce itself to an int,
-		 * rather than n std::string, so we have to specialize this case
-		 */
 		any& get(const char * key);
 		any& get(const key_type& key);
 
