@@ -5,6 +5,23 @@
 #include "utils.hpp"
 #include <boost/asio.hpp>
 
+#ifdef BOOST_PROCESS_SUPPORTED
+/*
+ * fetch BOOST::Process from http://www.highscore.de/boost/process/ and
+ * define BOOST_PROCESS_SUPPORTED
+ *
+ * it's not yet officially included in boost itself, so it has to be
+ * downloaded manually and placed along with your boost includes
+ * e.g., /usr/include/boost/process.hpp
+ *
+ * supports Windows and POSIX
+ */
+#include <boost/process.hpp>
+#endif
+
+//#ifdef BOOST_HTTP_SUPPORTED
+//#include <boost/network/protocol/http.hpp>
+//#endif
 
 namespace agnos
 {
@@ -83,7 +100,7 @@ namespace agnos
 			{
 				transport->cancel_write();
 			}
-			virtual string to_string()
+			virtual string to_string() const
 			{
 				return transport->to_string();
 			}
@@ -116,20 +133,50 @@ namespace agnos
 			SocketTransport(const string& hostname, const string& port);
 			SocketTransport(shared_ptr<tcp::iostream> sockstream);
 
-			virtual void close();
+			void close();
 
-			virtual int32_t begin_read();
-			virtual size_t read(char * buf, size_t size);
-			virtual void end_read();
+			int32_t begin_read();
+			size_t read(char * buf, size_t size);
+			void end_read();
 
-			virtual void begin_write(int32_t seq);
-			virtual void write(const char * buf, size_t size);
-			virtual void reset();
-			virtual void end_write();
-			virtual void cancel_write();
+			void begin_write(int32_t seq);
+			void write(const char * buf, size_t size);
+			void reset();
+			void end_write();
+			void cancel_write();
 
-			virtual string to_string() const;
+			string to_string() const;
 		};
+
+#ifdef BOOST_PROCESS_SUPPORTED
+		DEFINE_EXCEPTION(ProcTransportError)
+
+		class ProcTransport : public WrappedTransport
+		{
+		protected:
+			boost::process::child proc;
+
+		public:
+			ProcTransport(boost::process::child& proc, shared_ptr<ITransport> transport);
+			void close();
+
+			static shared_ptr<ProcTransport> connect(const string& executable);
+			static shared_ptr<ProcTransport> connect(const string& executable, const vector<string>& args);
+			static shared_ptr<ProcTransport> connect(const string& executable, const vector<string>& args,
+					const boost::process::context& ctx);
+			static shared_ptr<ProcTransport> connect(boost::process::child& proc);
+		};
+#endif
+
+#ifdef BOOST_HTTP_SUPPORTED
+		class HttpTransport : public ITransport
+		{
+		public:
+			HttpTransport(const string& url)
+			{
+			}
+		};
+#endif
 
 
 	}

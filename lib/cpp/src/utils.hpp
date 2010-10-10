@@ -1,6 +1,7 @@
 #ifndef AGNOS_UTILS_HPP_INCLUDED
 #define AGNOS_UTILS_HPP_INCLUDED
 
+#include <sstream>
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include "objtypes.hpp"
@@ -32,6 +33,8 @@ namespace agnos
 #else
 #define DEBUG_LOG(text)
 #endif
+
+#define THROW_FORMATTED(cls, text) { std::stringstream _ss; _ss << text; throw cls(_ss.str()); }
 
 	namespace utils
 	{

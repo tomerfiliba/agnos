@@ -16,12 +16,18 @@ namespace agnos
 		class HeteroMapPacker;
 	}
 
-	DEFINE_EXCEPTION(HeteroMapError)
+	DEFINE_EXCEPTION(HeteroMapError);
 
 	class HeteroMap
 	{
 	public:
-		typedef variant<bool, int32_t, int64_t, string, datetime, double> key_type;
+		/*
+		 * for some reason, 'const char *' prefers to coerce itself to an int,
+		 * rather than n std::string, when stored in a boost::variant.
+		 * so we have to specialize this case
+		 */
+
+		typedef variant<string, bool, int32_t, int64_t, double, datetime> key_type;
 		typedef any mapped_type;
 
 	protected:
@@ -65,6 +71,10 @@ namespace agnos
 		{
 			return data.size();
 		}
+		inline size_type erase(const char * key)
+		{
+			return erase(string(key));
+		}
 		inline size_type erase(const key_type& key)
 		{
 			return data.erase(key);
@@ -85,19 +95,35 @@ namespace agnos
 		{
 			return data.end();
 		}
+		inline iterator find(const char* key)
+		{
+			return find(string(key));
+		}
 		inline iterator find(const key_type& key)
 		{
 			return data.find(key);
 		}
+		inline const_iterator find(const char* key) const
+		{
+			return find(string(key));
+		}
 		inline const_iterator find(const key_type& key) const
 		{
 			return data.find(key);
+		}
+		inline bool contains(const char* key) const
+		{
+			return contains(string(key));
 		}
 		inline bool contains(const key_type& key) const
 		{
 			return find(key) != end();
 		}
 
+		inline void put(const char * key, const IPacker& keypacker, const any& value, const IPacker& valpacker)
+		{
+			put(string(key), keypacker, value, valpacker);
+		}
 		void put(const key_type& key, const IPacker& keypacker, const any& value, const IPacker& valpacker);
 
 		inline void put(int32_t key, const string& value)
@@ -120,6 +146,10 @@ namespace agnos
 		{
 			put(key, packers::int32_packer, value, packers::date_packer);
 		}
+		inline void put(int32_t key, bool value)
+		{
+			put(key, packers::int32_packer, value, packers::bool_packer);
+		}
 
 		inline void put(int64_t key, int32_t value)
 		{
@@ -140,6 +170,10 @@ namespace agnos
 		inline void put(int64_t key, datetime value)
 		{
 			put(key, packers::int64_packer, value, packers::date_packer);
+		}
+		inline void put(int64_t key, bool value)
+		{
+			put(key, packers::int64_packer, value, packers::bool_packer);
 		}
 
 		inline void put(double key, const string& value)
@@ -162,6 +196,10 @@ namespace agnos
 		{
 			put(key, packers::float_packer, value, packers::date_packer);
 		}
+		inline void put(double key, bool value)
+		{
+			put(key, packers::float_packer, value, packers::bool_packer);
+		}
 
 		inline void put(const string& key, int32_t value)
 		{
@@ -183,13 +221,27 @@ namespace agnos
 		{
 			put(key, packers::string_packer, value, packers::date_packer);
 		}
+		inline void put(const string& key, bool value)
+		{
+			put(key, packers::string_packer, value, packers::bool_packer);
+		}
 
+		/*
+		 * for some reason, 'const char *' prefers to coerce itself to an int,
+		 * rather than n std::string, so we have to specialize this case
+		 */
+		any& get(const char * key);
 		any& get(const key_type& key);
 
+		template <typename T> inline T& get_as(const char * key)
+		{
+			return get_as<T>(string(key));
+		}
 		template <typename T> inline T& get_as(const key_type& key)
 		{
 			return any_cast<T&>(*map_get(data, key));
 		}
+
 	};
 
 	//////////////////////////////////////////////////////////////////////////

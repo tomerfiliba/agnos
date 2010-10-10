@@ -145,7 +145,7 @@ namespace agnos
 						mode = MODE_THREADED;
 					}
 					else {
-						throw SwitchError("invalid server mode: " + arg);
+						THROW_FORMATTED(SwitchError, "invalid server mode: " << arg);
 					}
 				}
 				else if (arg.compare("-h") == 0) {
@@ -163,7 +163,7 @@ namespace agnos
 					port = (unsigned short)::atoi(argv[i]);
 				}
 				else {
-					throw SwitchError("invalid cmdline switch");
+					THROW_FORMATTED(SwitchError, "invalid cmdline switch: " << arg);
 				}
 			}
 
@@ -194,7 +194,7 @@ namespace agnos
 				break;
 
 			default:
-				throw SwitchError("invalid server mode");
+				THROW_FORMATTED(SwitchError, "invalid server mode" << mode);
 			}
 
 			server->serve();

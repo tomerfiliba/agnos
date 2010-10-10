@@ -3,7 +3,7 @@ import os
 Decider('MD5')
 
 env = Environment(
-    CPPDEFINES = {"AGNOS_DEBUG" : None}, 
+    CPPDEFINES = {"AGNOS_DEBUG" : None, "BOOST_PROCESS_SUPPORTED" : None}, 
     CCFLAGS = "-Werror",
 )
 

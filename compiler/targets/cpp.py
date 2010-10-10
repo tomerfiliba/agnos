@@ -968,9 +968,6 @@ class CPPTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        #STMT("static shared_ptr<Client> connect_sock(const string& host, unsigned short port)")
-        #STMT("static Client connect_proc(const string& executable)")
-        #STMT("static Client connect_uri(const string& uri)")
         STMT("void assert_service_compatibility()")
 
     def generate_header_client_factories(self, module, service):
@@ -987,10 +984,12 @@ class CPPTarget(TargetBase):
             STMT("public:")
             STMT("URLClient(const string& url)")
         SEP()
+        STMT("#ifdef BOOST_PROCESS_SUPPORTED")
         with BLOCK("class SubprocClient : public Client"):
             STMT("public:")
             STMT("SubprocClient(const string& executable)")
-            STMT("SubprocClient(const string& executable, const vector<string> args)")
+            STMT("SubprocClient(const string& executable, const vector<string>& args)")
+        STMT("#endif // ifdef BOOST_PROCESS_SUPPORTED")
 
     
     ############################################################################
@@ -1212,17 +1211,6 @@ class CPPTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        #with BLOCK("shared_ptr<Client> Client::connect_sock(const string& host, unsigned short port)"):
-        #    STMT("shared_ptr<transports::SocketTransport> trns(new transports::SocketTransport(host, port))")
-        #    STMT("shared_ptr<Client> client(new Client(trns))")
-        #    STMT("return client")
-        #SEP()
-        #with BLOCK("Client Client::connect_proc(const string& executable)"):
-        #    STMT('throw std::runtime_error("not implemented")')
-        #SEP()
-        #with BLOCK("Client Client::connect_uri(const string& uri)"):
-        #    STMT('throw std::runtime_error("not implemented")')
-        #SEP()
         with BLOCK("void Client::assert_service_compatibility()"):
             STMT("shared_ptr<HeteroMap> info = get_service_info(INFO_GENERAL)")
             STMT('string agnos_version = info->get_as<string>("AGNOS_VERSION")')
@@ -1256,6 +1244,14 @@ class CPPTarget(TargetBase):
             STMT("Client(shared_ptr<transports::SocketTransport>(new transports::SocketTransport(host, port)))", suffix = "")
         with BLOCK("SocketClient::SocketClient(const string& host, const string& port) :", prefix = "", suffix = "{}"):
             STMT("Client(shared_ptr<transports::SocketTransport>(new transports::SocketTransport(host, port)))", suffix = "")
+        SEP()
+        STMT("#ifdef BOOST_PROCESS_SUPPORTED")
+        with BLOCK("SubprocClient::SubprocClient(const string& executable) :", prefix = "", suffix = "{}"):
+            STMT("Client(transports::ProcTransport::connect(executable))", suffix = "")
+        with BLOCK("SubprocClient::SubprocClient(const string& executable, const vector<string>& args) :", prefix = "", suffix = "{}"):
+            STMT("Client(transports::ProcTransport::connect(executable, args))", suffix = "")
+        STMT("#endif // BOOST_PROCESS_SUPPORTED")
+
 
     def generate_module_client_funcs(self, module, service):
         BLOCK = module.block

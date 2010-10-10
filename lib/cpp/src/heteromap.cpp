@@ -29,6 +29,11 @@ namespace agnos
 		return *map_get(data, key);
 	}
 
+	any& HeteroMap::get(const char * key)
+	{
+		return get(string(key));
+	}
+
 }
 
 
@@ -122,7 +127,7 @@ namespace agnos
 				default:
 					IPacker** pkr = map_get(packers_map, packerid, false);
 					if (pkr == NULL) {
-						throw HeteroMapError("unknown packer id");
+						THROW_FORMATTED(HeteroMapError, "unknown packer id: " << packerid);
 					}
 					return **pkr;
 			}
@@ -160,11 +165,10 @@ namespace agnos
 
 				DEBUG_LOG("writing key: " << it->first << " type = " << typeid(it->first).name());
 				HeteroMapKeyPackerVisitor visitor(pkr.keypacker, transport);
-				//Int32Packer::pack(0x12345678, transport);
-				//boost::apply_visitor(visitor, it->first);
+				boost::apply_visitor(visitor, it->first);
 
 				DEBUG_LOG("writing value");
-				//Int32Packer::pack(pkr.valpacker.get_id(), transport);
+				Int32Packer::pack(pkr.valpacker.get_id(), transport);
 				pkr.valpacker.pack_any(it->second, transport);
 			}
 
@@ -183,9 +187,36 @@ namespace agnos
 			for (int i = 0; i < size; i++) {
 				int32_t key_id, val_id;
 
+				DEBUG_LOG("====");
+
 				Int32Packer::unpack(key_id, transport);
+
 				const IPacker& key_pkr = get_packer(key_id);
-				HeteroMap::key_type key = key_pkr.unpack_as<HeteroMap::key_type>(transport);
+				any _key = key_pkr.unpack_any(transport);
+				HeteroMap::key_type key;
+
+				if (_key.type() == typeid(string)) {
+					key = any_cast<string>(_key);
+				}
+				else if (_key.type() == typeid(int32_t)) {
+					key = any_cast<int32_t>(_key);
+				}
+				else if (_key.type() == typeid(int64_t)) {
+					key = any_cast<int64_t>(_key);
+				}
+				else if (_key.type() == typeid(double)) {
+					key = any_cast<double>(_key);
+				}
+				else if (_key.type() == typeid(bool)) {
+					key = any_cast<bool>(_key);
+				}
+				else if (_key.type() == typeid(datetime)) {
+					key = any_cast<datetime>(_key);
+				}
+				else {
+					THROW_FORMATTED(HeteroMapError,
+							"[HeteroMapPacker::unpack] key is of an unsupported type: " << _key.type().name());
+				}
 
 				Int32Packer::unpack(val_id, transport);
 				const IPacker& val_pkr = get_packer(val_id);

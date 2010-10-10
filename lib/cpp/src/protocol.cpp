@@ -113,7 +113,7 @@ namespace agnos
 		{
 			objmap_t::const_iterator it = objmap.find(oid);
 			if (it == objmap.end()) {
-				throw ProtocolError("invalid object reference <oid>");
+				THROW_FORMATTED(ProtocolError, "invalid object reference: " << oid);
 			}
 			return it->second.value;
 		}
@@ -164,7 +164,7 @@ namespace agnos
 					process_quit(seq);
 					break;
 				default:
-					throw ProtocolError("unknown command code: ");
+					THROW_FORMATTED(ProtocolError, "unknown command code: " << cmdid);
 				}
 			} catch (ProtocolError exc) {
 				DEBUG_LOG("got a ProtocolError: " << exc.what());
@@ -248,7 +248,7 @@ namespace agnos
 			Int32Packer::unpack(clsid, *transport);
 			IPacker ** packer = map_get(packed_exceptions_map, clsid, false);
 			if (packer == NULL) {
-				throw ProtocolError("unknown exception class id: ");
+				THROW_FORMATTED(ProtocolError, "unknown exception class id: " << clsid);
 			}
 			return (**packer).unpack_as<PackedException>(*transport);
 		}
@@ -339,7 +339,7 @@ namespace agnos
 			shared_ptr<ReplySlot> * slot = map_get(replies, seq, false);
 
 			if (slot == NULL || ((**slot).type != SLOT_PACKER && (**slot).type != SLOT_PACKER_SHARED && (**slot).type != SLOT_DISCARDED)) {
-				throw new ProtocolError("invalid reply sequence: ");
+				THROW_FORMATTED(ProtocolError, "invalid reply sequence: " << seq);
 			}
 			bool discard = ((**slot).type == SLOT_DISCARDED);
 			IPacker* packer = any_cast<IPacker*>((**slot).value);
@@ -356,7 +356,7 @@ namespace agnos
 					(**slot).value = packer->unpack_shared(*transport);
 				}
 				else {
-					throw std::runtime_error("invalid slot type");
+					THROW_FORMATTED(std::runtime_error, "invalid slot type: " << (**slot).type);
 				}
 				(**slot).type = SLOT_VALUE;
 				break;
@@ -371,7 +371,7 @@ namespace agnos
 				(**slot).value = load_generic_exception();
 				break;
 			default:
-				throw ProtocolError("unknown reply code: ");
+				THROW_FORMATTED(ProtocolError, "unknown reply code: " << code);
 			}
 
 			if (discard) {
@@ -426,7 +426,7 @@ namespace agnos
 				throw any_cast<GenericException>(slot->value);
 			}
 			else {
-				throw std::runtime_error("invalid slot type: ");
+				THROW_FORMATTED(std::runtime_error, "invalid slot type: " << slot->type);
 			}
 		}
 

@@ -6,6 +6,12 @@ using namespace agnos;
 using namespace simple::ClientBindings;
 
 
+void foo(const string& x)
+{
+	cout << x << endl;
+}
+
+
 int main(int argc, const char * argv[])
 {
 	if (argc != 3) {

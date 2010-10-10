@@ -4,6 +4,11 @@ try:
 	Import("env")
 except UserError:
 	env = DefaultEnvironment()
+	env["CPPDEFINES"] = {}
+	if int(ARGUMENTS.get('AGNOS_DEBUG', 0)):
+		env["CPPDEFINES"]["AGNOS_DEBUG"] = None
+	if int(ARGUMENTS.get('BOOST_PROCESS_SUPPORTED', 0)):
+		env["CPPDEFINES"]["BOOST_PROCESS_SUPPORTED"] = None
 
 Decider('MD5')
 

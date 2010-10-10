@@ -2,7 +2,7 @@
 #include <sstream>
 #include <iomanip>
 #include <cstdlib>
-#include "string.h"
+#include <cstring>
 #include "transports.hpp"
 
 
@@ -43,7 +43,6 @@ namespace agnos
 			return stream;
 		}
 
-
 		//////////////////////////////////////////////////////////////////////
 		// SocketTransport
 		//////////////////////////////////////////////////////////////////////
@@ -56,7 +55,7 @@ namespace agnos
 			string portstr = convert_to_string(port);
 			sockstream = shared_ptr<tcp::iostream>(new tcp::iostream(hostname, portstr.c_str()));
 			if (!sockstream->good()) {
-				throw SocketTransportError("failed connecting the socket to " + hostname + " : " + portstr);
+				THROW_FORMATTED(SocketTransportError, "failed connecting the socket to " << hostname << " : " << portstr);
 			}
 			wbuf.reserve(DEFAULT_BUFFER_SIZE);
 		}
@@ -67,7 +66,7 @@ namespace agnos
 		{
 			sockstream = shared_ptr<tcp::iostream>(new tcp::iostream(hostname, port.c_str()));
 			if (!sockstream->good()) {
-				throw SocketTransportError("failed connecting the socket to " + hostname + " : " + port);
+				THROW_FORMATTED(SocketTransportError, "failed connecting the socket to " << hostname << " : " << port);
 			}
 			wbuf.reserve(DEFAULT_BUFFER_SIZE);
 		}
@@ -140,7 +139,7 @@ namespace agnos
 			_assert_began_read();
 			_assert_good();
 			if (rpos + size > rlength) {
-				throw TransportError("request to read more than available");
+				THROW_FORMATTED(TransportError, "request to read more bytes (" << size << ") than available (" << rlength - rpos << ")");
 			}
 			sockstream->read(buf, size);
 			size_t actually_read = sockstream->gcount();
@@ -224,6 +223,75 @@ namespace agnos
 			wbuf.reserve(DEFAULT_BUFFER_SIZE);
 			wlock.unlock();
 		}
+
+		//////////////////////////////////////////////////////////////////////
+		// ProcTransport
+		//////////////////////////////////////////////////////////////////////
+
+
+#ifdef BOOST_PROCESS_SUPPORTED
+		ProcTransport::ProcTransport(boost::process::child& proc, shared_ptr<ITransport> transport) :
+				WrappedTransport(transport),
+				proc(proc)
+		{
+		}
+
+		void ProcTransport::close()
+		{
+			WrappedTransport::close();
+			proc.terminate(false);
+		}
+
+		shared_ptr<ProcTransport> ProcTransport::connect(const string& executable)
+		{
+			vector<string> args;
+			args.push_back("-m");
+			args.push_back("-lib");
+			return connect(executable, args);
+		}
+
+		shared_ptr<ProcTransport> ProcTransport::connect(const string& executable, const vector<string>& args)
+		{
+			boost::process::context ctx;
+			ctx.stdout_behavior = boost::process::capture_stream();
+			ctx.stderr_behavior = boost::process::capture_stream();
+			ctx.stdin_behavior = boost::process::capture_stream();
+			ctx.environment = boost::process::self::get_environment();
+			return connect(executable, args, ctx);
+		}
+
+		shared_ptr<ProcTransport> ProcTransport::connect(const string& executable, const vector<string>& args,
+				const boost::process::context& ctx)
+		{
+			boost::process::child proc = boost::process::launch(executable, args, ctx);
+			return connect(proc);
+		}
+
+		shared_ptr<ProcTransport> ProcTransport::connect(boost::process::child& proc)
+		{
+			char buf[200];
+			boost::process::pistream& stdout = proc.get_stdout();
+
+			memset(buf, 0, sizeof(buf));
+			stdout.getline(buf, sizeof(buf));
+			string magic(buf);
+			if (magic.compare("AGNOS") != 0) {
+				throw ProcTransportError("process either failed to start or is not an agnos server");
+			}
+
+			memset(buf, 0, sizeof(buf));
+			stdout.getline(buf, sizeof(buf));
+			string hostname(buf);
+
+			memset(buf, 0, sizeof(buf));
+			stdout.getline(buf, sizeof(buf));
+			string port(buf);
+
+			shared_ptr<ITransport> trns(new SocketTransport(hostname, port));
+			shared_ptr<ProcTransport> proctrns(new ProcTransport(proc, trns));
+			return proctrns;
+		}
+#endif
 
 
 	}
