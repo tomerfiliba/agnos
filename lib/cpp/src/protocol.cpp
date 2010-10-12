@@ -98,7 +98,6 @@ namespace agnos
 				break;
 			}
 
-			DEBUG_LOG("starting to pack");
 			Int8Packer::pack(REPLY_SUCCESS, *transport);
 			packers::builtin_heteromap_packer.pack(map, *transport);
 		}

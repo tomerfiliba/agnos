@@ -185,9 +185,13 @@ namespace agnos
 
 			template<typename T> shared_ptr<T> get_proxy(objref_t oid)
 			{
+				if (!map_contains(proxies, oid)) {
+					return shared_ptr<T>();
+				}
 				weak_ptr<T> wp = any_cast< weak_ptr<T> >(*map_get(proxies, oid));
 				if (wp.expired()) {
 					proxies.erase(oid);
+					return shared_ptr<T>();
 				}
 				return wp.lock();
 			}

@@ -23,8 +23,8 @@ namespace agnos
 	public:
 		/*
 		 * for some reason, 'const char *' prefers to coerce itself to an int,
-		 * rather than n std::string, when stored in a boost::variant.
-		 * so we have to specialize this case
+		 * rather than a std::string, when given an option, so we'll have to
+		 * specialize these cases
 		 */
 
 		typedef variant<string, bool, int32_t, int64_t, double, datetime> key_type;
@@ -120,12 +120,17 @@ namespace agnos
 			return find(key) != end();
 		}
 
+		void put(const key_type& key, const IPacker& keypacker, const any& value, const IPacker& valpacker);
+
 		inline void put(const char * key, const IPacker& keypacker, const any& value, const IPacker& valpacker)
 		{
 			put(string(key), keypacker, value, valpacker);
 		}
-		void put(const key_type& key, const IPacker& keypacker, const any& value, const IPacker& valpacker);
 
+		inline void put(int32_t key, const char * value)
+		{
+			put(key, string(value));
+		}
 		inline void put(int32_t key, const string& value)
 		{
 			put(key, packers::int32_packer, value, packers::string_packer);
@@ -151,6 +156,10 @@ namespace agnos
 			put(key, packers::int32_packer, value, packers::bool_packer);
 		}
 
+		inline void put(int64_t key, const char * value)
+		{
+			put(key, string(value));
+		}
 		inline void put(int64_t key, int32_t value)
 		{
 			put(key, packers::int64_packer, value, packers::int32_packer);
@@ -176,6 +185,10 @@ namespace agnos
 			put(key, packers::int64_packer, value, packers::bool_packer);
 		}
 
+		inline void put(double key, const char * value)
+		{
+			put(key, string(value));
+		}
 		inline void put(double key, const string& value)
 		{
 			put(key, packers::float_packer, value, packers::string_packer);
@@ -201,6 +214,10 @@ namespace agnos
 			put(key, packers::float_packer, value, packers::bool_packer);
 		}
 
+		inline void put(const string& key, const char * value)
+		{
+			put(key, string(value));
+		}
 		inline void put(const string& key, int32_t value)
 		{
 			put(key, packers::string_packer, value, packers::int32_packer);
@@ -226,6 +243,35 @@ namespace agnos
 			put(key, packers::string_packer, value, packers::bool_packer);
 		}
 
+		inline void put(const char* key, const char * value)
+		{
+			put(string(key), string(value));
+		}
+		inline void put(const char* key, int32_t value)
+		{
+			put(string(key), value);
+		}
+		inline void put(const char* key, int64_t value)
+		{
+			put(string(key), value);
+		}
+		inline void put(const char* key, const string& value)
+		{
+			put(string(key), value);
+		}
+		inline void put(const char* key, double value)
+		{
+			put(string(key), value);
+		}
+		inline void put(const char* key, datetime value)
+		{
+			put(string(key), value);
+		}
+		inline void put(const char* key, bool value)
+		{
+			put(string(key), value);
+		}
+
 		any& get(const char * key);
 		any& get(const key_type& key);
 
@@ -238,7 +284,10 @@ namespace agnos
 			return any_cast<T&>(*map_get(data, key));
 		}
 
+		string to_string() const;
 	};
+
+	//std::ostream& operator<< (std::ostream& stream, const HeteroMap& hm);
 
 	//////////////////////////////////////////////////////////////////////////
 

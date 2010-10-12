@@ -611,6 +611,7 @@ class CPPTarget(TargetBase):
                     STMT('args["{0}"] = "{1}"', arg.name, str(arg.type))
                 STMT('funcinfo.put("args", string_packer, args, map_of_string_string_packer)')
                 STMT('map.put({0}, int32_packer, funcinfo, builtin_heteromap_packer)', func.id)
+                SEP()
         SEP()
         with BLOCK("void process_get_function_codes(HeteroMap& map)"):
             for func in service.funcs.values():
@@ -696,6 +697,7 @@ class CPPTarget(TargetBase):
 
         STMT("#ifndef {0}_CLIENT_BINDINGS_INCLUDED", service.name)
         STMT("#define {0}_CLIENT_BINDINGS_INCLUDED", service.name)
+        STMT("#include <sstream>")
         STMT("#include <agnos.hpp>")
         SEP()
         with self.multinamespace(module, service.package, "ClientBindings"):
@@ -757,6 +759,7 @@ class CPPTarget(TargetBase):
             STMT("Client& _client")
             STMT("objref_t _oid")
             STMT("bool _disposed")
+            STMT("friend std::ostream& operator<< (std::ostream& stream, const BaseProxy& proxy)")
             SEP()
             STMT("public:")
             with BLOCK("BaseProxy(Client& client, objref_t oid, bool owns_ref) : _client(client), _oid(oid)"):
@@ -1071,6 +1074,10 @@ class CPPTarget(TargetBase):
                 STMT("return")
             STMT("_disposed = true")
             STMT("_client._utils.decref(_oid)")
+        
+        with BLOCK("std::ostream& operator<< (std::ostream& stream, const BaseProxy& proxy)"):
+            STMT('stream << "<Proxy@" << proxy._oid << ">"')
+            STMT("return stream")
 
     def generate_module_class_proxy(self, module, cls):
         BLOCK = module.block

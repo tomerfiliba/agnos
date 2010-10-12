@@ -6,6 +6,15 @@
 #include <boost/thread/mutex.hpp>
 #include "objtypes.hpp"
 
+#ifdef AGNOS_DEBUG
+#	include <unistd.h>
+#	define DEBUG_LOG(text) \
+	std::cerr << "[" << getpid() << ":" << __FUNCTION__ << "(" << __LINE__ << ")" << "] " << text << std::endl;
+#else
+#define DEBUG_LOG(text)
+#endif
+
+#define THROW_FORMATTED(cls, text) { std::stringstream _ss; _ss << text; throw cls(_ss.str()); }
 
 namespace agnos
 {
@@ -19,7 +28,7 @@ namespace agnos
 		typename map<K, V>::const_iterator it = m.find(k);
 		if (it == m.end()) {
 			if (raise) {
-				throw std::out_of_range("key not found");
+				THROW_FORMATTED(std::out_of_range, "key not found: " << k << ", map type = " << typeid(m).name());
 			}
 			else {
 				return NULL;
@@ -28,13 +37,11 @@ namespace agnos
 		return const_cast<V*>(&it->second);
 	}
 
-#ifdef AGNOS_DEBUG
-#define DEBUG_LOG(text) std::cerr << "[" << __FUNCTION__ << "(" << __LINE__ << ")" << "] " << text << std::endl;
-#else
-#define DEBUG_LOG(text)
-#endif
-
-#define THROW_FORMATTED(cls, text) { std::stringstream _ss; _ss << text; throw cls(_ss.str()); }
+	template<typename K, typename V> inline static bool map_contains(map<K, V>& m, const K& k)
+	{
+		typename map<K, V>::const_iterator it = m.find(k);
+		return it != m.end();
+	}
 
 	namespace utils
 	{

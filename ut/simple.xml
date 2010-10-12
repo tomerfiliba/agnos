@@ -22,6 +22,17 @@
 		<arg name="addr" type="Address"/>
 	</func>
 	
+	<class name="Person">
+		<attr name="full_name" type="str" set="no"/>
+		<attr name="dob" type="date" set="no"/>
+		
+		<method name="give_birth" type="Person">
+			<arg name="full_name" type="string"/>
+		</method>
+	</class>
+	
+	<func name="get_father" type="Person"/>
+	
 	<const name="pi" type="float" value="3.1415926535"/>
 	
 </service>

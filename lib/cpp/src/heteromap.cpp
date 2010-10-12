@@ -34,6 +34,16 @@ namespace agnos
 		return get(string(key));
 	}
 
+	/*std::ostream& operator<< (std::ostream& stream, const HeteroMap& hm)
+	{
+		stream << "{";
+		for (HeteroMap::const_iterator it = hm.begin(); it != hm.end(); it++) {
+			//stream << it->first << " : " << it->second << ", ";
+			stream << it->first << " : " << "?" << ", ";
+		}
+		stream << "}";
+		return stream;
+	}*/
 }
 
 
