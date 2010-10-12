@@ -7,28 +7,28 @@ env = Environment(
         #"AGNOS_DEBUG" : None, 
         "BOOST_PROCESS_SUPPORTED" : None,
     }, 
-    CCFLAGS = "-Werror",
+    CCFLAGS = "-Werror -g",
 )
 
 SConscript(["../../lib/cpp/SConstruct"], exports="env")
 
 agnos_outdir = "bindings"
-client_bindings = os.path.join(agnos_outdir, "simple_client_bindings.cpp")
-server_bindings = os.path.join(agnos_outdir, "simple_server_bindings.cpp")
+client_bindings = os.path.join(agnos_outdir, "FeatureTest_client_bindings.cpp")
+server_bindings = os.path.join(agnos_outdir, "FeatureTest_server_bindings.cpp")
 
 def build_agnos(target, source, env):
     from agnos_compiler.compiler import compile
     from agnos_compiler.compiler.targets import CPPTarget
     compile(source[0].path, CPPTarget(agnos_outdir))
 
-env.Command([client_bindings, server_bindings], "../simple.xml", build_agnos)
+env.Command([client_bindings, server_bindings], "../features.xml", build_agnos)
 
 Depends(client_bindings, '../../compiler/targets/cpp.py')
 Depends(server_bindings, '../../compiler/targets/cpp.py')
 
 env.Program('myserver', 
     [server_bindings, "myserver.cpp"], 
-	CCFLAGS = "-Werror",
+    CCFLAGS = "-Werror",
     CPPPATH = ['../../lib/cpp/src'],
     LIBPATH = ['../../lib/cpp'],
     LIBS = ["agnos", "boost_thread", "boost_date_time", "boost_iostreams", "boost_system"],

@@ -606,9 +606,8 @@ class JavaTarget(TargetBase):
             STMT("InputStream inStream = transport.getInputStream()")
             STMT("OutputStream outStream = transport.getOutputStream()")
             STMT("int funcid = (Integer){0}.unpack(inStream)", type_to_packer(compiler.t_int32))
-            packed_exceptions = service.exceptions()
 
-            with BLOCK("try") if packed_exceptions else NOOP:
+            with BLOCK("try") if service.exceptions() else NOOP:
                 with BLOCK("switch (funcid)"):
                     for func in service.funcs.values():
                         with BLOCK("case {0}:", func.id, prefix = None, suffix = None):
@@ -623,7 +622,7 @@ class JavaTarget(TargetBase):
                     type_to_packer(compiler.t_int8))
                 with BLOCK("if (packer != null)"):
                     STMT("packer.pack(result, outStream)")
-            for tp in packed_exceptions:
+            for tp in service.exceptions():
                 with BLOCK("catch ({0} ex)", tp.name):
                     STMT("transport.reset()")
                     STMT("{0}.pack(new Byte((byte)Protocol.REPLY_PACKED_EXCEPTION), outStream)", 

@@ -197,6 +197,8 @@ class CPPTarget(TargetBase):
             self.generate_client_header(module, service)
         with self.new_module("%s_client_bindings.cpp" % (service.name,)) as module:
             self.generate_client_module(module, service)
+        with self.new_module("%s_server_stub.cpp" % (service.name,)) as module:
+            self.generate_server_stub(module, service)
     
     ##########################################################################
     
@@ -626,21 +628,33 @@ class CPPTarget(TargetBase):
             STMT("IPacker * packer = NULL")
             STMT("any result")
             STMT("vector<any> args")
+            STMT("any current")
             STMT("int32_t funcid;")
             STMT("{0}.unpack(funcid, *transport)", type_to_packer(compiler.t_int32))
-            with BLOCK("switch (funcid)"):
-                for func in service.funcs.values():
-                    with BLOCK("case {0}:", func.id):
-                        self.generate_invocation_case(module, func)
-                        if func.type != compiler.t_void:
-                            STMT("packer = static_cast<IPacker*>(&{0})", type_to_packer(func.type))
-                        STMT("break")
-                with BLOCK("default:", prefix = None, suffix = None):
-                    STMT('throw ProtocolError("unknown function id: ")')
-            SEP()
-            STMT("{0}.pack(REPLY_SUCCESS, *transport)", type_to_packer(compiler.t_int8))
-            with BLOCK("if (packer != NULL)"):
-                STMT("packer->pack_any(result, *transport)")
+            
+            with BLOCK("try") if service.exceptions() else NOOP:
+                with BLOCK("switch (funcid)"):
+                    for func in service.funcs.values():
+                        with BLOCK("case {0}:", func.id):
+                            self.generate_invocation_case(module, func)
+                            if func.type != compiler.t_void:
+                                STMT("packer = static_cast<IPacker*>(&{0})", type_to_packer(func.type))
+                            STMT("break")
+                    with BLOCK("default:", prefix = None, suffix = None):
+                        STMT('throw ProtocolError("unknown function id: ")')
+                SEP()
+                STMT("{0}.pack(REPLY_SUCCESS, *transport)", type_to_packer(compiler.t_int8))
+                with BLOCK("if (packer != NULL)"):
+                    STMT("packer->pack_any(result, *transport)")
+            
+            for tp in service.exceptions():
+                with BLOCK("catch ({0}& ex)", tp.name):
+                    STMT('DEBUG_LOG("got packed exception: {0}")', tp.name)
+                    STMT("transport->reset()")
+                    STMT("{0}.pack(REPLY_PACKED_EXCEPTION, *transport)", 
+                        type_to_packer(compiler.t_int8))
+                    STMT("{0}.pack({1}, *transport)", type_to_packer(compiler.t_int32), tp.id)
+                    STMT("{0}.pack(ex, *transport)", type_to_packer(tp))
     
     def generate_invocation_case(self, module, func):
         BLOCK = module.block
@@ -650,7 +664,8 @@ class CPPTarget(TargetBase):
         if isinstance(func, compiler.Func):
             if func.args:
                 for arg in func.args:
-                    STMT("args.push_back({0}.unpack_any(*transport))", type_to_packer(arg.type))
+                    STMT("current = {0}.unpack_any(*transport)", type_to_packer(arg.type))
+                    STMT("args.push_back(current.empty() ? {0}() : current)", type_to_cpp(arg.type))
             callargs = ", ".join("any_cast< %s >(args[%s])" % (type_to_cpp(arg.type), i) 
                 for i, arg in enumerate(func.args))
             if func.type == compiler.t_void:
@@ -663,7 +678,8 @@ class CPPTarget(TargetBase):
             STMT("{0}.unpack(inst, *transport)", type_to_packer(insttype))
             
             for arg in func.args[1:]:
-                STMT("args.push_back({0}.unpack_any(*transport))", type_to_packer(arg.type))
+                    STMT("current = {0}.unpack_any(*transport)", type_to_packer(arg.type))
+                    STMT("args.push_back(current.empty() ? {0}() : current)", type_to_cpp(arg.type))
             
             callargs = ", ".join("any_cast< %s >(args[%s])" % (type_to_cpp(arg.type), i) 
                 for i, arg in enumerate(func.args[1:]))
@@ -683,7 +699,7 @@ class CPPTarget(TargetBase):
         with BLOCK("try {0}", "{", prefix = ""):
             STMT(invocation)
         with BLOCK("catch (PackedException& ex) {0}", "{", prefix = ""):
-            STMT("throw ex")
+            STMT("throw")
         with BLOCK("catch (std::exception& ex) {0}", "{", prefix = ""):
             STMT('throw GenericException(ex.what(), "<no info>")')
         
@@ -1052,11 +1068,15 @@ class CPPTarget(TargetBase):
         with BLOCK("template<typename T> objref_t ProxySerializer<T>::store(objref_t oid, any obj)"):
             with BLOCK("if (obj.empty())"):
                 STMT("return -1")
-            STMT("return any_cast<BaseProxy>(obj)._oid")
+            STMT("shared_ptr<BaseProxy> proxy = *boost::unsafe_any_cast<shared_ptr<BaseProxy> >(&obj)")
+            with BLOCK("if (!proxy)"):
+                STMT("return -1")
+            STMT("return proxy->_oid")
+        
         SEP()
         with BLOCK("template<typename T> any ProxySerializer<T>::load(objref_t oid)"):
             with BLOCK("if (oid < 0)"):
-                STMT("return any()")
+                STMT("return any(shared_ptr<T>())")
             STMT("shared_ptr<T> proxy = client._utils.get_proxy<T>(oid)")
             with BLOCK("if (proxy.get() == NULL)"):
                 STMT("proxy = shared_ptr<T>(new T(client, oid, true))")
@@ -1204,7 +1224,7 @@ class CPPTarget(TargetBase):
                                     type_to_packer(arg.type), arg.name)
                     with BLOCK("catch (std::exception& ex)"):
                         STMT("client._utils.cancel_call()")
-                        STMT("throw ex")
+                        STMT("throw")
                 STMT("client._utils.end_call()")
                 if func.type == compiler.t_void:
                     STMT("client._utils.get_reply(seq)")
@@ -1277,6 +1297,73 @@ class CPPTarget(TargetBase):
                     STMT("_funcs.sync_{0}({1})", func.id, callargs)
                 else:
                     STMT("return _funcs.sync_{0}({1})", func.id, callargs)
+    
+    ##########################################################################
+    
+    def generate_server_stub(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        DOC = module.doc
+        
+        DOC("this is an auto-generated server skeleton", box = True)
+        STMT('#include "{0}_server_bindings.hpp"', service.name)
+        SEP()
+        STMT("using namespace agnos")
+        STMT("using namespace {0}::ServerBindings", service.package.replace(".", "::"))
+        SEP(2)
+        DOC("classes", spacer = True)
+        for cls in service.classes():
+            with BLOCK("class {0} : public I{0}", cls.name):
+                STMT("protected:")
+                for attr in cls.all_attrs:
+                    STMT("{0} _{1}", type_to_cpp(attr.type, ret = True), attr.name)
+                SEP()
+                STMT("public:")
+                args = ", ".join("%s %s" % (type_to_cpp(attr.type, ret = True), attr.name) for attr in cls.all_attrs)
+                if cls.all_attrs:
+                    with BLOCK("{0}({1}) :", cls.name, args, prefix = "", suffix = ""):
+                        for attr in cls.all_attrs[:-1]:
+                            STMT("_{0}({0})", attr.name, suffix = ",")
+                        STMT("_{0}({0})", cls.all_attrs[-1].name, suffix = "")
+                    STMT("{", suffix=  "")
+                    STMT("}", suffix=  "")
+                SEP()
+                for attr in cls.all_attrs:
+                    if attr.get:
+                        with BLOCK("{0} get_{1}()", type_to_cpp(attr.type, ret = True), attr.name):
+                            STMT("return _{0}", attr.name)
+                    if attr.set:
+                        with BLOCK("void set_{0}({1} value)", attr.name, type_to_cpp(attr.type, arg = True)):
+                            STMT("_{0} = value", attr.name)
+                    SEP()
+                for method in cls.all_methods:
+                    args = ", ".join("%s %s" % (type_to_cpp(arg.type, arg = True), arg.name) 
+                        for arg in method.args)
+                    with BLOCK("{0} {1}({2})", type_to_cpp(method.type, ret = True), method.name, args):
+                        DOC("implement me")
+                    SEP()
+            SEP()
+        DOC("handler", spacer = True)
+        with BLOCK("class Handler : public IHandler"):
+            STMT("public:")
+            for member in service.funcs.values():
+                if not isinstance(member, compiler.Func):
+                    continue
+                args = ", ".join("%s %s" % (type_to_cpp(arg.type, arg = True), arg.name) 
+                    for arg in member.args)
+                with BLOCK("{0} {1}({2})", type_to_cpp(member.type, ret = True), 
+                        member.fullname, args):
+                    DOC("implement me")
+                SEP()
+        SEP()
+        DOC("main", spacer = True)
+        with BLOCK("int main(int argc, const char * argv[])"):
+            STMT("ProcessorFactory processor_factory(shared_ptr<IHandler>(new Handler()))")
+            SEP()
+            STMT("agnos::servers::CmdlineServer server(processor_factory)")
+            STMT("return server.main(argc, argv)")
+        SEP()
 
 
 

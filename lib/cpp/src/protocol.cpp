@@ -31,12 +31,14 @@ namespace agnos
 
 		void BaseProcessor::send_protocol_error(const ProtocolError& exc)
 		{
+			DEBUG_LOG("exc = " << exc.what());
 			Int8Packer::pack(REPLY_PROTOCOL_ERROR, *transport);
 			StringPacker::pack(exc.message, *transport);
 		}
 
 		void BaseProcessor::send_generic_exception(const GenericException& exc)
 		{
+			DEBUG_LOG("exc = " << exc.what());
 			Int8Packer::pack(REPLY_GENERIC_EXCEPTION, *transport);
 			StringPacker::pack(exc.message, *transport);
 			StringPacker::pack(exc.traceback, *transport);
@@ -104,12 +106,17 @@ namespace agnos
 
 		objref_t BaseProcessor::store(objref_t oid, any obj)
 		{
+			DEBUG_LOG("BaseProcessor::store, oid = " << oid);
 			map_put(objmap, oid, Cell(obj));
 			return oid;
 		}
 
 		any BaseProcessor::load(objref_t oid)
 		{
+			DEBUG_LOG("BaseProcessor::load, oid = " << oid);
+			if (oid < 0) {
+				return any();
+			}
 			objmap_t::const_iterator it = objmap.find(oid);
 			if (it == objmap.end()) {
 				THROW_FORMATTED(ProtocolError, "invalid object reference: " << oid);
@@ -165,19 +172,19 @@ namespace agnos
 				default:
 					THROW_FORMATTED(ProtocolError, "unknown command code: " << cmdid);
 				}
-			} catch (ProtocolError exc) {
+			} catch (ProtocolError& exc) {
 				DEBUG_LOG("got a ProtocolError: " << exc.what());
 				transport->reset();
 				send_protocol_error(exc);
-			} catch (GenericException exc) {
+			} catch (GenericException& exc) {
 				DEBUG_LOG("got a GenericException: " << exc.what());
-				transport.reset();
+				transport->reset();
 				send_generic_exception(exc);
-			} catch (std::exception exc) {
+			} catch (std::exception& exc) {
 				DEBUG_LOG("got an unknown exception: " << exc.what());
 				DEBUG_LOG("typeinfo = " << typeid(exc).name() );
 				transport->cancel_write();
-				throw exc;
+				throw;
 			}
 
 			transport->end_write();
@@ -241,7 +248,7 @@ namespace agnos
 			return boost::interprocess::detail::atomic_inc32((boost::uint32_t*)&_seq);
 		}
 
-		PackedException ClientUtils::load_packed_exception()
+		shared_ptr<PackedException> ClientUtils::load_packed_exception()
 		{
 			int32_t clsid;
 			Int32Packer::unpack(clsid, *transport);
@@ -249,7 +256,9 @@ namespace agnos
 			if (packer == NULL) {
 				THROW_FORMATTED(ProtocolError, "unknown exception class id: " << clsid);
 			}
-			return (**packer).unpack_as<PackedException>(*transport);
+			any exc = (**packer).unpack_shared(*transport);
+			DEBUG_LOG("exc is " << exc.type().name());
+			return *boost::unsafe_any_cast<shared_ptr<PackedException> >(&exc);
 		}
 
 		ProtocolError ClientUtils::load_protocol_error()
@@ -345,7 +354,7 @@ namespace agnos
 
 			switch (code) {
 			case REPLY_SUCCESS:
-				if (packer == NULL) {
+				if (packer == NULL || packer == &void_packer) {
 					(**slot).value = NULL;
 				}
 				else if ((**slot).type == SLOT_PACKER) {
@@ -363,7 +372,7 @@ namespace agnos
 				throw load_protocol_error();
 			case REPLY_PACKED_EXCEPTION:
 				(**slot).type = SLOT_PACKED_EXCEPTION;
-				(**slot).value = load_packed_exception();
+				(**slot).value = *load_packed_exception();
 				break;
 			case REPLY_GENERIC_EXCEPTION:
 				(**slot).type = SLOT_GENERIC_EXCEPTION;

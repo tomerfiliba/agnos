@@ -21,13 +21,10 @@ namespace agnos
 			virtual any unpack_any(ITransport& transport) const = 0;
 			virtual any unpack_shared(ITransport& transport) const = 0;
 
-			/*template<typename T> void pack_as(const T& obj, ITransport& transport) const
-			{
-
-			}*/
-
 			template<typename T> T unpack_as(ITransport& transport) const
 			{
+				any res = unpack_any(transport);
+				DEBUG_LOG("res is " << res.type().name());
 				return any_cast<T>(unpack_any(transport));
 			}
 		};
@@ -406,6 +403,7 @@ namespace agnos
 
 			void pack(data_type obj, ITransport& transport) const
 			{
+				DEBUG_LOG("ObjrefPacker::pack of " << (intptr_t)obj.get());
 				objref_t oid = get_oid(obj);
 				oid = ser.store(oid, obj);
 				int64_packer.pack(oid, transport);
@@ -422,6 +420,7 @@ namespace agnos
 			{
 				objref_t oid;
 				int64_packer.unpack(oid, transport);
+				DEBUG_LOG("ObjrefPacker::unpack of " << oid);
 				obj = any_cast<data_type>(ser.load(oid));
 			}
 

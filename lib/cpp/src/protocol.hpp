@@ -51,7 +51,7 @@ namespace agnos
 			formatted += message;
 			formatted += " with remote backtrace:\n";
 			formatted += traceback;
-			formatted += "\t------------------- end of remote traceback -------------------";
+			formatted += "\n\t------------------- end of remote traceback -------------------";
 			return formatted.c_str();
 		}
 	};
@@ -174,7 +174,7 @@ namespace agnos
 			volatile int32_t _seq;
 
 			int32_t get_seq();
-			PackedException load_packed_exception();
+			shared_ptr<PackedException> load_packed_exception();
 			ProtocolError load_protocol_error();
 			GenericException load_generic_exception();
 
