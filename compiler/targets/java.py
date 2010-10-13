@@ -43,7 +43,47 @@ def type_to_java(t, proxy = False):
         else:
             return "I%s" % (t.name,)
     else:
-        return "%s$$$type" % (t,)
+        assert False
+
+def type_to_java_full(t, service, proxy = False):
+    if t == compiler.t_void:
+        return "void"
+    elif t == compiler.t_bool:
+        return "Boolean"
+    elif t == compiler.t_int8:
+        return "Byte"
+    elif t == compiler.t_int16:
+        return "Short"
+    elif t == compiler.t_int32:
+        return "Integer"
+    elif t == compiler.t_int64:
+        return "Long"
+    elif t == compiler.t_float:
+        return "Double"
+    elif t == compiler.t_string:
+        return "String"
+    elif t == compiler.t_date:
+        return "Date"
+    elif t == compiler.t_buffer:
+        return "byte[]"
+    elif t == compiler.t_heteromap:
+        return "HeteroMap"
+    elif isinstance(t, compiler.TList):
+        return "List<%s>" % (type_to_java_full(t.oftype, service, proxy = proxy),)
+    elif isinstance(t, compiler.TSet):
+        return "Set<%s>" % (type_to_java_full(t.oftype, service, proxy = proxy),)
+    elif isinstance(t, compiler.TMap):
+        return "Map<%s, %s>" % (type_to_java_full(t.keytype, service, proxy = proxy), 
+            type_to_java_full(t.valtype, service, proxy = proxy))
+    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
+        return "%s.%s" % (service.name, t.name,)
+    elif isinstance(t, compiler.Class):
+        if proxy:
+            return "%s.%sProxy" % (service.name, t.name,)
+        else:
+            return "%s.I%s" % (service.name, t.name,)
+    else:
+        assert False
 
 def type_to_packer(t):
     if t == compiler.t_void:
@@ -74,7 +114,8 @@ def type_to_packer(t):
         return "%sPacker" % (t.name,)
     elif isinstance(t, compiler.Class):
         return "%sObjRef" % (t.name,)
-    return "%r$$$packer" % (t,)
+    else:
+        assert False
 
 def const_to_java(typ, val):
     if val is None:
@@ -145,7 +186,33 @@ class JavaTarget(TargetBase):
             SEP()
             self.generate_client_bindings(module, service)
             SEP()
-
+        
+        with self.new_module("%s_server.stub" % (service.name,)) as module:
+            self.generate_server_stub(module, service)
+            SEP()
+        
+        with self.open("SConstruct", "w") as f:
+            lines = [
+                "import os",
+                "import agnos_compiler",
+                "",
+                "Decider('MD5')",
+                "",
+                "agnos_jar = SConscript(os.path.join(agnos_compiler.__path__[0], 'lib', 'java', 'SConstruct'))",
+                "env = Environment(",
+                "    JAVACLASSPATH = [str(agnos_jar)],",
+                ")",
+                "env['JARCHDIR'] = os.path.join(env.Dir('.').get_abspath(), 'classes')",
+                "",
+                "env.Java(target = 'classes', source = 'FeatureTest')",
+                "bindings_jar = env.Jar(target = 'FeatureTest.jar', source = 'classes')[0]",
+                "",
+                "outputs = [agnos_jar, bindings_jar]",
+                "Return('outputs')",
+            ]
+            for l in lines:
+                f.write(l + "\n")
+    
     def generate_server_bindings(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
@@ -922,6 +989,66 @@ class JavaTarget(TargetBase):
                     STMT("return _funcs.sync_{0}({1})", func.id, callargs)
             SEP()
 
+    ##########################################################################
+    
+    def generate_server_stub(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        DOC = module.doc
+
+        STMT("import java.util.*")
+        STMT("import {0}.server_bindings.{0}", service.package)
+        SEP()
+        
+        with BLOCK("public class ServerStub"):
+            DOC("classes", spacer = True)
+            for cls in service.classes():
+                with BLOCK("public static class {0} implements {1}", cls.name, type_to_java_full(cls, service)):
+                    for attr in cls.all_attrs:
+                        STMT("protected {0} _{1}", type_to_java_full(attr.type, service), attr.name)
+                    SEP()
+                    args = ", ".join("%s %s" % (type_to_java_full(attr.type, service), attr.name) for attr in cls.all_attrs)
+                    with BLOCK("public {0}({1})", cls.name, args):
+                        for attr in cls.all_attrs:
+                            STMT("_{0} = {0}", attr.name)
+                    SEP()
+                    for attr in cls.all_attrs:
+                        if attr.get:
+                            with BLOCK("public {0} get_{1}() throws Exception", type_to_java_full(attr.type, service), attr.name):
+                                STMT("return _{0}", attr.name)
+                        if attr.set:
+                            with BLOCK("public void set_{0}({1} value) throws Exception", attr.name, type_to_java_full(attr.type, service)):
+                                STMT("_{0} = value", attr.name)
+                        SEP()
+                    for method in cls.all_methods:
+                        args = ", ".join("%s %s" % (type_to_java_full(arg.type, service), arg.name) 
+                            for arg in method.args)
+                        with BLOCK("public {0} {1}({2}) throws Exception", type_to_java_full(method.type, service), method.name, args):
+                            DOC("implement me")
+                        SEP()
+                SEP()
+            DOC("handler", spacer = True)
+            with BLOCK("public static class Handler implements {0}.IHandler", service.name):
+                for member in service.funcs.values():
+                    if not isinstance(member, compiler.Func):
+                        continue
+                    args = ", ".join("%s %s" % (type_to_java_full(arg.type, service), arg.name) 
+                        for arg in member.args)
+                    with BLOCK("public {0} {1}({2}) throws Exception", 
+                            type_to_java_full(member.type, service), member.fullname, args):
+                        DOC("implement me")
+                    SEP()
+            SEP()
+            DOC("main", spacer = True)
+            with BLOCK("public static void main(String[] args)"):
+                STMT("agnos.Servers.CmdlineServer server = new agnos.Servers.CmdlineServer("
+                    "new {0}.ProcessorFactory(new Handler()))", service.name)
+                with BLOCK("try"):
+                    STMT("server.main(args)")
+                with BLOCK("catch (Exception ex)"):
+                    STMT("ex.printStackTrace(System.err)")
+            SEP()
 
 
 

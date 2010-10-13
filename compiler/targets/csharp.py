@@ -42,7 +42,48 @@ def type_to_cs(t, proxy = False):
         else:
             return "I%s" % (t.name,)
     else:
-        return "%s$$$type" % (t,)
+        assert False
+
+def type_to_cs_full(t, service, proxy = False):
+    if t == compiler.t_void:
+        return "void"
+    elif t == compiler.t_bool:
+        return "bool"
+    elif t == compiler.t_int8:
+        return "byte"
+    elif t == compiler.t_int16:
+        return "short"
+    elif t == compiler.t_int32:
+        return "int"
+    elif t == compiler.t_int64:
+        return "long"
+    elif t == compiler.t_float:
+        return "double"
+    elif t == compiler.t_string:
+        return "string"
+    elif t == compiler.t_date:
+        return "DateTime"
+    elif t == compiler.t_buffer:
+        return "byte[]"
+    elif t == compiler.t_heteromap:
+        return "Agnos.HeteroMap"
+    elif isinstance(t, compiler.TList):
+        return "IList<%s>" % (type_to_cs_full(t.oftype, service),)
+    elif isinstance(t, compiler.TSet):
+        return "ICollection<%s>" % (type_to_cs_full(t.oftype, service),)
+    elif isinstance(t, compiler.TMap):
+        return "IDictionary<%s, %s>" % (type_to_cs_full(t.keytype, service), 
+            type_to_cs_full(t.valtype, service))
+    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
+        return "%s.%s" % (service.name, t.name,)
+    elif isinstance(t, compiler.Class):
+        if proxy:
+            return "%s.%sProxy" % (service.name, t.name,)
+        else:
+            return "%s.I%s" % (service.name, t.name,)
+    else:
+        assert False
+
 
 def type_to_packer(t):
     if t == compiler.t_void:
@@ -73,7 +114,8 @@ def type_to_packer(t):
         return "%sPacker" % (t.name,)
     elif isinstance(t, compiler.Class):
         return "%sObjRef" % (t.name,)
-    return "%r$$$packer" % (t,)
+    else:
+        assert False
 
 def const_to_cs(typ, val):
     if val is None:
@@ -125,16 +167,19 @@ class CSharpTarget(TargetBase):
             STMT("using Agnos.Transports")
             SEP()
             if service.package == service.name:
-                pkg = service.package + "Bindings"
+                service.package2 = service.package + "Bindings"
             else:
-                pkg = service.package
-            with BLOCK("namespace {0}", pkg):
+                service.package2 = service.package
+            with BLOCK("namespace {0}", service.package2):
                 #self.generate_shared_bindings(module, service)
                 #SEP()
                 self.generate_server_bindings(module, service)
                 SEP()
                 self.generate_client_bindings(module, service)
                 SEP()
+        
+        with self.new_module("%sServerStub.cs" % (service.name,)) as module:
+            self.generate_server_stub(module, service)
 
     def generate_server_bindings(self, module, service):
         BLOCK = module.block
@@ -919,11 +964,64 @@ class CSharpTarget(TargetBase):
                     STMT("return _funcs.sync_{0}({1})", func.id, callargs)
             SEP()
 
+    ##########################################################################
 
+    def generate_server_stub(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        DOC = module.doc
 
-
-
-
+        STMT("using System")
+        STMT("using System.Collections.Generic")
+        STMT("using {0}.ServerBindings", service.package2)
+        SEP()
+        with BLOCK("public class ServerStub"):
+            DOC("classes", spacer = True)
+            for cls in service.classes():
+                with BLOCK("public class {0} : {1}", cls.name, type_to_cs_full(cls, service)):
+                    for attr in cls.all_attrs:
+                        STMT("protected {0} _{1}", type_to_cs_full(attr.type, service), attr.name)
+                    SEP()
+                    args = ", ".join("%s %s" % (type_to_cs_full(attr.type, service), attr.name) for attr in cls.all_attrs)
+                    with BLOCK("public {0}({1})", cls.name, args):
+                        for attr in cls.all_attrs:
+                            STMT("_{0} = {0}", attr.name)
+                    SEP()
+                    for attr in cls.all_attrs:
+                        with BLOCK("public {0} {1}", type_to_cs_full(attr.type, service), attr.name):
+                            if attr.get:
+                                with BLOCK("get"):
+                                    STMT("return _{0}", attr.name)
+                            if attr.set:
+                                with BLOCK("set"):
+                                    STMT("_{0} = value", attr.name)
+                        SEP()
+                    for method in cls.all_methods:
+                        args = ", ".join("%s %s" % (type_to_cs_full(arg.type, service), arg.name) 
+                            for arg in method.args)
+                        with BLOCK("public {0} {1}({2})", type_to_cs_full(method.type, service), method.name, args):
+                            DOC("implement me")
+                        SEP()
+                SEP()
+            DOC("handler", spacer = True)
+            with BLOCK("public class Handler : {0}.IHandler", service.name):
+                for member in service.funcs.values():
+                    if not isinstance(member, compiler.Func):
+                        continue
+                    args = ", ".join("%s %s" % (type_to_cs_full(arg.type, service), arg.name) 
+                        for arg in member.args)
+                    with BLOCK("public {0} {1}({2})", 
+                            type_to_cs_full(member.type, service), member.fullname, args):
+                        DOC("implement me")
+                    SEP()
+            SEP()
+            DOC("main", spacer = True)
+            with BLOCK("public static void Main(string[] args)"):
+                STMT("Agnos.Servers.CmdlineServer server = new Agnos.Servers.CmdlineServer("
+                    "new {0}.ProcessorFactory(new Handler()))", service.name)
+                STMT("server.Main(args)")
+            SEP()
 
 
 

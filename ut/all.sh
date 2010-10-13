@@ -11,11 +11,15 @@ python csharp.py
 if [ ! $? -eq 0 ] ; then
 	exit 1
 fi
-python pysrcgen.py
+python cpp.py
 if [ ! $? -eq 0 ] ; then
 	exit 1
 fi
 python html.py
+if [ ! $? -eq 0 ] ; then
+	exit 1
+fi
+python pysrcgen.py
 if [ ! $? -eq 0 ] ; then
 	exit 1
 fi

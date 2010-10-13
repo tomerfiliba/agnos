@@ -1,0 +1,12 @@
+import os
+
+Decider('MD5')
+
+env = DefaultEnvironment()
+env["JARCHDIR"] = os.path.join(env.Dir('.').get_abspath(), 'classes')
+
+class_files = Java(target = "classes", source = "src")
+agnos_jar = Jar(target = "agnos.jar", source = "classes")
+
+agnos_jar = agnos_jar[0]
+Return("agnos_jar")

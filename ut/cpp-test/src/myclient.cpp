@@ -1,5 +1,5 @@
 #include <iostream>
-#include "bindings/FeatureTest_client_bindings.hpp"
+#include "../bindings/FeatureTest_client_bindings.hpp"
 
 using namespace std;
 using namespace agnos;

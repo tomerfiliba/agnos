@@ -1,6 +1,6 @@
 #include <cstdlib>
 #include <boost/enable_shared_from_this.hpp>
-#include "bindings/FeatureTest_server_bindings.hpp"
+#include "../bindings/FeatureTest_server_bindings.hpp"
 
 using namespace agnos;
 using namespace FeatureTest::ServerBindings;

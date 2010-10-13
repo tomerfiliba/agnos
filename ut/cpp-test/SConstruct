@@ -27,7 +27,7 @@ Depends(client_bindings, '../../compiler/targets/cpp.py')
 Depends(server_bindings, '../../compiler/targets/cpp.py')
 
 env.Program('myserver', 
-    [server_bindings, "myserver.cpp"], 
+    [server_bindings, "src/myserver.cpp"], 
     CCFLAGS = "-Werror",
     CPPPATH = ['../../lib/cpp/src'],
     LIBPATH = ['../../lib/cpp'],
@@ -35,7 +35,7 @@ env.Program('myserver',
 )
 
 env.Program('myclient', 
-    [client_bindings, "myclient.cpp"], 
+    [client_bindings, "src/myclient.cpp"], 
     CPPPATH = ['../../lib/cpp/src'],
     LIBPATH = ['../../lib/cpp'],
     LIBS = ["agnos", "boost_thread", "boost_date_time", "boost_iostreams", "boost_system"],

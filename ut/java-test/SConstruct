@@ -1,0 +1,24 @@
+import os
+
+Decider('MD5')
+
+agnos_jar, bindings_jar = SConscript("bindings/SConstruct")
+
+env = Environment(
+    JAVACLASSPATH = [str(agnos_jar), str(bindings_jar)],
+)
+
+env["JARCHDIR"] = os.path.join(env.Dir('.').get_abspath(), 'classes')
+
+env.Java(target = "classes", source = "src")
+test_jar = env.Jar(target = "test.jar", source = "classes")
+
+f = open("myserver.sh", "w")
+f.write("#!/bin/sh\n")
+f.write('exec java -cp %s:%s:%s myserver "$@"\n' % (agnos_jar, bindings_jar, test_jar[0]))
+f.close()
+
+f = open("myclient.sh", "w")
+f.write("#!/bin/sh\n")
+f.write('exec java -cp %s:%s:%s myclient "$@"\n' % (agnos_jar, bindings_jar, test_jar[0]))
+f.close()
