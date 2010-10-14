@@ -1,5 +1,7 @@
 .. highlight:: xml
 
+.. _idl:
+
 Agnos IDL
 =========
 Instead of creating a domain-specific language, Agnos uses a simple XML document 
@@ -10,40 +12,38 @@ The root element is ``<service>``, and within it reside ``<typedef>`` s, ``<cons
 ``<enum>`` s, ``<function>`` s, ``<record>`` s, ``<exception>`` s and ``<class>`` es.
 
 .. note::
-  Documentation can be added to any element in the XML document. This is done by 
-  either providing a ``doc`` attribute, or a ``<doc>`` sub-element, but not both 
-  at the same time, of course. For example::
+  * Documentation can be added to any element in the XML document. This is done by 
+    either providing a ``doc`` attribute, or a ``<doc>`` sub-element, but not both 
+    at the same time, of course. For example::
   
-    <record name="foo">
-        <doc>this record represents foo data</doc>
-        <attr name="bar" type="int32" doc="bar must be an even number" />
-    </record>
+      <record name="foo">
+          <doc>this record represents foo data</doc>
+          <attr name="bar" type="int32" doc="bar must be an even number" />
+      </record>
 
-.. note::
-  An ``id`` attribute can be supplied to every element, to set its internal ID. 
-  This ID number must be unique throughout the file. If not given, an auto-generated
-  ID will be used ::
+  * An ``id`` attribute can be supplied to every element, to set its internal ID. 
+    This ID number must be unique throughout the file. If not given, an auto-generated
+    ID will be used ::
   
-    <func name="spam" type="string" id="1337">
-        <arg name="bacon" type="int64" />
-        <arg name="eggs" type="int16" />
-    </func>
+      <func name="spam" type="string" id="1337">
+          <arg name="bacon" type="int64" />
+          <arg name="eggs" type="int16" />
+      </func>
 
-.. note::
-  An ``<annotation>`` element can be placed inside every IDL element. 
-  Annotations must have ``name`` and ``value`` attributes, which are free-form 
-  strings, and can be used to embed additional programmatic information into
-  the IDL. For example::
+  * An ``<annotation>`` element can be placed inside every IDL element. 
+    Annotations must have ``name`` and ``value`` attributes, which are free-form 
+    strings, and can be used to embed additional programmatic information into
+    the IDL. For example::
   
-    <func name="mount" type="void">
-        <arg name="dev" type="string" />
-        <arg name="path" type="string" />
-        <annotation name="user" value="john" />
-    </func>
+      <func name="mount" type="void">
+          <arg name="dev" type="string" />
+          <arg name="path" type="string" />
+          <annotation name="user" value="john" />
+      </func>
 
-  The annotation itself is meaningless to the Agnos compiler, but the service 
-  implementation may be aware of it, and make sure that only ``john`` 
-  calls this function.
+    The annotation itself is meaningless to the Agnos compiler, but the service 
+    implementation may be aware of it, and make sure that only ``john`` 
+    calls this function.
 
 
 IDL Elements

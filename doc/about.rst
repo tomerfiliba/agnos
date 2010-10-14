@@ -24,10 +24,6 @@ The project is being developed and maintained by *Tomer Filiba*
 (``tomerf`` at ``il`` dot ``ibm`` dot ``com``).
 
 .. note::
-  I will not respond to Agnos-related emails sent to my personal address. 
-  See *Contact* below.
+  Please do not send Agnos-related emails to my personal address -- I will not
+  respond to them. See :doc:`contact` for more info.
 
-Contact
--------
-Please use our `mailing list <http://groups.google.com/group/agnos>`_ (agnos@googlegroups.com)
-for questions, bug reports, feature requests/suggestions, and general discussion.

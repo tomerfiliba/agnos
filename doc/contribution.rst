@@ -1,18 +1,37 @@
+.. _contribution_guidelines:
+
 Contribution Guidelines
 =======================
 You are welcome to contribute code and submit patches to Agnos. However, 
-in order for us to accept them, you must use the **sign-off procedure**: 
-simply add the line ``Signed-off-by: Your Name <your@email.com>`` at the end 
-of the description of your patch, to certify that you have the rights to 
-submit the code. For more information, please refer to the 
-*Contribution License Agreement* below.
+as this project is being actively developed by IBM and used in its internal 
+products, we cannot accept all code. For example, submitting a patch under the
+GPL might "contaminate" the rest of the codebase, etc. Therefore, we require 
+two things in order to accept third-party code:
+# the contributed code or patch must be licensed under the **Apache License**
+# you must comply with **sign-off procedure**
+
+The *sign-off procedure* simply means that you add a line like so 
+``Signed-off-by: Your Name <your@email.com>`` at the end of the description 
+of your patch. It is used to certify that you have the rights to submit the code.
+For more information, please refer to the :ref:`CLA <contribution_license_agreement>` below.
+Code that does not meet the two rules above will be rejected on legal grounds.
+
+Development
+-----------
+Agnos development takes place on `github <www.github.com>`_. Small patches 
+(normally small bug fixes) may be sent by mail to `our mailing list <http://groups.google.com/group/agnos>`_
+and we will process them. For new features or larger fixes, it's best to 
+`fork <http://help.github.com/forking/>`_ our `git repository <http://github.com/tomerfiliba/agnos>`_,
+do the changes, and click the `pull request <http://help.github.com/pull-requests>`_ button. 
+
 
 .. _contribution_license_agreement:
+
 Contribution License Agreement ("CLA")
 --------------------------------------
-The sign-off is a simple line at the end of the explanation for the patch, 
+The sign-off is a simple line at the end of the patch's description, 
 which certifies that you wrote it or otherwise have the right to pass it on 
-as an open-source patch. The rules are pretty simple ::
+as an open-source patch. The rules are pretty simple::
 
     By making a contribution to this project, I certify that:
     (a) The contribution was created in whole or in part by me and I have the right to submit it under the 
