@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 try:
-    from setuptools import setup, find_packages
+    from setuptools import setup
 except ImportError:
     from distutils.core import setup
 
-setup(name = 'Agnos',
+setup(name = 'agnos-compiler',
     version = '1.0.0',
-    description = 'Agnos Compiler library',
-    author = ['Tomer Filiba'],
-    author_email = ['tomerf@il.ibm.com'],
-    maintainer = ['Tomer Filiba'],
-    maintainer_email = ['tomerf@il.ibm.com'],
+    description = 'Agnos Compiler Toolchain',
+    author = 'Tomer Filiba',
+    author_email = 'tomerf@il.ibm.com',
+    maintainer = 'Tomer Filiba',
+    maintainer_email = 'tomerf@il.ibm.com',
     url = 'http://agnos.sourceforge.net',
     long_description = """\
 Agnos - The Agnostic RPC Framework
@@ -32,26 +32,7 @@ technologies like ``SOAP``, ``WSDL``, ``CORBA``, and others, but takes a
         'agnos_compiler.pysrcgen',
     ],
     package_dir = {
-        'agnos_compiler' : '.',
-    },
-    package_data = {
-        'agnos_compiler' : [
-            "LICENSE",
-            "NOTICE",
-            "README",
-            "lib/cpp/*.sln",
-            "lib/cpp/*.vcxproj",
-            "lib/cpp/src/*.cpp",
-            "lib/cpp/src/*.hpp",
-            "lib/csharp/src/*.sln",
-            "lib/csharp/src/*.csproj",
-            "lib/csharp/src/*.cs",
-            "lib/csharp/src/Properties/*.cs",
-            "lib/java/src/*.java",
-            "lib/java/SConstruct",
-            "lib/python/*.py",
-            "lib/python/src/*.py",
-        ],
+        'agnos_compiler' : './agnos_compiler',
     },
     scripts = [
         'bin/agnosc', 

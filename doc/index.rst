@@ -3,7 +3,7 @@
   
   features
   contact
-  getting-started
+  install
   tutorial
   idl
   about
