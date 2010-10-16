@@ -6,13 +6,13 @@ from base import TargetTest
 
 class FeatureTestClient(TargetTest):
     def runTest(self):
-        self.run_agnosc("python", "ut/features.xml", "ut/python-test")
-        sys.path.append(self.REL("ut/python-test"))
+        self.run_agnosc("python", "tests/features.xml", "tests/python-test")
+        sys.path.append(self.REL("tests/python-test"))
         import FeatureTest_bindings
         global FeatureTest
         FeatureTest = FeatureTest_bindings
         
-        conn = FeatureTest.Client.connect_executable(self.REL("ut/python-test/server.py"))
+        conn = FeatureTest.Client.connect_executable(self.REL("tests/python-test/server.py"))
         
         try:
             self.mytest(conn)

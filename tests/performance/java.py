@@ -65,11 +65,11 @@ class JavaPerformanceTest(unittest.TestCase):
         return self.spawn(cmdline)
     
     def runTest(self):
-        self.run_agnosc("java", "ut/performance/filesystem.xml", "ut/performance")
+        self.run_agnosc("java", "tests/performance/filesystem.xml", "tests/performance")
         agnos_jar = self.REL("lib/java/build/jars/agnos.jar")
-        filesystem_jar = self.compile_java("ut/performance/filesystem", "../filesystem.jar", 
+        filesystem_jar = self.compile_java("tests/performance/filesystem", "../filesystem.jar", 
             classpath = [agnos_jar])
-        test_jar = self.compile_java("ut/performance/test", "../test.jar", 
+        test_jar = self.compile_java("tests/performance/test", "../test.jar", 
             classpath = [agnos_jar, filesystem_jar])
 
         serverproc = self.run_java(["myserver", "-m", "lib"], [agnos_jar, filesystem_jar, test_jar])

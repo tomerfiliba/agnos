@@ -1,19 +1,22 @@
 * todo:
-	* serialize to file -- can be used as a universal serializer
-	* java manifest (minimum version?)
-	* c# assembly info
-	* java srcgen
-	* c# srcgen
+    * define AGNOS_PROTOCOL_VERSION and AGNOS_TOOLCHAIN_VERSION
+    * add license comment block to all files 
+    * java manifest (minimum version?)
+    * c# assembly info
+	* RESTful
+        RESTful access for unsupported languages: write a small python mediator
+        that talks agnos on one side and exposes that as REST on the other 
 
 * features:
 	* async, timed
 	* SSL
 	* rlist, rset, rmap (by ref)
+    * serialize to file -- can be used as a universal serializer
+    * java srcgen
+    * c# srcgen
 
 * targets:
 	* powershell
-	* RESTful access for unsupported languages: write a small python mediator
-	  that talks agnos on one side and exposes that as REST on the other 
 	* jscript client (over URLs) for web gui
 
 * optional features:

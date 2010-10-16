@@ -10,7 +10,7 @@ class SrcgenTest(TargetTest):
         self.run_cmdline(["python", "bin/agnosc-py", "-o", outdir, rootdir], cwd = self.ROOT_DIR)
 
     def runTest(self):
-        self.run_agnos_pysrcgen("python", "ut/mextra", "ut/gen-mextra")
+        self.run_agnos_pysrcgen("python", "tests/mextra", "tests/gen-mextra")
 
 
 if __name__ == "__main__":

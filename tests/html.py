@@ -8,7 +8,7 @@ from base import TargetTest
 
 class TestCSharp(TargetTest):
     def runTest(self):
-        self.run_agnosc("doc", "ut/features.xml", "ut/gen-html")
+        self.run_agnosc("doc", "tests/features.xml", "tests/gen-html")
 
 
 

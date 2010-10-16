@@ -7,12 +7,12 @@ from base import TargetTest
 
 class TestJava(TargetTest):
     def runTest(self):
-        self.run_agnosc("java", "ut/features.xml", "ut/java-test/bindings")
+        self.run_agnosc("java", "tests/features.xml", "tests/java-test/bindings")
         print "scons"
-        self.run_cmdline("scons", cwd = self.REL("ut/java-test"))
+        self.run_cmdline("scons", cwd = self.REL("tests/java-test"))
         
         print "./myserver -m lib"
-        serverproc = self.spawn(["./myserver.sh", "-m", "lib"], cwd = self.REL("ut/java-test"))
+        serverproc = self.spawn(["./myserver.sh", "-m", "lib"], cwd = self.REL("tests/java-test"))
         time.sleep(1)
         if serverproc.poll() is not None:
             print "server stdout: ", serverproc.stdout.read()
@@ -25,7 +25,7 @@ class TestJava(TargetTest):
             host = serverproc.stdout.readline().strip()
             port = serverproc.stdout.readline().strip()
             print "./myclient", host, port
-            clientproc = self.spawn(["./myclient.sh", host, port], cwd = self.REL("ut/java-test"))
+            clientproc = self.spawn(["./myclient.sh", host, port], cwd = self.REL("tests/java-test"))
     
             print "===client output==="
             print clientproc.stdout.read()

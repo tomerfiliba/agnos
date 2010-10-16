@@ -32,7 +32,7 @@ technologies like ``SOAP``, ``WSDL``, ``CORBA``, and others, but takes a
         'agnos_compiler.pysrcgen',
     ],
     package_dir = {
-        'agnos_compiler' : './agnos_compiler',
+        'agnos_compiler' : 'src',
     },
     scripts = [
         'bin/agnosc', 

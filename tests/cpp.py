@@ -6,14 +6,14 @@ import time
 from base import TargetTest
 
 
-class TestCSharp(TargetTest):
+class TestCPP(TargetTest):
     def runTest(self):
-        #self.run_agnosc("c++", "ut/features.xml", "ut/cpp-test/bindings")
+        #self.run_agnosc("c++", "tests/features.xml", "tests/cpp-test/bindings")
         print "scons"
-        self.run_cmdline("scons", cwd = self.REL("ut/cpp-test"), redirect = False)
+        self.run_cmdline("scons", cwd = self.REL("tests/cpp-test"), redirect = False)
 
         print "./myserver -m lib"
-        serverproc = self.spawn(["./myserver", "-m", "lib"], cwd = self.REL("ut/cpp-test"))
+        serverproc = self.spawn(["./myserver", "-m", "lib"], cwd = self.REL("tests/cpp-test"))
         time.sleep(1)
         if serverproc.poll() is not None:
             print "server stdout: ", serverproc.stdout.read()
@@ -26,7 +26,7 @@ class TestCSharp(TargetTest):
             host = serverproc.stdout.readline().strip()
             port = serverproc.stdout.readline().strip()
             print "./myclient", host, port
-            clientproc = self.spawn(["./myclient", host, port], cwd = self.REL("ut/cpp-test"))
+            clientproc = self.spawn(["./myclient", host, port], cwd = self.REL("tests/cpp-test"))
     
             print "===client output==="
             print clientproc.stdout.read()

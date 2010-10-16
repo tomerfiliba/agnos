@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export AGNOS_VERSION="1.0.0"
+export AGNOS_TOOLCHAIN_VERSION="1.0.0"
 
 rm -rf release
 
@@ -8,11 +8,14 @@ rm -rf release
 # compiler
 ###############################################################################
 
+pushd agnos_compiler
 rm -rf dist
 python setup.py bdist --formats=gztar,zip,egg,wininst
-cp dist/* release/
-rm -rf dist
+popd
+cp agnos_compiler/dist/* release
+rm -rf agnso_compiler/dist
 
+exit
 
 ###############################################################################
 # python
