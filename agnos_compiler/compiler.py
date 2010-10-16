@@ -2,7 +2,7 @@ import re
 import hashlib
 import xml.etree.ElementTree as etree
 import itertools
-from .idl import parse_const, parse_template, IDLError
+from .idl_syntax import parse_const, parse_template, IDLError
 
 
 ID_GENERATOR = itertools.count(900000)
