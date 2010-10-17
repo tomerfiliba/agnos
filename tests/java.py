@@ -10,10 +10,11 @@ class TestJava(TargetTest):
         with open(self.REL(os.path.join(path, "SConstruct")), "w") as f:
             lines = [
                 "import os",
+                "import agnos_toolchain",
                 "",
                 "Decider('MD5')",
                 "",
-                "agnos_jar = SConscript('../../../libagnos/java/SConstruct')",
+                "agnos_jar = SConscript(os.path.join(agnos_toolchain.__path__[0], 'libagnos/java/SConstruct'))",
                 "env = Environment(",
                 "    JAVACLASSPATH = [str(agnos_jar)],",
                 ")",
