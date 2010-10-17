@@ -116,35 +116,63 @@ popd
 ###############################################################################
 pushd release
 
-mkdir agnos-toolchain-win32
-mkdir agnos-toolchain-win32/cpp
-mkdir agnos-toolchain-win32/csharp
-mkdir agnos-toolchain-win32/java
-mkdir agnos-toolchain-win32/python
+mkdir agnos-toolchain
+mkdir agnos-toolchain/cpp
+mkdir agnos-toolchain/csharp
+mkdir agnos-toolchain/java
+mkdir agnos-toolchain/python
 
-cp *.zip *.exe *.egg agnos-toolchain-win32
-cp cpp/*.zip agnos-toolchain-win32/cpp
-cp csharp/*.zip csharp/*.dll agnos-toolchain-win32/csharp
-cp java/*.zip java/*.jar agnos-toolchain-win32/java
-cp python/*.zip python/*.exe python/*.egg agnos-toolchain-win32/python
+cp *.zip *.exe *.egg agnos-toolchain
+cp cpp/*.zip agnos-toolchain/cpp
+cp csharp/*.zip csharp/*.dll agnos-toolchain/csharp
+cp java/*.zip java/*.jar agnos-toolchain/java
+cp python/*.zip python/*.exe python/*.egg agnos-toolchain/python
 
-zip -r agnos-toolchain-win32.zip agnos-toolchain-win32
-rm -rf agnos-toolchain-win32
+zip -r agnos-toolchain-$AGNOS_TOOLCHAIN_VERSION-win32.zip agnos-toolchain
+rm -rf agnos-toolchain
 
-mkdir agnos-toolchain-posix
-mkdir agnos-toolchain-posix/cpp
-mkdir agnos-toolchain-posix/csharp
-mkdir agnos-toolchain-posix/java
-mkdir agnos-toolchain-posix/python
+mkdir agnos-toolchain
+mkdir agnos-toolchain/cpp
+mkdir agnos-toolchain/csharp
+mkdir agnos-toolchain/java
+mkdir agnos-toolchain/python
 
-cp *.tar.gz *.egg agnos-toolchain-posix
-cp cpp/*.tar.gz agnos-toolchain-posix/cpp
-cp csharp/*.tar.gz csharp/*.dll agnos-toolchain-posix/csharp
-cp java/*.tar.gz java/*.jar agnos-toolchain-posix/java
-cp python/*.tar.gz python/*.egg agnos-toolchain-posix/python
+cp *.tar.gz *.egg agnos-toolchain
+cp cpp/*.tar.gz agnos-toolchain/cpp
+cp csharp/*.tar.gz csharp/*.dll agnos-toolchain/csharp
+cp java/*.tar.gz java/*.jar agnos-toolchain/java
+cp python/*.tar.gz python/*.egg agnos-toolchain/python
 
-tar -czf agnos-toolchain-posix.tar.gz agnos-toolchain-posix
-rm -rf agnos-toolchain-posix
+tar -czf agnos-toolchain-$AGNOS_TOOLCHAIN_VERSION-posix.tar.gz agnos-toolchain
+rm -rf agnos-toolchain
+
+mkdir libagnos
+mkdir libagnos/cpp
+mkdir libagnos/csharp
+mkdir libagnos/java
+mkdir libagnos/python
+
+cp cpp/*.zip libagnos/cpp
+cp csharp/*.zip csharp/*.dll libagnos/csharp
+cp java/*.zip java/*.jar libagnos/java
+cp python/*.zip python/*.exe python/*.egg libagnos/python
+
+zip -r libagnos-$AGNOS_TOOLCHAIN_VERSION-win32.zip libagnos
+rm -rf libagnos
+
+mkdir libagnos
+mkdir libagnos/cpp
+mkdir libagnos/csharp
+mkdir libagnos/java
+mkdir libagnos/python
+
+cp cpp/*.tar.gz libagnos/cpp
+cp csharp/*.tar.gz csharp/*.dll libagnos/csharp
+cp java/*.tar.gz java/*.jar libagnos/java
+cp python/*.tar.gz python/*.egg libagnos/python
+
+tar -czf libagnos-$AGNOS_TOOLCHAIN_VERSION-posix.tar.gz libagnos
+rm -rf libagnos
 
 rm agnos_compiler*
 rm -rf cpp
@@ -154,6 +182,20 @@ rm -rf python
 
 popd
 
+###############################################################################
+# upload
+###############################################################################
+
+if [ "$1" != "upload" ] ; then
+	exit
+fi
+
+echo "=========================================================================="
+echo "uploading to sourceforge. ENTER to continue, CTRL+C to skip"
+read
+
+rsync -v release/agnos-toolchain-* gangesmaster,agnos@frs.sourceforge.net:/home/frs/project/a/ag/agnos/toolchain/$AGNOS_TOOLCHAIN_VERSION
+rsync -v release/libagnos-* gangesmaster,agnos@frs.sourceforge.net:/home/frs/project/a/ag/agnos/libagnos/$AGNOS_TOOLCHAIN_VERSION/
 
 
 

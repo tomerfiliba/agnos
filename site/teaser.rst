@@ -53,3 +53,21 @@ to generate the language bindings (``RemoteFiles_bindings.py``), and then
 Implementing the service is a little more lengthy, naturally, but fear not! 
 It's very simple too.
 
+XML? Really?! Couldn't you have done better?
+--------------------------------------------
+It is well known that XML is not a nice format for human-editing, but it's 
+standardized, easy to parse, and the learning-curve is marginal. So instead
+of defining a new domain-specific language, we chose to stick with something
+that everybody knows and doesn't require resorting to ``YACC`` and its family.
+
+But many times, it would be smarter (and easier) to keep your IDL specification 
+in-sync with your codebase. This allows you to edit just a single location 
+when making changes (thus preventing you from forgetting to update two places),
+as well as tightly-coupling your implementation with the service.
+
+Enter :doc:`srcgen`.
+
+
+
+
+
