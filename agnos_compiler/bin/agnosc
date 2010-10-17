@@ -12,8 +12,8 @@ import os
 import sys
 
 from optparse import OptionParser
-from agnos_compiler.compiler import compile, IDLError
-from agnos_compiler.compiler.targets import JavaTarget, PythonTarget, CPPTarget, CSharpTarget, DocTarget
+from agnos_compiler import compile, IDLError
+from agnos_compiler.targets import JavaTarget, PythonTarget, CPPTarget, CSharpTarget, DocTarget
 
 TARGET_ALIASES = {
     "doc" : DocTarget,

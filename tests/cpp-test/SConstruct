@@ -10,34 +10,34 @@ env = Environment(
     CCFLAGS = "-Werror -g",
 )
 
-SConscript(["../../lib/cpp/SConstruct"], exports="env")
+SConscript(["../../libagnos/cpp/SConstruct"], exports="env")
 
 agnos_outdir = "bindings"
 client_bindings = os.path.join(agnos_outdir, "FeatureTest_client_bindings.cpp")
 server_bindings = os.path.join(agnos_outdir, "FeatureTest_server_bindings.cpp")
 
 def build_agnos(target, source, env):
-    from agnos_compiler.compiler import compile
-    from agnos_compiler.compiler.targets import CPPTarget
+    from agnos_compiler import compile
+    from agnos_compiler.targets import CPPTarget
     compile(source[0].path, CPPTarget(agnos_outdir))
 
 env.Command([client_bindings, server_bindings], "../features.xml", build_agnos)
 
-Depends(client_bindings, '../../compiler/targets/cpp.py')
-Depends(server_bindings, '../../compiler/targets/cpp.py')
+Depends(client_bindings, '../../agnos_compiler/src/targets/cpp.py')
+Depends(server_bindings, '../../agnos_compiler/src/targets/cpp.py')
 
 env.Program('myserver', 
     [server_bindings, "src/myserver.cpp"], 
     CCFLAGS = "-Werror",
-    CPPPATH = ['../../lib/cpp/src'],
-    LIBPATH = ['../../lib/cpp'],
+    CPPPATH = ['../../libagnos/cpp/src'],
+    LIBPATH = ['../../libagnos/cpp'],
     LIBS = ["agnos", "boost_thread", "boost_date_time", "boost_iostreams", "boost_system"],
 )
 
 env.Program('myclient', 
     [client_bindings, "src/myclient.cpp"], 
-    CPPPATH = ['../../lib/cpp/src'],
-    LIBPATH = ['../../lib/cpp'],
+    CPPPATH = ['../../libagnos/cpp/src'],
+    LIBPATH = ['../../libagnos/cpp'],
     LIBS = ["agnos", "boost_thread", "boost_date_time", "boost_iostreams", "boost_system"],
 )
 

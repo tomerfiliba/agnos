@@ -77,7 +77,8 @@ class PythonTarget(TargetBase):
             STMT("from functools import partial")
             SEP()
             
-            STMT("AGNOS_VERSION = '{0}'", compiler.AGNOS_VERSION)
+            STMT("AGNOS_TOOLCHAIN_VERSION = '{0}'", compiler.AGNOS_TOOLCHAIN_VERSION)
+            STMT("AGNOS_PROTOCOL_VERSION = '{0}'", compiler.AGNOS_PROTOCOL_VERSION)
             STMT("IDL_MAGIC = '{0}'", service.digest)
             if not service.clientversion:
                 STMT("CLIENT_VERSION = None")
@@ -308,7 +309,8 @@ class PythonTarget(TargetBase):
                     STMT("packers_map[{0}] = {1}", tp.id, type_to_packer(tp))
             SEP()
             with BLOCK("def process_get_general_info(self, info)"):
-                STMT('info["AGNOS_VERSION"] = AGNOS_VERSION')
+                STMT('info["AGNOS_TOOLCHAIN_VERSION"] = AGNOS_TOOLCHAIN_VERSION')
+                STMT('info["AGNOS_PROTOCOL_VERSION"] = AGNOS_PROTOCOL_VERSION')
                 STMT('info["IDL_MAGIC"] = IDL_MAGIC')
                 STMT('info["SERVICE_NAME"] = "{0}"', service.name)
                 STMT('info.add("SUPPORTED_VERSIONS", packers.Str, SUPPORTED_VERSIONS, packers.list_of_str)')
@@ -459,8 +461,8 @@ class PythonTarget(TargetBase):
         with BLOCK("def assert_service_compatibility(self)"):
             STMT("info = self.get_service_info(agnos.INFO_GENERAL)")
             
-            with BLOCK('if info["AGNOS_VERSION"] != AGNOS_VERSION'):
-                STMT('''raise agnos.WrongAgnosVersion("expected version '%s' found '%s'" % (AGNOS_VERSION, agnos_version))''')
+            with BLOCK('if info["AGNOS_PROTOCOL_VERSION"] != AGNOS_PROTOCOL_VERSION'):
+                STMT('''raise agnos.WrongAgnosVersion("expected protocol '%s' found '%s'" % (AGNOS_PROTOCOL_VERSION, info["AGNOS_PROTOCOL_VERSION"]))''')
             with BLOCK('if info["SERVICE_NAME"] != "{0}"', service.name):
                 STMT('''raise agnos.WrongServiceName("expected service '{0}', found '%s'" % (info["SERVICE_NAME"],))''', service.name)
             with BLOCK('if CLIENT_VERSION'):

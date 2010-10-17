@@ -274,14 +274,14 @@ namespace Agnos
 			public override object unpack (Stream stream)
 			{
 				_read (stream, buffer);
-				return (((long)(buffer[0] & 0xff)) << 56) | 
-						(((long)(buffer[1] & 0xff)) << 48) | 
-						(((long)(buffer[2] & 0xff)) << 40) | 
-						(((long)(buffer[3] & 0xff)) << 32) | 
-						(((long)(buffer[4] & 0xff)) << 24) | 
-						(((long)(buffer[5] & 0xff)) << 16) | 
-						(((long)(buffer[6] & 0xff)) << 8) | 
-						(((long)(buffer[7] & 0xff)));
+				return (((long)(buffer[0] & (uint)0xff)) << 56) | 
+						(((long)(buffer[1] & (uint)0xff)) << 48) | 
+						(((long)(buffer[2] & (uint)0xff)) << 40) | 
+						(((long)(buffer[3] & (uint)0xff)) << 32) | 
+						(((long)(buffer[4] & (uint)0xff)) << 24) | 
+						(((long)(buffer[5] & (uint)0xff)) << 16) | 
+						(((long)(buffer[6] & (uint)0xff)) << 8) | 
+						(((long)(buffer[7] & (uint)0xff)));
 			}
 		}
 

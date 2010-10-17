@@ -211,7 +211,7 @@ class CPPTarget(TargetBase):
         STMT("using namespace agnos::protocol")
         STMT("using agnos::transports::ITransport")
         SEP()
-        STMT('extern const string AGNOS_VERSION')
+        STMT('extern const string AGNOS_PROTOCOL_VERSION')
         STMT('extern const string IDL_MAGIC')
         STMT('extern const vector<string> SUPPORTED_VERSIONS')
     
@@ -380,7 +380,8 @@ class CPPTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
 
-        STMT('const string AGNOS_VERSION = "{0}"', compiler.AGNOS_VERSION)
+        STMT('const string AGNOS_TOOLCHAIN_VERSION = "{0}"', compiler.AGNOS_TOOLCHAIN_VERSION)
+        STMT('const string AGNOS_PROTOCOL_VERSION = "{0}"', compiler.AGNOS_PROTOCOL_VERSION)
         STMT('const string IDL_MAGIC = "{0}"', service.digest)
         if service.versions:
             STMT("static string _SUPPORTED_VERSIONS[] = {{ {0} }}", ", ".join('"%s"' % (ver,) for ver in service.versions))
@@ -596,7 +597,8 @@ class CPPTarget(TargetBase):
         DOC = module.doc
 
         with BLOCK("void process_get_general_info(HeteroMap& map)"):
-            STMT('map.put("AGNOS_VERSION", AGNOS_VERSION)')
+            STMT('map.put("AGNOS_PROTOCOL_VERSION", AGNOS_PROTOCOL_VERSION)')
+            STMT('map.put("AGNOS_TOOLCHAIN_VERSION", AGNOS_TOOLCHAIN_VERSION)')
             STMT('map.put("IDL_MAGIC", IDL_MAGIC)')
             STMT('map.put("SERVICE_NAME", "{0}")', service.name)
             STMT('map.put("SUPPORTED_VERSIONS", string_packer, SUPPORTED_VERSIONS, list_of_string_packer)')
@@ -641,7 +643,7 @@ class CPPTarget(TargetBase):
                                 STMT("packer = static_cast<IPacker*>(&{0})", type_to_packer(func.type))
                             STMT("break")
                     with BLOCK("default:", prefix = None, suffix = None):
-                        STMT('throw ProtocolError("unknown function id: ")')
+                        STMT('THROW_FORMATTED(ProtocolError, "unknown function id: " << funcid)')
                 SEP()
                 STMT("{0}.pack(REPLY_SUCCESS, *transport)", type_to_packer(compiler.t_int8))
                 with BLOCK("if (packer != NULL)"):
@@ -1240,13 +1242,13 @@ class CPPTarget(TargetBase):
         
         with BLOCK("void Client::assert_service_compatibility()"):
             STMT("shared_ptr<HeteroMap> info = get_service_info(INFO_GENERAL)")
-            STMT('string agnos_version = info->get_as<string>("AGNOS_VERSION")')
+            STMT('string agnos_protocol_version = info->get_as<string>("AGNOS_PROTOCOL_VERSION")')
             STMT('string service_name = info->get_as<string>("SERVICE_NAME")')
             
-            with BLOCK('if (agnos_version != AGNOS_VERSION)'):
-                STMT('''throw WrongAgnosVersion("expected version ")''')
+            with BLOCK('if (agnos_protocol_version != AGNOS_PROTOCOL_VERSION)'):
+                STMT('''THROW_FORMATTED(WrongAgnosVersion, "expected protocol " << AGNOS_PROTOCOL_VERSION << ", found " << agnos_protocol_version)''')
             with BLOCK('if (service_name != "{0}")', service.name):
-                STMT('''throw WrongServiceName("expected service '{0}', found '" + service_name + "'")''', service.name)
+                STMT('''THROW_FORMATTED(WrongServiceName, "expected service '{0}', found '" << service_name << "'")''', service.name)
             if service.clientversion:
                 STMT("bool found = false")
                 with BLOCK('if (info->contains("SUPPORTED_VERSIONS"))'):

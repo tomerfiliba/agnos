@@ -190,28 +190,6 @@ class JavaTarget(TargetBase):
         with self.new_module("%s_server.stub" % (service.name,)) as module:
             self.generate_server_stub(module, service)
             SEP()
-        
-        with self.open("SConstruct", "w") as f:
-            lines = [
-                "import os",
-                "import agnos_compiler",
-                "",
-                "Decider('MD5')",
-                "",
-                "agnos_jar = SConscript(os.path.join(agnos_compiler.__path__[0], 'lib', 'java', 'SConstruct'))",
-                "env = Environment(",
-                "    JAVACLASSPATH = [str(agnos_jar)],",
-                ")",
-                "env['JARCHDIR'] = os.path.join(env.Dir('.').get_abspath(), 'classes')",
-                "",
-                "env.Java(target = 'classes', source = 'FeatureTest')",
-                "bindings_jar = env.Jar(target = 'FeatureTest.jar', source = 'classes')[0]",
-                "",
-                "outputs = [agnos_jar, bindings_jar]",
-                "Return('outputs')",
-            ]
-            for l in lines:
-                f.write(l + "\n")
     
     def generate_server_bindings(self, module, service):
         BLOCK = module.block
@@ -220,7 +198,8 @@ class JavaTarget(TargetBase):
         DOC = module.doc
         
         with BLOCK("public final class {0}", service.name):
-            STMT('public static final String AGNOS_VERSION = "{0}"', compiler.AGNOS_VERSION)
+            STMT('public static final String AGNOS_TOOLCHAIN_VERSION = "{0}"', compiler.AGNOS_TOOLCHAIN_VERSION)
+            STMT('public static final String AGNOS_PROTOCOL_VERSION = "{0}"', compiler.AGNOS_PROTOCOL_VERSION)
             STMT('public static final String IDL_MAGIC = "{0}"', service.digest)
             with BLOCK('public static final List<String> SUPPORTED_VERSIONS = new ArrayList<String>()',
                     prefix = "{{", suffix = "}};"):
@@ -270,7 +249,8 @@ class JavaTarget(TargetBase):
         DOC = module.doc
 
         with BLOCK("public final class {0}", service.name):
-            STMT('public static final String AGNOS_VERSION = "{0}"', compiler.AGNOS_VERSION)
+            STMT('public static final String AGNOS_TOOLCHAIN_VERSION = "{0}"', compiler.AGNOS_TOOLCHAIN_VERSION)
+            STMT('public static final String AGNOS_PROTOCOL_VERSION = "{0}"', compiler.AGNOS_PROTOCOL_VERSION)
             STMT('public static final String IDL_MAGIC = "{0}"', service.digest)
             if not service.clientversion:
                 STMT("public static final String CLIENT_VERSION = null")
@@ -631,7 +611,8 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         
         with BLOCK("protected void processGetGeneralInfo(HeteroMap map)"):
-            STMT('map.put("AGNOS_VERSION", AGNOS_VERSION)')
+            STMT('map.put("AGNOS_PROTOCOL_VERSION", AGNOS_PROTOCOL_VERSION)')
+            STMT('map.put("AGNOS_TOOLCHAIN_VERSION", AGNOS_TOOLCHAIN_VERSION)')
             STMT('map.put("IDL_MAGIC", IDL_MAGIC)')
             STMT('map.put("SERVICE_NAME", "{0}")', service.name)
             STMT('map.put("SUPPORTED_VERSIONS", SUPPORTED_VERSIONS, Packers.listOfStr)')
@@ -927,11 +908,11 @@ class JavaTarget(TargetBase):
         SEP()
         with BLOCK("public void assertServiceCompatibility() throws IOException, Protocol.ProtocolError, Protocol.PackedException, Protocol.GenericException"):
             STMT("HeteroMap info = getServiceInfo(Protocol.INFO_GENERAL)")
-            STMT('String agnos_version = (String)info.get("AGNOS_VERSION")')
+            STMT('String agnos_protocol_version = (String)info.get("AGNOS_PROTOCOL_VERSION")')
             STMT('String service_name = (String)info.get("SERVICE_NAME")')
             
-            with BLOCK('if (!agnos_version.equals(AGNOS_VERSION))'):
-                STMT('''throw new Protocol.WrongAgnosVersion("expected version '" + AGNOS_VERSION + "', found '" + agnos_version + "'")''')
+            with BLOCK('if (!agnos_protocol_version.equals(AGNOS_PROTOCOL_VERSION))'):
+                STMT('''throw new Protocol.WrongAgnosVersion("expected protocol '" + AGNOS_PROTOCOL_VERSION + "', found '" + agnos_protocol_version + "'")''')
             with BLOCK('if (!service_name.equals("{0}"))', service.name):
                 STMT('''throw new Protocol.WrongServiceName("expected service '{0}', found '" + service_name + "'")''', service.name)
             if service.clientversion:

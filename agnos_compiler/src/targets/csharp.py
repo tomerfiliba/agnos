@@ -189,7 +189,8 @@ class CSharpTarget(TargetBase):
         
         with BLOCK("namespace ServerBindings"):
             with BLOCK("public static partial class {0}", service.name):
-                STMT('public const string AGNOS_VERSION = "{0}"', compiler.AGNOS_VERSION)
+                STMT('public const string AGNOS_PROTOCOL_VERSION = "{0}"', compiler.AGNOS_PROTOCOL_VERSION)
+                STMT('public const string AGNOS_TOOLCHAIN_VERSION = "{0}"', compiler.AGNOS_TOOLCHAIN_VERSION)
                 STMT('public const string IDL_MAGIC = "{0}"', service.digest)
                 STMT('public static readonly List<string> SUPPORTED_VERSIONS = new List<string> {{ {0} }}',
                     ", ".join('"%s"' % (ver,) for ver in service.versions))
@@ -236,7 +237,8 @@ class CSharpTarget(TargetBase):
         
         with BLOCK("namespace ClientBindings"):
             with BLOCK("public static partial class {0}", service.name):
-                STMT('public const string AGNOS_VERSION = "{0}"', compiler.AGNOS_VERSION)
+                STMT('public const string AGNOS_PROTOCOL_VERSION = "{0}"', compiler.AGNOS_PROTOCOL_VERSION)
+                STMT('public const string AGNOS_TOOLCHAIN_VERSION = "{0}"', compiler.AGNOS_TOOLCHAIN_VERSION)
                 STMT('public const string IDL_MAGIC = "{0}"', service.digest)
                 if not service.clientversion:
                     STMT("public const string CLIENT_VERSION = null")
@@ -579,7 +581,8 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
         
         with BLOCK("protected override void processGetGeneralInfo(HeteroMap map)"):
-            STMT('map["AGNOS_VERSION"] = AGNOS_VERSION')
+            STMT('map["AGNOS_PROTOCOL_VERSION"] = AGNOS_PROTOCOL_VERSION')
+            STMT('map["AGNOS_TOOLCHAIN_VERSION"] = AGNOS_TOOLCHAIN_VERSION')
             STMT('map["IDL_MAGIC"] = IDL_MAGIC')
             STMT('map["SERVICE_NAME"] = "{0}"', service.name)
             STMT('map.Add("SUPPORTED_VERSIONS", SUPPORTED_VERSIONS, Packers.listOfStr)')
@@ -891,11 +894,11 @@ class CSharpTarget(TargetBase):
         SEP()
         with BLOCK("public void AssertServiceCompatibility()"):
             STMT("HeteroMap info = GetServiceInfo(Protocol.INFO_GENERAL)")
-            STMT('string agnos_version = (string)info["AGNOS_VERSION"]')
+            STMT('string agnos_protocol_version = (string)info["AGNOS_PROTOCOL_VERSION"]')
             STMT('string service_name = (string)info["SERVICE_NAME"]')
             
-            with BLOCK('if (agnos_version != AGNOS_VERSION)'):
-                STMT('''throw new WrongAgnosVersion("expected version '" + AGNOS_VERSION + "', found '" + agnos_version + "'")''')
+            with BLOCK('if (agnos_protocol_version != AGNOS_PROTOCOL_VERSION)'):
+                STMT('''throw new WrongAgnosVersion("expected protocol '" + AGNOS_PROTOCOL_VERSION + "', found '" + agnos_protocol_version + "'")''')
             with BLOCK('if (service_name != "{0}")', service.name):
                 STMT('''throw new WrongServiceName("expected service '{0}', found '" + service_name + "'")''', service.name)
             if service.clientversion:

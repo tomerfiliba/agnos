@@ -58,7 +58,7 @@
     <Compile Include="AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\lib\csharp\src\Agnos.csproj">
+    <ProjectReference Include="..\..\..\libagnos\csharp\src\Agnos.csproj">
       <Project>{8D5457D1-288E-4517-BC0A-DC1EFD36EA78}</Project>
       <Name>Agnos</Name>
     </ProjectReference>

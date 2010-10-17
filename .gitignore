@@ -1,5 +1,6 @@
 .project
 .pydevproject
+.settings
 *.pyc
 *.class
 *.jar
@@ -20,11 +21,9 @@
 *_bindings.py
 *.sln.cache
 *.sln.proj
+*.dblite
 bin
 obj
-build
-demo/autogen
 gen-*
-.settings
-doc/_build
-.*
+site/_build
+release/

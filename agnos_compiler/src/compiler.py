@@ -5,8 +5,10 @@ import itertools
 from .idl_syntax import parse_const, parse_template, IDLError
 
 
+AGNOS_TOOLCHAIN_VERSION = "1.0.0"
+AGNOS_PROTOCOL_VERSION = "AGNOS-1.0"
+
 ID_GENERATOR = itertools.count(900000)
-AGNOS_VERSION = "AGNOS-1.0"
 INCLUDE_PATTERN = re.compile(' *\<!-- *INCLUDE *"([^"]+)" *--\>')
 
 

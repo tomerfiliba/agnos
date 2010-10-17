@@ -1,2 +1,2 @@
 #!/bin/sh
-exec java -cp /home/tomer/workspace/agnos_compiler/lib/java/agnos.jar:bindings/FeatureTest.jar:test.jar myserver "$@"
+exec java -cp /home/tomer/workspace/agnos_toolchain/libagnos/java/agnos.jar:bindings/FeatureTest.jar:test.jar myserver "$@"

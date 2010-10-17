@@ -1,9 +1,9 @@
 import os
 import itertools
 from .syntree import parse_source_files, SourceError, MethodNode, ClassAttrNode
-from agnos_compiler.compiler.langs import python, xml
-from agnos_compiler.compiler import compile
-from agnos_compiler.compiler.targets import PythonTarget
+from agnos_compiler import compile
+from agnos_compiler.langs import python, xml
+from agnos_compiler.targets import PythonTarget
 
 
 class FuncInfo(object):

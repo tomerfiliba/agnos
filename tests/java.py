@@ -6,9 +6,32 @@ from base import TargetTest
 
 
 class TestJava(TargetTest):
+    def generate_sconstruct(self, path):
+        with open(self.REL(os.path.join(path, "SConstruct")), "w") as f:
+            lines = [
+                "import os",
+                "",
+                "Decider('MD5')",
+                "",
+                "agnos_jar = SConscript('../../../libagnos/java/SConstruct')",
+                "env = Environment(",
+                "    JAVACLASSPATH = [str(agnos_jar)],",
+                ")",
+                "env['JARCHDIR'] = os.path.join(env.Dir('.').get_abspath(), 'classes')",
+                "",
+                "env.Java(target = 'classes', source = 'FeatureTest')",
+                "bindings_jar = env.Jar(target = 'FeatureTest.jar', source = 'classes')[0]",
+                "",
+                "outputs = [agnos_jar, bindings_jar]",
+                "Return('outputs')",
+            ]
+            for l in lines:
+                f.write(l + "\n")
+
     def runTest(self):
         self.run_agnosc("java", "tests/features.xml", "tests/java-test/bindings")
         print "scons"
+        self.generate_sconstruct("tests/java-test/bindings")
         self.run_cmdline("scons", cwd = self.REL("tests/java-test"))
         
         print "./myserver -m lib"

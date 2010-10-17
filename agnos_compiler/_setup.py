@@ -4,14 +4,15 @@ try:
 except ImportError:
     from distutils.core import setup
 
-setup(name = 'agnos-compiler',
-    version = '1.0.0',
+setup(name = 'agnos_compiler',
+    version = "__AGNOS_TOOLCHAIN_VERSION__",
     description = 'Agnos Compiler Toolchain',
     author = 'Tomer Filiba',
     author_email = 'tomerf@il.ibm.com',
     maintainer = 'Tomer Filiba',
     maintainer_email = 'tomerf@il.ibm.com',
     url = 'http://agnos.sourceforge.net',
+    platforms = ["POSIX", "Windows"],
     long_description = """\
 Agnos - The Agnostic RPC Framework
 ==================================
@@ -26,17 +27,18 @@ technologies like ``SOAP``, ``WSDL``, ``CORBA``, and others, but takes a
     license = 'Apache License 2.0',
     packages = [
         'agnos_compiler',
-        'agnos_compiler.compiler',
-        'agnos_compiler.compiler.langs',
-        'agnos_compiler.compiler.targets',
+        'agnos_compiler.langs',
+        'agnos_compiler.targets',
         'agnos_compiler.pysrcgen',
     ],
     package_dir = {
         'agnos_compiler' : 'src',
     },
     scripts = [
-        'bin/agnosc', 
-        'bin/agnosc-py'
+        'bin/agnosc',
+        'bin/agnosc.bat', 
+        'bin/agnosc-py',
+        'bin/agnosc-py.bat',
     ],
     classifiers=[
         "Development Status :: 4 - Beta",
