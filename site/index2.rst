@@ -1,14 +1,5 @@
 Welcome
 =======
-.. note::
-  **October 18, 2010**: Please note that Agnos is **still pending for our 
-  lawyers' approval** to be released as open source. In the meanwhile, 
-  this site only contains documentation material. As soon as we get the 
-  green light, the code and downloads will be made available.
-  
-  Also note that the site is a work in progress. A lot of material is missing
-  and we are working on putting it all up.
-
 **Agnos** is a cross-language, cross-platform, lightweight RPC framework with 
 support for passing objects *by-value* or *by-reference*. Agnos is meant to 
 allow programs written in different languages to easily interoperate, by 
@@ -23,6 +14,33 @@ Unlike the aforementioned technologies, which tend to require integration with
 (HTTP), often also requiring complex topologies (such as *name servers* for
 registering objects, etc.) -- Agnos is designed to be **simple, efficient, 
 and straightforward**, allowing for direct communication between two ends 
-using a compact binary protocol.
+using a compact binary protocol. You can **read more** :doc:`about Agnos <about>`.
+
+Get Me Going
+============
+:doc:`Get the Feel of Agnos <teaser>`
+
+:doc:`Download and Installation Instructions <install>`
+ 
+:doc:`Hands-On Tutorial <tutorial>`
+ 
+:doc:`Real-Life Demos <demos>`
+
+:doc:`Full Documentation <documentation>`
+
+:doc:`Contact Info and Bug Reports <contact>`
+
+Key Features
+============
+* **Interoperate** between ``python``, ``C#``, ``java``, and ``C++``
+* **Cross-platform**
+* Operates locally or over a network, using sockets directly or over HTTP
+* Generate IDL from **special comments within your source code** -- only one place to edit
+* Lightweight, speedy, and efficient
+* :ref:`library-mode` - connect to a spawned server process in one line of code
+* Released under the :doc:`Apache License <license>`
+
+For more info, refer to the :doc:`features and future plans <features>`.
+
 
 

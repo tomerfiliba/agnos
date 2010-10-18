@@ -3,7 +3,7 @@ ROOT=`pwd`/..
 export PATH=$PATH:$ROOT/bin
 
 echo "generating IDL"
-agnosc-py mextra -o autogen
+agnosrc-py mextra -o autogen
 
 echo "generating C# bindings"
 agnosc.py autogen/Mextra_autogen.xml -t cs -o csclient/Mextra

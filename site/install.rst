@@ -47,7 +47,7 @@ At this point, you should be able to pop up a python interpreter and type ::
 
 without getting errors.
 
-Agnos also installs two executable scripts: ``agnosc`` and ``agnosc-py``. You should
+Agnos also installs two executable scripts: ``agnosc`` and ``agnosrc-py``. You should
 try running them, to make sure they are in your ``PATH``. If not, it's most likely
 that you'll have to tweak your system's ``PATH``. On Windows, for example, you'll
 need to add ``C:\Python26\Scripts``, or something like that.

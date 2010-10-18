@@ -6,8 +6,8 @@ from base import TargetTest
 
 class SrcgenTest(TargetTest):
     def run_agnos_pysrcgen(self, target, rootdir, outdir):
-        print "agnosc-py %s --> %s" % (rootdir, outdir)
-        self.run_cmdline(["python", "agnos_compiler/bin/agnosc-py", "-o", outdir, rootdir], cwd = self.ROOT_DIR)
+        print "agnosrc-py %s --> %s" % (rootdir, outdir)
+        self.run_cmdline(["python", "agnos_compiler/bin/agnosrc-py", "-o", outdir, rootdir], cwd = self.ROOT_DIR)
 
     def runTest(self):
         self.run_agnos_pysrcgen("python", "tests/mextra", "tests/gen-mextra")
