@@ -5,6 +5,7 @@ Contents
    :maxdepth: 2
    
    index
+   features
    download
    install
    tut-1
@@ -13,6 +14,7 @@ Contents
    demo-1
    demo-2
    idl
+   types
    srcgen
    tools
    license

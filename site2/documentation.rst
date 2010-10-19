@@ -25,6 +25,7 @@ Reference
 * :doc:`idl`
 * :doc:`srcgen`
 * :doc:`tools`
+* :doc:`types`
 
 Misc
 ----
