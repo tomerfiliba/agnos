@@ -115,7 +115,7 @@ if __name__ == "__main__":
         with BLOCK("def foo(self)"):
             STMT("self.dispose(false)")
     
-    print m.render()
+    print(m.render())
 
 
 

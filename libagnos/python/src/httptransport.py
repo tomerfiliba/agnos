@@ -17,9 +17,18 @@
 # limitations under the License.
 ##############################################################################
 
-from cStringIO import StringIO
-from httplib import HTTPConnection, HTTPSConnection
-from urlparse import urlparse
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from io import StringIO
+try:
+    from httplib import HTTPConnection, HTTPSConnection
+except ImportError:
+    from http.client import HTTPConnection, HTTPSConnection
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
 from .transports import Transport
 
 

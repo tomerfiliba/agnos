@@ -172,13 +172,13 @@ class BaseProcessor(object):
                         self.process_get_info(seq)
                     else:
                         raise ProtocolError("unknown command code: %d" % (cmd,))
-                except ProtocolError, ex:
+                except ProtocolError as ex:
                     self.transport.reset()
                     self.send_protocol_error(ex)
-                except GenericException, ex:
+                except GenericException as ex:
                     self.transport.reset()
                     self.send_generic_exception(ex)
-                except PackedException, ex:
+                except PackedException as ex:
                     self.transport.reset()
                     self.send_packed_exception(ex)
 
@@ -226,11 +226,11 @@ class BaseProcessor(object):
         args = unpack_args()
         try:
             res = func(args)
-        except PackedException, ex:
+        except PackedException:
             raise
-        except ProtocolError, ex:
+        except ProtocolError:
             raise
-        except Exception, ex:
+        except Exception:
             raise self.pack_exception(*sys.exc_info())
         else:
             Int8.pack(REPLY_SUCCESS, self.transport)

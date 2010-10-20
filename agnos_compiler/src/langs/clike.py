@@ -128,7 +128,7 @@ if __name__ == "__main__":
                 with BLOCK("public ~moshe()"):
                     STMT("Dispose(false)")
     
-    print m.render()
+    print(m.render())
 
 
 

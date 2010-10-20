@@ -130,9 +130,9 @@ class Element(object):
         for name, checker in self.ATTRS.iteritems():
             try:
                 value = checker(name, attrib.pop(name, None))
-            except IDLError, ex:
-                print ex
-                print self.tag, attrib, members, annotations
+            except IDLError as ex:
+                print( ex)
+                print( self.tag, attrib, members, annotations)
                 raise
             setattr(self, name, value)
         if attrib:

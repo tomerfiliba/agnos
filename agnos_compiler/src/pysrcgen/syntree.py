@@ -29,11 +29,11 @@ class SourceError(Exception):
     
     def display(self):
         if self.blk:
-            print "Error at %s(%s)" % (self.blk.fileinfo.filename, self.blk.lineno)
-            print "    %s" % (self.blk.text)
+            print( "Error at %s(%s)" % (self.blk.fileinfo.filename, self.blk.lineno))
+            print( "    %s" % (self.blk.text))
             for k, v in self.kwargs.iteritems():
-                print "    %s = %r" % (k, v)
-        print self.msg
+                print( "    %s = %r" % (k, v))
+        print( self.msg)
 
 
 class FileInfo(object):
@@ -97,7 +97,7 @@ class SourceBlock(object):
             if not line:
                 continue
             root.append(lineno, indentation, line)
-            #print "." * indentation + line
+            #print( "." * indentation + line)
         return root
 
 
@@ -166,7 +166,7 @@ class TokenizedBlock(object):
         return cls("#module-root#", {}, doc, children, blk)
     
     def debug(self, level = 0):
-        print ".." * level, self.tag, self.args
+        print(".." * level + " " + self.tag + " " + self.args)
         for child in self.children:
             child.debug(level + 1)
 
@@ -266,7 +266,7 @@ def arg_default(default, type = str):
             value = blk.args[argname]
             try:
                 return type(value)
-            except (ValueError, TypeError), ex:
+            except (ValueError, TypeError) as ex:
                 raise SourceError(blk.srcblock, "argument %r is a %s, cannot be assigned %r", argname, type.__name__, value)
     return wrapper
 
@@ -536,7 +536,7 @@ def parse_source_file(filename):
     #try:
     ast_root = ModuleNode(tokenized_root)
     ast_root.postprocess()
-    #except Exception, ex:
+    #except Exception as ex:
     #tokenized_root.debug()
     #raise
     return ast_root

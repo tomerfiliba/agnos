@@ -1,3 +1,9 @@
+.. toctree::
+   :hidden:
+   
+   contents
+
+
 Welcome
 =======
 **Agnos** is a cross-language, cross-platform, lightweight RPC framework with 

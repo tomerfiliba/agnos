@@ -384,7 +384,7 @@ def main(rootdir, outdir = None, idlfile = None, serverfile = None, rootpackage 
         rootpackage = os.path.basename(rootdir)
     try:
         ast_root = parse_source_files(rootdir, filenames, rootpackage)
-    except SourceError, ex:
+    except SourceError as ex:
         ex.display()
         raise
 

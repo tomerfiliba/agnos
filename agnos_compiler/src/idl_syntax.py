@@ -211,22 +211,22 @@ def _parse_template(stream):
     return "".join(head), children
 
 
-if __name__ == "__main__":
-    try:
-        print parse_const(r"""[0x12, 11, 0b1110, 3.1415926535, 3.14e+19, 3.14e-19]""")
-        print parse_const(r"""['hello', "world", 'hi\n\r\tthere', 'hi\\there', 'hi\"there', 'hi\'there', 'hi\x20there']""")
-        print parse_const(r"""{1 : 2, "hello" : 17.3}""")
-        #print parse_const(r"""[17, 18, 19] 20""")
-        #print parse_const(r"""{17 : 18, 19 : 20} 21""")
-        print parse_template("map[int, list[str]]")
-    except IDLError:
-        raise
-    except Exception:
-        import pdb
-        import sys
-        import traceback
-        print "".join(traceback.format_exception(*sys.exc_info()))
-        pdb.post_mortem(sys.exc_info()[2])
+#if __name__ == "__main__":
+#    try:
+#        print parse_const(r"""[0x12, 11, 0b1110, 3.1415926535, 3.14e+19, 3.14e-19]""")
+#        print parse_const(r"""['hello', "world", 'hi\n\r\tthere', 'hi\\there', 'hi\"there', 'hi\'there', 'hi\x20there']""")
+#        print parse_const(r"""{1 : 2, "hello" : 17.3}""")
+#        print parse_const(r"""[17, 18, 19] 20""")
+#        print parse_const(r"""{17 : 18, 19 : 20} 21""")
+#        print parse_template("map[int, list[str]]")
+#    except IDLError:
+#        raise
+#    except Exception:
+#        import pdb
+#        import sys
+#        import traceback
+#        print "".join(traceback.format_exception(*sys.exc_info()))
+#        pdb.post_mortem(sys.exc_info()[2])
     
 
 

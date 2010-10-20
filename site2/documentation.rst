@@ -26,6 +26,7 @@ Reference
 * :doc:`srcgen`
 * :doc:`tools`
 * :doc:`types`
+* :doc:`client`
 
 Misc
 ----

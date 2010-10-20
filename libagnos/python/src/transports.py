@@ -22,7 +22,10 @@ import signal
 import time
 import itertools
 from select import select
-from cStringIO import StringIO 
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from io import StringIO
 from contextlib import contextmanager
 from subprocess import Popen, PIPE
 from . import packers

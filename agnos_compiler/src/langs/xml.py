@@ -145,8 +145,8 @@ if __name__ == "__main__":
                     with BLOCK("td"):
                         TEXT("<b>hi</b> there", escape = False)
     
-    print doc.render()
-    print "---------"
+    print( doc.render())
+    print( "---------")
     
     with XmlDoc("service", name="moshe") as doc:
         with doc.block("doc"):
@@ -156,7 +156,7 @@ if __name__ == "__main__":
                 doc.text("this is the filename to open")
         doc.elem("this", elem="has no children")
     
-    print doc.render()
+    print( doc.render())
     
 
 

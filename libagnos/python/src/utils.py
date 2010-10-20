@@ -18,8 +18,11 @@
 ##############################################################################
 
 from datetime import datetime
-import packers
 import threading
+try:
+    long
+except NameError:
+    long = int
 
 
 class RLock(object):
@@ -162,18 +165,24 @@ class HeteroMap(object):
             raise TypeError("cannot deduce packer for %r" % (val,))
         self.add(key, keypacker, val, valpacker)
     def _get_packer(self, obj, default):
-        if isinstance(obj, basestring):
+        from . import packers
+        if isinstance(obj, str):
             return packers.Str
-        if isinstance(obj, int) and obj < MAX_INT32:
-            return packers.Int32
-        if isinstance(obj, long):
+        elif isinstance(obj, int):
+            if obj < MAX_INT32:
+                return packers.Int32
+            else:
+                return packers.Int64
+        elif isinstance(obj, long):
             return packers.Int64
-        if isinstance(obj, float):
+        elif isinstance(obj, float):
             return packers.Float
-        if isinstance(obj, datetime):
+        elif isinstance(obj, datetime):
             return packers.Date
-        if isinstance(obj, bytes):
+        elif isinstance(obj, bytes):
             return packers.Buffer
+        else:
+            return None
         
 
 

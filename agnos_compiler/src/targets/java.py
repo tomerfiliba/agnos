@@ -488,7 +488,7 @@ class JavaTarget(TargetBase):
                 STMT('return super.toString() + "<" + _objref + ">"')
 
     def emit_javadoc(self, text, module):
-        if isinstance(text, basestring):
+        if isinstance(text, str):
             text = [text]
         text = "\n".join(text)
         text = text.strip()
