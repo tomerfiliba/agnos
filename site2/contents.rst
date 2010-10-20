@@ -5,6 +5,7 @@ Contents
    :maxdepth: 2
    
    index
+   documentation
    features
    download
    install
