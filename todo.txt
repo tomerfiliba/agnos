@@ -1,6 +1,5 @@
 * todo:
-    * define AGNOS_PROTOCOL_VERSION and AGNOS_TOOLCHAIN_VERSION
-    * add license comment block to all files 
+    * !!!! add INFO_TYPES, INFO_SERVICE to all targets
     * java manifest (minimum version?)
     * c# assembly info
 	* RESTful

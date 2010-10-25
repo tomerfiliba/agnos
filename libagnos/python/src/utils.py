@@ -23,6 +23,10 @@ try:
     long
 except NameError:
     long = int
+try:
+    basestring
+except NameError:
+    basestring = str
 
 
 class RLock(object):
@@ -103,7 +107,17 @@ class HeteroMap(object):
         text = "HeteroMap:\n" + "\n".join("%r = %r" % (k, v) for k, v in self.iteritems())
         return text.replace("\n", "\n  ")
     
+    def new_map(self, name):
+        from . import packers
+        map2 = HeteroMap()
+        self.add(name, self._get_packer(name, None), map2, packers.BuiltinHeteroMapPacker)
+        return map2
+    
     def add(self, key, keypacker, val, valpacker):
+        if keypacker is None:
+            raise TypeError("keypacker not given")
+        if valpacker is None:
+            raise TypeError("valpacker not given")
         self.fields[key] = (val, keypacker, valpacker)
         return val
     def clear(self):
@@ -119,6 +133,7 @@ class HeteroMap(object):
             yield k, v[0]
     def iterkeys(self):
         return self.fields.iterkeys()
+    __iter__ = iterkeys
     def itervalues(self):
         for v in self.fields.itervalues():
             yield v[0]
@@ -166,8 +181,10 @@ class HeteroMap(object):
         self.add(key, keypacker, val, valpacker)
     def _get_packer(self, obj, default):
         from . import packers
-        if isinstance(obj, str):
+        if isinstance(obj, basestring):
             return packers.Str
+        elif isinstance(obj, bool):
+            return packers.Bool
         elif isinstance(obj, int):
             if obj < MAX_INT32:
                 return packers.Int32

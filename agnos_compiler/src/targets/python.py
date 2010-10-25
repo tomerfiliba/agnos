@@ -335,23 +335,80 @@ class PythonTarget(TargetBase):
             SEP()
             with BLOCK("def process_get_functions_info(self, info)"):
                 for func in service.funcs.values():
-                    STMT("funcinfo = utils.HeteroMap()")
+                    STMT("funcinfo = info.new_map({0})", func.id)
                     STMT('funcinfo["name"] = "{0}"', func.name)
                     STMT('funcinfo["type"] = "{0}"', str(func.type))
-                    STMT("args = utils.HeteroMap()")
+                    STMT("arg_names = []")
+                    STMT("arg_types = []")
                     for arg in func.args:
-                        STMT('args["{0}"] = "{1}"', arg.name, str(arg.type))
-                    STMT('funcinfo.add("args", packers.Str, args, packers.BuiltinHeteroMapPacker)')
+                        STMT('arg_names.append("{0}")', arg.name)
+                        STMT('arg_types.append("{0}")', str(arg.type))
+                    STMT('funcinfo.add("arg_names", packers.Str, arg_names, packers.list_of_str)')
+                    STMT('funcinfo.add("arg_types", packers.Str, arg_types, packers.list_of_str)')
                     if func.annotations:
                         with BLOCK("anno = ", prefix = "{", suffix = "}"):
                             for anno in func.annotations:
                                 STMT('"{0}" : "{1}",', anno.name, repr(anno.value))
                         STMT('funcinfo.add("annotations", packers. anno, packers.map_of_str_str)')
-                    STMT('info.add({0}, packers.Int32, funcinfo, packers.BuiltinHeteroMapPacker)', func.id)
             SEP()
             with BLOCK("def process_get_function_codes(self, info)"):
                 for func in service.funcs.values():
                     STMT('info["{0}"] = {1}', func.name, func.id)
+            SEP()
+            with BLOCK("def process_get_types_info(self, info)"):
+                STMT('group = info.new_map("enums")')
+                for enum in service.enums():
+                    STMT('members = group.new_map("{0}")', enum.name)
+                    for mem in enum.members:
+                        STMT('members["{0}"] = "{1}"', mem.name, mem.value)
+                SEP()
+                STMT('group = info.new_map("records")')
+                for rec in service.records():
+                    STMT('members = group.new_map("{0}")', rec.name)
+                    for mem in rec.members:
+                        STMT('members["{0}"] = "{1}"', mem.name, mem.type)
+                SEP()
+                STMT('group = info.new_map("classes")')
+                for cls in service.classes():
+                    STMT('cls_group = group.new_map("{0}")', cls.name)
+                    STMT('attr_group = cls_group.new_map("attrs")')
+                    STMT('meth_group = cls_group.new_map("methods")')
+                    for attr in cls.attrs:
+                        STMT('a = attr_group.new_map("{0}")', attr.name)
+                        STMT('a["type"] = "{0}"', str(attr.type))
+                        STMT('a["get"] = {0}', attr.get)
+                        STMT('a["set"] = {0}', attr.set)
+                    for meth in cls.methods:
+                        STMT('m = meth_group.new_map("{0}")', meth.name)
+                        STMT('m["type"] = "{0}"', arg.type)
+                        STMT("arg_names = []")
+                        STMT("arg_types = []")
+                        for arg in meth.args:
+                            STMT('arg_names.append("{0}")', arg.name)
+                            STMT('arg_types.append("{0}")', str(arg.type))
+                        STMT('m.add("arg_names", packers.Str, arg_names, packers.list_of_str)')
+                        STMT('m.add("arg_types", packers.Str, arg_types, packers.list_of_str)')
+            SEP()
+            with BLOCK("def process_get_service_info(self, info)"):
+                STMT('funcs = info.new_map("functions")')
+                for func in service.funcs.values():
+                    if not isinstance(func, compiler.Func):
+                        continue
+                    STMT('func = funcs.new_map("{0}")', func.dotted_fullname)
+                    STMT('func["type"] = "{0}"', str(func.type))
+                    STMT("arg_names = []")
+                    STMT("arg_types = []")
+                    for arg in func.args:
+                        STMT('arg_names.append("{0}")', arg.name)
+                        STMT('arg_types.append("{0}")', str(arg.type))
+                    STMT('func.add("arg_names", packers.Str, arg_names, packers.list_of_str)')
+                    STMT('func.add("arg_types", packers.Str, arg_types, packers.list_of_str)')
+                STMT('consts = info.new_map("consts")')
+                for const in service.consts.values():
+                    STMT('const = consts.new_map("{0}")', const.dotted_fullname)
+                    STMT('const["type"] = "{0}"', str(const.type))
+                    STMT('const["value"] = "{0}"', const.value)
+            SEP()
         SEP()
         with BLOCK("def ProcessorFactory(handler, exception_map = {})"):
             STMT("return lambda transport: Processor(transport, handler, exception_map)")

@@ -1,3 +1,32 @@
 Agnos - The Agnostic RPC Framework
 
 Agnos is a cross-platform, cross-language RPC framework.
+
+==============================================================================
+
+How to run the Agnos Toolchain from a cloned repository:
+
+1) Clone this repository
+
+2) Create a symlink (on Windows use mklink) to agnos_compiler/src and place
+   it somewherein your PYTHONPATH, e.g.:
+   
+   ln -s /absolute/path/of/this/repo/agnos_compiler/src /usr/lib/python2.6/site-packages/agnos_compiler
+   
+   Note: the link should be named "agnos_compiler"
+
+3) Create a symlink to libagnos/python/src and place it somewhere in your 
+   PYTHONPATH, e.g:
+
+   ln -s /absolute/path/of/this/repo/libagnos/python/src /usr/lib/python2.6/site-packages/agnos
+   
+   Note: the link should be named "agnos"
+
+4) Put bin/agnosc and bin/agnosrc-py in your PATH (either by chaning PATH or
+   by creating symlinks to /usr/bin, etc.)
+
+5) Build the parts of libagnos that you wish to use:
+   * Java: cd to libagnos/java and run scons
+   * C++: cd to libagnos/cpp and run scons
+   * C#: cd to libagnos/csharp/src and run "msbuild Agnos.sln" or "xbuild Agnos.sln" 
+
