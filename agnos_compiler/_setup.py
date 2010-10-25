@@ -48,6 +48,7 @@ technologies like ``SOAP``, ``WSDL``, ``CORBA``, and others, but takes a
         'agnos_compiler',
         'agnos_compiler.langs',
         'agnos_compiler.targets',
+        'agnos_compiler.restful',
         'agnos_compiler.pysrcgen',
     ],
     package_dir = {
@@ -58,6 +59,8 @@ technologies like ``SOAP``, ``WSDL``, ``CORBA``, and others, but takes a
         'bin/agnosc.bat', 
         'bin/agnosrc-py',
         'bin/agnosrc-py.bat',
+        'bin/restful-agnos',
+        'bin/restful-agnos.bat',
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

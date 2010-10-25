@@ -1,15 +1,14 @@
 * todo:
+    * finish RESTful
     * !!!! add INFO_TYPES, INFO_SERVICE to all targets
     * java manifest (minimum version?)
     * c# assembly info
-	* RESTful
-        RESTful access for unsupported languages: write a small python mediator
-        that talks agnos on one side and exposes that as REST on the other 
 
 * features:
 	* async, timed
 	* SSL
 	* rlist, rset, rmap (by ref)
+    * XML RPC backend?
     * serialize to file -- can be used as a universal serializer
     * java srcgen
     * c# srcgen

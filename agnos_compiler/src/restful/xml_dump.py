@@ -16,6 +16,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##############################################################################
-"""
-generate a REST web server that can be used to invoke another service
-"""
+
+from agnos_compiler.langs.xml import XmlDoc
