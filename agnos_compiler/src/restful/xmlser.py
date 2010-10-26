@@ -1,0 +1,176 @@
+# -*- coding: utf-8 -*-
+##############################################################################
+# Part of the Agnos RPC Framework
+#    http://agnos.sourceforge.net
+#
+# Copyright 2010, Tomer Filiba (tomerf@il.ibm.com; tomerfiliba@gmail.com)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##############################################################################
+
+import agnos
+from agnos.packers import Date as DatePacker
+from datetime import datetime
+from agnos_compiler.langs.xml import XmlDoc
+import xml.etree.ElementTree as etree
+
+try:
+    basestring
+except NameError:
+    basestring = str
+
+
+def _dumps(obj, doc):
+    if obj is None:
+        doc.elem("null")
+    elif isinstance(obj, bool):
+        doc.elem("true" if obj else "false")
+    elif isinstance(obj, (int, long)):
+        doc.elem("int", value = str(obj))
+    elif isinstance(obj, float):
+        doc.elem("float", value = str(obj))
+    elif isinstance(obj, basestring):
+        doc.elem("str", value = str(obj))
+    elif isinstance(obj, bytes):
+        doc.elem("buffer", value = obj)
+    elif isinstance(obj, datetime):
+        doc.elem("date", value = str(DatePacker.datetime_to_usec(obj)))
+    elif isinstance(obj, (list, tuple)):
+        with doc.block("list"):
+            for item in obj:
+                _dumps(item, doc)
+    elif isinstance(obj, (set, frozenset)):
+        with doc.block("set"):
+            for item in obj:
+                _dumps(item, doc)
+    elif isinstance(obj, dict):
+        with doc.block("map"):
+            for k, v in obj.iteritems():
+                with doc.block("item"):
+                    with doc.block("key"):
+                        _dumps(k, doc)
+                    with doc.block("value"):
+                        _dumps(v, doc)
+    elif isinstance(obj, agnos.HeteroMap):
+        with doc.block("heteromap"):
+            for k, v in obj.iteritems():
+                with doc.block("item"):
+                    with doc.block("key"):
+                        _dumps(k, doc)
+                    with doc.block("value"):
+                        _dumps(v, doc)
+    # enums
+    elif isinstance(obj, agnos.Enum):
+        doc.elem("enum", type = obj._idl_type, member = obj.name)
+    # records
+    elif isinstance(obj, agnos.BaseRecord):
+        with doc.block("record"):
+            doc.attr(type = obj._idl_type)
+            for name in obj._idl_attrs:
+                with doc.block("attr", name = name):
+                    _dumps(getattr(obj, name), doc)
+    # proxies
+    elif isinstance(obj, agnos.BaseProxy):
+        with doc.block("proxy"):
+            doc.attr(type = obj._idl_type)
+            doc.attr(url = "/objs/%s" % (obj._objref,))
+    else:
+        raise TypeError("cannot dump %r" % (type(obj),))
+
+
+def dumps(obj, lean = True):
+    doc = XmlDoc("fake-root")
+    _dumps(obj, doc)
+    doc.tag = doc.children[0].tag
+    doc.attrs = doc.children[0].attrs
+    doc.children = doc.children[0].children
+    return doc.render(lean)
+
+def _loads(elem, bindings_module, proxy_map):
+    if elem.tag == "null":
+        return None
+    elif elem.tag == "true":
+        return True
+    elif elem.tag == "false":
+        return False
+    elif elem.tag == "int":
+        return int(elem.attrib["value"])
+    elif elem.tag == "float":
+        return float(elem.attrib["value"])
+    elif elem.tag == "str":
+        return str(elem.attrib["value"])
+    elif elem.tag == "buffer":
+        return bytes(elem.attrib["value"])
+    elif elem.tag == "date":
+        return DatePacker.usec_to_datetime(int(elem.attrib["value"]))
+    elif elem.tag == "list":
+        return [_loads(child, bindings_module, proxy_map) 
+            for child in elem.getchildren()]
+    elif elem.tag == "set":
+        return set(_loads(child, bindings_module, proxy_map) 
+            for child in elem.getchildren())
+    elif elem.tag == "map" or elem.tag == "heteromap":
+        map = {}
+        for child in elem.getchildren():
+            k = _loads(child.find("key"), bindings_module, proxy_map)
+            v = _loads(child.find("value"), bindings_module, proxy_map)
+            map[k] = v
+        return map
+    elif elem.tag == "enum":
+        enum_cls = getattr(bindings_module, elem.attrib["type"])
+        return getattr(enum_cls, elem.attrib["member"])
+    elif elem.tag == "record":
+        rec_cls = getattr(bindings_module, elem.attrib["type"])
+        rec = rec_cls()
+        for child in elem.getchildren():
+            name = child.attrib["name"]
+            val = _loads(child.getchildren()[0], bindings_module, proxy_map)
+            setattr(rec, name, val)
+        return rec
+    elif elem.tag == "proxy":
+        url = elem.attrib["url"]
+        try:
+            oid = int(url.replace("//", "/").strip("/").split("/", 1)[1])
+        except Exception:
+            raise ValueError("invalid proxy url: %r" % (url,))
+        try:
+            return proxy_map[oid]
+        except KeyError:
+            raise ValueError("invalid proxy objref: %r" % (url,))
+    else:
+        raise ValueError("cannot load %r" % (elem.tag,))
+
+            
+def loads(data, bindings_module, proxy_map):
+    xml = etree.fromstring(data)
+    return _loads(xml, bindings_module, proxy_map)
+
+
+if __name__ == "__main__":
+    from agnos.utils import create_enum
+    import FeatureTest_bindings
+    
+    FeatureTest_bindings.moshe = create_enum("moshe", dict(a=1,b=2,c=3))
+    x = FeatureTest_bindings.RecordB(1,2,3)
+    p = FeatureTest_bindings.PersonProxy(x, 1234, False)
+    
+    text = dumps([set([18,19,True]), FeatureTest_bindings.moshe.a, x, p])
+    print text
+    print loads(text, FeatureTest_bindings, {1234 : p})
+
+
+
+
+
+
+

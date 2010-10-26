@@ -49,7 +49,10 @@ INFO_TYPES = 4
 INFO_SERVICE = 5
 
 
-class PackedException(Exception):
+class BaseRecord(object):
+    pass
+
+class PackedException(Exception, BaseRecord):
     def __str__(self):
         return repr(self)
     # to override python (>= 2.6) stupid warnings
@@ -153,7 +156,7 @@ class BaseProcessor(object):
 
     def send_packed_exception(self, exc): 
         Int8.pack(REPLY_PACKED_EXCEPTION, self.transport)
-        Int32.pack(exc._recid, self.transport)
+        Int32.pack(exc._idl_id, self.transport)
         packer = self.packed_exceptions[type(exc)]
         packer.pack(exc, self.transport)
     
@@ -252,7 +255,7 @@ class BaseProcessor(object):
         
         packed_type = self.exception_map[typ]
         attrs = {}
-        for name in packed_type._ATTRS:
+        for name in packed_type._idl_attrs:
             if hasattr(val, name):
                 attrs[name] = getattr(val, name)
         for v, name in zip(val, packed_type._ATTRS):

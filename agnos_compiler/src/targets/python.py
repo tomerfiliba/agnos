@@ -196,10 +196,11 @@ class PythonTarget(TargetBase):
         if isinstance(rec, compiler.Exception):
             base = "agnos.PackedException"
         else:
-            base = "object"
+            base = "agnos.BaseRecord"
         with BLOCK("class {0}({1})", rec.name, base):
-            STMT("_recid = {0}", rec.id)
-            STMT("_ATTRS = [{0}]", ", ".join(repr(mem.name) for mem in rec.members))
+            STMT('_idl_type = "{0}"', rec.name)
+            STMT("_idl_id = {0}", rec.id)
+            STMT("_idl_attrs = [{0}]", ", ".join(repr(mem.name) for mem in rec.members))
             SEP()
             args = ["%s = None" % (mem.name,) for mem in rec.members]
             with BLOCK("def __init__(self, {0})", ", ".join(args)):
@@ -242,6 +243,7 @@ class PythonTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         with BLOCK("class {0}Proxy(agnos.BaseProxy)", cls.name):
+            STMT('_idl_type = "{0}"', cls.name)
             STMT("__slots__ = []")
             SEP()
             for attr in cls.all_attrs:

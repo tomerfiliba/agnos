@@ -35,9 +35,10 @@ class StatePacker(packers.Packer):
 #
 # records
 #
-class RecordA(object):
-    _recid = 900101
-    _ATTRS = ['ob_refcount', 'ob_type']
+class RecordA(agnos.BaseRecord):
+    _idl_type = "RecordA"
+    _idl_id = 900101
+    _idl_attrs = ['ob_refcount', 'ob_type']
     
     def __init__(self, ob_refcount = None, ob_type = None):
         self.ob_refcount = ob_refcount
@@ -47,9 +48,10 @@ class RecordA(object):
         attrs = [self.ob_refcount, self.ob_type]
         return 'RecordA(%s)' % (', '.join(repr(a) for a in attrs),)
 
-class Address(object):
-    _recid = 900011
-    _ATTRS = ['state', 'city', 'street', 'num']
+class Address(agnos.BaseRecord):
+    _idl_type = "Address"
+    _idl_id = 900011
+    _idl_attrs = ['state', 'city', 'street', 'num']
     
     def __init__(self, state = None, city = None, street = None, num = None):
         self.state = state
@@ -61,9 +63,10 @@ class Address(object):
         attrs = [self.state, self.city, self.street, self.num]
         return 'Address(%s)' % (', '.join(repr(a) for a in attrs),)
 
-class Everything(object):
-    _recid = 900058
-    _ATTRS = ['some_int8', 'some_int16', 'some_int32', 'some_int64', 'some_float', 'some_bool', 'some_date', 'some_buffer', 'some_string', 'some_list', 'some_set', 'some_map', 'some_record', 'some_class']
+class Everything(agnos.BaseRecord):
+    _idl_type = "Everything"
+    _idl_id = 900058
+    _idl_attrs = ['some_int8', 'some_int16', 'some_int32', 'some_int64', 'some_float', 'some_bool', 'some_date', 'some_buffer', 'some_string', 'some_list', 'some_set', 'some_map', 'some_record', 'some_class']
     
     def __init__(self, some_int8 = None, some_int16 = None, some_int32 = None, some_int64 = None, some_float = None, some_bool = None, some_date = None, some_buffer = None, some_string = None, some_list = None, some_set = None, some_map = None, some_record = None, some_class = None):
         self.some_int8 = some_int8
@@ -85,9 +88,10 @@ class Everything(object):
         attrs = [self.some_int8, self.some_int16, self.some_int32, self.some_int64, self.some_float, self.some_bool, self.some_date, self.some_buffer, self.some_string, self.some_list, self.some_set, self.some_map, self.some_record, self.some_class]
         return 'Everything(%s)' % (', '.join(repr(a) for a in attrs),)
 
-class RecordB(object):
-    _recid = 900103
-    _ATTRS = ['ob_refcount', 'ob_type', 'intval']
+class RecordB(agnos.BaseRecord):
+    _idl_type = "RecordB"
+    _idl_id = 900103
+    _idl_attrs = ['ob_refcount', 'ob_type', 'intval']
     
     def __init__(self, ob_refcount = None, ob_type = None, intval = None):
         self.ob_refcount = ob_refcount
@@ -99,8 +103,9 @@ class RecordB(object):
         return 'RecordB(%s)' % (', '.join(repr(a) for a in attrs),)
 
 class MartialStatusError(agnos.PackedException):
-    _recid = 900014
-    _ATTRS = ['message', 'person']
+    _idl_type = "MartialStatusError"
+    _idl_id = 900014
+    _idl_attrs = ['message', 'person']
     
     def __init__(self, message = None, person = None):
         self.message = message
@@ -170,7 +175,32 @@ pi = 3.1415926535000001
 #
 # classes
 #
+class ClassAProxy(agnos.BaseProxy):
+    _idl_type = "ClassA"
+    __slots__ = []
+    
+    def _get_attr1(self):
+        return self._client._funcs.sync_900109(self)
+    def _set_attr1(self, value):
+        self._client._funcs.sync_900109(self, value)
+    attr1 = property(_get_attr1, _set_attr1)
+    def _get_attr2(self):
+        return self._client._funcs.sync_900111(self)
+    def _set_attr2(self, value):
+        self._client._funcs.sync_900111(self, value)
+    attr2 = property(_get_attr2, _set_attr2)
+    
+    def method1(self, a, b):
+        return self._client._funcs.sync_900113(self, a, b)
+    
+    # downcasts
+    def cast_to_ClassB():
+        return ClassBProxy(self._client, self._objref, False)
+    def cast_to_ClassC():
+        return ClassCProxy(self._client, self._objref, False)
+
 class PersonProxy(agnos.BaseProxy):
+    _idl_type = "Person"
     __slots__ = []
     
     def _get_name(self):
@@ -201,30 +231,8 @@ class PersonProxy(agnos.BaseProxy):
     def think(self, a, b):
         return self._client._funcs.sync_900148(self, a, b)
 
-class ClassAProxy(agnos.BaseProxy):
-    __slots__ = []
-    
-    def _get_attr1(self):
-        return self._client._funcs.sync_900109(self)
-    def _set_attr1(self, value):
-        self._client._funcs.sync_900109(self, value)
-    attr1 = property(_get_attr1, _set_attr1)
-    def _get_attr2(self):
-        return self._client._funcs.sync_900111(self)
-    def _set_attr2(self, value):
-        self._client._funcs.sync_900111(self, value)
-    attr2 = property(_get_attr2, _set_attr2)
-    
-    def method1(self, a, b):
-        return self._client._funcs.sync_900113(self, a, b)
-    
-    # downcasts
-    def cast_to_ClassB():
-        return ClassBProxy(self._client, self._objref, False)
-    def cast_to_ClassC():
-        return ClassCProxy(self._client, self._objref, False)
-
 class ClassBProxy(agnos.BaseProxy):
+    _idl_type = "ClassB"
     __slots__ = []
     
     def _get_attr1(self):
@@ -257,6 +265,7 @@ class ClassBProxy(agnos.BaseProxy):
         return ClassAProxy(self._client, self._objref, False)
 
 class ClassCProxy(agnos.BaseProxy):
+    _idl_type = "ClassC"
     __slots__ = []
     
     def _get_attr1(self):
@@ -603,8 +612,8 @@ class Processor(agnos.BaseProcessor):
         self.exception_map = exception_map
         storer = self.store
         loader = self.load
-        PersonObjRef = packers.ObjRef(900039, storer, loader)
         ClassAObjRef = packers.ObjRef(900083, storer, loader)
+        PersonObjRef = packers.ObjRef(900039, storer, loader)
         ClassBObjRef = packers.ObjRef(900090, storer, loader)
         ClassCObjRef = packers.ObjRef(900097, storer, loader)
         
@@ -1223,6 +1232,27 @@ class Processor(agnos.BaseProcessor):
         members["person"] = "Person"
         
         group = info.new_map("classes")
+        cls_group = group.new_map("ClassA")
+        attr_group = cls_group.new_map("attrs")
+        meth_group = cls_group.new_map("methods")
+        a = attr_group.new_map("attr1")
+        a["type"] = "int32"
+        a["get"] = True
+        a["set"] = True
+        a = attr_group.new_map("attr2")
+        a["type"] = "int32"
+        a["get"] = True
+        a["set"] = True
+        m = meth_group.new_map("method1")
+        m["type"] = "Person"
+        arg_names = []
+        arg_types = []
+        arg_names.append("a")
+        arg_types.append("str")
+        arg_names.append("b")
+        arg_types.append("bool")
+        m.add("arg_names", packers.Str, arg_names, packers.list_of_str)
+        m.add("arg_types", packers.Str, arg_types, packers.list_of_str)
         cls_group = group.new_map("Person")
         attr_group = cls_group.new_map("attrs")
         meth_group = cls_group.new_map("methods")
@@ -1251,7 +1281,7 @@ class Processor(agnos.BaseProcessor):
         a["get"] = True
         a["set"] = False
         m = meth_group.new_map("marry")
-        m["type"] = "Person"
+        m["type"] = "bool"
         arg_names = []
         arg_types = []
         arg_names.append("partner")
@@ -1274,27 +1304,6 @@ class Processor(agnos.BaseProcessor):
         arg_types.append("float")
         m.add("arg_names", packers.Str, arg_names, packers.list_of_str)
         m.add("arg_types", packers.Str, arg_types, packers.list_of_str)
-        cls_group = group.new_map("ClassA")
-        attr_group = cls_group.new_map("attrs")
-        meth_group = cls_group.new_map("methods")
-        a = attr_group.new_map("attr1")
-        a["type"] = "int32"
-        a["get"] = True
-        a["set"] = True
-        a = attr_group.new_map("attr2")
-        a["type"] = "int32"
-        a["get"] = True
-        a["set"] = True
-        m = meth_group.new_map("method1")
-        m["type"] = "float"
-        arg_names = []
-        arg_types = []
-        arg_names.append("a")
-        arg_types.append("str")
-        arg_names.append("b")
-        arg_types.append("bool")
-        m.add("arg_names", packers.Str, arg_names, packers.list_of_str)
-        m.add("arg_types", packers.Str, arg_types, packers.list_of_str)
         cls_group = group.new_map("ClassB")
         attr_group = cls_group.new_map("attrs")
         meth_group = cls_group.new_map("methods")
@@ -1303,7 +1312,7 @@ class Processor(agnos.BaseProcessor):
         a["get"] = True
         a["set"] = True
         m = meth_group.new_map("method2")
-        m["type"] = "bool"
+        m["type"] = "float"
         arg_names = []
         arg_types = []
         arg_names.append("a")
@@ -1465,8 +1474,8 @@ class Client(agnos.BaseClient):
         self._utils = agnos.ClientUtils(transport, packed_exceptions)
         
         storer = lambda proxy: -1 if proxy is None else proxy._objref
-        PersonObjRef = packers.ObjRef(900039, storer, partial(self._utils.get_proxy, PersonProxy, self))
         ClassAObjRef = packers.ObjRef(900083, storer, partial(self._utils.get_proxy, ClassAProxy, self))
+        PersonObjRef = packers.ObjRef(900039, storer, partial(self._utils.get_proxy, PersonProxy, self))
         ClassBObjRef = packers.ObjRef(900090, storer, partial(self._utils.get_proxy, ClassBProxy, self))
         ClassCObjRef = packers.ObjRef(900097, storer, partial(self._utils.get_proxy, ClassCProxy, self))
         

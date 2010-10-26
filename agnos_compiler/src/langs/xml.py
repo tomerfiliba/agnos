@@ -39,7 +39,7 @@ class XmlText(object):
         self.escape = kwargs.pop("escape", True)
         if kwargs:
             raise TypeError("invalid keyword argument(s): %r" % (kwargs.keys(),))
-    def render(self):
+    def render(self, lean = False):
         if self.escape:
             return [xml_escape(self.text)]
         else:
@@ -51,7 +51,7 @@ class XmlComment(object):
         if args:
             text = text.format(*args)
         self.text = text
-    def render(self):
+    def render(self, lean = False):
         return ["<!-- %s -->" % (xml_escape(self.text),)]
 
 class XmlBlock(object):
@@ -87,15 +87,16 @@ class XmlBlock(object):
         yield blk
         self.stack.pop(-1)
     
-    def render(self):
+    def render(self, lean = False):
         attrs = " ".join('%s="%s"' % (k, xml_escape(v)) 
             for k, v in sorted(self.attrs.iteritems()))
         if attrs:
             attrs = " " + attrs
         if self.children:
             lines = ["<%s%s>" % (self.tag, attrs)]
+            ind = "" if lean else "\t"
             for child in self.children:
-                lines.extend(("\t" + l) for l in child.render())
+                lines.extend((ind + l) for l in child.render(lean))
             lines.append("</%s>" % (self.tag,))
         else:
             lines = ["<%s%s />" % (self.tag, attrs)]
@@ -109,8 +110,9 @@ class XmlDoc(XmlBlock):
         return self
     def __exit__(self, t, v, tb):
         pass
-    def render(self):
-        text = self.ENCODING + "\n" + "\n".join(XmlBlock.render(self))
+    def render(self, lean = False):
+        sep = "" if lean else "\n"
+        text = self.ENCODING + "\n" + sep.join(XmlBlock.render(self, lean))
         return text.encode("utf-8") 
 
 

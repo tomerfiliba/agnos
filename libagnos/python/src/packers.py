@@ -84,10 +84,10 @@ class Date(Packer):
     EPOCH = datetime.fromordinal(1)
     t0 = time.time()
     UTC_DELTA = datetime.fromtimestamp(t0) - datetime.utcfromtimestamp(t0)
-
     __slots__ = []
+    
     @classmethod
-    def pack(cls, obj, stream):
+    def datetime_to_usec(cls, obj):
         if isinstance(obj, datetime):
             if obj.tzinfo:
                 time_utc = obj - obj.tzinfo.utcoffset(obj)
@@ -101,12 +101,19 @@ class Date(Packer):
             raise TypeError("cannot encode %r as a datetime object" % (obj,))
         delta = time_utc - cls.EPOCH
         microsecs = (delta.days * 86400 + delta.seconds) * 10**6 + delta.microseconds
-        Int64.pack(microsecs, stream)
+        return microsecs
+    
     @classmethod
-    def unpack(cls, stream):
-        microsecs = Int64.unpack(stream)
+    def usec_to_datetime(cls, microsecs):
         return cls.EPOCH + timedelta(seconds = microsecs // 10**6, 
             microseconds = microsecs % 10**6)
+
+    @classmethod
+    def pack(cls, obj, stream):
+        Int64.pack(cls.datetime_to_usec(obj), stream)
+    @classmethod
+    def unpack(cls, stream):
+        return cls.usec_to_datetime(Int64.unpack(stream))
 
 class Buffer(Packer):
     ID = 7

@@ -83,6 +83,7 @@ class Enum(object):
 
 def create_enum(name, members):
     cls = type(name, (Enum,), dict(_BY_VALUE = {}))
+    cls._idl_type = name
     for n, v in members.iteritems():
         em = cls(n, v)
         setattr(cls, n, em)
