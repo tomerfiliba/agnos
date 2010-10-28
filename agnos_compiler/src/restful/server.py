@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##############################################################################
+
 import sys
 import traceback
 import agnos
@@ -72,24 +73,41 @@ class RESTfulAgnosServer(object):
 class RequestHandler(BaseHTTPRequestHandler):
     root = None
 
-    def parse_obj_url(path):
-        if "/" in path:
-            oid, member = path.split("/", 1)
-        else:
-            member = None
-            oid = path
-        try:
-            oid = int(oid)
-        except ValueError:
-            raise HttpError(404, "invalid object id")
-        if oid not in self.root.proxy_map:
-            raise HttpError(404, "object id does not exist")
-        obj = self.root.proxy_map[oid]
-        return obj, member
-    
     #=========================================================================
     # GET
     #=========================================================================
+    def _get_usage(self):
+        data = """
+        <html><head>
+        <title>RESTful Agnos Protocol</title>
+        </head><body>
+        <h1>Greetings, Human</h1>
+        <p>
+        The <a href="http://agnos.sourceforge.net">Agnos</a> binary protocol
+        (<code>libagnos</code>) has not been implememted for every programming
+        language. If you need to use an Agnos service from a language that
+        <code>libagnos</code> does not support, you can use this <b>RESTful API</b>.
+        This webserver exposes the Agnos service through the use of reflection,
+        meaning the webserver itself is "dumb" -- it simply maps functions
+        and objects to URLs, so using them would be easy.
+        </p>
+        <p>
+        You can use the RESTful API through two serialization schemes: 
+        <a href="/json">JSON</a> and <a href="/xml">XML</a>.
+        </p>
+        <p>
+        For usage instructions, see the
+        <a href="http://agnos.sourceforge.net/restful.html">reference</a>.
+        </p>
+        </body></html>"""
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.send_header("Content-length", len(data))
+        self.end_headers()
+        self.wfile.write(data)
+        
+    
+    
     def _get_root(self):
         return self.root.service
     

@@ -16,37 +16,133 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##############################################################################
+
 import json
+import agnos
+from datetime import datetime
+from .util import iso_to_datetime, long, basestring, url_to_proxy
 
 
-class AgnosJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        # heteromaps
-        if isinstance(obj, agnos.HeteroMap):
-            dct = dict(obj.iteritems())
-            dct["__heteromap__"] = "HeteroMap"
-            return dct
-        # proxies
-        elif isinstance(obj, agnos.BaseProxy):
-            proxy_map[obj._objref] = obj
-            return {"__proxy__" : type(obj).__name__[:-5], "url" : "/objs/%s" % (obj._objref,)}
-        # records
-        elif hasattr(obj, "_recid") and hasattr(obj, "_ATTRS"):
-            dct = dict((name, getattr(obj, name)) for name in obj._ATTRS)
-            dct["__record__"] = type(obj).__name__
-            return dct
-        else:
-            return json.JSONEncoder.default(self, obj)
-
-def agnos_json_decoder(dct):
-    # convert url to object
-    if "__proxy__" in dct:
-        obj, member = parse_obj_url("url")
-        if not member:
-            return obj
-        else:
-            return None
-    # records to objects
-    # heteromaps to objects
+#===============================================================================
+# dumping
+#===============================================================================
+def _dump(obj):
+    if obj is None:
+        return obj
+    elif isinstance(obj, bool):
+        return obj
+    elif isinstance(obj, (int, long)):
+        return obj
+    elif isinstance(obj, float):
+        return obj
+    elif isinstance(obj, basestring):
+        return str(obj)
+    elif isinstance(obj, bytes):
+        return dict(type = "buffer", value = obj)
+    elif isinstance(obj, datetime):
+        return dict(type = "date", value = obj.isoformat()) 
+    elif isinstance(obj, (list, tuple)):
+        return [_dump(item) for item in obj]
+    elif isinstance(obj, (set, frozenset)):
+        return dict(type = "set", value = [_dump(item) for item in obj])
+    elif isinstance(obj, dict):
+        return dict(type = "map", 
+            value = [(_dump(k), _dump(v)) for k, v in obj.iteritems()])
+    elif isinstance(obj, agnos.HeteroMap):
+        return dict(type = "heteromap", 
+            value = [(_dump(k), _dump(v)) for k, v in obj.iteritems()])
+    # enums
+    elif isinstance(obj, agnos.Enum):
+        return dict(type = "enum", name = obj._idl_type, member = obj.name)
+    # records
+    elif isinstance(obj, agnos.BaseRecord):
+        return dict(type = "record", name = obj._idl_type, 
+            value = dict((name, _dump(getattr(obj, name))) for name in obj._idl_attrs))
+    # proxies
+    elif isinstance(obj, agnos.BaseProxy):
+        return dict(type = "proxy", name = obj._idl_type, url = "/json/objs/%s" % (obj._objref,))
     else:
-        return dct
+        raise TypeError("cannot dump %r" % (type(obj),))
+
+def dumps(obj):
+    simplified = _dump(obj)
+    return json.dumps(simplified)
+
+
+#===============================================================================
+# loading
+#===============================================================================
+def _load(obj, bindings_module, proxy_map):
+    if isinstance(obj, (type(None), bool, int, float, long, basestring)):
+        return obj
+    elif isinstance(obj, list):
+        return [_load(item, bindings_module, proxy_map) for item in obj]
+    elif not isinstance(obj, dict):
+        raise TypeError("cannot load %r" % (obj,))
+    
+    # it's a dict
+    if "type" not in obj:
+        raise ValueError("malformed: %r" % (obj,))
+    if obj["type"] == "buffer":
+        return obj["value"]
+    elif obj["type"] == "datetime":
+        return iso_to_datetime(obj["value"])
+    elif obj["type"] == "set":
+        return set(_load(item, bindings_module, proxy_map) for item in obj["value"])
+    elif obj["type"] == "map":
+        return dict((_load(k, bindings_module, proxy_map), _load(v, bindings_module, proxy_map)) 
+            for k, v in obj["value"])
+    elif obj["type"] == "heteromap":
+        return dict((_load(k, bindings_module, proxy_map), _load(v, bindings_module, proxy_map)) 
+            for k, v in obj["value"])
+    elif obj["type"] == "enum":
+        enum_cls = getattr(bindings_module, obj["name"])
+        return getattr(enum_cls, obj["member"])
+    elif obj["type"] == "record":
+        rec_cls = getattr(bindings_module, obj["name"])
+        rec = rec_cls()
+        for name, child in obj["value"].iteritems():
+            val = _load(child, bindings_module, proxy_map)
+            setattr(rec, name, val)
+        return rec
+    elif obj["type"] == "proxy":
+        return url_to_proxy(obj["url"], proxy_map)
+    else:
+        raise TypeError("invalid type %r" % (obj["type"],))
+
+
+def loads(data, bindings_module, proxy_map):
+    jsonobj = json.loads(data)
+    return _load(jsonobj, bindings_module, proxy_map)
+
+
+#if __name__ == "__main__":
+#    from agnos.utils import create_enum
+#    import FeatureTest_bindings
+#    
+#    FeatureTest_bindings.moshe = create_enum("moshe", dict(a=1,b=2,c=3))
+#    x = FeatureTest_bindings.RecordB(1,2,3)
+#    p = FeatureTest_bindings.PersonProxy(x, 1234, False)
+#    
+#    text = dumps([set([18,19,True]), FeatureTest_bindings.moshe.a, x, p])
+#    print text
+#    print loads(text, FeatureTest_bindings, {1234 : p})
+#
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
