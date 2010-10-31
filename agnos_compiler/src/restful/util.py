@@ -1,4 +1,7 @@
+import os
+from types import ModuleType
 from .iso8601 import parse_date as iso_to_date
+
 
 try:
     basestring = basestring
@@ -22,5 +25,15 @@ def url_to_proxy(url, proxy_map):
         return proxy_map[oid]
     except KeyError:
         raise ValueError("nonexisting objref: %r" % (url,))
+
+
+def import_file(filename, name = None, package = None):
+    if name is None:
+        name = os.path.basename(name).split(".")[0]
+    mod = ModuleType()
+    if package is not None:
+        mod.__path__ = package
+    execfile(filename, mod.__dict__)
+    return mod
 
 

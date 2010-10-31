@@ -21,6 +21,9 @@ import sys
 import traceback
 import agnos
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+from .xmlser import dumps as dump_xml, loads as load_xml
+from .jsonser import dumps as dump_json, loads as load_json
+
 
 
 class HttpError(Exception):
@@ -105,8 +108,6 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-length", len(data))
         self.end_headers()
         self.wfile.write(data)
-        
-    
     
     def _get_root(self):
         return self.root.service
