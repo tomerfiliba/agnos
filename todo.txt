@@ -1,15 +1,12 @@
 * todo:
     * finish RESTful
     * !!!! add INFO_TYPES, INFO_SERVICE to all targets
-    * SSL: done on java, c#
-        * todo: python
-        * cpp is too complicated
     * java manifest (minimum version?)
     * c# assembly info
+    * site2
 
 * features:
 	* async, timed
-	* SSL
 	* rlist, rset, rmap (by ref)
     * XML RPC backend?
     * serialize to file -- can be used as a universal serializer

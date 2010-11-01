@@ -59,8 +59,6 @@ technologies like ``SOAP``, ``WSDL``, ``CORBA``, and others, but takes a
         'bin/agnosc.bat', 
         'bin/agnosrc-py',
         'bin/agnosrc-py.bat',
-        'bin/restful-agnos',
-        'bin/restful-agnos.bat',
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

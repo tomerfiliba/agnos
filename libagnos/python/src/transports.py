@@ -2,7 +2,8 @@
 # Part of the Agnos RPC Framework
 #    http://agnos.sourceforge.net
 #
-# Copyright 2010, Tomer Filiba (tomerf@il.ibm.com; tomerfiliba@gmail.com)
+# Copyright 2010, International Business Machines Corp.
+#                 Author: Tomer Filiba (tomerf@il.ibm.com)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +19,7 @@
 ##############################################################################
 
 import socket
+import ssl
 import signal
 import time
 import itertools
@@ -176,7 +178,7 @@ class SocketFile(object):
         self.read_buffer = ""
     @classmethod
     def connect(cls, host, port):
-        s = socket.socket()
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((host, port))
         return cls(s)
     def close(self):
@@ -235,6 +237,22 @@ class SocketTransport(Transport):
     @classmethod
     def from_socket(cls, sock):
         return cls(SocketFile(sock))
+
+
+class SslSocketTransport(Transport):
+    def __init__(self, sslsockfile):
+        Transport.__init__(self, sslsockfile, sslsockfile)
+    @classmethod
+    def connect(cls, host, port, keyfile = None, certfile = None,  
+            cert_reqs = ssl.CERT_NONE, **kwargs):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sslsock = ssl.wrap_socket(sock, keyfile = keyfile, certfile = certfile,
+            server_side = False, cert_reqs = cert_reqs, **kwargs)
+        sslsock.connect((host, port))
+        return cls(SocketFile(sslsock))
+    @classmethod
+    def from_ssl_socket(cls, sslsock):
+        return cls(SocketFile(sslsock))
 
 
 class ProcTransport(WrappedTransport):
@@ -347,6 +365,23 @@ class SocketTransportFactory(TransportFactory):
         self.sock.close()
 
 
+class SslSocketTransportFactory(TransportFactory):
+    def __init__(self, port, keyfile, certfile, host = "0.0.0.0", backlog = 10, **kwargs):
+        self.sock = socket.socket()
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.bind((host, port))
+        self.sock.listen(backlog)
+        self.host, self.port = self.sock.getsockname()
+        self.ssl_options = dict(keyfile = keyfile, certfile = certfile, 
+            server_side = True, **kwargs)
+    
+    def accept(self):
+        sock2 = self.sock.accept()[0]
+        sslsock = ssl.wrap_socket(sock2, **self.ssl_options)
+        return SslSocketTransport.from_ssl_socket(sslsock)
+    
+    def close(self):
+        self.sock.close()
 
 
 
