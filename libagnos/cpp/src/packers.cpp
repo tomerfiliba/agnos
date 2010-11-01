@@ -158,6 +158,28 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		shared_ptr<_NullObj> NullObj;
+
+		int32_t NullPacker::get_id() const
+		{
+			return 10;
+		}
+		void NullPacker::pack_any(const any& obj, ITransport& transport) const
+		{
+		}
+		any NullPacker::unpack_any(ITransport& transport) const
+		{
+			return NullObj;
+		}
+		any NullPacker::unpack_shared(ITransport& transport) const
+		{
+			return NullObj;
+		}
+
+		NullPacker null_packer;
+
+		//////////////////////////////////////////////////////////////////////
+
 		IPACKER_SIMPLE_IMPL(Int8Packer, int8_packer)
 
 		void Int8Packer::pack(const int8_t& obj, ITransport& transport)
@@ -281,50 +303,6 @@ namespace agnos
 
 		IPACKER_SIMPLE_IMPL(StringPacker, string_packer)
 
-		/*StringPacker::StringPacker() {}
-		int32_t StringPacker::get_id() const
-		{
-			return _id;
-		}
-		void StringPacker::pack_any(const any& obj, ITransport& transport) const
-		{
-			if (obj.type() == typeid(shared_ptr<data_type>)) {
-				shared_ptr<data_type> tmp = any_cast< shared_ptr<data_type> >(obj);
-				pack(*tmp, transport);
-			}
-			else if (obj.type() == typeid(char*)) {
-				pack(any_cast<char*>(obj), transport);
-			}
-			else if (obj.type() == typeid(const char*)) {
-				pack(any_cast<const char*>(obj), transport);
-			}
-			else {
-				pack(any_cast<data_type>(obj), transport);
-			}
-		}
-		any StringPacker::unpack_any(ITransport& transport) const
-		{
-			data_type tmp;
-			unpack(tmp, transport);
-			return tmp;
-		}
-		any StringPacker::unpack_shared(ITransport& transport) const
-		{
-			shared_ptr<data_type> obj(new data_type());
-			unpack(*obj, transport);
-			return obj;
-		}
-		void StringPacker::pack(shared_ptr<StringPacker::data_type> obj, ITransport& transport)
-		{
-			pack(*obj, transport);
-		}
-		void StringPacker::unpack(shared_ptr<StringPacker::data_type>& obj, ITransport& transport)
-		{
-			obj.reset(new data_type());
-			unpack(*obj, transport);
-		}
-		StringPacker  string_packer;*/
-
 		void StringPacker::pack(const string& obj, ITransport& transport)
 		{
 			BufferPacker::pack(obj, transport);
@@ -356,6 +334,7 @@ namespace agnos
 			val -= microsecs_from_epoch;
 
 			// urrgh, boost::posix_time::microseconds only accepts int32!
+			// need to do it the hard way
 			timespan dur = boost::posix_time::microseconds(val % 1000000);
 			val /= 1000000;
 			dur += boost::posix_time::seconds(val % 60);

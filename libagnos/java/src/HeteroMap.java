@@ -151,6 +151,9 @@ public class HeteroMap implements Map
 		if (val instanceof byte[]) {
 			return Packers.Buffer;
 		}
+		if (val == null) {
+			return Packers.Null;
+		}
 		return null;
 	}
 	
@@ -159,12 +162,6 @@ public class HeteroMap implements Map
 		Packers.AbstractPacker keypacker = getPackerForBuiltinType(key);
 		Packers.AbstractPacker valpacker = getPackerForBuiltinType(value);
 		
-		/*if (keypacker == null) {
-			keypacker = getKeyPacker(key);
-		}
-		if (valpacker == null) {
-			valpacker = getValuePacker(key);
-		}*/
 		if (keypacker == null || valpacker == null) {
 			throw new IllegalArgumentException("cannot deduce key or value packer, use the 4-argument put()");
 		}

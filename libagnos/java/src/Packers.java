@@ -481,6 +481,31 @@ public class Packers
 
 	// ////////////////////////////////////////////////////////////////////////
 
+	public static final class _Null extends AbstractPacker
+	{
+		protected _Null()
+		{
+		}
+
+		protected int getId()
+		{
+			return 10;
+		}
+		
+		public void pack(Object obj, OutputStream stream) throws IOException
+		{
+		}
+
+		public Object unpack(InputStream stream) throws IOException
+		{
+			return null;
+		}
+	}
+
+	public static final _Null Null = new _Null();
+	
+	// ////////////////////////////////////////////////////////////////////////
+
 	public static class ListOf<T> extends AbstractPacker
 	{
 		protected AbstractPacker type;
@@ -739,6 +764,8 @@ public class Packers
 				return Date;
 			case 9:
 				return Str;
+			case 10:
+				return Null;
 			case 800:
 				return listOfInt8;
 			case 801:

@@ -102,6 +102,8 @@ namespace agnos
 					return date_packer;
 				case 9:
 					return string_packer;
+				case 10:
+					return null_packer;
 
 				case 800:
 					return list_of_int8_packer;
@@ -214,6 +216,12 @@ namespace agnos
 
 				if (_key.type() == typeid(string)) {
 					key = any_cast<string>(_key);
+				}
+				else if (_key.type() == typeid(int8_t)) {
+					key = (int32_t)(any_cast<int8_t>(_key));
+				}
+				else if (_key.type() == typeid(int16_t)) {
+					key = (int32_t)(any_cast<int16_t>(_key));
 				}
 				else if (_key.type() == typeid(int32_t)) {
 					key = any_cast<int32_t>(_key);

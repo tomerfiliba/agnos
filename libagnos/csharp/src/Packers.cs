@@ -474,6 +474,31 @@ namespace Agnos
 
 		/////////////////////////////////////////////////////////////////////
 
+        public sealed class _Null : AbstractPacker
+		{
+			internal _Null ()
+			{
+			}
+
+			public override int getId()
+			{
+				return 10;
+			}
+			
+			public override void pack (object obj, Stream stream)
+			{
+			}
+
+			public override object unpack (Stream stream)
+			{
+				return null;
+			}
+		}
+
+		public static readonly _Null Null = new _Null ();
+
+		/////////////////////////////////////////////////////////////////////
+
 		public class ListOf<T> : AbstractPacker
 		{
             protected readonly AbstractPacker type;
@@ -716,6 +741,8 @@ namespace Agnos
 					return Date;
 				case 9:
 					return Str;
+				case 10:
+					return Null;
 				case 800:
 					return listOfInt8;
 				case 801:

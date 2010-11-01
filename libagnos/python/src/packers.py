@@ -141,6 +141,17 @@ class Str(Packer):
     def unpack(cls, stream):
         return Buffer.unpack(stream).decode("utf-8")
 
+class Null(Packer):
+    ID = 10
+    __slots__ = []
+    @classmethod
+    def pack(cls, obj, stream):
+        pass
+    @classmethod
+    def unpack(cls, stream):
+        return None
+
+
 class ListOf(Packer):
     __slots__ = ["id", "type"]
     def __init__(self, id, type):
@@ -227,7 +238,7 @@ map_of_str_str = MapOf(853, Str, Str)
 class HeteroMapPacker(Packer):
     BUILTIN_PACKERS_MAP = {
         1 : Int8, 2 : Bool, 3 : Int16, 4 : Int32, 5 : Int64,
-        6 : Float, 7 : Buffer, 8 : Date, 9 : Str,
+        6 : Float, 7 : Buffer, 8 : Date, 9 : Str, 10 : Null,
         
         800 : list_of_int8, 801 : list_of_bool, 802 : list_of_int16, 
         803 : list_of_int32, 804 : list_of_int64, 805 : list_of_float, 

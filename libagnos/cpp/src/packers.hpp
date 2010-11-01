@@ -206,6 +206,25 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		class _NullObj : public boost::noncopyable
+		{
+		};
+
+		extern shared_ptr<_NullObj> NullObj;
+
+		class NullPacker :  public IPacker
+		{
+		public:
+			int32_t get_id() const;
+			void pack_any(const any& obj, ITransport& transport) const;
+			any unpack_any(ITransport& transport) const;
+			any unpack_shared(ITransport& transport) const;
+		};
+
+		extern NullPacker null_packer;
+
+		//////////////////////////////////////////////////////////////////////
+
 		template<typename TYPE, int ID> class ListPacker :  public IPacker
 		{
 		protected:

@@ -156,6 +156,9 @@ namespace Agnos
 			if (val is DateTime) {
 				return Packers.Date;
 			}
+			if (val == null) {
+				return Packers.Null;
+			}
 			return null;
 		}
 
@@ -198,13 +201,10 @@ namespace Agnos
 			Packers.AbstractPacker keypacker = getPackerForBuiltinType(key);
 			Packers.AbstractPacker valpacker = getPackerForBuiltinType(value);
 			if (keypacker == null) {
-				keypacker = getKeyPacker(key);
+				throw new ArgumentException("cannot deduce key packer " + key.GetType().ToString() +  ", use 4-argument Add()");
 			}
 			if (valpacker == null) {
-				valpacker = getValuePacker(key);
-			}
-			if (valpacker == null || keypacker == null) {
-				throw new ArgumentException("cannot deduce key or value packer, use 4-argument Add()");
+				throw new ArgumentException("cannot deduce value packer " + value.GetType().ToString() +  ", use 4-argument Add()");
 			}
 			Add(key, keypacker, value, valpacker);
 		}

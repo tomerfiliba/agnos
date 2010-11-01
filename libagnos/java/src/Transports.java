@@ -22,7 +22,9 @@ package agnos;
 import java.io.*;
 import java.util.*;
 import java.net.*;
+import javax.net.ssl.*;
 import java.util.concurrent.locks.*;
+
 
 public class Transports 
 {
@@ -310,6 +312,24 @@ public class Transports
 		}
 	}
 
+	public static class SSLSocketTransport extends SocketTransport
+	{
+		private static SSLSocket defaultConnect(String host, int port) throws IOException
+		{
+			return (SSLSocket)(SSLSocketFactory.getDefault().createSocket(host, port));
+		}
+		
+		public SSLSocketTransport(String host, int port) throws IOException
+		{
+			this(defaultConnect(host, port));
+		}
+
+		public SSLSocketTransport(SSLSocket sock) throws IOException
+		{
+			super(sock);
+		}
+	}
+	
 	public static class ProcTransport extends WrappedTransport 
 	{
 		public Process proc;

@@ -1,6 +1,9 @@
 * todo:
     * finish RESTful
     * !!!! add INFO_TYPES, INFO_SERVICE to all targets
+    * SSL: done on java, c#
+        * todo: python
+        * cpp is too complicated
     * java manifest (minimum version?)
     * c# assembly info
 

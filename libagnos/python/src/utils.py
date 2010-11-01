@@ -169,20 +169,18 @@ class HeteroMap(object):
     def __delitem__(self, key):
         del self.fields[key]
     def __setitem__(self, key, val):
-        if key in self.fields:
-            _, kp, vp = self.fields[key]
-        else:
-            kp = vp = None
-        keypacker = self._get_packer(key, kp)
-        valpacker = self._get_packer(val, vp)
+        keypacker = self._get_packer(key)
+        valpacker = self._get_packer(val)
         if not keypacker:
-            raise TypeError("cannot deduce packer for %r" % (key,))
+            raise TypeError("cannot deduce packer for key %r" % (key,))
         if not valpacker:
-            raise TypeError("cannot deduce packer for %r" % (val,))
+            raise TypeError("cannot deduce packer for value %r" % (val,))
         self.add(key, keypacker, val, valpacker)
-    def _get_packer(self, obj, default):
+    def _get_packer(self, obj):
         from . import packers
-        if isinstance(obj, basestring):
+        if obj is None:
+            return packers.Null
+        elif isinstance(obj, basestring):
             return packers.Str
         elif isinstance(obj, bool):
             return packers.Bool

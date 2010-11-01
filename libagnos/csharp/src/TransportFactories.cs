@@ -21,6 +21,9 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Net.Security;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using Agnos.Transports;
 
 
@@ -78,7 +81,7 @@ namespace Agnos.TransportFactories
             listener.Start(backlog);
         }
 
-		public ITransport Accept()
+		virtual public ITransport Accept()
 		{
 			return new SocketTransport(listener.AcceptSocket());
 		}
@@ -86,6 +89,64 @@ namespace Agnos.TransportFactories
 		public void Close()
 		{
 			listener.Stop();
+		}
+	}
+	
+	public class SslSocketTransportFactory : SocketTransportFactory
+	{
+		RemoteCertificateValidationCallback certificateValidationCallback;
+		LocalCertificateSelectionCallback certificateSelectionCallback;
+		//EncryptionPolicy encryptionPolicy;
+		//
+		protected X509Certificate serverCertificate;
+		protected bool clientCertificateRequired;
+		protected SslProtocols enabledSslProtocols;
+		protected bool checkCertificateRevocation; 
+
+
+		public SslSocketTransportFactory(
+				String host,
+				int port,
+				X509Certificate serverCertificate) :
+			this(GetIPv4AddressOf(host), port, DefaultBacklog,
+				null, null, //EncryptionPolicy.NoEncryption,
+				serverCertificate, false, SslProtocols.Default, false)
+		{
+		}
+		
+		public SslSocketTransportFactory(
+				IPAddress addr,
+				int port,
+				int backlog,
+				//
+				RemoteCertificateValidationCallback certificateValidationCallback,
+				LocalCertificateSelectionCallback certificateSelectionCallback,
+				//EncryptionPolicy encryptionPolicy,
+				//
+				X509Certificate serverCertificate,
+				bool clientCertificateRequired,
+				SslProtocols enabledSslProtocols,
+				bool checkCertificateRevocation) : 
+			base(addr, port, backlog)
+		{
+			this.certificateValidationCallback = certificateValidationCallback;
+			this.certificateSelectionCallback = certificateSelectionCallback;
+			//this.encryptionPolicy = encryptionPolicy;
+			//
+			this.serverCertificate = serverCertificate;
+			this.clientCertificateRequired = clientCertificateRequired;
+			this.enabledSslProtocols = enabledSslProtocols;
+			this.checkCertificateRevocation = checkCertificateRevocation;
+		}
+
+		override public ITransport Accept()
+		{
+			Socket sock2 = listener.AcceptSocket();
+			SslStream ssl = new SslStream(new NetworkStream(sock2, true), 
+				false, certificateValidationCallback, certificateSelectionCallback);
+			ssl.AuthenticateAsServer(serverCertificate, clientCertificateRequired, 
+				enabledSslProtocols, checkCertificateRevocation);
+			return new SslSocketTransport(ssl);
 		}
 	}
 	
