@@ -20,10 +20,9 @@
 
 import sys
 import traceback
-import agnos
 import urlparse
-
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+from .. import INFO_TYPES, INFO_SERVICE
 from .xmlser import dumps as dump_xml, loads as load_xml
 from .jsonser import dumps as dump_json, loads as load_json
 from .util import import_file
@@ -31,8 +30,8 @@ from .util import import_file
 
 ACCEPTED_FORMATS = dict(
     json = ("application/json", load_json, dump_json), 
-    #xml =  ("application/xml", load_xml, dump_xml),
-    xml =  ("text/plain", load_xml, dump_xml),
+    xml =  ("application/xml", load_xml, dump_xml),
+    #xml =  ("text/plain", load_xml, dump_xml),
 )
 
 
@@ -54,8 +53,8 @@ class RESTfulAgnosServer(object):
     def __init__(self, bindings_module, agnos_client):
         self.bindings_module = bindings_module
         self.client = agnos_client
-        self.types = agnos_client.get_service_info(agnos.INFO_TYPES)
-        self.service = agnos_client.get_service_info(agnos.INFO_SERVICE)
+        self.types = agnos_client.get_service_info(INFO_TYPES)
+        self.service = agnos_client.get_service_info(INFO_SERVICE)
         self.func_map = {}
         self.proxy_map = {}
         for name, funcinfo in self.service["functions"].iteritems():

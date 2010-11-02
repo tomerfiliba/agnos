@@ -96,7 +96,7 @@ def dump_to_xml(obj, proxy_map):
     return doc
 
 def dumps(obj, proxy_map, lean = True):
-    doc = dump_to_xml(obj)
+    doc = dump_to_xml(obj, proxy_map)
     return doc.render(lean)
 
 

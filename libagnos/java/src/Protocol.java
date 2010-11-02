@@ -44,6 +44,8 @@ public class Protocol
 	public static final int INFO_GENERAL = 1;
 	public static final int INFO_FUNCTIONS = 2;
 	public static final int INFO_FUNCCODES = 3;
+	public static final int INFO_TYPES = 4;
+	public static final int INFO_SERVICE = 5;
 
 	public abstract static class PackedException extends Exception
 	{
@@ -328,12 +330,20 @@ public class Protocol
 			case INFO_FUNCCODES:
 				processGetFunctionCodes(map);
 				break;
+			case INFO_TYPES:
+				processGetTypesInfo(map);
+				break;
+			case INFO_SERVICE:
+				processGetServiceInfo(map);
+				break;
 			case INFO_META:
 			default:
 				map.put("INFO_META", INFO_META);
 				map.put("INFO_GENERAL", INFO_GENERAL);
 				map.put("INFO_FUNCTIONS", INFO_FUNCTIONS);
 				map.put("INFO_FUNCCODES", INFO_FUNCCODES);
+				map.put("INFO_TYPES", INFO_TYPES);
+				map.put("INFO_SERVICE", INFO_SERVICE);
 				break;
 			}
 
@@ -346,6 +356,10 @@ public class Protocol
 		protected abstract void processGetFunctionsInfo(HeteroMap map);
 
 		protected abstract void processGetFunctionCodes(HeteroMap map);
+
+		protected abstract void processGetTypesInfo(HeteroMap map);
+
+		protected abstract void processGetServiceInfo(HeteroMap map);
 
 		abstract protected void processInvoke(int seq) throws Exception;
 	}

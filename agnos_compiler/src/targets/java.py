@@ -659,6 +659,71 @@ class JavaTarget(TargetBase):
         with BLOCK("protected void processGetFunctionCodes(HeteroMap map)"):
             for func in service.funcs.values():
                 STMT('map.put("{0}", {1})', func.name, func.id)    
+            SEP()
+        SEP()
+        with BLOCK("def process_get_types_info(self, info)"):
+            STMT('HeteroMap group = info.putNewMap("enums")')
+            if service.enums() or service.records():
+                STMT("HeteroMap members")
+            for enum in service.enums():
+                STMT('members = group.putNewMap("{0}")', enum.name)
+                for mem in enum.members:
+                    STMT('members.put("{0}", "{1}")', mem.name, mem.value)
+            SEP()
+            STMT('group = info.putNewMap("records")')
+            for rec in service.records():
+                STMT('members = group.putNewMap("{0}")', rec.name)
+                for mem in rec.members:
+                    STMT('members.put("{0}", "{1}")', mem.name, mem.type)
+            SEP()
+            STMT('group = info.putNewMap("classes")')
+            if service.classes():
+                STMT("HeteroMap cls_group, attr_group, method, a, m")
+                STMT("ArrayList<String> arg_names, arg_types")
+            for cls in service.classes():
+                STMT('cls_group = group.putNewMap("{0}")', cls.name)
+                STMT('attr_group = cls_group.putNewMap("attrs")')
+                STMT('meth_group = cls_group.putNewMap("methods")')
+                for attr in cls.attrs:
+                    STMT('a = attr_group.putNewMap("{0}")', attr.name)
+                    STMT('a.put("type", "{0}")', str(attr.type))
+                    STMT('a.put("get", {0})', attr.get)
+                    STMT('a.put("set", {0})', attr.set)
+                for meth in cls.methods:
+                    STMT('m = meth_group.putNewMap("{0}")', meth.name)
+                    STMT('m.put("type", "{0}")', arg.type)
+                    STMT("arg_names = new ArrayList<String>()")
+                    STMT("arg_types = new ArrayList<String>()")
+                    for arg in meth.args:
+                        STMT('arg_names.add("{0}")', arg.name)
+                        STMT('arg_types.add("{0}")', str(arg.type))
+                    STMT('m.add("arg_names", Packers.Str, arg_names, Packers.listOfStr)')
+                    STMT('m.add("arg_types", Packers.Str, arg_types, Packers.listOfStr)')
+        SEP()
+        with BLOCK("def process_get_service_info(self, info)"):
+            STMT('HeteroMap funcs = info.putNewMap("functions")')
+            STMT("HeteroMap func")
+            STMT("ArrayList<String> arg_names, arg_types")
+            for func in service.funcs.values():
+                if not isinstance(func, compiler.Func):
+                    continue
+                STMT('func = funcs.putNewMap("{0}")', func.dotted_fullname)
+                STMT('func.put("type", "{0}")', str(func.type))
+                STMT("arg_names = new ArrayList<String>()")
+                STMT("arg_types = new ArrayList<String>()")
+                for arg in func.args:
+                    STMT('arg_names.add("{0}")', arg.name)
+                    STMT('arg_types.add("{0}")', str(arg.type))
+                STMT('func.add("arg_names", Packers.Str, arg_names, Packers.listOfStr)')
+                STMT('func.add("arg_types", Packers.Str, arg_types, Packers.listOfStr)')
+            STMT('HeteroMap consts = info.putNewMap("consts")')
+            if service.consts:
+                STMT("HeteroMap const")
+            for const in service.consts.values():
+                STMT('const = consts.putNewMap("{0}")', const.dotted_fullname)
+                STMT('const.put("type", "{0}")', str(const.type))
+                STMT('const.put("value", "{0}")', const.value)
+        SEP()
     
     def generate_process_invoke(self, module, service):
         BLOCK = module.block

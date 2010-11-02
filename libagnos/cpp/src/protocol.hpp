@@ -97,6 +97,8 @@ namespace agnos
 		const int32_t INFO_GENERAL = 1;
 		const int32_t INFO_FUNCTIONS = 2;
 		const int32_t INFO_FUNCCODES = 3;
+		const int32_t INFO_TYPES = 4;
+		const int32_t INFO_SERVICE = 5;
 
 		class BaseProcessor : protected ISerializer, public boost::noncopyable
 		{
@@ -143,6 +145,9 @@ namespace agnos
 			virtual void process_get_general_info(HeteroMap& map) = 0;
 			virtual void process_get_functions_info(HeteroMap& map) = 0;
 			virtual void process_get_function_codes(HeteroMap& map) = 0;
+			virtual void process_get_types_info(HeteroMap& map) = 0;
+			virtual void process_get_service_info(HeteroMap& map) = 0;
+
 			virtual void process_invoke(int32_t seq) = 0;
 
 		public:

@@ -113,6 +113,13 @@ public class HeteroMap implements Map
 		return fields.hashCode();
 	}	
 	
+	public HeteroMap putNewMap(String name)
+	{
+		HeteroMap hm = new HeteroMap();
+		put(name, Packers.Str, hm, Packers.builtinHeteroMapPacker);
+		return hm;
+	}
+	
 	public Object put(Object key, Packers.AbstractPacker keypacker, Object value, Packers.AbstractPacker valpacker)
 	{
 		FieldInfo fi = fields.get(key);

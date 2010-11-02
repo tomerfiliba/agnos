@@ -1,6 +1,6 @@
 * todo:
     * finish RESTful
-    * !!!! add INFO_TYPES, INFO_SERVICE to all targets
+    * add INFO_TYPES, INFO_SERVICE to C#, C++
     * java manifest (minimum version?)
     * c# assembly info
     * site2
@@ -8,7 +8,6 @@
 * features:
 	* async, timed
 	* rlist, rset, rmap (by ref)
-    * XML RPC backend?
     * serialize to file -- can be used as a universal serializer
     * java srcgen
     * c# srcgen
@@ -18,6 +17,7 @@
 	* jscript client (over URLs) for web gui
 
 * optional features:
+    * XML RPC backend?
     * custom type templates
     * complex consts
 	* always include tracebacks?
