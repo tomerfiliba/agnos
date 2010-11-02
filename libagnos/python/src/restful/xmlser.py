@@ -2,7 +2,8 @@
 # Part of the Agnos RPC Framework
 #    http://agnos.sourceforge.net
 #
-# Copyright 2010, Tomer Filiba (tomerf@il.ibm.com; tomerfiliba@gmail.com)
+# Copyright 2010, International Business Machines Corp.
+#                 Author: Tomer Filiba (tomerf@il.ibm.com)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +28,7 @@ from .util import iso_to_datetime, long, basestring, url_to_proxy
 #===============================================================================
 # dumping
 #===============================================================================
-def _dump(obj, doc):
+def _dump(obj, doc, proxy_map):
     if obj is None:
         doc.elem("null")
     elif isinstance(obj, bool):
@@ -45,27 +46,27 @@ def _dump(obj, doc):
     elif isinstance(obj, (list, tuple)):
         with doc.block("list"):
             for item in obj:
-                _dump(item, doc)
+                _dump(item, doc, proxy_map)
     elif isinstance(obj, (set, frozenset)):
         with doc.block("set"):
             for item in obj:
-                _dump(item, doc)
+                _dump(item, doc, proxy_map)
     elif isinstance(obj, dict):
         with doc.block("map"):
             for k, v in obj.iteritems():
                 with doc.block("item"):
                     with doc.block("key"):
-                        _dump(k, doc)
+                        _dump(k, doc, proxy_map)
                     with doc.block("value"):
-                        _dump(v, doc)
+                        _dump(v, doc, proxy_map)
     elif isinstance(obj, agnos.HeteroMap):
         with doc.block("heteromap"):
             for k, v in obj.iteritems():
                 with doc.block("item"):
                     with doc.block("key"):
-                        _dump(k, doc)
+                        _dump(k, doc, proxy_map)
                     with doc.block("value"):
-                        _dump(v, doc)
+                        _dump(v, doc, proxy_map)
     # enums
     elif isinstance(obj, agnos.Enum):
         doc.elem("enum", type = obj._idl_type, member = obj.name)
@@ -75,25 +76,26 @@ def _dump(obj, doc):
             doc.attr(type = obj._idl_type)
             for name in obj._idl_attrs:
                 with doc.block("attr", name = name):
-                    _dump(getattr(obj, name), doc)
+                    _dump(getattr(obj, name), doc, proxy_map)
     # proxies
     elif isinstance(obj, agnos.BaseProxy):
+        proxy_map[obj._objref] = obj
         with doc.block("proxy"):
             doc.attr(type = obj._idl_type)
-            doc.attr(url = "/xml/objs/%s" % (obj._objref,))
+            doc.attr(url = "/objs/%s" % (obj._objref,))
     else:
         raise TypeError("cannot dump %r" % (type(obj),))
 
 
-def dump_to_xml(obj):
+def dump_to_xml(obj, proxy_map):
     doc = XmlDoc("fake-root")
-    _dumps(obj, doc, lean)
+    _dump(obj, doc, proxy_map)
     doc.tag = doc.children[0].tag
     doc.attrs = doc.children[0].attrs
     doc.children = doc.children[0].children
     return doc
 
-def dumps(obj, lean = True):
+def dumps(obj, proxy_map, lean = True):
     doc = dump_to_xml(obj)
     return doc.render(lean)
 
@@ -143,7 +145,7 @@ def _load(elem, bindings_module, proxy_map):
             setattr(rec, name, val)
         return rec
     elif elem.tag == "proxy":
-        return url_to_proxy(elem.attrib["url"])
+        return url_to_proxy(elem.attrib["url"], proxy_map)
     else:
         raise ValueError("cannot load %r" % (elem.tag,))
 

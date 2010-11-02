@@ -2,7 +2,8 @@
 # Part of the Agnos RPC Framework
 #    http://agnos.sourceforge.net
 #
-# Copyright 2010, Tomer Filiba (tomerf@il.ibm.com; tomerfiliba@gmail.com)
+# Copyright 2010, International Business Machines Corp.
+#                 Author: Tomer Filiba (tomerf@il.ibm.com)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -111,7 +112,7 @@ class HeteroMap(object):
     def new_map(self, name):
         from . import packers
         map2 = HeteroMap()
-        self.add(name, self._get_packer(name, None), map2, packers.BuiltinHeteroMapPacker)
+        self.add(name, self._get_packer(name), map2, packers.BuiltinHeteroMapPacker)
         return map2
     
     def add(self, key, keypacker, val, valpacker):

@@ -2,7 +2,8 @@
 # Part of the Agnos RPC Framework
 #    http://agnos.sourceforge.net
 #
-# Copyright 2010, Tomer Filiba (tomerf@il.ibm.com; tomerfiliba@gmail.com)
+# Copyright 2010, International Business Machines Corp.
+#                 Author: Tomer Filiba (tomerf@il.ibm.com)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,12 +17,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##############################################################################
-import urllib2
-import json
 
-args = {}
-req = urllib2.Request("http://localhost:8088/funcs/get_class_c", json.dumps(args))
-req.add_header("Content-type", "application/json")
-
-print urllib2.urlopen(req).read()
-
+from .server import RESTfulAgnosServer

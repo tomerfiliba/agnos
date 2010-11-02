@@ -2,7 +2,8 @@
 # Part of the Agnos RPC Framework
 #    http://agnos.sourceforge.net
 #
-# Copyright 2010, Tomer Filiba (tomerf@il.ibm.com; tomerfiliba@gmail.com)
+# Copyright 2010, International Business Machines Corp.
+#                 Author: Tomer Filiba (tomerf@il.ibm.com)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,15 +18,17 @@
 # limitations under the License.
 #
 ###############################################################################
+
 #
-# agnos compiler
+# the agnos compiler
 #
 # APIs:
 #    * compile()
 #    * load_spec()
 #
 # Usage: agnosc -t TARGET idlfile.xml
-###############################################################################
+#
+
 from .compiler import AGNOS_TOOLCHAIN_VERSION, AGNOS_PROTOCOL_VERSION
 from .compiler import compile, load_spec, IDLError
 

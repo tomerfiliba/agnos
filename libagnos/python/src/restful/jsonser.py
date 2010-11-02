@@ -2,7 +2,8 @@
 # Part of the Agnos RPC Framework
 #    http://agnos.sourceforge.net
 #
-# Copyright 2010, Tomer Filiba (tomerf@il.ibm.com; tomerfiliba@gmail.com)
+# Copyright 2010, International Business Machines Corp.
+#                 Author: Tomer Filiba (tomerf@il.ibm.com)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +27,7 @@ from .util import iso_to_datetime, long, basestring, url_to_proxy
 #===============================================================================
 # dumping
 #===============================================================================
-def _dump(obj):
+def _dump(obj, proxy_map):
     if obj is None:
         return obj
     elif isinstance(obj, bool):
@@ -42,30 +43,34 @@ def _dump(obj):
     elif isinstance(obj, datetime):
         return dict(type = "date", value = obj.isoformat()) 
     elif isinstance(obj, (list, tuple)):
-        return [_dump(item) for item in obj]
+        return [_dump(item, proxy_map) for item in obj]
     elif isinstance(obj, (set, frozenset)):
-        return dict(type = "set", value = [_dump(item) for item in obj])
+        return dict(type = "set", value = [_dump(item, proxy_map) for item in obj])
     elif isinstance(obj, dict):
         return dict(type = "map", 
-            value = [(_dump(k), _dump(v)) for k, v in obj.iteritems()])
+            value = [(_dump(k, proxy_map), _dump(v, proxy_map)) 
+                for k, v in obj.iteritems()])
     elif isinstance(obj, agnos.HeteroMap):
         return dict(type = "heteromap", 
-            value = [(_dump(k), _dump(v)) for k, v in obj.iteritems()])
+            value = [(_dump(k, proxy_map), _dump(v, proxy_map)) 
+                for k, v in obj.iteritems()])
     # enums
     elif isinstance(obj, agnos.Enum):
         return dict(type = "enum", name = obj._idl_type, member = obj.name)
     # records
     elif isinstance(obj, agnos.BaseRecord):
         return dict(type = "record", name = obj._idl_type, 
-            value = dict((name, _dump(getattr(obj, name))) for name in obj._idl_attrs))
+            value = dict((name, _dump(getattr(obj, name)), proxy_map) 
+                for name in obj._idl_attrs))
     # proxies
     elif isinstance(obj, agnos.BaseProxy):
-        return dict(type = "proxy", name = obj._idl_type, url = "/json/objs/%s" % (obj._objref,))
+        proxy_map[obj._objref] = obj
+        return dict(type = "proxy", name = obj._idl_type, url = "/objs/%s" % (obj._objref,))
     else:
         raise TypeError("cannot dump %r" % (type(obj),))
 
-def dumps(obj):
-    simplified = _dump(obj)
+def dumps(obj, proxy_map):
+    simplified = _dump(obj, proxy_map)
     return json.dumps(simplified)
 
 

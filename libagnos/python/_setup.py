@@ -1,9 +1,9 @@
-#!/usr/bin/env python
 ##############################################################################
 # Part of the Agnos RPC Framework
 #    http://agnos.sourceforge.net
 #
-# Copyright 2010, Tomer Filiba (tomerf@il.ibm.com; tomerfiliba@gmail.com)
+# Copyright 2010, International Business Machines Corp.
+#                 Author: Tomer Filiba (tomerf@il.ibm.com)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ setup(name = 'agnos',
     maintainer_email = 'tomerf@il.ibm.com',
     url = 'http://agnos.sourceforge.net',
     license = 'Apache License 2.0',
-    packages = ['agnos'],
+    packages = ['agnos', 'agnos.restful'],
     package_dir = {'agnos' : 'src'},
     platforms = ["POSIX", "Windows"],
 )

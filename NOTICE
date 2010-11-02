@@ -1,5 +1,7 @@
 Agnos - The Agnostic RPC Framework
-Copyright 2010, Tomer Filiba (tomerf@il.ibm.com; tomerfiliba@gmail.com)
+
+Copyright 2010, International Business Machines Corp.
+                Author: Tomer Filiba (tomerf@il.ibm.com)
 
 Developed by IBM XIV, at the Host Side Group
 Licensed under the Apache License 2.0
