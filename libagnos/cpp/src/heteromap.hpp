@@ -292,8 +292,17 @@ namespace agnos
 			put(string(key), value);
 		}
 
-		any& get(const char * key);
-		any& get(const key_type& key);
+		HeteroMap * put_new_map(const string& name);
+
+		inline any& get(const HeteroMap::key_type& key)
+		{
+			return *map_get(data, key);
+		}
+
+		inline any& get(const char * key)
+		{
+			return get(string(key));
+		}
 
 		template <typename T> inline T& get_as(const char * key)
 		{

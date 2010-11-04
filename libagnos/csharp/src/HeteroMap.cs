@@ -220,7 +220,14 @@ namespace Agnos
 				throw new ArgumentException("cannot deduce key packer, use 4-argument Add()");
 			}
 			Add(key, keypacker, value, valpacker);
-		}		
+		}
+		
+		public HeteroMap AddNewMap(String name)
+		{
+			HeteroMap hm = new HeteroMap();
+			Add(name, Packers.Str, hm, Packers.builtinHeteroMapPacker);
+			return hm;
+		}
 		
 		public bool TryGetValue(Object key, out Object value)
 		{

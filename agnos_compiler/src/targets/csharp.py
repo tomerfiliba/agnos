@@ -606,6 +606,7 @@ class CSharpTarget(TargetBase):
             STMT('map["SERVICE_NAME"] = "{0}"', service.name)
             STMT('map.Add("SUPPORTED_VERSIONS", SUPPORTED_VERSIONS, Packers.listOfStr)')
         SEP()
+        ##
         with BLOCK("protected override void processGetFunctionsInfo(HeteroMap map)"):
             has_annotations = False
             for func in service.funcs.values(): 
@@ -633,10 +634,77 @@ class CSharpTarget(TargetBase):
                     STMT('funcinfo.Add("annotations", anno, Packers.mapOfStrStr)')
                 STMT('map.Add({0}, funcinfo, Packers.builtinHeteroMapPacker)', func.id)
         SEP()
+        ##
         with BLOCK("protected override void processGetFunctionCodes(HeteroMap map)"):
             for func in service.funcs.values():
                 STMT('map["{0}"] = {1}', func.name, func.id)
-
+        SEP()
+        ##
+        with BLOCK("protected override void processGetTypesInfo(HeteroMap map)"):
+            STMT('HeteroMap group = map.AddNewMap("enums")')
+            if service.enums() or service.records():
+                STMT("HeteroMap members")
+            for enum in service.enums():
+                STMT('members = group.AddNewMap("{0}")', enum.name)
+                for mem in enum.members:
+                    STMT('members["{0}"] = "{1}"', mem.name, mem.value)
+            SEP()
+            STMT('group = map.AddNewMap("records")')
+            for rec in service.records():
+                STMT('members = group.AddNewMap("{0}")', rec.name)
+                for mem in rec.members:
+                    STMT('members["{0}"] = "{1}"', mem.name, mem.type)
+            SEP()
+            STMT('group = map.AddNewMap("classes")')
+            if service.classes():
+                STMT("HeteroMap cls_group, attr_group, meth_group, a, m")
+                STMT("List<String> arg_names, arg_types")
+            for cls in service.classes():
+                STMT('cls_group = group.AddNewMap("{0}")', cls.name)
+                STMT('attr_group = cls_group.AddNewMap("attrs")')
+                STMT('meth_group = cls_group.AddNewMap("methods")')
+                for attr in cls.attrs:
+                    STMT('a = attr_group.AddNewMap("{0}")', attr.name)
+                    STMT('a["type"] = "{0}"', str(attr.type))
+                    STMT('a["get"] = {0}', "true" if attr.get else "false")
+                    STMT('a["set"] = {0}', "true" if attr.set else "false")
+                for meth in cls.methods:
+                    STMT('m = meth_group.AddNewMap("{0}")', meth.name)
+                    STMT('m["type"] = "{0}"', arg.type)
+                    STMT("arg_names = new List<String>()")
+                    STMT("arg_types = new List<String>()")
+                    for arg in meth.args:
+                        STMT('arg_names.Add("{0}")', arg.name)
+                        STMT('arg_types.Add("{0}")', str(arg.type))
+                    STMT('m.Add("arg_names", Packers.Str, arg_names, Packers.listOfStr)')
+                    STMT('m.Add("arg_types", Packers.Str, arg_types, Packers.listOfStr)')
+        SEP()
+        ##
+        with BLOCK("protected override void processGetServiceInfo(HeteroMap map)"):
+            STMT('HeteroMap funcs = map.AddNewMap("functions")')
+            STMT("HeteroMap func")
+            STMT("List<String> arg_names, arg_types")
+            for func in service.funcs.values():
+                if not isinstance(func, compiler.Func):
+                    continue
+                STMT('func = funcs.AddNewMap("{0}")', func.dotted_fullname)
+                STMT('func["type"] = "{0}"', str(func.type))
+                STMT("arg_names = new List<String>()")
+                STMT("arg_types = new List<String>()")
+                for arg in func.args:
+                    STMT('arg_names.Add("{0}")', arg.name)
+                    STMT('arg_types.Add("{0}")', str(arg.type))
+                STMT('func.Add("arg_names", Packers.Str, arg_names, Packers.listOfStr)')
+                STMT('func.Add("arg_types", Packers.Str, arg_types, Packers.listOfStr)')
+            STMT('HeteroMap consts = map.AddNewMap("consts")')
+            if service.consts:
+                STMT("HeteroMap member")
+            for const in service.consts.values():
+                STMT('member = consts.AddNewMap("{0}")', const.dotted_fullname)
+                STMT('member["type"] = "{0}"', str(const.type))
+                STMT('member["value"] = "{0}"', const.value)
+        SEP()
+    
     def generate_process_invoke(self, module, service):
         BLOCK = module.block
         STMT = module.stmt

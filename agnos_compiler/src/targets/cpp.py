@@ -622,6 +622,7 @@ class CPPTarget(TargetBase):
             STMT('map.put("SERVICE_NAME", "{0}")', service.name)
             STMT('map.put("SUPPORTED_VERSIONS", string_packer, SUPPORTED_VERSIONS, list_of_string_packer)')
         SEP()
+        ##
         with BLOCK("void process_get_functions_info(HeteroMap& map)"):
             STMT("HeteroMap funcinfo")
             STMT("std::map<string, string> args")
@@ -636,10 +637,80 @@ class CPPTarget(TargetBase):
                 STMT('map.put({0}, int32_packer, funcinfo, builtin_heteromap_packer)', func.id)
                 SEP()
         SEP()
+        ##
         with BLOCK("void process_get_function_codes(HeteroMap& map)"):
             for func in service.funcs.values():
                 STMT('map.put("{0}", {1})', func.name, func.id)
-            
+        SEP()
+        ##
+        with BLOCK("void process_get_types_info(HeteroMap& map)"):
+            STMT('HeteroMap * group = map.put_new_map("enums")')
+            if service.enums() or service.records():
+                STMT("HeteroMap * members = NULL")
+            for enum in service.enums():
+                STMT('members = group->put_new_map("{0}")', enum.name)
+                for mem in enum.members:
+                    STMT('members->put("{0}", "{1}")', mem.name, mem.value)
+            SEP()
+            STMT('group = map.put_new_map("records")')
+            for rec in service.records():
+                STMT('members = group->put_new_map("{0}")', rec.name)
+                for mem in rec.members:
+                    STMT('members->put("{0}", "{1}")', mem.name, mem.type)
+            SEP()
+            STMT('group = map.put_new_map("classes")')
+            if service.classes():
+                STMT("HeteroMap *cls_group = NULL, *attr_group = NULL, *meth_group = NULL, *a = NULL, *m = NULL")
+                STMT("vector<string> arg_names")
+                STMT("vector<string> arg_types")
+            for cls in service.classes():
+                STMT('cls_group = group->put_new_map("{0}")', cls.name)
+                STMT('attr_group = cls_group->put_new_map("attrs")')
+                STMT('meth_group = cls_group->put_new_map("methods")')
+                for attr in cls.attrs:
+                    STMT('a = attr_group->put_new_map("{0}")', attr.name)
+                    STMT('a->put("type", "{0}")', str(attr.type))
+                    STMT('a->put("get", {0})', "true" if attr.get else "false")
+                    STMT('a->put("set", {0})', "true" if attr.set else "false")
+                for meth in cls.methods:
+                    STMT('m = meth_group->put_new_map("{0}")', meth.name)
+                    STMT('m->put("type", "{0}")', arg.type)
+                    STMT("arg_names.clear()")
+                    STMT("arg_types.clear()")
+                    for arg in meth.args:
+                        STMT('arg_names.push_back("{0}")', arg.name)
+                        STMT('arg_types.push_back("{0}")', str(arg.type))
+                    STMT('m->put("arg_names", string_packer, arg_names, list_of_string_packer)')
+                    STMT('m->put("arg_types", string_packer, arg_types, list_of_string_packer)')
+        SEP()
+        ##
+        with BLOCK("void process_get_service_info(HeteroMap& map)"):
+            STMT('HeteroMap * funcs = map.put_new_map("functions")')
+            STMT("HeteroMap * func = NULL")
+            STMT("vector<string> arg_names")
+            STMT("vector<string> arg_types")
+            for func in service.funcs.values():
+                if not isinstance(func, compiler.Func):
+                    continue
+                STMT('func = funcs->put_new_map("{0}")', func.dotted_fullname)
+                STMT('func->put("type", "{0}")', str(func.type))
+                STMT("arg_names.clear()")
+                STMT("arg_types.clear()")
+                for arg in func.args:
+                    STMT('arg_names.push_back("{0}")', arg.name)
+                    STMT('arg_types.push_back("{0}")', str(arg.type))
+                STMT('func->put("arg_names", string_packer, arg_names, list_of_string_packer)')
+                STMT('func->put("arg_types", string_packer, arg_types, list_of_string_packer)')
+            STMT('HeteroMap * consts = map.put_new_map("consts")')
+            if service.consts:
+                STMT("HeteroMap * member = NULL")
+            for const in service.consts.values():
+                STMT('member = consts->put_new_map("{0}")', const.dotted_fullname)
+                STMT('member->put("type", "{0}")', str(const.type))
+                STMT('member->put("value", "{0}")', const.value)
+        SEP()        
+        
+                    
     def generate_process_invoke(self, module, service):
         BLOCK = module.block
         STMT = module.stmt

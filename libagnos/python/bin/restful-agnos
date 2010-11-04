@@ -47,7 +47,7 @@ if __name__ == "__main__":
     import os
     os.chdir("../src/restful")
     import sys
-    sys.argv = ["foo", "-p 8877", "-m", "FeatureTest_bindings.py", 
+    sys.argv = ["foo", "-p", "8877", "-m", "FeatureTest_bindings.py", 
         '--exec', "python real-server.py -m lib"]
     (options, args) = parser.parse_args()
     

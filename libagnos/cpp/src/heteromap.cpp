@@ -44,15 +44,13 @@ namespace agnos
 		map_put(packers_info, key, PackerInfo(keypacker, valpacker));
 	}
 
-	inline any& HeteroMap::get(const HeteroMap::key_type& key)
+	HeteroMap * HeteroMap::put_new_map(const string& name)
 	{
-		return *map_get(data, key);
+		HeteroMap hm;
+		put(name, packers::string_packer, hm, packers::builtin_heteromap_packer);
+		return &get_as<HeteroMap>(name);
 	}
 
-	any& HeteroMap::get(const char * key)
-	{
-		return get(string(key));
-	}
 
 	/*std::ostream& operator<< (std::ostream& stream, const HeteroMap& hm)
 	{

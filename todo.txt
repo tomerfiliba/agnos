@@ -1,6 +1,5 @@
 * todo:
     * finish RESTful
-    * add INFO_TYPES, INFO_SERVICE to C#, C++
     * java manifest (minimum version?)
     * c# assembly info
     * site2
