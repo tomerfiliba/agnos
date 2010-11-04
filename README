@@ -1,11 +1,30 @@
 Agnos - The Agnostic RPC Framework
 
-Agnos is a cross-platform, cross-language RPC framework.
+Agnos is a cross-platform, cross-language, lightweight RPC framework.
+
 
 ==============================================================================
+  Discloure
+==============================================================================
+Agnos has been (and is being) developed at IBM XIV (http://www.xivstorage.com/), 
+by Tomer Filiba (tomerf@il.ibm.com; tomerfiliba@gmail.com), and is released
+as an Open Source project under the Apache 2 license.
 
-How to run the Agnos Toolchain from a cloned repository:
+The following information was requested to be placed here by our lawyers:
+ * The design of the project had been inspired by Thrift 
+   (http://incubator.apache.org/thrift), although the projects do not share 
+   code. Thrift is licensed as Apache 2, which allows deriviative works.
+ 
+ * The name "Microsoft" appears several times in the repository, in 
+   Visual Studio solution and project files (.sln, .csproj, .vcxproj), as
+   they reference XML schema files; in paths of some executable tools;
+   and in documentation material. This does not imply that Microsoft is in 
+   anyway affiliated with this project.
 
+
+==============================================================================
+  How to run the Agnos Toolchain from a cloned repository:
+==============================================================================
 1) Clone this repository
 
 2) Create a symlink (on Windows use mklink) to agnos_compiler/src and place
