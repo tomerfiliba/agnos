@@ -1,3 +1,5 @@
+.. _license:
+
 License
 =======
 
@@ -18,4 +20,4 @@ Agnos is an **Open Source** project, licensed under the
     See the License for the specific language governing permissions and
     limitations under the License.
 
-You may also be interested in reading the :doc:`contrib`.
+You may also be interested in reading the :doc:`contribution`.

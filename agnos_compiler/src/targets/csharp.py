@@ -18,6 +18,10 @@
 # limitations under the License.
 ##############################################################################
 import itertools
+import time
+import uuid
+import os
+
 from .base import TargetBase, NOOP
 from .. import compiler
 from ..compiler import is_complex_type
@@ -170,6 +174,8 @@ class CSharpTarget(TargetBase):
     LANGUAGE = clike
     
     def generate(self, service):
+        service.guid = uuid.uuid1()
+        
         with self.new_module("%sBindings.cs" % (service.name,)) as module:
             BLOCK = module.block
             STMT = module.stmt
@@ -199,6 +205,8 @@ class CSharpTarget(TargetBase):
         
         with self.new_module("%sServerStub.cs" % (service.name,)) as module:
             self.generate_server_stub(module, service)
+        
+        self.generate_assembly_info(service)
 
     def generate_server_bindings(self, module, service):
         BLOCK = module.block
@@ -296,6 +304,51 @@ class CSharpTarget(TargetBase):
 
                 DOC("client", spacer = True)
                 self.generate_client(module, service)
+
+    def generate_assembly_info(self, service):
+        if os.path.isfile(os.path.join(self.path, "AssemblyInfo.cs")):
+            # don't regenerate AssemblyInfo if it already exists
+            return
+        text = """using System.Reflection;
+            using System.Runtime.CompilerServices;
+            using System.Runtime.InteropServices;
+            
+            // General Information about an assembly is controlled through the following 
+            // set of attributes. Change these attribute values to modify the information
+            // associated with an assembly.
+            [assembly: AssemblyTitle("{0} Agnos Bindings")]
+            [assembly: AssemblyDescription("The auto-generated Agnos bindings for {0}")]
+            [assembly: AssemblyConfiguration("")]
+            [assembly: AssemblyCompany("")]
+            [assembly: AssemblyProduct("{0}")]
+            [assembly: AssemblyCopyright("Copyright {2}")]
+            [assembly: AssemblyTrademark("")]
+            [assembly: AssemblyCulture("")]
+            
+            // Setting ComVisible to false makes the types in this assembly not visible 
+            // to COM components.  If you need to access a type in this assembly from 
+            // COM, set the ComVisible attribute to true on that type.
+            [assembly: ComVisible(false)]
+            
+            // The following GUID is for the ID of the typelib if this project is exposed to COM
+            [assembly: Guid("{1}")]
+            
+            // Version information for an assembly consists of the following four values:
+            //
+            //      Major Version
+            //      Minor Version 
+            //      Build Number
+            //      Revision
+            //
+            // You can specify all the values or you can default the Build and Revision Numbers 
+            // by using the '*' as shown below:
+            // [assembly: AssemblyVersion("1.0.*")]
+            [assembly: AssemblyVersion("1.0.0.0")]
+            [assembly: AssemblyFileVersion("1.0.0.0")]
+            """.format(service.name, service.guid, time.gmtime().tm_year)
+        with self.open("AssemblyInfo.cs") as f:
+            text2 = "\n".join(l.lstrip() for l in text.splitlines())
+            f.write(text2)
 
     def _generate_templated_packer_for_type(self, tp, proxy):
         if isinstance(tp, compiler.TList):

@@ -38,27 +38,31 @@ parser.add_option("-m", "--module", dest="modname", help="the bindings module to
 parser.add_option("--exec", dest="executable", help="the executable to spawn "
     "to pass arguments, simply surround the value with quotes, and separate "
     "the arguments with spaces", metavar="CMDLINE")
-
-#parser.add_option("--sock", dest="url", help="the real server's URL", metavar="URL")
-#parser.add_option("--url", dest="url", help="the URL to connect to", metavar="URL")
+parser.add_option("--sock", dest="sock", help="the real server's listener socket. "
+    "the format is host:port where host is either an IP address of a hostname, " 
+    "and port is in the range of 1..65535", metavar="HOST:PORT")
+parser.add_option("--url", dest="url", help="the real server's URL", metavar="URL")
 
 
 if __name__ == "__main__":
-    import os
-    os.chdir("../src/restful")
     import sys
-    sys.argv = ["foo", "-p", "8877", "-m", "FeatureTest_bindings.py", 
-        '--exec', "python real-server.py -m lib"]
     (options, args) = parser.parse_args()
     
     if options.executable:
         executable = shlex.split(options.executable)
         server = RESTfulAgnosServer.connect_executable(options.modname, 
             executable[0], executable[1:])
-    
+    elif options.sock:
+        host, port = options.sock.split(":")
+        port = int(port)
+        server = RESTfulAgnosServer.connect(options.modname, host, port) 
+    elif options.url:
+        server = RESTfulAgnosServer.connect_url(options.modname, options.url) 
+    else:
+        parser.error("invalid mode: must select one of 'exec', 'url', or 'sock'")
+
     server.start(options.bindaddr, int(options.port))
 
-# print urlopen("http://localhost:8877/funcs/get_class_c", "  ").read()
 
 
 

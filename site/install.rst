@@ -1,68 +1,121 @@
-Download
-========
-First you'll need to get the Agnos compiler: you can obtain "official" releases
-from `sourceforge <http://sourceforge.net/downloads/agnos>`_, or browse (and clone)
-our `git repository <http://github.com/tomerfiliba/agnos>`_. See the :doc:`download` page for 
-details.
+Installing Agnos
+================
 
-.. dependencies:
+Compiler
+--------
+The ``agnos_compiler`` is a ``python`` package, so obviously you will need
+to have `python installed <http://python.org/download/>`_. If you're running
+on Windows, you can next-next-next your way with executable installer; 
+otherwise, install it like any other python package: extract the 
+``tar.gz`` (or ``zip``) and run ::
 
-Dependencies
-------------
-The Agnos compiler itself depends on only on `python <http://www.python.org>`_,
-and requires python 2.6 or up. 
+  $ python setup.py install       # you might need to sudo that command
 
-In order to compile the generated bindings, you will need additional toolchains:
-* ``java``: `JDK 1.5 <http://www.oracle.com/technetwork/java/javase/downloads/index.html>` and up
-* ``C#``: Either `.NET 3.0 <http://www.microsoft.com/net/download.aspx>` and up 
-  or `Mono 2.6 <http://www.mono-project.com/Main_Page>`_ and up 
-* ``C++``: A modern C++ toolchain and the `Boost <http://www.boost.org/>`_ libraries (1.40 and up). 
-  Windows users can get the library pre-compiled at http://www.boostpro.com/download/
-  * Additionally, you may want to install `Boost::Process <http://www.highscore.de/boost/process/>`_,
-    to enable the ``SubprocClient`` etc. For some reason, it's still not included 
-    in Boost, and you have to install it separately. It's a header-only library 
-    that you simply extract to your Boost include directory (e.g., ``/usr/include/boost``). 
+For more info, refer to `Installing Python Modules <http://docs.python.org/install>`_
 
+**Dependencies:** 
 
-Installation
-============
-Agnos is distributed as a zip package, which includes:
-* ``agnos-compiler.tar.gz`` (or ``.exe`` or ``.egg``)
-* ``agnos-python.tar.gz`` (or ``.exe`` or ``.egg``)
-* ``agnos-cpp.tar.gz`` (or ``.zip``)
-* ``agnos-java.tar.gz`` (or ``.zip``)
-* ``agnos-java.jar``
-* ``agnos-csharp.tar.gz`` (or ``.zip``)
-* ``agnos-dotnet.dll``
+* `python <http://python.org/download/>`_ 2.6 or 3.0 and up.
 
- 
+------------------------------------------------------------------------------
 
-If you downloaded the Windows installer, 
-just run it and it will do the magic. Otherwise, you'll need to extract the 
-tarball and run ``setup.py install``.
+Library
+-------
+``libagnos`` is provided as a set of independent libraries, for each target
+language. If you'd wish writing a client in language X and a server in 
+language Y, you'll need ``libagnos`` for both language X and language Y.
 
-At this point, you should be able to pop up a python interpreter and type ::
+------------------------------------------------------------------------------
 
-  import agnos_compiler
+``C++``
+"""""""
 
-without getting errors.
+The ``C++`` implementation of the protocol is provided as in a source-only 
+distribution (not precompiled), becuase ``C++`` has no standard ABI.
 
-Agnos also installs two executable scripts: ``agnosc`` and ``agnosrc-py``. You should
-try running them, to make sure they are in your ``PATH``. If not, it's most likely
-that you'll have to tweak your system's ``PATH``. On Windows, for example, you'll
-need to add ``C:\Python26\Scripts``, or something like that.
+You can either compile the code into a library (which depends on your compiler),
+or add it to your project directly. Don't forget to set the include path so
+that ``#include <agnos.hpp>`` works.
 
-Now you are good to go: the Agnos toolchain is installed, and you can generate bindings.
-In order to compile, you will need the aforementioned :ref:`dependencies`, and 
-the Agnos Protocol libraries. 
+.. note::
+  In order to produce an executable, you will need to link with
+  ``boost_thread``, ``boost_date_time``, ``boost_iostreams`` and 
+  ``boost_system``
 
+**Dependencies:**:
 
-C++
-===
+* A modern ``C++`` toolchain, compatible with Boost (``g++``, 
+  *VisualStudio 2003* and up, etc.) 
 
-Boost
------
+* The `Boost <http://www.boost.org/>`_ library, version 1.40 and up.
 
+  * *Windows users*: you can download 
+    `compiled versions of Boost <http://www.boostpro.com/download/>`_
 
-Boost::Process
---------------
+* *Optionally*: `Boost::Process <http://www.highscore.de/boost/process/>`_.
+  This nice library allows executing child processes in a cross-platform manner.
+  Sadly, though, it is not yet officially included in Boost, so you have to 
+  install it separately.
+   
+  * It's a header-only library. Simply 
+    `download the zip <http://www.highscore.de/boost/process.zip>`_ and extract 
+    it to where your Boost include directory is (e.g., ``/usr/include/boost``).
+  
+  * You can specify in build-time whether this library is supported
+    by defining ``BOOST_PROCESS_SUPPORTED`` (or not defining it)
+
+* *Optionally*: The `scons build system <http://www.scons.org/>`_; ``libagnos-cpp``
+  uses scons to build itself; of course you can use whatever build system 
+  you like.
+
+------------------------------------------------------------------------------
+
+``C#``
+""""""
+
+The recommended way is to download the latest ``Agnos.dll``, and either 
+`install it into the GAC <http://msdn.microsoft.com/en-us/library/dkkx7f79.aspx>`_
+or explicitly reference it in your project. Alternatively, you can download 
+the source and build it on your own.
+
+**Dependencies:** 
+
+* `.NET Framework <http://www.microsoft.com/net/>`_ 3.0 and up
+  or `mono <http://mono-project.com/Main_Page>` 2.6 and up.
+
+------------------------------------------------------------------------------
+
+``java``
+""""""""
+
+The recommended way is to download the latest ``agnos.jar``, and either put
+it in your ``JAVAPATH``, or explicitly reference it in your project.
+Alternatively, you can download the source and build it on your own.
+
+**Dependencies:** 
+
+* `JDK <http://www.oracle.com/technetwork/java/javase/downloads/index.html>`_ 
+  1.5 (also known as "java 5") and up
+
+* *Optionally*: The `scons build system <http://www.scons.org/>`_; 
+  ``libagnos-java`` uses scons to build itself; of course you can use 
+  whatever build system you like.
+
+------------------------------------------------------------------------------
+
+``python``
+""""""""""
+
+``libagnos-python`` is a normal python package, which is accessed as 
+``import agnos``. If you're running on Windows, you can next-next-next 
+your way with executable installer; otherwise, install it like any other 
+python package: extract the ``tar.gz`` (or ``zip``) and run ::
+
+  $ python setup.py install       # you might need to sudo that command
+
+For more info, refer to `Installing Python Modules <http://docs.python.org/install>`_
+
+**Dependencies:** 
+
+* `python <http://python.org/download/>`_ 2.6 or 3.0 and up.
+

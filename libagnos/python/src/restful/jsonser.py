@@ -120,6 +120,11 @@ def loads(data, bindings_module, proxy_map):
     jsonobj = json.loads(data)
     return _load(jsonobj, bindings_module, proxy_map)
 
+def loads_root(data, bindings_module, proxy_map):
+    jsonobj = json.loads(data)
+    return dict((k, _load(v, bindings_module, proxy_map)) 
+        for k, v in jsonobj.iteritems())
+
 
 #if __name__ == "__main__":
 #    from agnos.utils import create_enum

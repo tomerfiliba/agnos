@@ -1,7 +1,5 @@
 * todo:
     * finish RESTful
-    * java manifest (minimum version?)
-    * c# assembly info
     * site2
 
 * features:

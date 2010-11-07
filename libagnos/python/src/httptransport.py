@@ -66,7 +66,7 @@ class HttpClientTransport(Transport):
         if self.conn is None:
             if self.urlprot == "http":
                 self.conn = HTTPConnection(self.urlhost)
-            elif self.urlprot == "http":
+            elif self.urlprot == "https":
                 #TODO: key_file, cert_file, strict
                 self.conn = HTTPSConnection(self.urlhost)
             else:

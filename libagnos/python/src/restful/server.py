@@ -24,14 +24,13 @@ import urlparse
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from .. import INFO_TYPES, INFO_SERVICE
 from .xmlser import dumps as dump_xml, loads as load_xml
-from .jsonser import dumps as dump_json, loads as load_json
+from .jsonser import dumps as dump_json, loads_root as load_json
 from .util import import_file
 
 
 ACCEPTED_FORMATS = dict(
     json = ("application/json", load_json, dump_json), 
     xml =  ("application/xml", load_xml, dump_xml),
-    #xml =  ("text/plain", load_xml, dump_xml),
 )
 
 
@@ -162,12 +161,12 @@ class RequestHandler(BaseHTTPRequestHandler):
             code = ex.code
             enc = ex.enc
             data = ex.info
+            data += "\npath = " + self.path
         except Exception:
             code = 500
             enc = "text/plain"
             data = "".join(traceback.format_exception(*sys.exc_info()))
-        
-        print "!!", repr(data)
+            data += "\npath = " + self.path
         
         self.send_response(code)
         self.send_header("Content-type", enc)
@@ -205,8 +204,10 @@ class RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             code = 200
-            url = urlparse.urlsplit(self.path)
+            unslashed_path = "/".join(p for p in self.path.split("/") if p.strip())
+            url = urlparse.urlsplit(unslashed_path)
             parts = [p.strip() for p in url.path.split("/") if p.strip()]
+
             params = dict(urlparse.parse_qsl(url.query))
             format = params.get("format", "json")
             if format not in ACCEPTED_FORMATS:
@@ -233,12 +234,12 @@ class RequestHandler(BaseHTTPRequestHandler):
             code = ex.code
             enc = ex.enc
             data = ex.info
+            data += "\npath = " + self.path
         except Exception:
             code = 500
             enc = "text/plain"
             data = "".join(traceback.format_exception(*sys.exc_info()))
-        
-        print "!!", repr(data)
+            data += "\npath = " + self.path
         
         self.send_response(code)
         self.send_header("Content-type", enc)

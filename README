@@ -6,18 +6,18 @@ Agnos is a cross-platform, cross-language, lightweight RPC framework.
 ==============================================================================
   Discloure
 ==============================================================================
-Agnos has been (and is being) developed at IBM XIV (http://www.xivstorage.com/), 
-by Tomer Filiba (tomerf@il.ibm.com; tomerfiliba@gmail.com), and is released
-as an Open Source project under the Apache 2 license.
+Agnos is being developed at IBM XIV (http://www.xivstorage.com/), 
+at the Host Side Group, and is released as an Open Source project under the 
+Apache 2 license. See the LICENSE file for more info.
 
-The following information was requested to be placed here by our lawyers:
+The following statements was required by our lawyers:
  * The design of the project had been inspired by Thrift 
    (http://incubator.apache.org/thrift), although the projects do not share 
    code. Thrift is licensed as Apache 2, which allows deriviative works.
  
  * The name "Microsoft" appears several times in the repository, in 
    Visual Studio solution and project files (.sln, .csproj, .vcxproj), as
-   they reference XML schema files; in paths of some executable tools;
+   these files reference XML schemas; in paths of some executable tools;
    and in documentation material. This does not imply that Microsoft is in 
    anyway affiliated with this project.
 
@@ -41,11 +41,28 @@ The following information was requested to be placed here by our lawyers:
    
    Note: the link should be named "agnos"
 
-4) Put bin/agnosc and bin/agnosrc-py in your PATH (either by chaning PATH or
+4) Put bin/agnosc and bin/agnosrc-py in your PATH (either by changing PATH or
    by creating symlinks to /usr/bin, etc.)
 
 5) Build the parts of libagnos that you wish to use:
    * Java: cd to libagnos/java and run scons
+   
    * C++: cd to libagnos/cpp and run scons
+     you may need to tweak the scons file, to define/undefine 
+     BOOST_PROCESS_SUPPORTED
+   
    * C#: cd to libagnos/csharp/src and run "msbuild Agnos.sln" or "xbuild Agnos.sln" 
+
+
+
+
+
+
+
+
+
+
+
+
+
 

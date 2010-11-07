@@ -28,6 +28,7 @@ from subprocess import Popen, PIPE
 from contextlib import contextmanager
 from .packers import Int8, Int32, Int64, Str, BuiltinHeteroMapPacker
 from . import transports
+from . import httptransport
 
 
 CMD_PING = 0
@@ -453,6 +454,10 @@ class BaseClient(object):
     @classmethod
     def connect_proc(cls, proc):
         return cls(transports.ProcTransport.from_proc(proc))
+    @classmethod
+    def connect_url(cls, url):
+        return cls(httptransport.HttpClientTransport(url))
+    
     def close(self):
         self._utils.close()
     def get_service_info(self, code):

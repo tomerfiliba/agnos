@@ -35,7 +35,7 @@ class JavaPerformanceTest(unittest.TestCase):
 
     def run_agnosc(self, target, filename, outdir):
         print "agnosc %s --> %s" % (filename, outdir)
-        self.run_cmdline([sys.executable, "bin/agnosc", "-t", target, "-o", 
+        self.run_cmdline([sys.executable, "agnos_compiler/bin/agnosc", "-t", target, "-o", 
             outdir, filename], cwd = self.ROOT_DIR)
 
     ##########################################################################
@@ -66,7 +66,7 @@ class JavaPerformanceTest(unittest.TestCase):
     
     def runTest(self):
         self.run_agnosc("java", "tests/performance/filesystem.xml", "tests/performance")
-        agnos_jar = self.REL("lib/java/build/jars/agnos.jar")
+        agnos_jar = self.REL("libagnos/java/agnos.jar")
         filesystem_jar = self.compile_java("tests/performance/filesystem", "../filesystem.jar", 
             classpath = [agnos_jar])
         test_jar = self.compile_java("tests/performance/test", "../test.jar", 
