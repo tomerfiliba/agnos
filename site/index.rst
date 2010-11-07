@@ -6,7 +6,7 @@
 
 Welcome
 =======
-**Agnos** is a cross-language, cross-platform, lightweight RPC framework with 
+**Agnos** is a *cross-language*, *cross-platform*, *lightweight* RPC framework with 
 support for passing objects *by-value* or *by-reference*. Agnos is meant to 
 allow programs written in different languages to easily interoperate, by 
 providing the needed bindings (glue-code) and hiding all the details from 
@@ -26,19 +26,17 @@ Key Features
 ============
 * **Interoperate** between ``python``, ``C#``, ``java``, and ``C++``
 * **Cross-platform**
-* Operates locally or over a network, using sockets directly or over HTTP
-* Generate IDL from **special comments within your source code** -- only one place to edit
+* Operates locally or over a network, using sockets directly, or over HTTP
+* ``srcgen`` generates IDL from **special comments within your source code** -- only one place to edit
 * Lightweight, speedy, and efficient
-* :ref:`library-mode` - connect to a spawned server process in one line of code
+* :doc:`library-mode` - connect to a spawned server process in one line of code
 * Released under the :doc:`Apache License <license>`
 
-For more info, refer to the :doc:`features and future plans <features>`.
+For the full list, see :doc:`features and future plans <features>`.
 
 Getting Started
 ===============
 If you're ready to see go, check out our :doc:`documentation` page.
-
------------------------------------------------------------------------------
 
 Teaser
 ======
@@ -57,7 +55,7 @@ here's a simple :doc:`IDL <idl>` that defines a remote file access service:
           <attr name="name" get="yes" set="no" />
           <method name="close" type="void" />
           <method name="read" type="buffer">
-              <doc>read up to 'count' bytes from the file. empty string means EOF</doc>
+              <doc>read up to 'count' bytes from the file. an empty string means EOF</doc>
               <arg name="count" type="int32" />
           </method>
           <method name="write" type="void">
@@ -76,11 +74,12 @@ This should be pretty obvious: this IDL defines an enum (``FileMode``),
 a class (``File``) with a single attribute and the three methods, 
 and a function (``open``) that returns ``File`` instances. 
 
-Using this service from ``python``, for instance, is a piece of cake. Just run ::
+Using this service from ``python``, for instance, couldn't get easier. Just run ::
 
   $ agnosc -t python remotefiles.xml
 
-to generate the language bindings (``RemoteFiles_bindings.py``), and then
+to generate the language bindings (which will be named ``RemoteFiles_bindings.py``), 
+and then
 
 .. code-block:: python
     
@@ -92,7 +91,7 @@ to generate the language bindings (``RemoteFiles_bindings.py``), and then
   f.write("hello kitty\n")
   f.close()
 
-Implementing the service is a little more lengthy, naturally, but fear not! 
-It's very simple too.
+Implementing the service is a little lengthy, naturally, but very trivial too.
+To see how that's done, check out the :doc:`demo <demo-1>`.
 
 

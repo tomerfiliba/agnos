@@ -9,6 +9,7 @@ Contents
    download
    install
    
+   concepts
    tut-1
    tut-2
    tut-3
@@ -20,10 +21,13 @@ Contents
    srcgen
    tools
    client
+   restful
+   library-mode
    
+   about
+   roadmap
    license
    contrib
-   about
    contact
 
 

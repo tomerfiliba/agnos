@@ -26,3 +26,24 @@ Misc
     Contribution
     About
     Contact
+   
+==============================================================================
+
+Phase 1:
+* IDL -- done
+* types -- done
+* naming convention -- done
+
+* client API
+* srcgen
+* tutorial
+* cmdline tools
+* restful
+* library mode
+* concepts
+
+
+Phase 2:
+* demos
+
+

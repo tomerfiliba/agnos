@@ -50,8 +50,24 @@ def _parse_const(stream):
         return _parse_number(stream)
     if ch in ("'", '"'):
         return _parse_string(stream)
+    elif ch in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_":
+        return _parse_identifier(stream)
     else:
         raise IDLError("invalid literal %r" % (ch,))
+
+def _parse_identifier(stream):
+    name = stream.pop(0)
+    while stream:
+        ch = stream[0]
+        if ch not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789":
+            break
+        name += stream.pop(0)
+    if name == "true":
+        return True
+    elif name == "false":
+        return False
+    #return name
+    raise IDLError("constants cannot contain identifiers %r" % (name,))
 
 def _parse_list(stream):
     items = []

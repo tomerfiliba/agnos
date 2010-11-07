@@ -22,6 +22,8 @@ package agnos;
 
 import java.io.*;
 import java.util.*;
+import java.util.zip.*;
+
 import java.net.*;
 import javax.net.ssl.*;
 import java.util.concurrent.locks.*;
@@ -330,6 +332,36 @@ public class Transports
 			super(sock);
 		}
 	}
+	
+	/*public static class CompressedTransport extends BaseTransport
+	{
+		protected ByteArrayOutputStream comp_buffer;
+		protected ByteArrayInputStream uncomp_buffer;
+		
+		public CompressedTransport(ITransport transport)
+		{
+			super(transport);
+			comp_buffer = new ByteArrayOutputStream(128 * 1024);
+			uncomp_buffer = new ByteArrayInputStream(128 * 1024);
+		}
+		
+		public synchronized void endWrite() throws IOException
+		{
+			assertBeganWrite();
+			if (buffer.size() > 0) {
+				OutputStream out = new ByteArrayOutputStream(buffer.size());
+				GZIPOutputStream gout = GZIPOutputStream(out);
+				out.writeTo(gout);
+				
+				Packers.Int32.pack(buffer.size(), output);
+				Packers.Int32.pack(wseq, output);
+				buffer.writeTo(output);
+				output.flush();
+				buffer.reset();
+			}
+			wlock.unlock();
+		}
+	}*/
 	
 	public static class ProcTransport extends WrappedTransport 
 	{

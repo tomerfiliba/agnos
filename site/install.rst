@@ -22,8 +22,8 @@ For more info, refer to `Installing Python Modules <http://docs.python.org/insta
 Library
 -------
 ``libagnos`` is provided as a set of independent libraries, for each target
-language. If you'd wish writing a client in language X and a server in 
-language Y, you'll need ``libagnos`` for both language X and language Y.
+language. If you wish to write a client in language X and a server in 
+language Y, you'll need to install ``libagnos`` for both X and Y.
 
 ------------------------------------------------------------------------------
 
@@ -95,7 +95,7 @@ Alternatively, you can download the source and build it on your own.
 **Dependencies:** 
 
 * `JDK <http://www.oracle.com/technetwork/java/javase/downloads/index.html>`_ 
-  1.5 (also known as "java 5") and up
+  1.5 (also known as "Java 5") and up
 
 * *Optionally*: The `scons build system <http://www.scons.org/>`_; 
   ``libagnos-java`` uses scons to build itself; of course you can use 

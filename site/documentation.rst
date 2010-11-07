@@ -11,6 +11,7 @@ First, let's get you acquainted with the Agnos toolchain. It consists of
 
 Tutorial
 --------
+* :doc:`concepts`
 * :doc:`tut-1`
 * :doc:`tut-2`
 * :doc:`tut-3`
@@ -27,10 +28,16 @@ Reference
 * :doc:`tools`
 * :doc:`types`
 * :doc:`client`
+* :doc:`restful`
+* :doc:`library-mode`
 
-Misc
-----
+About
+-----
+* :doc:`about`
+* :doc:`roadmap`
 * :doc:`license`
 * :doc:`contrib`
-* :doc:`about`
 * :doc:`contact`
+
+
+

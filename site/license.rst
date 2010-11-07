@@ -4,7 +4,8 @@ License
 Agnos is an **Open Source** project, licensed under the
 `Apache License 2.0 <http://www.apache.org/licenses/LICENSE-2.0.html>`_ :: 
 
-    Copyright 2010, Tomer Filiba (tomerf@il.ibm.com)
+    Copyright 2010, International Business Machines Corp.
+                    Author: Tomer Filiba (tomerf@il.ibm.com)
     
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.

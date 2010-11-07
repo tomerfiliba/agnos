@@ -7,3 +7,4 @@ Tool-chain
 
 ``agnosrc-py``
 --------------
+More info under :doc:`srcgen`.
