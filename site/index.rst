@@ -27,7 +27,8 @@ Key Features
 * **Interoperate** between ``python``, ``C#``, ``java``, and ``C++``
 * **Cross-platform**
 * Operates locally or over a network, using sockets directly, or over HTTP
-* ``srcgen`` generates IDL from **special comments within your source code** -- only one place to edit
+* :doc:`srcgen` generates IDL from **special comments within your source 
+  code** -- only a single place to edit!
 * Lightweight, speedy, and efficient
 * :doc:`library-mode` - connect to a spawned server process in one line of code
 * Released under the :doc:`Apache License <license>`

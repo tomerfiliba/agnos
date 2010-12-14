@@ -26,7 +26,7 @@ import time
 from . import utils
 from subprocess import Popen, PIPE
 from contextlib import contextmanager
-from .packers import Int8, Int32, Int64, Str, BuiltinHeteroMapPacker
+from .packers import Int8, Int32, Int64, Str, Bool, BuiltinHeteroMapPacker
 from . import transports
 from . import httptransport
 
@@ -37,6 +37,8 @@ CMD_QUIT = 2
 CMD_DECREF = 3
 CMD_INCREF = 4
 CMD_GETINFO = 5
+CMD_CHECK_CAST = 6
+CMD_QUERY_PROXY_TYPE = 7
 
 REPLY_SUCCESS = 0
 REPLY_PROTOCOL_ERROR = 1
@@ -44,10 +46,9 @@ REPLY_PACKED_EXCEPTION = 2
 REPLY_GENERIC_EXCEPTION = 3
 
 INFO_META = 0
-INFO_GENERAL = 1
+INFO_SERVICE = 1
 INFO_FUNCTIONS = 2
-INFO_FUNCCODES = 3
-INFO_REFLECTION = 4
+INFO_REFLECTION = 3
 
 
 class BaseRecord(object):
@@ -103,6 +104,9 @@ class BaseProxy(object):
         self._client._utils.decref(self._objref)
         self._client = None
         self._objref = None
+    
+    def get_remote_type(self):
+        return self._client._utils.get_proxy_type(self._objref)
 
 
 class BaseProcessor(object):
@@ -176,6 +180,10 @@ class BaseProcessor(object):
                         self.process_quit(seq)
                     elif cmd == CMD_GETINFO:
                         self.process_get_info(seq)
+                    elif cmd == CMD_QUERY_PROXY_TYPE:
+                        self.process_query_proxy_type(seq)
+                    elif cmd == CMD_CHECK_CAST:
+                        self.process_check_cast(seq)
                     else:
                         raise ProtocolError("unknown command code: %d" % (cmd,))
                 except ProtocolError as ex:
@@ -196,6 +204,19 @@ class BaseProcessor(object):
     def process_decref(self, seq):
         oid = Int64.unpack(self.transport)
         self.decref(oid)
+    
+    def process_query_proxy_type(self, seq):
+        oid = Int64.unpack(self.transport)
+        tp = type(self.load(oid))
+        fqn = tp.__module + "." + tp.__name__
+        Int8.pack(REPLY_SUCCESS, self.transport)
+        Str.pack(fqn, self.transport)
+
+    def process_check_cast(self, seq):
+        oid = Int64.unpack(self.transport)
+        clsname = Str.unpack(self.transport)
+        Int8.pack(REPLY_SUCCESS, self.transport)
+        Bool.pack(True, self.transport)
 
     def process_incref(self, seq):
         oid = Int64.unpack(self.transport)
@@ -208,19 +229,16 @@ class BaseProcessor(object):
         code = Int32.unpack(self.transport)
         info = utils.HeteroMap()
         
-        if code == INFO_GENERAL:
-            self.process_get_general_info(info)
+        if code == INFO_SERVICE:
+            self.process_get_service_info(info)
         elif code == INFO_FUNCTIONS:
             self.process_get_functions_info(info)
-        elif code == INFO_FUNCCODES:
-            self.process_get_function_codes(info)
         elif code == INFO_REFLECTION:
             self.process_get_reflection_info(info)
         else: # INFO_META:
             info["INFO_META"] = INFO_META
-            info["INFO_GENERAL"] = INFO_GENERAL
+            info["INFO_SERVICE"] = INFO_SERVICE
             info["INFO_FUNCTIONS"] = INFO_FUNCTIONS
-            info["INFO_FUNCCODES"] = INFO_FUNCCODES
             info["INFO_REFLECTION"] = INFO_REFLECTION
         
         Int8.pack(REPLY_SUCCESS, self.transport)
@@ -317,6 +335,23 @@ class ClientUtils(object):
             self.proxy_cache[objref] = proxy
             return proxy
 
+    def check_cast(self, objref, clsname):
+        seq = self.seq.next()
+        with self.transport.writing(seq):
+            Int8.pack(CMD_CHECK_CAST, transport)
+            Int64.pack(objref, transport)
+            Str.pack(clsname, transport)
+        self.replies[seq] = (self.REPLY_SLOT_EMPTY, Bool)
+        return self.get_reply(seq)
+
+    def get_proxy_type(self, objref):
+        seq = self.seq.next()
+        with self.transport.writing(seq):
+            Int8.pack(CMD_QUERY_PROXY_TYPE, transport)
+            Int64.pack(objref, transport)
+        self.replies[seq] = (self.REPLY_SLOT_EMPTY, Str)
+        return self.get_reply(seq)
+
     @contextmanager
     def invocation(self, funcid, reply_packer):
         seq = self.seq.next()
@@ -355,7 +390,7 @@ class ClientUtils(object):
         with self.transport.writing(seq):
             Int8.pack(CMD_PING, self.transport)
             Str.pack(payload, self.transport)
-        replies[seq] = (self.REPLY_SLOT_EMPTY, Str)
+        self.replies[seq] = (self.REPLY_SLOT_EMPTY, Str)
         t0 = time.time()
         payload2 = self.get_reply(seq, timeout)
         dt = time.time() - t0

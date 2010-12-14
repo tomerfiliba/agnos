@@ -34,6 +34,8 @@ public class Protocol
 	public static final byte CMD_DECREF = 3;
 	public static final byte CMD_INCREF = 4;
 	public static final byte CMD_GETINFO = 5;
+	public static final byte CMD_CHECK_CAST = 6;
+	public static final byte CMD_QUERY_PROXY_TYPE = 7;
 
 	public static final byte REPLY_SUCCESS = 0;
 	public static final byte REPLY_PROTOCOL_ERROR = 1;
@@ -41,10 +43,9 @@ public class Protocol
 	public static final byte REPLY_GENERIC_EXCEPTION = 3;
 
 	public static final int INFO_META = 0;
-	public static final int INFO_GENERAL = 1;
+	public static final int INFO_SERVICE = 1;
 	public static final int INFO_FUNCTIONS = 2;
-	public static final int INFO_FUNCCODES = 3;
-	public static final int INFO_REFLECTION = 4;
+	public static final int INFO_REFLECTION = 3;
 
 	public abstract static class PackedException extends Exception
 	{
@@ -320,14 +321,11 @@ public class Protocol
 			HeteroMap map = new HeteroMap();
 
 			switch (code) {
-			case INFO_GENERAL:
-				processGetGeneralInfo(map);
+			case INFO_SERVICE:
+				processGetServiceInfo(map);
 				break;
 			case INFO_FUNCTIONS:
 				processGetFunctionsInfo(map);
-				break;
-			case INFO_FUNCCODES:
-				processGetFunctionCodes(map);
 				break;
 			case INFO_REFLECTION:
 				processGetReflectionInfo(map);
@@ -335,9 +333,8 @@ public class Protocol
 			case INFO_META:
 			default:
 				map.put("INFO_META", INFO_META);
-				map.put("INFO_GENERAL", INFO_GENERAL);
+				map.put("INFO_SERVICE", INFO_SERVICE);
 				map.put("INFO_FUNCTIONS", INFO_FUNCTIONS);
-				map.put("INFO_FUNCCODES", INFO_FUNCCODES);
 				map.put("INFO_REFLECTION", INFO_REFLECTION);
 				break;
 			}
@@ -346,15 +343,11 @@ public class Protocol
 			Packers.builtinHeteroMapPacker.pack(map, transport);
 		}
 
-		protected abstract void processGetGeneralInfo(HeteroMap map);
+		protected abstract void processGetServiceInfo(HeteroMap map);
 
 		protected abstract void processGetFunctionsInfo(HeteroMap map);
 
-		protected abstract void processGetFunctionCodes(HeteroMap map);
-
-		protected abstract void processGetTypesInfo(HeteroMap map);
-
-		protected abstract void processGetServiceInfo(HeteroMap map);
+		protected abstract void processGetReflectionInfo(HeteroMap map);
 
 		abstract protected void processInvoke(int seq) throws Exception;
 	}

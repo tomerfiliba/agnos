@@ -22,7 +22,7 @@ import sys
 import traceback
 import urlparse
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-from .. import INFO_TYPES, INFO_SERVICE
+from .. import INFO_REFLECTION
 from .xmlser import dumps as dump_xml, loads as load_xml
 from .jsonser import dumps as dump_json, loads_root as load_json
 from .util import import_file
@@ -52,11 +52,10 @@ class RESTfulAgnosServer(object):
     def __init__(self, bindings_module, agnos_client):
         self.bindings_module = bindings_module
         self.client = agnos_client
-        self.types = agnos_client.get_service_info(INFO_TYPES)
-        self.service = agnos_client.get_service_info(INFO_SERVICE)
+        self.reflection = agnos_client.get_service_info(INFO_REFLECTION)
         self.func_map = {}
         self.proxy_map = {}
-        for name, funcinfo in self.service["functions"].iteritems():
+        for name, funcinfo in self.reflection["functions"].iteritems():
             self.func_map[name] = get_dotted_attr(agnos_client, name)
             funcinfo["url"] = "/funcs/%s" % (name,)
     
@@ -123,7 +122,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         if oid not in self.root.proxy_map:
             raise HttpError(404, "Invalid object ID")
         obj = self.root.proxy_map[oid]
-        info = self.root.types["classes"][obj._idl_type]
+        info = self.root.reflection["classes"][obj._idl_type]
         
         print info
         

@@ -1,0 +1,16 @@
+<service name="CapabilitiesDemo">
+    <class name="PrivilegeLevel0">
+    </class>
+    
+    <class name="PrivilegeLevel1" extends="PrivilegeLevel0">
+    </class>
+
+    <class name="PrivilegeLevel2" extends="PrivilegeLevel1">
+    </class>
+    
+    <func name="authenticate" type="PrivilegeLevel0">
+        <arg name="username" type="str" />
+        <arg name="password" type="str" />
+    </func>
+
+</service>

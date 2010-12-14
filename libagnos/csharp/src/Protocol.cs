@@ -82,6 +82,8 @@ namespace Agnos
 		public const byte CMD_DECREF = 3;
 		public const byte CMD_INCREF = 4;
 		public const byte CMD_GETINFO = 5;
+        public const byte CMD_CHECK_CAST = 6;
+        public const byte CMD_QUERY_PROXY_TYPE = 7;
 
 		public const byte REPLY_SUCCESS = 0;
 		public const byte REPLY_PROTOCOL_ERROR = 1;
@@ -89,10 +91,9 @@ namespace Agnos
 		public const byte REPLY_GENERIC_EXCEPTION = 3;
 
 		public const int INFO_META = 0;
-		public const int INFO_GENERAL = 1;
+		public const int INFO_SERVICE = 1;
 		public const int INFO_FUNCTIONS = 2;
-		public const int INFO_FUNCCODES = 3;
-        public const int INFO_REFLECTION = 4;
+        public const int INFO_REFLECTION = 3;
 
 		public interface IProcessorFactory
 		{
@@ -269,14 +270,11 @@ namespace Agnos
 				HeteroMap info = new HeteroMap();
 				
 				switch (code) {
-				case INFO_GENERAL:
-					processGetGeneralInfo (info);
+				case INFO_SERVICE:
+					processGetServiceInfo (info);
 					break;
 				case INFO_FUNCTIONS:
 					processGetFunctionsInfo (info);
-					break;
-				case INFO_FUNCCODES:
-					processGetFunctionCodes (info);
 					break;
                 case INFO_REFLECTION:
                     processGetReflectionInfo (info);
@@ -284,9 +282,8 @@ namespace Agnos
 				case INFO_META:
 				default:
 					info["INFO_META"] = INFO_META;
-					info["INFO_GENERAL"] = INFO_GENERAL;
+					info["INFO_SERVICE"] = INFO_SERVICE;
 					info["INFO_FUNCTIONS"] = INFO_FUNCTIONS;
-					info["INFO_FUNCCODE"] = INFO_FUNCCODES;
                     info["INFO_REFLECTION"] = INFO_REFLECTION;
 					break;
 				}
@@ -295,9 +292,8 @@ namespace Agnos
 				Packers.builtinHeteroMapPacker.pack(info, transport);
 			}
 
-			protected abstract void processGetGeneralInfo (HeteroMap info);
+			protected abstract void processGetServiceInfo (HeteroMap info);
 			protected abstract void processGetFunctionsInfo (HeteroMap info);
-			protected abstract void processGetFunctionCodes (HeteroMap info);
             protected abstract void processGetReflectionInfo (HeteroMap info);
 
 			protected abstract void processInvoke (int seq);

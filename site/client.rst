@@ -66,13 +66,12 @@ Aliases:
 
 
 
-
-
-
 .. _client-methods:
 
 Client Methods
 ==============
+
+.. _client-assertServiceCompatibility:
 
 ``assertServiceCompatibility``
 ------------------------------
@@ -95,6 +94,8 @@ Closes the underlying transport and terminates the connection. This function
 will be implicitly called by ``Dispose`` or the destructor of the connection.
 
 
+.. _client-getServiceInfo:
+
 ``getServiceInfo``
 ------------------
 Returns a :ref:`type-heteromap` containing various information about the service. 
@@ -110,10 +111,9 @@ values are:
   and class attributes are shown in their true nature -- as functions that
   accept an implicit first argument that represents the object on which they
   operate.
-* ``INFO_FUNCCODES`` (3) - returns a map of functions names to their unique IDs
-* ``INFO_REFLECTION`` (4) - returns information about all the types defined by
-  the service. This includes records, enums, and classes, as well as 
-  service-level information, which includes functions and constants. The 
+* ``INFO_REFLECTION`` (3) - returns information about all the types defined by
+  the service. This includes types like records, enums, and classes, as well 
+  as service-level information, like functions and constants. The 
   returned information allows you to virtually construct the IDL from which 
   service was generated.
 
@@ -125,10 +125,20 @@ and is reserved for future use.
 
 Proxies
 =======
+Unlike records, enums, and other simple types, instances of :ref:`classes <idl-class>`
+pass by reference. This means the actual object remains on the server (AKA 
+*remote object* or *referenced object*), and only a unique identifier
+is sent to the client (AKA *object ID* or *object reference*). 
 
-How Proxies Work
-----------------
-TDB
+In order to make working with remote objects easy, a *proxy object* is created
+on the client, which represents the remote one: a proxy class is generated for 
+every class defined in the IDL (with the name name as the original class, 
+suffixed by ``Proxy``). 
+
+The purpose of the proxy instance is to hide the inner details of passing 
+objects *by reference*. The proxy instance has the same "look and feel" of
+the remote object -- exposing the same methods and attributes.
+
 
 Casting
 -------
@@ -144,15 +154,37 @@ that exposes the same interface as ``ClassA``, as defined in the IDL.
 However, the actual instance returned by ``foo`` may also be ``ClassB``, since
 it's compatible with ``ClassA``. 
 
-castToXXX (check = true/false) -> XXX
-getProxyType() -> string
+``discard``
+^^^^^^^^^^^
+Discards the proxy. This will inform the server to decrease the reference count
+of the remote object. Once the refcount reaches 0, the remote object will be 
+garbage-collected.
 
+After calling this method, the proxy instance can no longer be used; this will
+automatically be called when the proxy instance is garbage-collected, thus
+you shouldn't normally have to call this function explicitly.
 
+``castToXXX``
+^^^^^^^^^^^^^
+The proxy class can be up-casted or down-casted to any of the class' super classes
+or derived classes. This is done with the ``castToXXX`` family of functions, where
+``XXX`` is the super class' or derived class' name. 
 
+In our example above, instances of ``ClassAProxy`` expose a ``castToClassB``
+method, and instances of ``ClassBProxy`` expose a ``castToClassA``. Calling
+``castToXXX`` returns a **new proxy object** that exposes the methods and
+attributes of the desired type. As with all runtime casts, it might fail.
 
+Each of the ``castToXXX`` functions takes an optional parameter, ``checked``,
+which is ``false`` by default, meaning the cast may work locally, but when
+you'd try to use the methods or attributes of the object, it might fail.
+If you set ``checked`` to ``true``, the cast will be checked against the server,
+making sure it's legal. If illegal, an exception will be raised. 
 
-
-
-
+``getRemoteType``
+^^^^^^^^^^^^^^^^^
+This method is supported by all proxies, and returns the runtime-type of the 
+referenced object on the server. The return value is a string, representing
+the fully qualified type name.
 
 

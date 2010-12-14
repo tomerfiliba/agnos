@@ -54,12 +54,12 @@ public class myclient
 			// okay
 		}
 
-		var info = conn.GetServiceInfo(Agnos.Protocol.INFO_GENERAL);
+		var info = conn.GetServiceInfo(Agnos.Protocol.INFO_SERVICE);
 		if ((String)info["SERVICE_NAME"] != "FeatureTest") {
 			throw new Exception("wrong service name: " + info["SERVICE_NAME"]);
 		}
 		
-		info = conn.GetServiceInfo(Agnos.Protocol.INFO_FUNCCODES);
+		info = conn.GetServiceInfo(Agnos.Protocol.INFO_FUNCTIONS);
 		foreach (DictionaryEntry e in info) {
 			System.Console.WriteLine("{0} = {1}", e.Key, e.Value);
 		}

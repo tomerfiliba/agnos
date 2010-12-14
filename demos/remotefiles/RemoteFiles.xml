@@ -1,0 +1,31 @@
+<service name="RemoteFiles">
+
+    <enum name="FileMode">
+        <member name="WRITE" />
+        <member name="READ" />
+        <member name="APPEND" />
+        <member name="WRITE_PLUS" doc="W+" />
+        <member name="READ_PLUS" doc="R+" />
+    </enum>
+
+    <class name="File">
+        <attr name="filename" type="str" set="no"/>
+        <attr name="mode" type="FileMode" set="no"/>
+        
+        <method name="read" type="buffer">
+            <arg name="count" type="int"/>
+        </method>
+
+        <method name="write" type="void">
+            <arg name="data" type="buffer"/>
+        </method>
+
+        <method name="close" type="void" />
+    </class>
+    
+    <func name="open" type="File">
+        <arg name="filename" type="str" />
+        <arg name="mode" type="FileMode" />
+    </func>
+    
+</service>

@@ -329,13 +329,15 @@ class PythonTarget(TargetBase):
                 for tp in service.types.values():
                     STMT("packers_map[{0}] = {1}", tp.id, type_to_packer(tp))
             SEP()
-            with BLOCK("def process_get_general_info(self, info)"):
+            ######
+            with BLOCK("def process_get_service_info(self, info)"):
                 STMT('info["AGNOS_TOOLCHAIN_VERSION"] = AGNOS_TOOLCHAIN_VERSION')
                 STMT('info["AGNOS_PROTOCOL_VERSION"] = AGNOS_PROTOCOL_VERSION')
                 STMT('info["IDL_MAGIC"] = IDL_MAGIC')
                 STMT('info["SERVICE_NAME"] = "{0}"', service.name)
                 STMT('info.add("SUPPORTED_VERSIONS", packers.Str, SUPPORTED_VERSIONS, packers.list_of_str)')
             SEP()
+            ######
             with BLOCK("def process_get_functions_info(self, info)"):
                 for func in service.funcs.values():
                     STMT("funcinfo = info.new_map({0})", func.id)
@@ -354,11 +356,8 @@ class PythonTarget(TargetBase):
                                 STMT('"{0}" : "{1}",', anno.name, repr(anno.value))
                         STMT('funcinfo.add("annotations", packers. anno, packers.map_of_str_str)')
             SEP()
-            with BLOCK("def process_get_function_codes(self, info)"):
-                for func in service.funcs.values():
-                    STMT('info["{0}"] = {1}', func.name, func.id)
-            SEP()
-            with BLOCK("def process_get_types_info(self, info)"):
+            ######
+            with BLOCK("def process_get_reflection_info(self, info)"):
                 STMT('group = info.new_map("enums")')
                 for enum in service.enums():
                     STMT('members = group.new_map("{0}")', enum.name)
@@ -374,6 +373,10 @@ class PythonTarget(TargetBase):
                 STMT('group = info.new_map("classes")')
                 for cls in service.classes():
                     STMT('cls_group = group.new_map("{0}")', cls.name)
+                    if cls.extends:
+                        STMT('cls_group.add("extends", packers.Str, {0}, packers.list_of_str)',
+                            repr([cls2.name for cls2 in cls.extends]))
+                    
                     STMT('attr_group = cls_group.new_map("attrs")')
                     STMT('meth_group = cls_group.new_map("methods")')
                     for attr in cls.attrs:
@@ -381,9 +384,22 @@ class PythonTarget(TargetBase):
                         STMT('a["type"] = "{0}"', str(attr.type))
                         STMT('a["get"] = {0}', attr.get)
                         STMT('a["set"] = {0}', attr.set)
+                        STMT('a["get-id"] = {0}', attr.getid)
+                        STMT('a["set-id"] = {0}', attr.setid)
+                        if attr.annotations:
+                            with BLOCK("anno = ", prefix = "{", suffix = "}"):
+                                for anno in attr.annotations:
+                                    STMT('"{0}" : "{1}",', anno.name, repr(anno.value))
+                            STMT('a.add("annotations", packers.Str, anno, packers.map_of_str_str)')
                     for meth in cls.methods:
                         STMT('m = meth_group.new_map("{0}")', meth.name)
-                        STMT('m["type"] = "{0}"', arg.type)
+                        STMT('m["type"] = "{0}"', meth.type)
+                        STMT('m["id"] = {0}', meth.id)
+                        if meth.annotations:
+                            with BLOCK("anno = ", prefix = "{", suffix = "}"):
+                                for anno in meth.annotations:
+                                    STMT('"{0}" : "{1}",', anno.name, repr(anno.value))
+                            STMT('m.add("annotations", packers.Str, anno, packers.map_of_str_str)')
                         STMT("arg_names = []")
                         STMT("arg_types = []")
                         for arg in meth.args:
@@ -391,14 +407,19 @@ class PythonTarget(TargetBase):
                             STMT('arg_types.append("{0}")', str(arg.type))
                         STMT('m.add("arg_names", packers.Str, arg_names, packers.list_of_str)')
                         STMT('m.add("arg_types", packers.Str, arg_types, packers.list_of_str)')
-            SEP()
-            with BLOCK("def process_get_service_info(self, info)"):
+                SEP()
                 STMT('funcs = info.new_map("functions")')
                 for func in service.funcs.values():
                     if not isinstance(func, compiler.Func):
                         continue
                     STMT('func = funcs.new_map("{0}")', func.dotted_fullname)
+                    STMT('func["id"] = {0}', str(func.id))
                     STMT('func["type"] = "{0}"', str(func.type))
+                    if func.annotations:
+                        with BLOCK("anno = ", prefix = "{", suffix = "}"):
+                            for anno in func.annotations:
+                                STMT('"{0}" : "{1}",', anno.name, repr(anno.value))
+                        STMT('func.add("annotations", packers.Str, anno, packers.map_of_str_str)')
                     STMT("arg_names = []")
                     STMT("arg_types = []")
                     for arg in func.args:
@@ -406,6 +427,7 @@ class PythonTarget(TargetBase):
                         STMT('arg_types.append("{0}")', str(arg.type))
                     STMT('func.add("arg_names", packers.Str, arg_names, packers.list_of_str)')
                     STMT('func.add("arg_types", packers.Str, arg_types, packers.list_of_str)')
+                SEP()
                 STMT('consts = info.new_map("consts")')
                 for const in service.consts.values():
                     STMT('const = consts.new_map("{0}")', const.dotted_fullname)
@@ -537,7 +559,7 @@ class PythonTarget(TargetBase):
         SEP = module.sep
 
         with BLOCK("def assert_service_compatibility(self)"):
-            STMT("info = self.get_service_info(agnos.INFO_GENERAL)")
+            STMT("info = self.get_service_info(agnos.INFO_SERVICE)")
             
             with BLOCK('if info["AGNOS_PROTOCOL_VERSION"] != AGNOS_PROTOCOL_VERSION'):
                 STMT('''raise agnos.WrongAgnosVersion("expected protocol '%s' found '%s'" % (AGNOS_PROTOCOL_VERSION, info["AGNOS_PROTOCOL_VERSION"]))''')

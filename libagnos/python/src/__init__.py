@@ -31,8 +31,7 @@ from .httptransport import HttpClientTransport
 from .protocol import BaseRecord, BaseProxy, BaseClient, ClientUtils, BaseProcessor, Namespace
 from .protocol import ProtocolError, PackedException, GenericException
 from .protocol import WrongAgnosVersion, WrongServiceName, IncompatibleServiceVersion
-from .protocol import INFO_META, INFO_GENERAL, INFO_FUNCTIONS, INFO_FUNCCODES 
-from .protocol import INFO_SERVICE, INFO_TYPES
+from .protocol import INFO_META, INFO_SERVICE, INFO_FUNCTIONS, INFO_REFLECTION
 
 from .utils import HeteroMap, Enum
 

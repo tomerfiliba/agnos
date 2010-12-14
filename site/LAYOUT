@@ -36,15 +36,13 @@ Phase 1:
 * cmdline tools -- done
 * library mode -- done
 * server API -- done
-
-* client API -- half done
-* concepts
-
-* srcgen
-* restful
+* client API -- done
+* concepts -- done
+* srcgen -- done
 
 
 Phase 2:
+* restful -- half done
 * over-http
 * tutorial
 * demos

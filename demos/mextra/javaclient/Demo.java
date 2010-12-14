@@ -19,7 +19,7 @@ public class Demo
 	
 	public static void doStuff(Mextra.Client conn) throws Exception
 	{
-		System.out.println(conn.getServiceInfo(agnos.Protocol.INFO_GENERAL));
+		System.out.println(conn.getServiceInfo(agnos.Protocol.INFO_SERVICE));
 		
 		conn.assertServiceCompatibility();
 		

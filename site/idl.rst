@@ -96,6 +96,32 @@ your target language's conventions. Otherwise, please use the following ones:
   Otherwise, use camel-case starting with a capital letter -- 
   ``<typedef name="Hound" type="Dog"/>``.
 
+.. _idl-annotations:
+
+Annotations
+-----------
+Every IDL element can contain multiple sub-elements named ``annotation``, each
+taking with two attributes: ``name`` and ``value``. This information is 
+practically meaningless to the compiler, but allows you to add additional 
+meta-information to the service, that could be used by other utilities or 
+at runtime (through reflection :ref:`reflection <client-getServiceInfo>`).
+
+For instance, you may want to mark certain functions as "more privileged" than
+others, or limit them only to certain users. You could add this metadata as
+an annotation on the function, for example,
+
+.. code-block:: xml
+  
+  <func name="foo" type="void">
+      <annotation name="user" value="johns">
+      <arg name="bar" type="int"/>
+  </func>
+
+Again, this information is meaningless to the Agnos compiler, but it may be 
+used by your implementation to deny access to any users other than ``johns``,
+for instance.
+
+
 ------------------------------------------------------------------------------
 
 .. _idl-service:
@@ -136,6 +162,8 @@ Optional.
 The name of the package in the generated code. By default it's the name of the 
 service, but you may want to change it. 
 For example: ``package="com.foo.bar.toaster"``
+
+.. _idl-service-versions:
 
 ``versions``
 ^^^^^^^^^^^^
@@ -187,7 +215,7 @@ Defines a constant value.
 
 Syntax
 ------
-``<const name="NAME" type="TYPE" value="VALUE" />``
+``<const name="NAME" type="TYPE" value="VALUE" [namespace="NAMESPACE"] />``
 
 Attributes
 ----------
@@ -224,6 +252,28 @@ of the value is like that of literals in most programming languages:
   single quotes (``'``) or double quotes (``"``) and may contain the following 
   common escape-sequences: ``\n``, ``\t``, ``\r``, ``\\``, ``\"``, ``\'``, 
   and ``\xXX`` where ``XX`` consists of two hexadecimal digits.
+
+``namespace``
+^^^^^^^^^^^^^
+Optional.
+
+The namespace under which the constant "lives". This allows you to define two
+constants with the same name that are contained in different namespaces. The
+namespace plus the constant's name form the constant's *fully qualified name*.
+
+The format is ``NAME1[.NAME2[.NAME3[...]]]``, meaning, a sequence of 
+identifiers separated by periods. If no namespace is provided, the constant 
+is placed in the "root" namespace. 
+
+For example: 
+
+.. code-block:: xml
+
+  <const name="RED" type="int" value="7" />
+  <const name="RED" type="int" value="3" namespace="foo.bar" />
+  <const name="RED" type="int" value="6" namespace="spam.eggs" />
+
+This will yield the constants ``RED``, ``foo.bar.RED``, and ``spam.eggs.RED``.
 
 ------------------------------------------------------------------------------
 
@@ -693,9 +743,12 @@ The new ID of the method.
 ========
 A function exposed by the service (also known as "static method").
 
+.. note::
+  ``function`` is an alias to ``func``
+
 Syntax
 ------
-``<method name="NAME" type="TYPE" [clientside="YESNO"]>``
+``<func name="NAME" type="TYPE" [clientside="YESNO"] [namespace="NAMESPACE"]>``
 
 Contained Elements
 ------------------
@@ -728,6 +781,28 @@ available for older clients. Setting this attribute to "no" will cause the
 relevant code to be generated only on the server-side, but not on the client.
 This means up-to-date clients will not see it, but older ones will be able to
 invoke it. The default is "yes".
+
+``namespace``
+^^^^^^^^^^^^^
+Optional.
+
+The namespace under which the function "lives". This allows you to define two
+functions with the same name that are contained in different namespaces. The
+namespace plus the functions's name form the function's *fully qualified name*.
+
+The format is ``NAME1[.NAME2[.NAME3[...]]]``, meaning, a sequence of 
+identifiers separated by periods. If no namespace is provided, the element
+is placed in the "root" namespace. 
+
+For example: 
+
+.. code-block:: xml
+
+  <func name="bark" type="void" />
+  <func name="bark" type="void" namespace="foo.bar" />
+  <func name="bark" type="void" namespace="spam.eggs" />
+
+This will yield the functions ``bark``, ``foo.bar.bark``, and ``spam.eggs.bark``.
 
 ------------------------------------------------------------------------------
 

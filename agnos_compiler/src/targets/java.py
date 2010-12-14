@@ -628,8 +628,14 @@ class JavaTarget(TargetBase):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
+
+        has_annotations = False
+        for func in service.funcs.values(): 
+            if func.annotations:
+                has_annotations = True
+                break
         
-        with BLOCK("protected void processGetGeneralInfo(HeteroMap map)"):
+        with BLOCK("protected void processGetServiceInfo(HeteroMap map)"):
             STMT('map.put("AGNOS_PROTOCOL_VERSION", AGNOS_PROTOCOL_VERSION)')
             STMT('map.put("AGNOS_TOOLCHAIN_VERSION", AGNOS_TOOLCHAIN_VERSION)')
             STMT('map.put("IDL_MAGIC", IDL_MAGIC)')
@@ -640,7 +646,8 @@ class JavaTarget(TargetBase):
         with BLOCK("protected void processGetFunctionsInfo(HeteroMap map)"):
             STMT("HeteroMap funcinfo")
             STMT("HashMap<String, String> args")
-            STMT("HashMap<String, String> anno")
+            if has_annotations:
+                STMT("HashMap<String, String> anno")
             SEP()
             for func in service.funcs.values():
                 STMT("funcinfo = new HeteroMap()")
@@ -658,33 +665,45 @@ class JavaTarget(TargetBase):
                 STMT('map.put({0}, funcinfo, Packers.builtinHeteroMapPacker)', func.id)
         SEP()
         ##
-        with BLOCK("protected void processGetFunctionCodes(HeteroMap map)"):
-            for func in service.funcs.values():
-                STMT('map.put("{0}", {1})', func.name, func.id)    
-            SEP()
-        SEP()
-        ##
         with BLOCK("protected void processGetReflectionInfo(HeteroMap map)"):
             STMT('HeteroMap group = map.putNewMap("enums")')
-            if service.enums() or service.records() or service.consts or service.funcs:
-                STMT("HeteroMap members")
+            STMT("ArrayList<String> arg_names, arg_types")
+            STMT("HeteroMap members = null")
+            STMT("HeteroMap member = null")
+            if has_annotations:
+                STMT("HashMap<string, string> anno")
+            SEP()
+            
             for enum in service.enums():
                 STMT('members = group.putNewMap("{0}")', enum.name)
                 for mem in enum.members:
                     STMT('members.put("{0}", "{1}")', mem.name, mem.value)
             SEP()
+            
             STMT('group = map.putNewMap("records")')
             for rec in service.records():
                 STMT('members = group.putNewMap("{0}")', rec.name)
                 for mem in rec.members:
                     STMT('members.put("{0}", "{1}")', mem.name, mem.type)
+                #STMT('group.put("{0}", )', rec.extends) ??
             SEP()
+            
             STMT('group = map.putNewMap("classes")')
             if service.classes():
                 STMT("HeteroMap cls_group, attr_group, meth_group, a, m")
-                STMT("ArrayList<String> arg_names, arg_types")
+            has_extends = False
+            
             for cls in service.classes():
                 STMT('cls_group = group.putNewMap("{0}")', cls.name)
+                if cls.extends:
+                    if not has_extends:
+                        has_extends = True
+                        STMT('ArrayList<String> extendsList')
+                    STMT('extendsList = new ArrayList<String>()')
+                    for cls2 in cls.extends:
+                        STMT('extendsList.add("{0}")', cls2.name)
+                    STMT('cls_group.put("extends", extendsList, Packers.listOfStr)')
+                
                 STMT('attr_group = cls_group.putNewMap("attrs")')
                 STMT('meth_group = cls_group.putNewMap("methods")')
                 for attr in cls.attrs:
@@ -692,9 +711,24 @@ class JavaTarget(TargetBase):
                     STMT('a.put("type", "{0}")', str(attr.type))
                     STMT('a.put("get", {0})', "true" if attr.get else "false")
                     STMT('a.put("set", {0})', "true" if attr.set else "false")
+                    STMT('a.put("get-id", {0})', attr.getid)
+                    STMT('a.put("set-id", {0})', attr.setid)
+                    if attr.annotations:
+                        STMT("anno = new HashMap<String, String>()")
+                        for anno in attr.annotations:
+                            STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
+                        STMT('a.put("annotations", anno, Packers.mapOfStrStr)')
+
                 for meth in cls.methods:
                     STMT('m = meth_group.putNewMap("{0}")', meth.name)
-                    STMT('m.put("type", "{0}")', arg.type)
+                    STMT('m.put("type", "{0}")', meth.type)
+                    STMT('m.put("id", {0})', meth.id)
+                    if meth.annotations:
+                        STMT("anno = new HashMap<String, String>()")
+                        for anno in meth.annotations:
+                            STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
+                        STMT('m.put("annotations", anno, Packers.mapOfStrStr)')
+                    
                     STMT("arg_names = new ArrayList<String>()")
                     STMT("arg_types = new ArrayList<String>()")
                     for arg in meth.args:
@@ -702,13 +736,20 @@ class JavaTarget(TargetBase):
                         STMT('arg_types.add("{0}")', str(arg.type))
                     STMT('m.put("arg_names", Packers.Str, arg_names, Packers.listOfStr)')
                     STMT('m.put("arg_types", Packers.Str, arg_types, Packers.listOfStr)')
+            SEP()
+            
             STMT('group = map.putNewMap("functions")')
-            STMT("ArrayList<String> arg_names, arg_types")
             for func in service.funcs.values():
                 if not isinstance(func, compiler.Func):
                     continue
-                STMT('member = funcs.putNewMap("{0}")', func.dotted_fullname)
+                STMT('member = group.putNewMap("{0}")', func.dotted_fullname)
+                STMT('member.put("id", {0})', str(func.id))
                 STMT('member.put("type", "{0}")', str(func.type))
+                if func.annotations:
+                    STMT("anno = new HashMap<String, String>()")
+                    for anno in func.annotations:
+                        STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
+                    STMT('funcinfo.put("annotations", anno, Packers.mapOfStrStr)')
                 STMT("arg_names = new ArrayList<String>()")
                 STMT("arg_types = new ArrayList<String>()")
                 for arg in func.args:
@@ -716,9 +757,11 @@ class JavaTarget(TargetBase):
                     STMT('arg_types.add("{0}")', str(arg.type))
                 STMT('member.put("arg_names", Packers.Str, arg_names, Packers.listOfStr)')
                 STMT('member.put("arg_types", Packers.Str, arg_types, Packers.listOfStr)')
+            SEP()
+            
             STMT('group = map.putNewMap("consts")')
             for const in service.consts.values():
-                STMT('member = consts.putNewMap("{0}")', const.dotted_fullname)
+                STMT('member = group.putNewMap("{0}")', const.dotted_fullname)
                 STMT('member.put("type", "{0}")', str(const.type))
                 STMT('member.put("value", "{0}")', const.value)
         SEP()
@@ -989,7 +1032,7 @@ class JavaTarget(TargetBase):
         
         SEP()
         with BLOCK("public void assertServiceCompatibility() throws IOException, Protocol.ProtocolError, Protocol.PackedException, Protocol.GenericException"):
-            STMT("HeteroMap info = getServiceInfo(Protocol.INFO_GENERAL)")
+            STMT("HeteroMap info = getServiceInfo(Protocol.INFO_SERVICE)")
             STMT('String agnos_protocol_version = (String)info.get("AGNOS_PROTOCOL_VERSION")')
             STMT('String service_name = (String)info.get("SERVICE_NAME")')
             

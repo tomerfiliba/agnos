@@ -53,13 +53,13 @@ public class myclient
 			// okay
 		}
 
-		agnos.HeteroMap info = conn.getServiceInfo(agnos.Protocol.INFO_GENERAL);
+		agnos.HeteroMap info = conn.getServiceInfo(agnos.Protocol.INFO_SERVICE);
 		if (!info.get("SERVICE_NAME").equals("FeatureTest")) {
 			throw new Exception("wrong service name: "
 					+ info.get("SERVICE_NAME"));
 		}
 
-		info = conn.getServiceInfo(agnos.Protocol.INFO_FUNCCODES);
+		info = conn.getServiceInfo(agnos.Protocol.INFO_FUNCTIONS);
 		for (Map.Entry e : info.entrySet()) {
 			System.out.println(e.getKey().toString() + " = "
 					+ e.getValue().toString());

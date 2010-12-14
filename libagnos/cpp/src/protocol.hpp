@@ -87,6 +87,8 @@ namespace agnos
 		const int8_t CMD_DECREF = 3;
 		const int8_t CMD_INCREF = 4;
 		const int8_t CMD_GETINFO = 5;
+		const int8_t CMD_CHECK_CAST = 6;
+		const int8_t CMD_QUERY_PROXY_TYPE = 7;
 
 		const int8_t REPLY_SUCCESS = 0;
 		const int8_t REPLY_PROTOCOL_ERROR = 1;
@@ -94,10 +96,9 @@ namespace agnos
 		const int8_t REPLY_GENERIC_EXCEPTION = 3;
 
 		const int32_t INFO_META = 0;
-		const int32_t INFO_GENERAL = 1;
+		const int32_t INFO_SERVICE = 1;
 		const int32_t INFO_FUNCTIONS = 2;
-		const int32_t INFO_FUNCCODES = 3;
-		const int32_t INFO_REFLECTION = 4;
+		const int32_t INFO_REFLECTION = 3;
 
 		class BaseProcessor : protected ISerializer, public boost::noncopyable
 		{
@@ -141,9 +142,8 @@ namespace agnos
 			objref_t store(objref_t oid, any obj);
 			any load(objref_t oid);
 
-			virtual void process_get_general_info(HeteroMap& map) = 0;
+			virtual void process_get_service_info(HeteroMap& map) = 0;
 			virtual void process_get_functions_info(HeteroMap& map) = 0;
-			virtual void process_get_function_codes(HeteroMap& map) = 0;
 			virtual void process_get_reflection_info(HeteroMap& map) = 0;
 
 			virtual void process_invoke(int32_t seq) = 0;

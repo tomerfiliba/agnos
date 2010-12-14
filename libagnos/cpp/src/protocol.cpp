@@ -97,17 +97,13 @@ namespace agnos
 			HeteroMap map;
 
 			switch (code) {
-			case INFO_GENERAL:
-				DEBUG_LOG("INFO_GENERAL");
-				process_get_general_info(map);
+			case INFO_SERVICE:
+				DEBUG_LOG("INFO_SERVICE");
+				process_get_service_info(map);
 				break;
 			case INFO_FUNCTIONS:
 				DEBUG_LOG("INFO_FUNCTIONS");
 				process_get_functions_info(map);
-				break;
-			case INFO_FUNCCODES:
-				DEBUG_LOG("INFO_FUNCCODES");
-				process_get_function_codes(map);
 				break;
 			case INFO_REFLECTION:
 				DEBUG_LOG("INFO_REFLECTION");
@@ -118,9 +114,8 @@ namespace agnos
 				// fall-through
 			default:
 				map.put("INFO_META", INFO_META);
-				map.put("INFO_GENERAL", INFO_GENERAL);
+				map.put("INFO_SERVICE", INFO_SERVICE);
 				map.put("INFO_FUNCTIONS", INFO_FUNCTIONS);
-				map.put("INFO_FUNCCODES", INFO_FUNCCODES);
 				map.put("INFO_REFLECTION", INFO_REFLECTION);
 				break;
 			}

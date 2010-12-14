@@ -651,8 +651,14 @@ class CSharpTarget(TargetBase):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
+
+        has_annotations = False
+        for func in service.funcs.values(): 
+            if func.annotations:
+                has_annotations = True
+                break
         
-        with BLOCK("protected override void processGetGeneralInfo(HeteroMap map)"):
+        with BLOCK("protected override void processGetServiceInfo(HeteroMap map)"):
             STMT('map["AGNOS_PROTOCOL_VERSION"] = AGNOS_PROTOCOL_VERSION')
             STMT('map["AGNOS_TOOLCHAIN_VERSION"] = AGNOS_TOOLCHAIN_VERSION')
             STMT('map["IDL_MAGIC"] = IDL_MAGIC')
@@ -661,12 +667,6 @@ class CSharpTarget(TargetBase):
         SEP()
         ##
         with BLOCK("protected override void processGetFunctionsInfo(HeteroMap map)"):
-            has_annotations = False
-            for func in service.funcs.values(): 
-                if func.annotations:
-                    has_annotations = True
-                    break
-
             STMT("HeteroMap funcinfo")
             STMT("Dictionary<string, string> args")
             if has_annotations:
@@ -688,15 +688,14 @@ class CSharpTarget(TargetBase):
                 STMT('map.Add({0}, funcinfo, Packers.builtinHeteroMapPacker)', func.id)
         SEP()
         ##
-        with BLOCK("protected override void processGetFunctionCodes(HeteroMap map)"):
-            for func in service.funcs.values():
-                STMT('map["{0}"] = {1}', func.name, func.id)
-        SEP()
-        ##
-        with BLOCK("protected override void processGetTypesInfo(HeteroMap map)"):
-            STMT('HeteroMap group = map.AddNewMap("enums")')
-            if service.enums() or service.records():
-                STMT("HeteroMap members")
+        with BLOCK("protected override void processGetReflectionInfo(HeteroMap map)"):
+            STMT("List<String> arg_names, arg_types")
+            STMT("HeteroMap group, members, member");
+            if has_annotations:
+                STMT("Dictionary<string, string> anno")
+            SEP()
+
+            STMT('group = map.AddNewMap("enums")')
             for enum in service.enums():
                 STMT('members = group.AddNewMap("{0}")', enum.name)
                 for mem in enum.members:
@@ -708,12 +707,23 @@ class CSharpTarget(TargetBase):
                 for mem in rec.members:
                     STMT('members["{0}"] = "{1}"', mem.name, mem.type)
             SEP()
+            
             STMT('group = map.AddNewMap("classes")')
             if service.classes():
                 STMT("HeteroMap cls_group, attr_group, meth_group, a, m")
-                STMT("List<String> arg_names, arg_types")
+            has_extends = False
+            
             for cls in service.classes():
                 STMT('cls_group = group.AddNewMap("{0}")', cls.name)
+                if cls.extends:
+                    if not has_extends:
+                        has_extends = True
+                        STMT('List<String> extendsList')
+                    STMT('extendsList = new List<String>()')
+                    for cls2 in cls.extends:
+                        STMT('extendsList.Add("{0}")', cls2.name)
+                    STMT('cls_group.Add("extends", Packers.Str, extendsList, Packers.listOfStr)')
+                
                 STMT('attr_group = cls_group.AddNewMap("attrs")')
                 STMT('meth_group = cls_group.AddNewMap("methods")')
                 for attr in cls.attrs:
@@ -721,9 +731,18 @@ class CSharpTarget(TargetBase):
                     STMT('a["type"] = "{0}"', str(attr.type))
                     STMT('a["get"] = {0}', "true" if attr.get else "false")
                     STMT('a["set"] = {0}', "true" if attr.set else "false")
+                    STMT('a["get-id"] = {0}', attr.getid)
+                    STMT('a["set-id"] = {0}', attr.setid)
+                    if attr.annotations:
+                        STMT("anno = new Dictionary<string, string>()")
+                        for anno in attr.annotations:
+                            STMT('anno["{0}"] = "{1}"', anno.name, anno.value)
+                        STMT('a.Add("annotations", anno, Packers.mapOfStrStr)')
+
                 for meth in cls.methods:
                     STMT('m = meth_group.AddNewMap("{0}")', meth.name)
-                    STMT('m["type"] = "{0}"', arg.type)
+                    STMT('m["type"] = "{0}"', meth.type)
+                    STMT('m["id"] = {0}', meth.id)
                     STMT("arg_names = new List<String>()")
                     STMT("arg_types = new List<String>()")
                     for arg in meth.args:
@@ -731,29 +750,38 @@ class CSharpTarget(TargetBase):
                         STMT('arg_types.Add("{0}")', str(arg.type))
                     STMT('m.Add("arg_names", Packers.Str, arg_names, Packers.listOfStr)')
                     STMT('m.Add("arg_types", Packers.Str, arg_types, Packers.listOfStr)')
-        SEP()
-        ##
-        with BLOCK("protected override void processGetServiceInfo(HeteroMap map)"):
-            STMT('HeteroMap funcs = map.AddNewMap("functions")')
-            STMT("HeteroMap func")
-            STMT("List<String> arg_names, arg_types")
+                    if meth.annotations:
+                        STMT("anno = new Dictionary<string, string>()")
+                        for anno in meth.annotations:
+                            STMT('anno["{0}"] = "{1}"', anno.name, anno.value)
+                        STMT('m.Add("annotations", anno, Packers.mapOfStrStr)')
+
+            SEP()
+            
+            STMT('group = map.AddNewMap("functions")')
             for func in service.funcs.values():
                 if not isinstance(func, compiler.Func):
                     continue
-                STMT('func = funcs.AddNewMap("{0}")', func.dotted_fullname)
-                STMT('func["type"] = "{0}"', str(func.type))
+                STMT('member = group.AddNewMap("{0}")', func.dotted_fullname)
+                STMT('member["id"] = {0}', str(func.id))
+                STMT('member["type"] = "{0}"', str(func.type))
+                if func.annotations:
+                    STMT("anno = new Dictionary<string, string>()")
+                    for anno in func.annotations:
+                        STMT('anno["{0}"] = "{1}"', anno.name, anno.value)
+                    STMT('member.Add("annotations", Packers.Str, anno, Packers.mapOfStrStr)')
                 STMT("arg_names = new List<String>()")
                 STMT("arg_types = new List<String>()")
                 for arg in func.args:
                     STMT('arg_names.Add("{0}")', arg.name)
                     STMT('arg_types.Add("{0}")', str(arg.type))
-                STMT('func.Add("arg_names", Packers.Str, arg_names, Packers.listOfStr)')
-                STMT('func.Add("arg_types", Packers.Str, arg_types, Packers.listOfStr)')
-            STMT('HeteroMap consts = map.AddNewMap("consts")')
-            if service.consts:
-                STMT("HeteroMap member")
+                STMT('member.Add("arg_names", Packers.Str, arg_names, Packers.listOfStr)')
+                STMT('member.Add("arg_types", Packers.Str, arg_types, Packers.listOfStr)')
+            SEP()
+            
+            STMT('group = map.AddNewMap("consts")')
             for const in service.consts.values():
-                STMT('member = consts.AddNewMap("{0}")', const.dotted_fullname)
+                STMT('member = group.AddNewMap("{0}")', const.dotted_fullname)
                 STMT('member["type"] = "{0}"', str(const.type))
                 STMT('member["value"] = "{0}"', const.value)
         SEP()
@@ -1033,7 +1061,7 @@ class CSharpTarget(TargetBase):
 
         SEP()
         with BLOCK("public void AssertServiceCompatibility()"):
-            STMT("HeteroMap info = GetServiceInfo(Protocol.INFO_GENERAL)")
+            STMT("HeteroMap info = GetServiceInfo(Protocol.INFO_SERVICE)")
             STMT('string agnos_protocol_version = (string)info["AGNOS_PROTOCOL_VERSION"]')
             STMT('string service_name = (string)info["SERVICE_NAME"]')
             

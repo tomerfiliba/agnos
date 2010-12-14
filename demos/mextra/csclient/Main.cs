@@ -14,7 +14,7 @@ namespace csclient
 	
 			Mextra.Client conn = Mextra.Client.ConnectSock(host, port);
 			
-			System.Console.WriteLine(conn.GetServiceInfo(Agnos.Protocol.INFO_GENERAL));
+			System.Console.WriteLine(conn.GetServiceInfo(Agnos.Protocol.INFO_SERVICE));
 			
 			conn.AssertServiceCompatibility();
 			
