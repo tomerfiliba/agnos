@@ -17,7 +17,7 @@ Features
   only one file to edit
 
 * :doc:`RESTful front-end <restful>`: unsupported languages can use Agnos-exposed
-  services in a `RESTful<http://en.wikipedia.org/wiki/REST>`_ manner, 
+  services in a `RESTful <http://en.wikipedia.org/wiki/REST>`_ manner, 
   assuming they have HTTP client-side libraries.
 
 * **Multiple topologies**:
