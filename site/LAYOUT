@@ -33,17 +33,20 @@ Phase 1:
 * IDL -- done
 * types -- done
 * naming convention -- done
+* cmdline tools -- done
+* library mode -- done
+* server API -- done
 
-* client API
-* srcgen
-* tutorial
-* cmdline tools
-* restful
-* library mode
+* client API -- half done
 * concepts
+
+* srcgen
+* restful
 
 
 Phase 2:
+* over-http
+* tutorial
 * demos
 
 

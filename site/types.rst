@@ -13,6 +13,7 @@ This is unlike **reference types**, which are passed by-reference. For reference
 types, only a unique identifier is sent over the wire, while the actual object
 remains where it is.
 
+.. _type-simple:
 
 Simple Types
 ------------
@@ -40,19 +41,29 @@ Simple Types
 * ``buffer`` -- a binary buffer (array of bytes), useful for passing binary data
   blobs.
 
+.. _type-containers:
+
 By-Value Containers
 -------------------
 .. note::
   These are all value types
 
+.. _type-list:
+
 * ``list[V]`` -- a list (also vector) of elements of type ``V``. 
   Example usage: ``list[int32]``.
+
+.. _type-set:
 
 * ``set[V]`` -- a set (unordered collection) of unique elements of type ``V``.
   Example usage: ``set[float]``.
 
+.. _type-map:
+
 * ``map[K, V]`` or ``dict[K, V]`` -- a map of unique keys of type ``K`` to 
   values of type ``V``. Example usage: ``map[datetime, string]``. 
+
+.. _type-heteromap:
 
 * ``heteromap`` or ``heterodict`` -- a heterogenous map, meaning a map contains 
   keys of any type and values of any type.
@@ -63,6 +74,8 @@ By-Value Containers
 
 Containers are not limited to holding simple types only; for instance, 
 ``map[int, set[str]]`` is a valid type.
+
+.. _type-void:
 
 Void
 ----

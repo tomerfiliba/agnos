@@ -109,13 +109,9 @@ namespace agnos
 				DEBUG_LOG("INFO_FUNCCODES");
 				process_get_function_codes(map);
 				break;
-			case INFO_TYPES:
-				DEBUG_LOG("INFO_TYPES");
-				process_get_types_info(map);
-				break;
-			case INFO_SERVICE:
-				DEBUG_LOG("INFO_SERVICE");
-				process_get_service_info(map);
+			case INFO_REFLECTION:
+				DEBUG_LOG("INFO_REFLECTION");
+				process_get_reflection_info(map);
 				break;
 			case INFO_META:
 				DEBUG_LOG("INFO_META");
@@ -125,8 +121,7 @@ namespace agnos
 				map.put("INFO_GENERAL", INFO_GENERAL);
 				map.put("INFO_FUNCTIONS", INFO_FUNCTIONS);
 				map.put("INFO_FUNCCODES", INFO_FUNCCODES);
-				map.put("INFO_TYPES", INFO_TYPES);
-				map.put("INFO_SERVICE", INFO_SERVICE);
+				map.put("INFO_REFLECTION", INFO_REFLECTION);
 				break;
 			}
 

@@ -379,12 +379,12 @@ def get_filenames(rootdir, suffix = ".py"):
     return filenames, rootdir
 
 
-def main(rootdir, outdir = None, idlfile = None, serverfile = None, rootpackage = None, history_file = None):
+def main(rootdir, outdir = None, idlfile = None, serverfile = None, packagename = None, history_file = None):
     filenames, rootdir = get_filenames(rootdir)
-    if not rootpackage:
-        rootpackage = os.path.basename(rootdir)
+    if not packagename:
+        packagename = os.path.basename(rootdir)
     try:
-        ast_root = parse_source_files(rootdir, filenames, rootpackage)
+        ast_root = parse_source_files(rootdir, filenames, packagename)
     except SourceError as ex:
         ex.display()
         raise

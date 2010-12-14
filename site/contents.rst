@@ -18,9 +18,12 @@ Contents
    
    idl
    types
-   srcgen
    tools
    client
+   server
+   over-http
+   
+   srcgen
    restful
    library-mode
    

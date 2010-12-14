@@ -44,8 +44,7 @@ public class Protocol
 	public static final int INFO_GENERAL = 1;
 	public static final int INFO_FUNCTIONS = 2;
 	public static final int INFO_FUNCCODES = 3;
-	public static final int INFO_TYPES = 4;
-	public static final int INFO_SERVICE = 5;
+	public static final int INFO_REFLECTION = 4;
 
 	public abstract static class PackedException extends Exception
 	{
@@ -330,11 +329,8 @@ public class Protocol
 			case INFO_FUNCCODES:
 				processGetFunctionCodes(map);
 				break;
-			case INFO_TYPES:
-				processGetTypesInfo(map);
-				break;
-			case INFO_SERVICE:
-				processGetServiceInfo(map);
+			case INFO_REFLECTION:
+				processGetReflectionInfo(map);
 				break;
 			case INFO_META:
 			default:
@@ -342,8 +338,7 @@ public class Protocol
 				map.put("INFO_GENERAL", INFO_GENERAL);
 				map.put("INFO_FUNCTIONS", INFO_FUNCTIONS);
 				map.put("INFO_FUNCCODES", INFO_FUNCCODES);
-				map.put("INFO_TYPES", INFO_TYPES);
-				map.put("INFO_SERVICE", INFO_SERVICE);
+				map.put("INFO_REFLECTION", INFO_REFLECTION);
 				break;
 			}
 

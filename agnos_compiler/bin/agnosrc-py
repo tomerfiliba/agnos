@@ -43,7 +43,7 @@ parser.add_option("--idlfile", dest="idlfile", default=None,
 parser.add_option("--serverfile", dest="serverfile", default=None,
                   help="specify the generated server file name (by default, it is named as the service, suffixed by '_server.py')", 
                   metavar="FILENAME")
-parser.add_option("-r", "--rootpackage", dest="rootpackage", default=None,
+parser.add_option("-p", "--packagename", dest="packagename", default=None,
                   help="specify the root package name (by default, the top directory is used)", 
                   metavar="NAME")
 parser.add_option("--historyfile", dest="history_file", default=None,
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     if not args:
         parser.error("must specify agnos input file(s)")
     for fn in args:
-        main(fn, outdir = options.outdir, rootpackage = options.rootpackage,
+        main(fn, outdir = options.outdir, packagename = options.packagename,
             serverfile = options.serverfile, idlfile = options.idlfile,
             history_file = options.history_file)
 

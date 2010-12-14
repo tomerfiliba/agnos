@@ -10,22 +10,24 @@ Features
   enable encrypted and authenticated sessions.
 
 * **Lightweight and efficient**: Agnos uses a compact binary protocol and 
-  supports point-to-point connectivity (no setup required).
+  supports point-to-point connectivity (no need to set up name servers, 
+  web servers, URLs, etc.).
 
 * :doc:`srcgen`: Generate :doc:`idl` specifications from in-code comments; 
   only one file to edit
 
 * :doc:`RESTful front-end <restful>`: unsupported languages can use Agnos-exposed
   services in a `RESTful<http://en.wikipedia.org/wiki/REST>`_ manner, 
-  assuming they have HTTP-client libraries.
+  assuming they have HTTP client-side libraries.
 
 * **Multiple topologies**:
 
-  * **Direct socket connection**: clients connect directly to a server socket
+  * **Direct socket connection**: clients connect directly to a listening socket
   
   * **HTTP Tunneling**: clients can tunnel the protocol over HTTP, sending 
     requests to a web server and have it forward the request to the Agnos 
-    service. 
+    service. This is useful in environments that require integration with a 
+    web server, or to cross firewalls.
   
   * :doc:`library-mode`: instead of setting up a server, you can spawn a server 
     process and connect to it -- in one line of code! This is useful when you

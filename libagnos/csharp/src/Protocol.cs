@@ -92,8 +92,7 @@ namespace Agnos
 		public const int INFO_GENERAL = 1;
 		public const int INFO_FUNCTIONS = 2;
 		public const int INFO_FUNCCODES = 3;
-        public const int INFO_TYPES = 4;
-        public const int INFO_SERVICE = 5;
+        public const int INFO_REFLECTION = 4;
 
 		public interface IProcessorFactory
 		{
@@ -279,11 +278,8 @@ namespace Agnos
 				case INFO_FUNCCODES:
 					processGetFunctionCodes (info);
 					break;
-                case INFO_TYPES:
-                    processGetTypesInfo (info);
-                    break;
-                case INFO_SERVICE:
-                    processGetServiceInfo (info);
+                case INFO_REFLECTION:
+                    processGetReflectionInfo (info);
                     break;
 				case INFO_META:
 				default:
@@ -291,8 +287,7 @@ namespace Agnos
 					info["INFO_GENERAL"] = INFO_GENERAL;
 					info["INFO_FUNCTIONS"] = INFO_FUNCTIONS;
 					info["INFO_FUNCCODE"] = INFO_FUNCCODES;
-                    info["INFO_TYPES"] = INFO_TYPES;
-                    info["INFO_SERVICE"] = INFO_SERVICE;
+                    info["INFO_REFLECTION"] = INFO_REFLECTION;
 					break;
 				}
 				
@@ -303,8 +298,7 @@ namespace Agnos
 			protected abstract void processGetGeneralInfo (HeteroMap info);
 			protected abstract void processGetFunctionsInfo (HeteroMap info);
 			protected abstract void processGetFunctionCodes (HeteroMap info);
-            protected abstract void processGetTypesInfo (HeteroMap info);
-            protected abstract void processGetServiceInfo (HeteroMap info);
+            protected abstract void processGetReflectionInfo (HeteroMap info);
 
 			protected abstract void processInvoke (int seq);
 		}

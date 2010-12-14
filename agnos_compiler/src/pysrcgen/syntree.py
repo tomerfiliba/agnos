@@ -542,7 +542,7 @@ def parse_source_file(filename):
     #raise
     return ast_root
 
-def parse_source_files(rootdir, filenames, rootpackage):
+def parse_source_files(rootdir, filenames, packagename):
     modules = []
     if not filenames:
         raise ValueError("no source files given")
@@ -556,7 +556,7 @@ def parse_source_files(rootdir, filenames, rootpackage):
             if modname.endswith("__init__"):
                 modname = modname[:-8]
             ast.modinfo = ModuleInfoNode.__new__(ModuleInfoNode)
-            ast.modinfo.attrs = dict(name = rootpackage + "." + modname, namespace = None)
+            ast.modinfo.attrs = dict(name = packagename + "." + modname, namespace = None)
         modules.append(ast)
     root = RootNode(modules)
     root.postprocess()

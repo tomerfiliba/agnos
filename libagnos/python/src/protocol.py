@@ -47,8 +47,7 @@ INFO_META = 0
 INFO_GENERAL = 1
 INFO_FUNCTIONS = 2
 INFO_FUNCCODES = 3
-INFO_TYPES = 4
-INFO_SERVICE = 5
+INFO_REFLECTION = 4
 
 
 class BaseRecord(object):
@@ -215,17 +214,14 @@ class BaseProcessor(object):
             self.process_get_functions_info(info)
         elif code == INFO_FUNCCODES:
             self.process_get_function_codes(info)
-        elif code == INFO_TYPES:
-            self.process_get_types_info(info)
-        elif code == INFO_SERVICE:
-            self.process_get_service_info(info)
+        elif code == INFO_REFLECTION:
+            self.process_get_reflection_info(info)
         else: # INFO_META:
             info["INFO_META"] = INFO_META
             info["INFO_GENERAL"] = INFO_GENERAL
             info["INFO_FUNCTIONS"] = INFO_FUNCTIONS
             info["INFO_FUNCCODES"] = INFO_FUNCCODES
-            info["INFO_TYPES"] = INFO_TYPES
-            info["INFO_SERVICE"] = INFO_SERVICE
+            info["INFO_REFLECTION"] = INFO_REFLECTION
         
         Int8.pack(REPLY_SUCCESS, self.transport)
         BuiltinHeteroMapPacker.pack(info, self.transport)

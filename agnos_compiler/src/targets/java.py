@@ -664,9 +664,9 @@ class JavaTarget(TargetBase):
             SEP()
         SEP()
         ##
-        with BLOCK("protected void processGetTypesInfo(HeteroMap map)"):
+        with BLOCK("protected void processGetReflectionInfo(HeteroMap map)"):
             STMT('HeteroMap group = map.putNewMap("enums")')
-            if service.enums() or service.records():
+            if service.enums() or service.records() or service.consts or service.funcs:
                 STMT("HeteroMap members")
             for enum in service.enums():
                 STMT('members = group.putNewMap("{0}")', enum.name)
@@ -702,27 +702,21 @@ class JavaTarget(TargetBase):
                         STMT('arg_types.add("{0}")', str(arg.type))
                     STMT('m.put("arg_names", Packers.Str, arg_names, Packers.listOfStr)')
                     STMT('m.put("arg_types", Packers.Str, arg_types, Packers.listOfStr)')
-        SEP()
-        ##
-        with BLOCK("protected void processGetServiceInfo(HeteroMap map)"):
-            STMT('HeteroMap funcs = map.putNewMap("functions")')
-            STMT("HeteroMap func")
+            STMT('group = map.putNewMap("functions")')
             STMT("ArrayList<String> arg_names, arg_types")
             for func in service.funcs.values():
                 if not isinstance(func, compiler.Func):
                     continue
-                STMT('func = funcs.putNewMap("{0}")', func.dotted_fullname)
-                STMT('func.put("type", "{0}")', str(func.type))
+                STMT('member = funcs.putNewMap("{0}")', func.dotted_fullname)
+                STMT('member.put("type", "{0}")', str(func.type))
                 STMT("arg_names = new ArrayList<String>()")
                 STMT("arg_types = new ArrayList<String>()")
                 for arg in func.args:
                     STMT('arg_names.add("{0}")', arg.name)
                     STMT('arg_types.add("{0}")', str(arg.type))
-                STMT('func.put("arg_names", Packers.Str, arg_names, Packers.listOfStr)')
-                STMT('func.put("arg_types", Packers.Str, arg_types, Packers.listOfStr)')
-            STMT('HeteroMap consts = map.putNewMap("consts")')
-            if service.consts:
-                STMT("HeteroMap member")
+                STMT('member.put("arg_names", Packers.Str, arg_names, Packers.listOfStr)')
+                STMT('member.put("arg_types", Packers.Str, arg_types, Packers.listOfStr)')
+            STMT('group = map.putNewMap("consts")')
             for const in service.consts.values():
                 STMT('member = consts.putNewMap("{0}")', const.dotted_fullname)
                 STMT('member.put("type", "{0}")', str(const.type))

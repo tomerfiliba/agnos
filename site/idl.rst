@@ -45,20 +45,20 @@ These ID numbers are used to identify **functions, methods, and attributes**
 (meaning, multiple versions of the IDL that need to work side-by-side). 
 If an ID is omitted, a sequential auto-generated one is used -- but this means 
 the order of the elements in the file matters (element A will receive a lower ID 
-than element B if it preceeds element B).
+than element B if it precedes element B).
 
 If both the client and the server are generated from the same IDL file, then 
 there's no need to maintain the IDs of elements. However, if older versions of the
 client have to work with a newer version of the server (or vice versa), then 
-correct provisioning of IDs is crutial. The ID is used to invoke the correct
+correct provisioning of IDs is crucial. The ID is used to invoke the correct
 function, and if the ID of an element changes, older clients (using the old ID)
-will attempt to invoke a wrong (possibly nonexsitent) function. It is thus
+will attempt to invoke a wrong (possibly nonexistent) function. It is thus
 important that elements that remain compatible between versions retain their
 original ID number.
 
 If a function prototype or semantics are changed, however, it is desired 
 to assign it with a new ID number, so older clients won't accidentally attempt 
-to invoke it, resulting in unexpected behaviour: it is better to receive a
+to invoke it, resulting in unexpected behavior: it is better to receive a
 ``ProtocolException`` saying the ID no longer exists than causing expected 
 behavior.
 
@@ -170,7 +170,7 @@ Version-compatibility is enforced when the client calls
 ^^^^^^^^^^^^^^^^^^
 Optional.
 
-The verscontainedion that the client reports. By default, it's the service's version, 
+The version that the client reports. By default, it's the service's version, 
 meaning, the last version specified in the ``versions`` attribute.
 
 .. note::
@@ -222,7 +222,8 @@ of the value is like that of literals in most programming languages:
 * Floating point numbers follow the usual convention of ``[+-] DIGITS [.DIGITS] [E[+-]DIGITS]``
 * Strings are written as is they are in most programming languages: surrounded by
   single quotes (``'``) or double quotes (``"``) and may contain the following 
-  common escape-sequences: ``\n``, ``\t``, ``\r``, ``\\``, ``\"``, ``\'``, and ``\x??``
+  common escape-sequences: ``\n``, ``\t``, ``\r``, ``\\``, ``\"``, ``\'``, 
+  and ``\xXX`` where ``XX`` consists of two hexadecimal digits.
 
 ------------------------------------------------------------------------------
 
