@@ -671,7 +671,7 @@ class JavaTarget(TargetBase):
             STMT("HeteroMap members = null")
             STMT("HeteroMap member = null")
             if has_annotations:
-                STMT("HashMap<string, string> anno")
+                STMT("HashMap<String, String> anno")
             SEP()
             
             for enum in service.enums():
@@ -749,7 +749,7 @@ class JavaTarget(TargetBase):
                     STMT("anno = new HashMap<String, String>()")
                     for anno in func.annotations:
                         STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
-                    STMT('funcinfo.put("annotations", anno, Packers.mapOfStrStr)')
+                    STMT('member.put("annotations", anno, Packers.mapOfStrStr)')
                 STMT("arg_names = new ArrayList<String>()")
                 STMT("arg_types = new ArrayList<String>()")
                 for arg in func.args:
