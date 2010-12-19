@@ -908,7 +908,7 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         DOC = module.doc
-        with BLOCK("public Client(Transports.ITransport transport) throws Exception"):
+        with BLOCK("public Client(Transports.ITransport transport, boolean checked) throws Exception"):
             STMT("Map<Integer, Packers.AbstractPacker> pem = new HashMap<Integer, Packers.AbstractPacker>()") 
             STMT("_utils = new Protocol.ClientUtils(transport, pem)")
             STMT("_funcs = new _Functions(_utils)")
@@ -939,6 +939,8 @@ class JavaTarget(TargetBase):
                 STMT("packersMap.put({0}, {1})", tp.id, type_to_packer(tp))
             STMT("heteroMapPacker = new Packers.HeteroMapPacker(999, packersMap)")
             STMT("packersMap.put(999, heteroMapPacker)")
+            with BLOCK("if (checked)"):
+                STMT("assertServiceCompatibility()")
 
     def generate_client_namespaces(self, module, service):
         nsid = itertools.count(0)
@@ -1016,19 +1018,34 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         
         with BLOCK("public static Client connectSock(String host, int port) throws Exception"):
-            STMT("return new Client(new Transports.SocketTransport(host, port))")
+            STMT("return connectSock(host, port, true)");
+        with BLOCK("public static Client connectSock(String host, int port, boolean checked) throws Exception"):
+            STMT("return new Client(new Transports.SocketTransport(host, port), checked)")
+        
         with BLOCK("public static Client connectSock(Socket sock) throws Exception"):
-            STMT("return new Client(new Transports.SocketTransport(sock))")
+            STMT("return connectSock(sock, true)")
+        with BLOCK("public static Client connectSock(Socket sock, boolean checked) throws Exception"):
+            STMT("return new Client(new Transports.SocketTransport(sock), checked)")
         
         with BLOCK("public static Client connectProc(String executable) throws Exception"):
-            STMT("return new Client(Transports.ProcTransport.connect(executable))")
+            STMT("return connectProc(executable, true)")
+        with BLOCK("public static Client connectProc(String executable, boolean checked) throws Exception"):
+            STMT("return new Client(Transports.ProcTransport.connect(executable), checked)")
+        
         with BLOCK("public static Client connectProc(ProcessBuilder procbuilder) throws Exception"):
-            STMT("return new Client(Transports.ProcTransport.connect(procbuilder))")
+            STMT("return connectProc(procbuilder, true)")
+        with BLOCK("public static Client connectProc(ProcessBuilder procbuilder, boolean checked) throws Exception"):
+            STMT("return new Client(Transports.ProcTransport.connect(procbuilder), checked)")
 
         with BLOCK("public static Client connectUrl(String url) throws Exception"):
-            STMT("return new Client(new Transports.HttpClientTransport(url))")
+            STMT("return connectUrl(url, true)")
+        with BLOCK("public static Client connectUrl(String url, boolean checked) throws Exception"):
+            STMT("return new Client(new Transports.HttpClientTransport(url), checked)")
+        
         with BLOCK("public static Client connectUrl(URL url) throws Exception"):
-            STMT("return new Client(new Transports.HttpClientTransport(url))")
+            STMT("return connectUrl(url, true)")
+        with BLOCK("public static Client connectUrl(URL url, boolean checked) throws Exception"):
+            STMT("return new Client(new Transports.HttpClientTransport(url), checked)")
         
         SEP()
         with BLOCK("public void assertServiceCompatibility() throws IOException, Protocol.ProtocolError, Protocol.PackedException, Protocol.GenericException"):

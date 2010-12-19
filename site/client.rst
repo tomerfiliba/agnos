@@ -24,7 +24,8 @@ with an ``ITransport`` instance.
 ---------------
 Creates an Agnos connection, over a socket. Parameters are ``hostname`` and 
 ``port_number``, or any of the language's standard ways to represent a TCP 
-endpoint. 
+endpoint. An optional parameter, ``checked``, determines whether 
+``assertServiceCompatibility`` is automatically called (``true`` by default).
 
 Aliases:
 
@@ -38,7 +39,8 @@ Aliases:
 Creates an Agnos connection that operates on top of HTTP requests to the given
 URL. In this mode, the payload (binary) will be wrapped with the proper
 HTTP header, which allows it to integrate with an HTTP server. See also 
-:doc:`over-http`.
+:doc:`over-http`. An optional parameter, ``checked``, determines whether 
+``assertServiceCompatibility`` is automatically called (``true`` by default).
 
 Aliases:
 
@@ -51,10 +53,13 @@ Aliases:
 ---------------
 Connects to a newly-spawned process server (see more under :doc:`library-mode`).
 It takes the filename of the process to spawn, or a ``ProcessBuilder`` instance,
-spawns the process and establishes an Agnos connection to it.
+spawns the process and establishes an Agnos connection to it. 
+An optional parameter, ``checked``, determines whether 
+``assertServiceCompatibility`` is automatically called (``true`` by default).
 
 .. note::
-  The server process will terminate when the client closes the connection.
+  In *library mode*, the server process will terminate when the client closes
+  the connection.
 
 Aliases:
 
@@ -79,14 +84,16 @@ Asserts that the server is compatible with this version of the client. The
 function does not return a value; instead it throws an exception if the client
 is incompatible with the server, or returns silently if everything is well.
 
-Although not mandatory, you **should** call this method right after 
-establishing a connection, to make sure your client is compatible with the 
-server. Otherwise, you may be working with an incompatible server, 
-which may lead to unexpected behavior!
+As a precaution, ``assertServiceCompatibility`` is automatically called when
+a new connection is established. To disable this when using one of the 
+``connectXXX()`` factory methods, set ``checked`` to ``false``. 
+It is **advisable**, however, not to disable this check, or your client might 
+be incompatible with the server, leading to unexpected behavior!
 
 .. note::
-  In future versions, ``assertServiceCompatibility`` may automatically be
-  called when establishing a connection.
+  There is usually no need to call this method explicitly, unless you set
+  ``checked`` to ``false`` when connecting. 
+
 
 ``close``
 ---------

@@ -56,6 +56,12 @@ public class HeteroMap implements Map
 		data = new HashMap(other.data);
 	}
 	
+	public HeteroMap add(Object key, Object value)
+	{
+		put(key, value);
+		return this;
+	}
+	
 	public String toString()
 	{
 		StringWriter sw = new StringWriter(2000);
@@ -206,7 +212,6 @@ public class HeteroMap implements Map
 	{
 		return put(key, Packers.Str, value, Packers.Int32);
 	}
-	
 	
 	public void putAll(Map other)
 	{

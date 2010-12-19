@@ -46,7 +46,7 @@ class BaseServer(object):
     def serve(self):
         while True:
             trans = self.transport_factory.accept()
-            processor = processor_factory(trans)
+            processor = self.processor_factory(trans)
             self._serve_client(processor)
         
     def _serve_client(self, processor):

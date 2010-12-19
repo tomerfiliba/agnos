@@ -44,6 +44,7 @@ class Transport(object):
         self._rlock = RLock()
         self._wlock = RLock()
         self._read_length = -1
+        self._read_comp_length = -1
         self._read_pos = -1
         self._read_seq = -1
         self._write_seq = -1
@@ -67,9 +68,19 @@ class Transport(object):
         if not rl:
             self._rlock.release()
             raise TransportTimeout("no data received within %r seconds" % (timeout,))
-        self._read_length = packers.Int32.unpack(self.infile)
+        
         self._read_seq = packers.Int32.unpack(self.infile)
+        self._read_length = packers.Int32.unpack(self.infile)
+        self._read_comp_length = packers.Int32.unpack(self.infile)
         self._read_pos = 0
+        
+        if self._read_comp_length > 0:
+            tmp = self._read_length
+            self._read_length = self._read_comp_length
+            self._read_comp_length = tmp
+        else:
+            pass
+        
         return self._read_seq
     
     def _assert_rlock(self):
@@ -119,8 +130,9 @@ class Transport(object):
         data = "".join(self._write_buffer)
         del self._write_buffer[:]
         if data:
-            packers.Int32.pack(len(data), self.outfile)
             packers.Int32.pack(self._write_seq, self.outfile)
+            packers.Int32.pack(len(data), self.outfile)
+            packers.Int32.pack(0, self.outfile)
             self.outfile.write(data)
             self.outfile.flush()
         self._wlock.release()
@@ -224,6 +236,9 @@ class SocketFile(object):
     def write(self, data):
         while data:
             buf = data[:self.CHUNK]
+            wl = select([], [self.sock], [], None)[1]
+            #if not wl:
+            #    break
             sent = self.sock.send(buf)
             data = data[sent:]
 

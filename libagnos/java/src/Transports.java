@@ -31,6 +31,26 @@ import java.util.concurrent.locks.*;
 
 public class Transports 
 {
+	/*protected static String repr(byte[] arr, int off, int len)
+	{
+		StringBuffer sb = new StringBuffer(len*2);
+		int end = Math.min(arr.length, off+len);
+		for (int i = off; i < end; i++) {
+			if (arr[i] < 32 || arr[i] > 126) {
+				sb.append(String.format("\\x%02x", arr[i])); 
+			}
+			else {
+				sb.append((char)(arr[i]));
+			}
+		}
+		return sb.toString();
+	}
+	
+	protected static String repr(byte[] arr)
+	{
+		return repr(arr, 0, arr.length);
+	}*/
+	
 	public static class TransportException extends IOException
 	{
 		public TransportException(String message)
@@ -99,7 +119,9 @@ public class Transports
 	public static abstract class BaseTransport implements ITransport
 	{
 		protected ByteArrayOutputStream buffer;
+		protected ByteArrayOutputStream buffer2;
 		protected InputStream input;
+		protected InputStream input2;
 		protected OutputStream output;
 		protected ReentrantLock rlock;
 		protected ReentrantLock wlock;
@@ -110,17 +132,22 @@ public class Transports
 		protected int rseq;
 		protected int rpos;
 		protected int rlength;
+		protected int rcomplength;
 
-		public BaseTransport(InputStream input, OutputStream output)
-		{
-			this(input, output, 128 * 1024);
-		}
+		// to disable compression, set to a negative number
+		protected int compressionThreshold;
 
-		public BaseTransport(InputStream input, OutputStream output, int bufsize)
+		public static final int DEFAULT_BUFFER_SIZE = 128 * 1024;
+		
+		public BaseTransport(InputStream input, OutputStream output, 
+				int compressionThreshold)
 		{
 			this.input = input;
 			this.output = output;
-			buffer = new ByteArrayOutputStream(bufsize);
+			this.compressionThreshold = -1; // compressionThreshold;
+			input2 = null;
+			buffer = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
+			buffer2 = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
 			wlock = new ReentrantLock();
 			rlock = new ReentrantLock();
 			asInputStream = new TransportInputStream(this);
@@ -129,8 +156,7 @@ public class Transports
 		
 		public void close() throws IOException
 		{
-			// XXX: call endWrite here? 
-			// then again, it might not make much sense
+			//System.out.printf("[%s.close]\n", this);
 			if (input != null) {
 				input.close();
 				input = null;
@@ -161,14 +187,28 @@ public class Transports
 		
 		public synchronized int beginRead(int msecs) throws IOException
 		{
+			//System.out.printf("[%s.beginRead] ", this);
 			if (rlock.isHeldByCurrentThread()) {
 				throw new IOException("beginRead is not reentrant");
 			}
 			
 			rlock.lock();
-			rlength = (Integer)Packers.Int32.unpack(input);
 			rseq = (Integer)Packers.Int32.unpack(input);
+			rlength = (Integer)Packers.Int32.unpack(input);
+			rcomplength = (Integer)Packers.Int32.unpack(input);
 			rpos = 0;
+			//System.out.printf("length = %d, seq = %d, compressed = %s\n", 
+			//		rlength, rseq, (rcomplength > 0) ? "T" : "F");
+			
+			//if (rcomplength > 0) {
+			//	input2 = new InflaterInputStream(input);
+			//	int tmp = rlength;
+			//	rlength = rcomplength;
+			//	rcomplength = tmp;
+			//}
+			//else {
+			input2 = input;
+			//}
 			
 			return rseq;
 		}
@@ -182,20 +222,24 @@ public class Transports
 		
 		public int read(byte[] data, int offset, int len) throws IOException
 		{
+			//System.out.printf("[%s.read(%d)] ", this, len);
 			assertBeganRead();
 			if (rpos + len > rlength) {
 				throw new EOFException("request to read more than available");
 			}
-			int actually_read = input.read(data, offset, len);
+			int actually_read = input2.read(data, offset, len);
+			//System.out.printf("%s\n", repr(data, offset, len));
 			rpos += actually_read;
 			return actually_read;
 		}
 		
 		public synchronized void endRead() throws IOException
 		{
+			//System.out.printf("[%s.endRead()]\n", this);
 			assertBeganRead();
-			input.skip(rlength - rpos);
+			input2.skip(rlength - rpos);
 			rlock.unlock();
+			input2 = null;
 		}
 		
 		//
@@ -203,6 +247,7 @@ public class Transports
 		//
 		public synchronized void beginWrite(int seq) throws IOException
 		{
+			//System.out.printf("[%s.beginWrite(%d)]\n", this, seq);
 			if (wlock.isHeldByCurrentThread()) {
 				throw new IOException("beginWrite is not reentrant");
 			}
@@ -220,23 +265,47 @@ public class Transports
 
 		public void write(byte[] data, int offset, int len) throws IOException
 		{
+			//System.out.printf("[%s.write(%d)] %s\n", this, len, 
+			//		repr(data, offset, len));
 			assertBeganWrite();
 			buffer.write(data, offset, len);
 		}
 		
 		public void reset() throws IOException
 		{
+			//System.out.printf("[%s.reset()]\n", this);
 			assertBeganWrite();
 			buffer.reset();
 		}
 
 		public synchronized void endWrite() throws IOException
 		{
+			int len = buffer.size();
+			//System.out.printf("[%s.endWrite(%d)] ", this, len);
 			assertBeganWrite();
-			if (buffer.size() > 0) {
-				Packers.Int32.pack(buffer.size(), output);
+			
+			if (len > 0) {
 				Packers.Int32.pack(wseq, output);
-				buffer.writeTo(output);
+				
+				if (compressionThreshold >= 0 && len > compressionThreshold) {
+					buffer2.reset();
+					DeflaterOutputStream comp = new DeflaterOutputStream(buffer2);
+					buffer.writeTo(comp);
+					comp.finish();
+					
+					//System.out.printf("compressed to %d\n", buffer2.size());
+					Packers.Int32.pack(buffer2.size(), output); // actual size
+					Packers.Int32.pack(len, output); // uncompressed size
+					buffer2.writeTo(output);
+				}
+				else {
+					//System.out.printf("uncompressed\n");
+					
+					Packers.Int32.pack(len, output); // actual size
+					Packers.Int32.pack(0, output); // 0 means no compression
+					buffer.writeTo(output);
+				}
+				
 				output.flush();
 				buffer.reset();
 			}
@@ -245,11 +314,13 @@ public class Transports
 
 		public synchronized void cancelWrite() throws IOException
 		{
+			//System.out.printf("[%s.cancelWrite()]\n", this);
 			assertBeganWrite();
 			buffer.reset();
 			wlock.unlock();
 		}
 	}
+	
 
 	public static abstract class WrappedTransport implements ITransport
 	{
@@ -296,72 +367,61 @@ public class Transports
 		}
 	}
 	
+	
 	public static class SocketTransport extends BaseTransport
 	{
+		public static final int DEFAULT_BUFFER_SIZE = 32 * 1024;
+		public static final int DEFAULT_COMPRESSION_THRESHOLD = 4 * 1024;
+		
+		
 		public SocketTransport(String host, int port) throws IOException
 		{
-			this(new Socket(host, port));
+			this(host, port, DEFAULT_BUFFER_SIZE, DEFAULT_COMPRESSION_THRESHOLD);
+		}
+
+		public SocketTransport(String host, int port, int bufsize, int compressionThreshold) throws IOException
+		{
+			this(new Socket(host, port), bufsize, compressionThreshold);
 		}
 
 		public SocketTransport(Socket sock) throws IOException
 		{
-			this(sock, 16 * 1024);
+			this(sock, DEFAULT_BUFFER_SIZE, DEFAULT_COMPRESSION_THRESHOLD);
 		}
-		
-		public SocketTransport(Socket sock, int bufsize) throws IOException
+
+		public SocketTransport(Socket sock, int bufsize, int compressionThreshold) throws IOException
 		{
 			super(new BufferedInputStream(sock.getInputStream(), bufsize),
-				new BufferedOutputStream(sock.getOutputStream(), bufsize));
+				new BufferedOutputStream(sock.getOutputStream(), bufsize),
+				compressionThreshold);
 		}
 	}
 
+	
 	public static class SSLSocketTransport extends SocketTransport
 	{
-		private static SSLSocket defaultConnect(String host, int port) throws IOException
-		{
-			return (SSLSocket)(SSLSocketFactory.getDefault().createSocket(host, port));
-		}
-		
 		public SSLSocketTransport(String host, int port) throws IOException
 		{
-			this(defaultConnect(host, port));
+			this(host, port, DEFAULT_BUFFER_SIZE, DEFAULT_COMPRESSION_THRESHOLD);
+		}
+
+		public SSLSocketTransport(String host, int port, int bufsize, int compressionThreshold) throws IOException
+		{
+			this((SSLSocket)(SSLSocketFactory.getDefault().createSocket(host, port)),
+					bufsize, compressionThreshold);
 		}
 
 		public SSLSocketTransport(SSLSocket sock) throws IOException
 		{
-			super(sock);
+			this(sock, DEFAULT_BUFFER_SIZE, DEFAULT_COMPRESSION_THRESHOLD);
+		}
+
+		public SSLSocketTransport(SSLSocket sock, int bufsize, int compressionThreshold) throws IOException
+		{
+			super(sock, bufsize, compressionThreshold);
 		}
 	}
 	
-	/*public static class CompressedTransport extends BaseTransport
-	{
-		protected ByteArrayOutputStream comp_buffer;
-		protected ByteArrayInputStream uncomp_buffer;
-		
-		public CompressedTransport(ITransport transport)
-		{
-			super(transport);
-			comp_buffer = new ByteArrayOutputStream(128 * 1024);
-			uncomp_buffer = new ByteArrayInputStream(128 * 1024);
-		}
-		
-		public synchronized void endWrite() throws IOException
-		{
-			assertBeganWrite();
-			if (buffer.size() > 0) {
-				OutputStream out = new ByteArrayOutputStream(buffer.size());
-				GZIPOutputStream gout = GZIPOutputStream(out);
-				out.writeTo(gout);
-				
-				Packers.Int32.pack(buffer.size(), output);
-				Packers.Int32.pack(wseq, output);
-				buffer.writeTo(output);
-				output.flush();
-				buffer.reset();
-			}
-			wlock.unlock();
-		}
-	}*/
 	
 	public static class ProcTransport extends WrappedTransport 
 	{
@@ -432,13 +492,17 @@ public class Transports
 			stdout.close();
 			stderr.close();
 
-			return new ProcTransport(proc, new SocketTransport(hostname, port));
+			return new ProcTransport(proc, 
+					new SocketTransport(hostname, port, 
+							SocketTransport.DEFAULT_BUFFER_SIZE, -1));
 		}
 	}
+	
 
 	public static class HttpClientTransport extends BaseTransport
 	{
-		public static final int ioBufferSize = 16 * 1024;
+		public static final int DEFAULT_IO_SIZE = 32 * 1024;
+		public static final int DEFAULT_COMPRESSION_THRESHOLD = 4 * 1024;
 		
 		protected URL url;
 		
@@ -449,7 +513,12 @@ public class Transports
 
 		public HttpClientTransport(URL url)
 		{
-			super(null, null);
+			this(url, DEFAULT_COMPRESSION_THRESHOLD);
+		}
+
+		public HttpClientTransport(URL url, int compressionThreshold)
+		{
+			super(null, null, compressionThreshold);
 			this.url = url;
 		}
 
@@ -506,7 +575,7 @@ public class Transports
 				if (input != null) {
 					input.close();
 				}
-				input = new BufferedInputStream(conn.getInputStream(), ioBufferSize);
+				input = new BufferedInputStream(conn.getInputStream(), DEFAULT_IO_SIZE);
 			}
 			wlock.unlock();
 		}
