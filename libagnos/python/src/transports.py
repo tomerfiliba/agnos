@@ -2,7 +2,7 @@
 # Part of the Agnos RPC Framework
 #    http://agnos.sourceforge.net
 #
-# Copyright 2010, International Business Machines Corp.
+# Copyright 2011, International Business Machines Corp.
 #                 Author: Tomer Filiba (tomerf@il.ibm.com)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,9 +38,10 @@ class TransportTimeout(IOError):
     pass
 
 class Transport(object):
-    def __init__(self, infile, outfile):
+    def __init__(self, infile, outfile, compression_threshold = -1):
         self.infile = infile
         self.outfile = outfile
+        self.compression_threshold = -1 #compression_threshold
         self._rlock = RLock()
         self._wlock = RLock()
         self._read_length = -1
@@ -131,8 +132,13 @@ class Transport(object):
         del self._write_buffer[:]
         if data:
             packers.Int32.pack(self._write_seq, self.outfile)
+            if self.compression_threshold > 0 and len(data) > self.compression_threshold:
+                raw_length = len(data)
+                data = data.encode("zlib")
+            else:
+                raw_length = 0
             packers.Int32.pack(len(data), self.outfile)
-            packers.Int32.pack(0, self.outfile)
+            packers.Int32.pack(raw_length, self.outfile)
             self.outfile.write(data)
             self.outfile.flush()
         self._wlock.release()
@@ -236,16 +242,14 @@ class SocketFile(object):
     def write(self, data):
         while data:
             buf = data[:self.CHUNK]
-            wl = select([], [self.sock], [], None)[1]
-            #if not wl:
-            #    break
+            select([], [self.sock], [], None) # wait until writable
             sent = self.sock.send(buf)
             data = data[sent:]
 
 
 class SocketTransport(Transport):
-    def __init__(self, sockfile):
-        Transport.__init__(self, sockfile, sockfile)
+    def __init__(self, sockfile, compression_threshold = 4 * 1024):
+        Transport.__init__(self, sockfile, sockfile, compression_threshold)
     @classmethod
     def connect(cls, host, port):
         return cls(SocketFile.connect(host, port))
@@ -255,8 +259,8 @@ class SocketTransport(Transport):
 
 
 class SslSocketTransport(Transport):
-    def __init__(self, sslsockfile):
-        Transport.__init__(self, sslsockfile, sslsockfile)
+    def __init__(self, sslsockfile, compression_threshold = 4 * 1024):
+        Transport.__init__(self, sslsockfile, sslsockfile, compression_threshold)
     @classmethod
     def connect(cls, host, port, keyfile = None, certfile = None,  
             cert_reqs = ssl.CERT_NONE, **kwargs):
@@ -309,7 +313,7 @@ class ProcTransport(WrappedTransport):
 
 class LoopbackTransport(Transport):
     def __init__(self):
-        Transport.__init__(self, None, None)
+        Transport.__init__(self, None, None, -1)
         self.incoming = []
         self.outgoing = []
         self.seqgen = itertools.count(400000)

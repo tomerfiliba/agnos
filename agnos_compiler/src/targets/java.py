@@ -2,7 +2,7 @@
 # Part of the Agnos RPC Framework
 #    http://agnos.sourceforge.net
 #
-# Copyright 2010, International Business Machines Corp.
+# Copyright 2011, International Business Machines Corp.
 #                 Author: Tomer Filiba (tomerf@il.ibm.com)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -108,23 +108,23 @@ def type_to_packer(t):
     if t == compiler.t_void:
         return "null"
     elif t == compiler.t_bool:
-        return "Packers.Bool"
+        return "Builtin.Bool"
     elif t == compiler.t_int8:
-        return "Packers.Int8"
+        return "Builtin.Int8"
     elif t == compiler.t_int16:
-        return "Packers.Int16"
+        return "Builtin.Int16"
     elif t == compiler.t_int32:
-        return "Packers.Int32"
+        return "Builtin.Int32"
     elif t == compiler.t_int64:
-        return "Packers.Int64"
+        return "Builtin.Int64"
     elif t == compiler.t_float:
-        return "Packers.Float"
+        return "Builtin.Float"
     elif t == compiler.t_date:
-        return "Packers.Date"
+        return "Builtin.Date"
     elif t == compiler.t_buffer:
-        return "Packers.Buffer"
+        return "Builtin.Buffer"
     elif t == compiler.t_string:
-        return "Packers.Str"
+        return "Builtin.Str"
     elif t == compiler.t_heteromap:
         return "heteroMapPacker"
     elif isinstance(t, (compiler.TList, compiler.TSet, compiler.TMap)):
@@ -182,8 +182,11 @@ class JavaTarget(TargetBase):
             SEP()
             STMT("import java.util.*")
             STMT("import java.io.*")
-            STMT("import java.net.*")
-            STMT("import agnos.*")
+            STMT("import agnos.packers.*")
+            STMT("import agnos.util.HeteroMap")
+            STMT("import agnos.util._HeteroMapPacker")
+            STMT("import agnos.protocol.*")
+            STMT("import agnos.transports.*")
             SEP()
             self.generate_server_bindings(module, service)
             SEP()
@@ -200,13 +203,18 @@ class JavaTarget(TargetBase):
             SEP()
             STMT("import java.util.*")
             STMT("import java.io.*")
-            STMT("import java.net.*")
-            STMT("import agnos.*")
+            STMT("import java.net.Socket")
+            STMT("import java.net.URL")
+            STMT("import agnos.packers.*")
+            STMT("import agnos.util.HeteroMap")
+            STMT("import agnos.util._HeteroMapPacker")
+            STMT("import agnos.protocol.*")
+            STMT("import agnos.transports.*")
             SEP()
             self.generate_client_bindings(module, service)
             SEP()
         
-        with self.new_module("%s_server.stub" % (service.name,)) as module:
+        with self.new_module("%s_server.java.stub" % (service.name,)) as module:
             self.generate_server_stub(module, service)
             SEP()
     
@@ -315,13 +323,13 @@ class JavaTarget(TargetBase):
 
     def _generate_templated_packer_for_type(self, tp, proxy):
         if isinstance(tp, compiler.TList):
-            return "new Packers.ListOf<%s>(%s, %s)" % (type_to_java(tp, proxy = proxy), 
+            return "new ListOf<%s>(%s, %s)" % (type_to_java(tp, proxy = proxy), 
                 tp.id, self._generate_templated_packer_for_type(tp.oftype, proxy = proxy),)
         elif isinstance(tp, compiler.TSet):
-            return "new Packers.SetOf<%s>(%s, %s)" % (type_to_java(tp, proxy = proxy), 
+            return "new SetOf<%s>(%s, %s)" % (type_to_java(tp, proxy = proxy), 
                 tp.id, self._generate_templated_packer_for_type(tp.oftype, proxy = proxy),)
         elif isinstance(tp, compiler.TMap):
-            return "new Packers.MapOf<%s, %s>(%s, %s, %s)" % (type_to_java(tp.keytype, proxy = proxy), 
+            return "new MapOf<%s, %s>(%s, %s, %s)" % (type_to_java(tp.keytype, proxy = proxy), 
                 type_to_java(tp.valtype, proxy = proxy), 
                 tp.id, 
                 self._generate_templated_packer_for_type(tp.keytype, proxy = proxy),
@@ -336,7 +344,7 @@ class JavaTarget(TargetBase):
         
         for tp in service.all_types:
             if isinstance(tp, (compiler.TList, compiler.TSet, compiler.TMap)):
-                STMT("protected final Packers.AbstractPacker _{0}", tp.stringify())
+                STMT("protected final AbstractPacker _{0}", tp.stringify())
 
     def generate_templated_packers_impl(self, module, service, proxy):
         BLOCK = module.block
@@ -367,13 +375,13 @@ class JavaTarget(TargetBase):
             with BLOCK("public static {0} getByValue(Integer val)", enum.name):
                 STMT("return _BY_VALUE.get(val)")
         SEP()
-        with BLOCK("protected static class _{0}Packer extends Packers.AbstractPacker", enum.name):
+        with BLOCK("protected static class _{0}Packer extends AbstractPacker", enum.name):
             with BLOCK("public int getId()"):
                 STMT("return {0}", enum.id)
             with BLOCK("public void pack(Object obj, OutputStream stream) throws IOException"):
-                STMT("Packers.Int32.pack((({0})obj).value, stream)", enum.name)
+                STMT("Builtin.Int32.pack((({0})obj).value, stream)", enum.name)
             with BLOCK("public Object unpack(InputStream stream) throws IOException"):
-                STMT("return {0}.getByValue((Integer)Packers.Int32.unpack(stream))", enum.name)
+                STMT("return {0}.getByValue((Integer)Builtin.Int32.unpack(stream))", enum.name)
         SEP()
         STMT("protected static _{0}Packer {0}Packer = new _{0}Packer()", enum.name)
 
@@ -382,7 +390,7 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         if isinstance(rec, compiler.Exception):
-            extends = "extends Protocol.PackedException"
+            extends = "extends PackedException"
         else:
             extends = ""
         SEP()
@@ -409,7 +417,7 @@ class JavaTarget(TargetBase):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
-        with BLOCK("protected final {0}class _{1}Packer extends Packers.AbstractPacker", 
+        with BLOCK("protected final {0}class _{1}Packer extends AbstractPacker", 
                 "static " if static else "", rec.name):
             with BLOCK("public int getId()"):
                 STMT("return {0}", rec.id)
@@ -573,11 +581,11 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
 
-        with BLOCK("public static class Processor extends Protocol.BaseProcessor"):
+        with BLOCK("public static class Processor extends BaseProcessor"):
             STMT("protected final IHandler handler")
             SEP()
             for cls in service.classes():
-                STMT("protected final Packers.ObjRef {0}ObjRef", cls.name)
+                STMT("protected final ObjRef {0}ObjRef", cls.name)
             SEP()
             generated_records = []
             for rec in service.records(is_complex_type):
@@ -586,21 +594,21 @@ class JavaTarget(TargetBase):
                 SEP()
             self.generate_templated_packers_decl(module, service)
             SEP()
-            STMT("protected final Packers.HeteroMapPacker heteroMapPacker")
+            STMT("protected final _HeteroMapPacker heteroMapPacker")
             SEP()
-            with BLOCK("public Processor(Transports.ITransport transport, IHandler handler)"):
+            with BLOCK("public Processor(ITransport transport, IHandler handler)"):
                 STMT("super(transport)")
                 STMT("this.handler = handler")
                 for cls in service.classes():
-                    STMT("{0}ObjRef = new Packers.ObjRef({1}, this)", cls.name, cls.id)
+                    STMT("{0}ObjRef = new ObjRef({1}, this)", cls.name, cls.id)
                 for rec in generated_records:
                     STMT("{0}Packer = new _{0}Packer()", rec.name)
                 self.generate_templated_packers_impl(module, service, proxy = False)
                 SEP()
-                STMT("HashMap<Integer, Packers.AbstractPacker> packersMap = new HashMap<Integer, Packers.AbstractPacker>()")
+                STMT("HashMap<Integer, AbstractPacker> packersMap = new HashMap<Integer, AbstractPacker>()")
                 for tp in service.types.values():
                     STMT("packersMap.put({0}, {1})", tp.id, type_to_packer(tp))
-                STMT("heteroMapPacker = new Packers.HeteroMapPacker(999, packersMap)")
+                STMT("heteroMapPacker = new _HeteroMapPacker(999, packersMap)")
                 STMT("packersMap.put(999, heteroMapPacker)")
                 
             SEP()
@@ -616,11 +624,11 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        with BLOCK("public static class ProcessorFactory implements Protocol.IProcessorFactory"):
+        with BLOCK("public static class ProcessorFactory implements IProcessorFactory"):
             STMT("protected IHandler handler")
             with BLOCK("public ProcessorFactory(IHandler handler)"):
                 STMT("this.handler = handler")
-            with BLOCK("public Protocol.BaseProcessor create(Transports.ITransport transport)"):
+            with BLOCK("public BaseProcessor create(ITransport transport)"):
                 STMT("return new Processor(transport, this.handler)")
         SEP()
 
@@ -640,7 +648,7 @@ class JavaTarget(TargetBase):
             STMT('map.put("AGNOS_TOOLCHAIN_VERSION", AGNOS_TOOLCHAIN_VERSION)')
             STMT('map.put("IDL_MAGIC", IDL_MAGIC)')
             STMT('map.put("SERVICE_NAME", "{0}")', service.name)
-            STMT('map.put("SUPPORTED_VERSIONS", SUPPORTED_VERSIONS, Packers.listOfStr)')
+            STMT('map.put("SUPPORTED_VERSIONS", SUPPORTED_VERSIONS, Builtin.listOfStr)')
         SEP()
         ##
         with BLOCK("protected void processGetFunctionsInfo(HeteroMap map)"):
@@ -656,13 +664,13 @@ class JavaTarget(TargetBase):
                 STMT("args = new HashMap<String, String>()")
                 for arg in func.args:
                     STMT('args.put("{0}", "{1}")', arg.name, str(arg.type))
-                STMT('funcinfo.put("args", args, Packers.mapOfStrStr)')
+                STMT('funcinfo.put("args", args, Builtin.mapOfStrStr)')
                 if func.annotations:
                     STMT("anno = new HashMap<String, String>()")
                     for anno in func.annotations:
                         STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
-                    STMT('funcinfo.put("annotations", anno, Packers.mapOfStrStr)')
-                STMT('map.put({0}, funcinfo, Packers.builtinHeteroMapPacker)', func.id)
+                    STMT('funcinfo.put("annotations", anno, Builtin.mapOfStrStr)')
+                STMT('map.put({0}, funcinfo, Builtin.heteroMapPacker)', func.id)
         SEP()
         ##
         with BLOCK("protected void processGetReflectionInfo(HeteroMap map)"):
@@ -702,7 +710,7 @@ class JavaTarget(TargetBase):
                     STMT('extendsList = new ArrayList<String>()')
                     for cls2 in cls.extends:
                         STMT('extendsList.add("{0}")', cls2.name)
-                    STMT('cls_group.put("extends", extendsList, Packers.listOfStr)')
+                    STMT('cls_group.put("extends", extendsList, Builtin.listOfStr)')
                 
                 STMT('attr_group = cls_group.putNewMap("attrs")')
                 STMT('meth_group = cls_group.putNewMap("methods")')
@@ -717,7 +725,7 @@ class JavaTarget(TargetBase):
                         STMT("anno = new HashMap<String, String>()")
                         for anno in attr.annotations:
                             STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
-                        STMT('a.put("annotations", anno, Packers.mapOfStrStr)')
+                        STMT('a.put("annotations", anno, Builtin.mapOfStrStr)')
 
                 for meth in cls.methods:
                     STMT('m = meth_group.putNewMap("{0}")', meth.name)
@@ -727,15 +735,15 @@ class JavaTarget(TargetBase):
                         STMT("anno = new HashMap<String, String>()")
                         for anno in meth.annotations:
                             STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
-                        STMT('m.put("annotations", anno, Packers.mapOfStrStr)')
+                        STMT('m.put("annotations", anno, Builtin.mapOfStrStr)')
                     
                     STMT("arg_names = new ArrayList<String>()")
                     STMT("arg_types = new ArrayList<String>()")
                     for arg in meth.args:
                         STMT('arg_names.add("{0}")', arg.name)
                         STMT('arg_types.add("{0}")', str(arg.type))
-                    STMT('m.put("arg_names", Packers.Str, arg_names, Packers.listOfStr)')
-                    STMT('m.put("arg_types", Packers.Str, arg_types, Packers.listOfStr)')
+                    STMT('m.put("arg_names", Builtin.Str, arg_names, Builtin.listOfStr)')
+                    STMT('m.put("arg_types", Builtin.Str, arg_types, Builtin.listOfStr)')
             SEP()
             
             STMT('group = map.putNewMap("functions")')
@@ -749,14 +757,14 @@ class JavaTarget(TargetBase):
                     STMT("anno = new HashMap<String, String>()")
                     for anno in func.annotations:
                         STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
-                    STMT('member.put("annotations", anno, Packers.mapOfStrStr)')
+                    STMT('member.put("annotations", anno, Builtin.mapOfStrStr)')
                 STMT("arg_names = new ArrayList<String>()")
                 STMT("arg_types = new ArrayList<String>()")
                 for arg in func.args:
                     STMT('arg_names.add("{0}")', arg.name)
                     STMT('arg_types.add("{0}")', str(arg.type))
-                STMT('member.put("arg_names", Packers.Str, arg_names, Packers.listOfStr)')
-                STMT('member.put("arg_types", Packers.Str, arg_types, Packers.listOfStr)')
+                STMT('member.put("arg_names", Builtin.Str, arg_names, Builtin.listOfStr)')
+                STMT('member.put("arg_types", Builtin.Str, arg_types, Builtin.listOfStr)')
             SEP()
             
             STMT('group = map.putNewMap("consts")')
@@ -772,7 +780,7 @@ class JavaTarget(TargetBase):
         SEP = module.sep
 
         with BLOCK("protected void processInvoke(int seq) throws Exception"):
-            STMT("Packers.AbstractPacker packer = null")
+            STMT("AbstractPacker packer = null")
             STMT("Object result = null")
             STMT("Object inst = null")
             STMT("Object[] args = null")
@@ -789,16 +797,16 @@ class JavaTarget(TargetBase):
                                 STMT("packer = {0}", type_to_packer(func.type))
                             STMT("break")
                     with BLOCK("default:", prefix = None, suffix = None):
-                        STMT('throw new Protocol.ProtocolError("unknown function id: " + funcid)')
+                        STMT('throw new ProtocolException("unknown function id: " + funcid)')
                 SEP()
-                STMT("{0}.pack(new Byte((byte)Protocol.REPLY_SUCCESS), outStream)", 
+                STMT("{0}.pack(new Byte((byte)constants.REPLY_SUCCESS), outStream)", 
                     type_to_packer(compiler.t_int8))
                 with BLOCK("if (packer != null)"):
                     STMT("packer.pack(result, outStream)")
             for tp in service.exceptions():
                 with BLOCK("catch ({0} ex)", tp.name):
                     STMT("transport.reset()")
-                    STMT("{0}.pack(new Byte((byte)Protocol.REPLY_PACKED_EXCEPTION), outStream)", 
+                    STMT("{0}.pack(new Byte((byte)constants.REPLY_PACKED_EXCEPTION), outStream)", 
                         type_to_packer(compiler.t_int8))
                     STMT("{0}.pack({1}, outStream)", type_to_packer(compiler.t_int32), tp.id)
                     STMT("{0}.pack(ex, outStream)", type_to_packer(tp))
@@ -849,10 +857,10 @@ class JavaTarget(TargetBase):
         
         with BLOCK("try {0}", "{", prefix = ""):
             STMT("{0}({1})", invocation, callargs)
-        with BLOCK("catch (Protocol.PackedException ex) {0}", "{", prefix = ""):
+        with BLOCK("catch (PackedException ex) {0}", "{", prefix = ""):
             STMT("throw ex")
         with BLOCK("catch (Exception ex) {0}", "{", prefix = ""):
-            STMT("throw new Protocol.GenericException(ex.toString(), getExceptionTraceback(ex))")
+            STMT("throw new GenericException(ex.toString(), getExceptionTraceback(ex))")
 
     #===========================================================================
     # client
@@ -864,9 +872,9 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         
-        with BLOCK("public static class Client extends Protocol.BaseClient"):
+        with BLOCK("public static class Client extends BaseClient"):
             for cls in service.classes():
-                STMT("protected Packers.ObjRef {0}ObjRef", cls.name)
+                STMT("protected ObjRef {0}ObjRef", cls.name)
             SEP()
             generated_records = []
             for rec in service.records(is_complex_type):
@@ -875,7 +883,7 @@ class JavaTarget(TargetBase):
                 SEP()
             self.generate_templated_packers_decl(module, service)
             SEP()
-            with BLOCK("protected abstract class ClientSerializer implements Packers.ISerializer"):
+            with BLOCK("protected abstract class ClientSerializer implements ISerializer"):
                 with BLOCK("public Long store(Object obj)"):
                     with BLOCK("if (obj == null)"):
                         STMT("return new Long(-1)")
@@ -888,7 +896,7 @@ class JavaTarget(TargetBase):
                 SEP()
                 STMT("protected abstract Object _get_proxy(Long id)")
             SEP()
-            STMT("protected final Packers.HeteroMapPacker heteroMapPacker")
+            STMT("protected final _HeteroMapPacker heteroMapPacker")
             SEP()
             namespaces = self.generate_client_namespaces(module, service)
             SEP()
@@ -908,14 +916,14 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         DOC = module.doc
-        with BLOCK("public Client(Transports.ITransport transport, boolean checked) throws Exception"):
-            STMT("Map<Integer, Packers.AbstractPacker> pem = new HashMap<Integer, Packers.AbstractPacker>()") 
-            STMT("_utils = new Protocol.ClientUtils(transport, pem)")
+        with BLOCK("public Client(ITransport transport, boolean checked) throws Exception"):
+            STMT("Map<Integer, AbstractPacker> pem = new HashMap<Integer, AbstractPacker>()") 
+            STMT("_utils = new ClientUtils(transport, pem)")
             STMT("_funcs = new _Functions(_utils)")
             SEP()
             STMT("final Client the_client = this")
             for cls in service.classes():
-                with BLOCK("{0}ObjRef = new Packers.ObjRef({1}, new ClientSerializer() {2}", 
+                with BLOCK("{0}ObjRef = new ObjRef({1}, new ClientSerializer() {2}", 
                         cls.name, cls.id, "{", prefix = "", suffix = "});"):
                     with BLOCK("protected Object _get_proxy(Long id)"):
                         STMT("Object proxy = the_client._utils.getProxy(id)")
@@ -934,10 +942,10 @@ class JavaTarget(TargetBase):
             for name, id in namespaces:
                 STMT("{0} = new _Namespace{1}(_funcs)", name, id)
             SEP()
-            STMT("HashMap<Integer, Packers.AbstractPacker> packersMap = new HashMap<Integer, Packers.AbstractPacker>()")
+            STMT("HashMap<Integer, AbstractPacker> packersMap = new HashMap<Integer, AbstractPacker>()")
             for tp in service.types.values():
                 STMT("packersMap.put({0}, {1})", tp.id, type_to_packer(tp))
-            STMT("heteroMapPacker = new Packers.HeteroMapPacker(999, packersMap)")
+            STMT("heteroMapPacker = new _HeteroMapPacker(999, packersMap)")
             STMT("packersMap.put(999, heteroMapPacker)")
             with BLOCK("if (checked)"):
                 STMT("assertServiceCompatibility()")
@@ -1020,47 +1028,47 @@ class JavaTarget(TargetBase):
         with BLOCK("public static Client connectSock(String host, int port) throws Exception"):
             STMT("return connectSock(host, port, true)");
         with BLOCK("public static Client connectSock(String host, int port, boolean checked) throws Exception"):
-            STMT("return new Client(new Transports.SocketTransport(host, port), checked)")
+            STMT("return new Client(new SocketTransport(host, port), checked)")
         
         with BLOCK("public static Client connectSock(Socket sock) throws Exception"):
             STMT("return connectSock(sock, true)")
         with BLOCK("public static Client connectSock(Socket sock, boolean checked) throws Exception"):
-            STMT("return new Client(new Transports.SocketTransport(sock), checked)")
+            STMT("return new Client(new SocketTransport(sock), checked)")
         
         with BLOCK("public static Client connectProc(String executable) throws Exception"):
             STMT("return connectProc(executable, true)")
         with BLOCK("public static Client connectProc(String executable, boolean checked) throws Exception"):
-            STMT("return new Client(Transports.ProcTransport.connect(executable), checked)")
+            STMT("return new Client(ProcTransport.connect(executable), checked)")
         
         with BLOCK("public static Client connectProc(ProcessBuilder procbuilder) throws Exception"):
             STMT("return connectProc(procbuilder, true)")
         with BLOCK("public static Client connectProc(ProcessBuilder procbuilder, boolean checked) throws Exception"):
-            STMT("return new Client(Transports.ProcTransport.connect(procbuilder), checked)")
+            STMT("return new Client(ProcTransport.connect(procbuilder), checked)")
 
         with BLOCK("public static Client connectUrl(String url) throws Exception"):
             STMT("return connectUrl(url, true)")
         with BLOCK("public static Client connectUrl(String url, boolean checked) throws Exception"):
-            STMT("return new Client(new Transports.HttpClientTransport(url), checked)")
+            STMT("return new Client(new HttpClientTransport(url), checked)")
         
         with BLOCK("public static Client connectUrl(URL url) throws Exception"):
             STMT("return connectUrl(url, true)")
         with BLOCK("public static Client connectUrl(URL url, boolean checked) throws Exception"):
-            STMT("return new Client(new Transports.HttpClientTransport(url), checked)")
+            STMT("return new Client(new HttpClientTransport(url), checked)")
         
         SEP()
-        with BLOCK("public void assertServiceCompatibility() throws IOException, Protocol.ProtocolError, Protocol.PackedException, Protocol.GenericException"):
-            STMT("HeteroMap info = getServiceInfo(Protocol.INFO_SERVICE)")
+        with BLOCK("public void assertServiceCompatibility() throws IOException, ProtocolException, PackedException, GenericException"):
+            STMT("HeteroMap info = getServiceInfo(constants.INFO_SERVICE)")
             STMT('String agnos_protocol_version = (String)info.get("AGNOS_PROTOCOL_VERSION")')
             STMT('String service_name = (String)info.get("SERVICE_NAME")')
             
             with BLOCK('if (!agnos_protocol_version.equals(AGNOS_PROTOCOL_VERSION))'):
-                STMT('''throw new Protocol.WrongAgnosVersion("expected protocol '" + AGNOS_PROTOCOL_VERSION + "', found '" + agnos_protocol_version + "'")''')
+                STMT('''throw new WrongAgnosVersion("expected protocol '" + AGNOS_PROTOCOL_VERSION + "', found '" + agnos_protocol_version + "'")''')
             with BLOCK('if (!service_name.equals("{0}"))', service.name):
-                STMT('''throw new Protocol.WrongServiceName("expected service '{0}', found '" + service_name + "'")''', service.name)
+                STMT('''throw new WrongServiceName("expected service '{0}', found '" + service_name + "'")''', service.name)
             if service.clientversion:
                 STMT('List<String> supported_versions = (List<String>)info.get("SUPPORTED_VERSIONS")')
                 with BLOCK('if (supported_versions == null || !supported_versions.contains(CLIENT_VERSION))'):
-                    STMT('''throw new Protocol.IncompatibleServiceVersion("server does not support client version '" + CLIENT_VERSION + "'")''')
+                    STMT('''throw new IncompatibleServiceVersion("server does not support client version '" + CLIENT_VERSION + "'")''')
     
     def generate_client_internal_funcs(self, module, service):
         BLOCK = module.block
@@ -1068,8 +1076,8 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         with BLOCK("protected class _Functions"):
-            STMT("protected final Protocol.ClientUtils utils")
-            with BLOCK("public _Functions(Protocol.ClientUtils utils)"):
+            STMT("protected final ClientUtils utils")
+            with BLOCK("public _Functions(ClientUtils utils)"):
                 STMT("this.utils = utils")
             SEP()
             for func in service.funcs.values():
@@ -1121,6 +1129,12 @@ class JavaTarget(TargetBase):
         DOC = module.doc
 
         STMT("import java.util.*")
+        STMT("import agnos.util.HeteroMap")
+        STMT("import agnos.protocol.*")
+        #STMT("import agnos.transports.*")
+        #STMT("import agnos.transportFactories.*")
+        #STMT("import agnos.servers.*")
+        STMT("import agnos.servers.CmdlineServer")
         STMT("import {0}.server_bindings.{0}", service.package)
         SEP()
         
@@ -1165,7 +1179,7 @@ class JavaTarget(TargetBase):
             SEP()
             DOC("main", spacer = True)
             with BLOCK("public static void main(String[] args)"):
-                STMT("agnos.Servers.CmdlineServer server = new agnos.Servers.CmdlineServer("
+                STMT("CmdlineServer server = new CmdlineServer("
                     "new {0}.ProcessorFactory(new Handler()))", service.name)
                 with BLOCK("try"):
                     STMT("server.main(args)")

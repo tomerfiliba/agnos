@@ -2,7 +2,7 @@
 # Part of the Agnos RPC Framework
 #    http://agnos.sourceforge.net
 #
-# Copyright 2010, International Business Machines Corp.
+# Copyright 2011, International Business Machines Corp.
 #                 Author: Tomer Filiba (tomerf@il.ibm.com)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -679,7 +679,7 @@ class CSharpTarget(TargetBase):
                 STMT("args = new Dictionary<string, string>()")
                 for arg in func.args:
                     STMT('args["{0}"] = "{1}"', arg.name, str(arg.type))
-                STMT('funcinfo.Add("args", args, Packers.mapOfStrStr)')
+                STMT('funcinfo.Add("args", Packers.Str, args, Packers.mapOfStrStr)')
                 if func.annotations:
                     STMT("anno = new Dictionary<string, string>()")
                     for anno in func.annotations:

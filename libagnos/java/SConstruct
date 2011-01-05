@@ -19,14 +19,28 @@
 ##############################################################################
 
 import os
+import shutil
 
 Decider('MD5')
 
 env = DefaultEnvironment()
-env["JARCHDIR"] = os.path.join(env.Dir('.').get_abspath(), 'classes')
+env["JARCHDIR"] = os.path.join(env.Dir('.').get_abspath(), 'build')
 
-class_files = Java(target = "classes", source = "src")
-agnos_jar = Jar(target = "agnos.jar", source = "classes")
+class_files = Java(target = "build", source = "src")
+agnos_jar = Jar(target = "agnos.jar", source = "build")
+
+def generate_javadoc(target, source, env):
+    srcdir = source[0].path
+    trgdir = target[0].path
+    shutil.rmtree(trgdir, True)
+    java_files = [os.path.join(dirpath, fn) 
+        for dirpath, dirnames, filenames in os.walk(srcdir)
+            for fn in filenames]    
+    print "generating javadoc:"
+    os.system("javadoc -d %s %s" % (trgdir, " ".join(java_files)))
+
+env.Command("doc", "src", generate_javadoc)
+Depends("doc", class_files)
 
 agnos_jar = agnos_jar[0]
 Return("agnos_jar")

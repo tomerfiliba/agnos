@@ -1,5 +1,6 @@
 import java.util.*;
-import FeatureTest.server_bindings.*;
+import agnos.servers.CmdlineServer;
+import FeatureTest.server_bindings.FeatureTest;
 
 public class myserver {
 	public static class ClassA implements FeatureTest.IClassA {
@@ -231,7 +232,7 @@ public class myserver {
 	}
 
 	public static void main(String[] args) {
-		agnos.Servers.CmdlineServer server = new agnos.Servers.CmdlineServer(
+		CmdlineServer server = new CmdlineServer(
 				new FeatureTest.ProcessorFactory(new Handler()));
 		try {
 			server.main(args);

@@ -5,10 +5,14 @@ Decider('MD5')
 env = Environment(
     CPPDEFINES = {
         #"AGNOS_DEBUG" : None, 
-        "BOOST_PROCESS_SUPPORTED" : None,
     }, 
     CCFLAGS = "-Werror -g",
 )
+
+conf = Configure(env)
+if conf.CheckCXXHeader('boost/process.hpp'):
+    conf.env["CPPDEFINES"]["BOOST_PROCESS_SUPPORTED"] = None
+env = conf.Finish()
 
 SConscript(["../../libagnos/cpp/SConstruct"], exports="env")
 

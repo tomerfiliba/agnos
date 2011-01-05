@@ -2,7 +2,7 @@
 # Part of the Agnos RPC Framework
 #    http://agnos.sourceforge.net
 #
-# Copyright 2010, International Business Machines Corp.
+# Copyright 2011, International Business Machines Corp.
 #                 Author: Tomer Filiba (tomerf@il.ibm.com)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -274,7 +274,7 @@ class BaseProcessor(object):
         for name in packed_type._idl_attrs:
             if hasattr(val, name):
                 attrs[name] = getattr(val, name)
-        for v, name in zip(val, packed_type._ATTRS):
+        for v, name in zip(val, packed_type._idl_attrs):
             if name not in attrs:
                 attrs[name] = v
         ex2 = packed_type(**attrs)

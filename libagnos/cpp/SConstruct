@@ -20,17 +20,24 @@
 
 from SCons.Errors import UserError
 
-try:
-	Import("env")
-except UserError:
-	env = DefaultEnvironment()
-	env["CPPDEFINES"] = {}
-	if int(ARGUMENTS.get('AGNOS_DEBUG', 0)):
-		env["CPPDEFINES"]["AGNOS_DEBUG"] = None
-	if int(ARGUMENTS.get('BOOST_PROCESS_SUPPORTED', 0)):
-		env["CPPDEFINES"]["BOOST_PROCESS_SUPPORTED"] = None
-
 Decider('MD5')
+
+try:
+    Import("env")
+except UserError:
+    env = DefaultEnvironment()
+    env["CPPDEFINES"] = {}
+    
+    if int(ARGUMENTS.get('AGNOS_DEBUG', 0)):
+        env["CPPDEFINES"]["AGNOS_DEBUG"] = None
+    
+    if int(ARGUMENTS.get('BOOST_PROCESS_SUPPORTED', 0)):
+       env["CPPDEFINES"]["BOOST_PROCESS_SUPPORTED"] = None
+    else:
+        conf = Configure(env)
+        if conf.CheckCXXHeader('boost/process.hpp'):
+            conf.env["CPPDEFINES"]["BOOST_PROCESS_SUPPORTED"] = None
+        env = conf.Finish()
 
 env.Library('agnos', Glob('src/*.cpp')) 
 

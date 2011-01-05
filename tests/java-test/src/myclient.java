@@ -1,5 +1,6 @@
 import java.util.*;
-import FeatureTest.client_bindings.*;
+import agnos.util.HeteroMap;
+import FeatureTest.client_bindings.FeatureTest;
 
 
 public class myclient
@@ -49,17 +50,17 @@ public class myclient
 
 		try {
 			adam.think(new Double(17), new Double(0));
-		} catch (agnos.Protocol.GenericException ex) {
+		} catch (agnos.protocol.GenericException ex) {
 			// okay
 		}
 
-		agnos.HeteroMap info = conn.getServiceInfo(agnos.Protocol.INFO_SERVICE);
+		HeteroMap info = conn.getServiceInfo(agnos.protocol.constants.INFO_SERVICE);
 		if (!info.get("SERVICE_NAME").equals("FeatureTest")) {
 			throw new Exception("wrong service name: "
 					+ info.get("SERVICE_NAME"));
 		}
 
-		info = conn.getServiceInfo(agnos.Protocol.INFO_FUNCTIONS);
+		info = conn.getServiceInfo(agnos.protocol.constants.INFO_FUNCTIONS);
 		for (Map.Entry e : info.entrySet()) {
 			System.out.println(e.getKey().toString() + " = "
 					+ e.getValue().toString());

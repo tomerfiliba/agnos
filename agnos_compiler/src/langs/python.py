@@ -2,7 +2,7 @@
 # Part of the Agnos RPC Framework
 #    http://agnos.sourceforge.net
 #
-# Copyright 2010, International Business Machines Corp.
+# Copyright 2011, International Business Machines Corp.
 #                 Author: Tomer Filiba (tomerf@il.ibm.com)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

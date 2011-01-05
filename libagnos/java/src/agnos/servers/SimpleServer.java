@@ -2,7 +2,7 @@
 // Part of the Agnos RPC Framework
 //    http://agnos.sourceforge.net
 //
-// Copyright 2010, International Business Machines Corp.
+// Copyright 2011, International Business Machines Corp.
 //                 Author: Tomer Filiba (tomerf@il.ibm.com)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,31 +18,25 @@
 // limitations under the License.
 //////////////////////////////////////////////////////////////////////////////
 
-package agnos;
+package agnos.servers;
 
-import java.util.*;
+import agnos.protocol.BaseProcessor;
+import agnos.protocol.IProcessorFactory;
+import agnos.transportFactories.ITransportFactory;
 
 
-public abstract class RefList implements List
+public class SimpleServer extends BaseServer
 {
-	/*protected final Long objref;
-	protected final ClientUtils utils;
-	protected final Packers.AbstractPacker packer;
-	
-	protected RefList(ClientUtils utils, Long objref, Packers.AbstractPacker packer) {
-		this.utils = utils;
-		this.objref = objref;
-		this.packer = packer;
+	public SimpleServer(IProcessorFactory processorFactory,
+			ITransportFactory transportFactory)
+	{
+		super(processorFactory, transportFactory);
 	}
-	public void add(int index, Object element) {
-		int seq = utils.getSeq();
-		utils.transport.beginWrite(seq);
-		Packers.Int8.pack(CMD_INVOKE, utils.transport);
-		Packers.Int32.pack(funcid, utils.transport);
-		replies.put(seq, new ReplySlot(packer));
+
+	@Override
+	protected void serveClient(BaseProcessor processor) throws Exception
+	{
+		_serveClient(processor);
 	}
-	public void add(Object element) {
-		
-	}*/
 }
 
