@@ -137,6 +137,8 @@ def type_to_packer(t):
         return "%sPacker" % (t.name,)
     elif isinstance(t, compiler.Class):
         return "%sObjRef" % (t.name,)
+    elif isinstance(t, compiler.Typedef):
+        return type_to_packer(t.type)
     else:
         assert False
 

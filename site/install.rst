@@ -5,9 +5,10 @@ Compiler
 --------
 The ``agnos_compiler`` is a ``python`` package, so obviously you will need
 to have `python installed <http://python.org/download/>`_. If you're running
-on Windows, you can next-next-next your way with executable installer; 
-otherwise, install it like any other python package: extract the 
-``tar.gz`` (or ``zip``) and run ::
+on Windows, you can *next-next-next* your way with executable installer; 
+otherwise, install it like any other python package: either use 
+`easy_install <http://packages.python.org/distribute/easy_install.html>`_ or
+do it manually, by extracting compressed package and running ::  
 
   $ python setup.py install       # you might need to sudo that command
 
@@ -15,7 +16,7 @@ For more info, refer to `Installing Python Modules <http://docs.python.org/insta
 
 **Dependencies:** 
 
-* `python <http://python.org/download/>`_ 2.6 or 3.0 and up.
+* `python <http://python.org/download/>`_ 2.6 and up or 3.0 and up.
 
 ------------------------------------------------------------------------------
 
