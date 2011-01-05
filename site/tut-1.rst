@@ -11,10 +11,11 @@ In this section we'll get acquainted with the Agnos tool chain and write a
 simple service -- the Calculator -- where the server is implemented in ``java``
 and the client in ``python``.
 As the name suggests, the Calculator service exposes a small number of 
-arithmetic functions. Let's start with writing the :doc:`idl <IDL>` -- open 
+arithmetic functions. Let's start with writing the :doc:`IDL <idl>` -- open 
 up your favorite XML editor (``notepad`` will do) and paste this snippet:
 
 .. code-block:: xml
+
     <service name="Calculator">
         <typedef name="real" type="float" />
         
@@ -210,6 +211,7 @@ Having our server running in the background, we can launch ``python`` and
 type: 
 
 .. code-block:: python
+
     # import the bindings
     >>> import Calculator_bindings
     
