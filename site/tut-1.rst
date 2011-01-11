@@ -62,7 +62,6 @@ multiplying real numbers, and two for adding and multiplying complex numbers.
 
 Creating the JAR
 ----------------
-
 Open a shell and type ::
 
   $ agnosc -t java -o src calculator.xml 
@@ -72,7 +71,7 @@ Open a shell and type ::
   ./src/Calculator_server.java.stub
   ./calculator.xml
 
-As you can see, ``agnosc`` has generated server bindings, client bindings,
+As you can see, :ref:`tool-agnosc` has generated server bindings, client bindings,
 and a server stub (which will be discussed later). You can now use your 
 favorite build system (`ant <http://ant.apache.org>`_, 
 `scons <http://www.scons.org/>`_, etc.) to build a ``jar`` out of these. I'm
@@ -86,13 +85,22 @@ going to do it the good old way, for the sake of simplicity::
 
 .. note::
    ``/PATH/TO/agnos.jar`` is the location where you downloaded ``agnos.jar``.
-   You can either put it in the java class path, so the compiler would know 
+   You can either put it in the java *class path*, so the compiler would know 
    where to find it automatically, or specify it explicitly.
 
 Voila! You now have ``CalculatorBindings.jar``, which is what we wanted. The
-source files are no longer useful to us, and you can delete them:
+source files are no longer of use to us, and you may safely delete them::
 
    $ rm -rf src/Calculator
+
+Compiled Bindings
+^^^^^^^^^^^^^^^^^
+Future versions of Agnos will support automatically compiling the generated 
+bindings for you, so you'll end up with a ``jar``/``dll`` directly. It would
+be something in the spirit of ::
+
+  $ agnosc -t java --gen-jar --agnos_jar=/PATH/TO/agnos.jar idlfile.xml
+
 
 Implementing the Server
 -----------------------
@@ -156,9 +164,9 @@ care of three things:
 
 .. note::
    In order to reduce the number of generated files, ``agnosc`` uses a compact
-   but rather unfamiliar code layout. Instead of creating sources files for
-   each class -- classes are simply nested. This should be of little concern 
-   to you, the programmer.
+   but rather nonstandard code layout. Instead of creating a separate source 
+   file for each class -- classes are simply nested. This should be of little
+   concern to you, the programmer.
    
    In the generated stub, however, you can feel free to move each class to
    a file of its own. In this tutorial, we'll stick with the nested layout.
@@ -236,7 +244,7 @@ type:
     >>> n3
     Complex(86.0, -90.0)
 
-Just as simple as that.
+It's as simple as that.
 
 
 
