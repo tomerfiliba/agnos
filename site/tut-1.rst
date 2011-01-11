@@ -60,6 +60,8 @@ we prefer the name ``real`` over ``float``), two constants, a record that
 defines what a complex number is, and four functions -- two for adding and 
 multiplying real numbers, and two for adding and multiplying complex numbers. 
 
+.. _tut1-jar:
+
 Creating the JAR
 ----------------
 Open a shell and type ::
