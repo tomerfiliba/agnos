@@ -90,7 +90,7 @@ Run ::
 
   agnosc -t java -o src RemoteFiles.xml
 
-and generate the ``jar`` as explained :ref:`before <tut1-jar>`. Have a look at
+and generate the ``jar`` as explained :ref:`previously <tut1-jar>`. Have a look at
 the stub file that's generated for you:
 
 .. code-block:: java
@@ -149,35 +149,51 @@ the stub file that's generated for you:
         // main ...
     }
 
+Server Code
+-----------
+
 As you can see, most of the boilerplate code has already been written for you,
-but we still have some parts to fill in and do some tweaking:
+but we still have some parts to fill in, and some tweaking to do. The code 
+below is provided in whole:
 
 .. code-block:: java
 
-    // some imports ...
+    import java.util.*;
+    import java.io.*;
+    import agnos.util.HeteroMap;
+    import agnos.protocol.*;
+    import agnos.servers.CmdlineServer;
     import RemoteFiles.server_bindings.RemoteFiles;
     
     public class RemoteFilesServer {
+        //
         // classes
+        //
         public static class MyFile implements RemoteFiles.IFile {
             protected String _filename;
             protected RemoteFiles.FileMode _mode;
             protected FileInputStream fis;
             protected FileOutputStream fos;
     
-            public MyFile(String filename, RemoteFiles.FileMode mode)
-                    throws IOException {
+            public MyFile(String filename, RemoteFiles.FileMode mode) throws IOException {
                 _filename = filename;
                 _mode = mode;
                 if (mode == RemoteFiles.FileMode.Read) {
                     fis = new FileInputStream(filename);
-                } else if (mode == RemoteFiles.FileMode.Write) {
+                }
+                else if (mode == RemoteFiles.FileMode.Write) {
                     fos = new FileOutputStream(filename);
                 }
             }
     
-            // ...
-
+            public String get_filename() throws Exception {
+                return _filename;
+            }
+    
+            public RemoteFiles.FileMode get_mode() throws Exception {
+                return _mode;
+            }
+    
             public Boolean get_closed() throws Exception {
                 return fis == null && fos == null;
             }
@@ -194,8 +210,12 @@ but we still have some parts to fill in and do some tweaking:
             }
     
             public byte[] read(Integer count) throws Exception {
-                if (fis == null) {
-                    throw new InvalidOperationForMode(_filename, _mode, "mode must be 'Read'");
+                if (get_closed()) {
+                    throw new EOFException("file is closed");
+                }
+                if (_mode != RemoteFiles.FileMode.Read) {
+                    throw new RemoteFiles.InvalidOperationForMode(_filename, 
+                        _mode, "mode must be 'Read'");
                 }
                 byte[] data = new byte[count];
                 fis.read(data, 0, count);
@@ -203,15 +223,20 @@ but we still have some parts to fill in and do some tweaking:
             }
     
             public void write(byte[] data) throws Exception {
-                if (fos == null) {
-                    throw new InvalidOperationForMode(_filename, _mode, "mode must be 'Write'");
+                if (get_closed()) {
+                    throw new EOFException("file is closed");
+                }
+                if (_mode != RemoteFiles.FileMode.Write) {
+                    throw new RemoteFiles.InvalidOperationForMode(_filename, 
+                        _mode, "mode must be 'Write'");
                 }
                 fos.write(data, 0, data.length);
             }
-    
         }
     
+        //
         // handler
+        //
         public static class Handler implements RemoteFiles.IHandler {
             public RemoteFiles.IFile open(String filename, RemoteFiles.FileMode mode)
                     throws Exception {
@@ -220,85 +245,119 @@ but we still have some parts to fill in and do some tweaking:
     
         }
     
-        // main ...
+        //
+        // main
+        //
+        public static void main(String[] args) {
+            CmdlineServer server = new CmdlineServer(
+                    new RemoteFiles.ProcessorFactory(new Handler()));
+            try {
+                server.main(args);
+            } catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+    
     }
 
+The above code will compile (with the necessary jars), and you could run it
+from the command line (don't forget to specify the port number, e.g., 
+``-p 12345``).
 
+Client Code
+-----------
+Generate the ``python`` bindings (i.e., ``agnosc -t python RemoteFiles.xml``),
+and let's dive in:
 
 .. code-block:: python
 
     >>> import RemoteFiles_bindings
-    >>> c=RemoteFiles_bindings.Client.connect("localhost", 12345)
-    >>> f=c.open("/tmp/agnos-test/myidl.xml", RemoteFiles_bindings.FileMode.Read)
+    
+    # create the client instance
+    >>> c = RemoteFiles_bindings.Client.connect("localhost", 12345)
+    
+    # open some file for reading
+    >>> f = c.open("/tmp/agnos-test/myidl.xml", RemoteFiles_bindings.FileMode.Read)
+    
+    # as you can see, we got back a file proxy object
     >>> f
     <FileProxy instance @ 1>
     
-    >>> f.filename
-    u'/tmp/agnos-test/myidl.xml'
-    >>> f.mode
-    FileMode('Read' = 0)
+    # and it behaves as you might expect
     >>> f.closed
     False
 
-    >>> f.read(200)
-    '<service name="RemoteFiles">\n    <enum name="FileMode">\n        <member n
-    ame="Read" />\n        <member name="Write" />\n        <member name="ReadWr
-    ite" />\n    </enum>\n    \n    <class name="File">\n    '
+    >>> f.read(20)
+    '<service name="Remot'
+    >>> f.read(20)
+    'eFiles">\n    <enum n'
+    >>> f.read(20)
+    'ame="FileMode">\n    '
     
-    >>> f.read(200)
-    '    <attr name="filename" type="str" set="no"/>\n        <attr name="mode" 
-    type="FileMode" set="no"/>\n        <attr name="closed" type="bool" set="no"
-    />\n\n        <method name="close" type="void" />\n   '
+    # but since we opened it for reading, writing will fail
+    >>> f.write("foo")
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+      File "RemoteFiles_bindings.py", line 93, in write
+        return self._client._funcs.sync_900034(self, data)
+      File "RemoteFiles_bindings.py", line 385, in sync_900034
+        return _self.utils.get_reply(seq)
+      File "/usr/local/lib/python2.6/dist-packages/agnos/protocol.py", line 465, in get_reply
+        raise obj
+    RemoteFiles_bindings.InvalidOperationForMode: 
+       InvalidOperationForMode(u'/tmp/agnos-test/myidl.xml', FileMode('Read' = 0), 
+       u"mode must be 'Write'")
     
+    # don't worry, nothing's broke
+    >>> f.read(10)
+    '    <membe'
+    >>> f.closed
+    False
+    
+    # let's close the file
     >>> f.close()
     >>> f.closed
     True
     
-    >>> f.read(200)
+    # so if we tried reading again, it won't work
+    >>> f.read(20)
     Traceback (most recent call last):
       File "<stdin>", line 1, in <module>
-      File "RemoteFiles_bindings.py", line 61, in read
-        return self._client._funcs.sync_900030(self, count)
-      File "RemoteFiles_bindings.py", line 357, in sync_900030
+      File "RemoteFiles_bindings.py", line 91, in read
+        return self._client._funcs.sync_900033(self, count)
+      File "RemoteFiles_bindings.py", line 394, in sync_900033
         return _self.utils.get_reply(seq)
       File "/usr/local/lib/python2.6/dist-packages/agnos/protocol.py", line 465, in get_reply
         raise obj
-    agnos.protocol.GenericException: java.lang.NullPointerException
+    agnos.protocol.GenericException: java.io.EOFException: file is closed
     ---------------- Remote Traceback ----------------
-            at RemoteFilesServer$MyFile.read(RemoteFilesServer.java:54)
-            at RemoteFiles.server_bindings.RemoteFiles$Processor.processInvoke(RemoteFiles.java:350)
-            at agnos.protocol.BaseProcessor.process(BaseProcessor.java:147)
-            at agnos.servers.BaseServer._serveClient(BaseServer.java:60)
-            at agnos.servers.SimpleServer.serveClient(SimpleServer.java:39)
-            at agnos.servers.BaseServer.serve(BaseServer.java:50)
-            at agnos.servers.CmdlineServer.main(CmdlineServer.java:124)
-            at RemoteFilesServer.main(RemoteFilesServer.java:82)
+        at RemoteFilesServer$MyFile.read(RemoteFilesServer.java:54)
+        at RemoteFiles.server_bindings.RemoteFiles$Processor.processInvoke(RemoteFiles.java:402)
+        at agnos.protocol.BaseProcessor.process(BaseProcessor.java:147)
+        at agnos.servers.BaseServer._serveClient(BaseServer.java:60)
+        at agnos.servers.SimpleServer.serveClient(SimpleServer.java:39)
+        at agnos.servers.BaseServer.serve(BaseServer.java:50)
+        at agnos.servers.CmdlineServer.main(CmdlineServer.java:124)
+        at RemoteFilesServer.main(RemoteFilesServer.java:93)
     
     >>>
 
+As you can see, the ``FileProxy`` instance looks and behaves just like the
+real object, reflecting all local operations on the remote one.
 
+You may also have noticed we got two kinds of exceptions, each with a different 
+kind of traceback: the first is an exception of type 
+``RemoteFiles_bindings.InvalidOperationForMode``, while the second is an 
+exception of type ``agnos.protocol.GenericException``. The ``InvalidOperationForMode``
+exception was defined by our IDL, may contain custom members, and is thrown
+explicitly by our code (see the ``read`` and ``write`` methods of class 
+``MyFile``).
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+The ``GenericException``, on the other hand, wraps an "external" exception 
+(one that was not defined by the IDL). You can't throw a ``GenericException`` 
+directly, but any exception that Agnos does not recognize will be wrapped by
+one. As you can see, the ``GenericException`` includes the server's traceback
+(which may not be pretty at all ;).
 
 
 

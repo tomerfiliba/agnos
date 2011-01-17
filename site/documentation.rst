@@ -65,7 +65,6 @@ Step-by-step tutorials showing you how to use Agnos:
 
 * :doc:`tut-1`
 * :doc:`tut-2`
-* :doc:`tut-3`
 
 .. _doc-demos:
 
