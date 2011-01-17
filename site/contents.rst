@@ -12,6 +12,7 @@ Contents
    concepts
    tut-1
    tut-2
+   tut-3
    demo-1
    demo-2
    

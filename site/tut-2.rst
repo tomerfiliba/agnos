@@ -46,6 +46,8 @@ erroneous situations. In Agnos, they are but a specialized form of records,
 which derive from the relevant exception base class in the target language. 
 Being records, exceptions are passed **by value** too.
 
+.. _tut2-idl:
+
 Example
 -------
 Consider the following IDL:
