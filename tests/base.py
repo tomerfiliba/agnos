@@ -21,10 +21,10 @@ class TargetTest(unittest.TestCase):
         stdout, stderr = proc.communicate(stdin)
         if rc is not None and proc.returncode != rc:
             print "Process execution error: %r" % (cmdline,)
-            if stdout.strip():
+            if stdout and stdout.strip():
                 print "===stdout==="
                 print stdout
-            if stderr.strip():
+            if stderr and stderr.strip():
                 print "===stderr==="
                 print stderr
             self.fail("external process failed")

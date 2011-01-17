@@ -481,8 +481,11 @@ class PythonTarget(TargetBase):
         SEP = module.sep
 
         with BLOCK("class Client(agnos.BaseClient)"):
-            with BLOCK("def __init__(self, transport)"):
+            with BLOCK("def __init__(self, transport, checked)"):
                 self.generate_client_ctor(module, service)
+                SEP()
+                with BLOCK("if checked"):
+                    STMT("self.assert_service_compatibility()")
             SEP()
             for func in service.funcs.values():
                 if not isinstance(func, compiler.Func) or func.namespace or not func.clientside:

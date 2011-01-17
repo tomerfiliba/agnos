@@ -474,20 +474,20 @@ class BaseClient(object):
         self.close()
     
     @classmethod
-    def connect(cls, host, port):
-        return cls(transports.SocketTransport.connect(host, port))
+    def connect(cls, host, port, checked = True):
+        return cls(transports.SocketTransport.connect(host, port), checked)
     @classmethod
-    def connect_executable(cls, filename, args = None):
+    def connect_executable(cls, filename, args = None, checked = True):
         if args is None:
-            return cls(transports.ProcTransport.from_executable(filename))
+            return cls(transports.ProcTransport.from_executable(filename), checked)
         else:
-            return cls(transports.ProcTransport.from_executable(filename, args))
+            return cls(transports.ProcTransport.from_executable(filename, args), checked)
     @classmethod
-    def connect_proc(cls, proc):
-        return cls(transports.ProcTransport.from_proc(proc))
+    def connect_proc(cls, proc, checked = True):
+        return cls(transports.ProcTransport.from_proc(proc), checked)
     @classmethod
-    def connect_url(cls, url):
-        return cls(httptransport.HttpClientTransport(url))
+    def connect_url(cls, url, checked = True):
+        return cls(httptransport.HttpClientTransport(url), checked)
     
     def close(self):
         self._utils.close()

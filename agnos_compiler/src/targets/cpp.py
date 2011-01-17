@@ -977,7 +977,7 @@ class CPPTarget(TargetBase):
             STMT("public:")
             STMT("_Functions _funcs")
             SEP()
-            STMT("Client(shared_ptr<ITransport> transport)")
+            STMT("Client(shared_ptr<ITransport> transport, bool checked)")
             SEP()
             self.namespaces = self.generate_client_namespaces(module, service)
             SEP()
@@ -1122,19 +1122,19 @@ class CPPTarget(TargetBase):
         SEP = module.sep
         with BLOCK("class SocketClient : public Client"):
             STMT("public:")
-            STMT("SocketClient(shared_ptr<transports::SocketTransport> trns)")
-            STMT("SocketClient(const string& host, unsigned short port)")
-            STMT("SocketClient(const string& host, const string& port)")
+            STMT("SocketClient(shared_ptr<transports::SocketTransport> trns, bool checked = true)")
+            STMT("SocketClient(const string& host, unsigned short port, bool checked = true)")
+            STMT("SocketClient(const string& host, const string& port, bool checked = true)")
         SEP()
         with BLOCK("class URLClient : public Client"):
             STMT("public:")
-            STMT("URLClient(const string& url)")
+            STMT("URLClient(const string& url, bool checked = true)")
         SEP()
         STMT("#ifdef BOOST_PROCESS_SUPPORTED")
         with BLOCK("class SubprocClient : public Client"):
             STMT("public:")
-            STMT("SubprocClient(const string& executable)")
-            STMT("SubprocClient(const string& executable, const vector<string>& args)")
+            STMT("SubprocClient(const string& executable, bool checked = true)")
+            STMT("SubprocClient(const string& executable, const vector<string>& args, bool checked = true)")
         STMT("#endif // ifdef BOOST_PROCESS_SUPPORTED")
 
     
@@ -1278,7 +1278,7 @@ class CPPTarget(TargetBase):
         for rec in service.records(is_complex_type):
             self.generate_module_record_body(module, rec, "Client")
         SEP()
-        with BLOCK("Client::Client(shared_ptr<ITransport> transport) :", prefix = "", suffix = ""):
+        with BLOCK("Client::Client(shared_ptr<ITransport> transport, bool checked) :", prefix = "", suffix = ""):
             STMT("BaseClient(transport)", suffix = ",")
             STMT("_funcs(*this)", suffix=",")
             for tp in service.all_types:
@@ -1303,6 +1303,9 @@ class CPPTarget(TargetBase):
             SEP()
             for exc in service.exceptions():
                 STMT("map_put(_utils.packed_exceptions_map, {0}, static_cast<IPacker*>(&{1}))", exc.id, type_to_packer(exc))
+            SEP()
+            with BLOCK("if (checked)"):
+                STMT("assert_service_compatibility()");
             SEP()
             STMT("}", suffix = "")
         SEP()
@@ -1392,18 +1395,21 @@ class CPPTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        with BLOCK("SocketClient::SocketClient(shared_ptr<transports::SocketTransport> trns) :", prefix = "", suffix = "{}"):
-            STMT("Client(trns)", suffix = "")
-        with BLOCK("SocketClient::SocketClient(const string& host, unsigned short port) :", prefix = "", suffix = "{}"):
-            STMT("Client(shared_ptr<transports::SocketTransport>(new transports::SocketTransport(host, port)))", suffix = "")
-        with BLOCK("SocketClient::SocketClient(const string& host, const string& port) :", prefix = "", suffix = "{}"):
-            STMT("Client(shared_ptr<transports::SocketTransport>(new transports::SocketTransport(host, port)))", suffix = "")
+        with BLOCK("SocketClient::SocketClient(shared_ptr<transports::SocketTransport> trns, bool checked) :", prefix = "", suffix = "{}"):
+            STMT("Client(trns, checked)", suffix = "")
+        
+        with BLOCK("SocketClient::SocketClient(const string& host, unsigned short port, bool checked) :", prefix = "", suffix = "{}"):
+            STMT("Client(shared_ptr<transports::SocketTransport>(new transports::SocketTransport(host, port)), checked)", suffix = "")
+        
+        with BLOCK("SocketClient::SocketClient(const string& host, const string& port, bool checked) :", prefix = "", suffix = "{}"):
+            STMT("Client(shared_ptr<transports::SocketTransport>(new transports::SocketTransport(host, port)), checked)", suffix = "")
+        
         SEP()
         STMT("#ifdef BOOST_PROCESS_SUPPORTED")
-        with BLOCK("SubprocClient::SubprocClient(const string& executable) :", prefix = "", suffix = "{}"):
-            STMT("Client(transports::ProcTransport::connect(executable))", suffix = "")
-        with BLOCK("SubprocClient::SubprocClient(const string& executable, const vector<string>& args) :", prefix = "", suffix = "{}"):
-            STMT("Client(transports::ProcTransport::connect(executable, args))", suffix = "")
+        with BLOCK("SubprocClient::SubprocClient(const string& executable, bool checked) :", prefix = "", suffix = "{}"):
+            STMT("Client(transports::ProcTransport::connect(executable), checked)", suffix = "")
+        with BLOCK("SubprocClient::SubprocClient(const string& executable, const vector<string>& args, bool checked) :", prefix = "", suffix = "{}"):
+            STMT("Client(transports::ProcTransport::connect(executable, args), checked)", suffix = "")
         STMT("#endif // BOOST_PROCESS_SUPPORTED")
 
 

@@ -943,7 +943,7 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         
-        with BLOCK("public Client(ITransport transport)"):
+        with BLOCK("public Client(ITransport transport, bool checkCompatibility)"):
             STMT("Dictionary<int, Packers.AbstractPacker> pem = new Dictionary<int, Packers.AbstractPacker>()") 
             STMT("_utils = new Protocol.ClientUtils(transport, pem)")
             STMT("_funcs = new _Functions(this)")
@@ -972,6 +972,8 @@ class CSharpTarget(TargetBase):
                 STMT("packersMap[{0}] = {1}", tp.id, type_to_packer(tp))
             STMT("heteroMapPacker = new Packers.HeteroMapPacker(999, packersMap)")
             STMT("packersMap[999] = heteroMapPacker")
+            with BLOCK("if (checkCompatibility)"):
+                STMT("AssertServiceCompatibility()")
 
     def generate_client_namespaces(self, module, service):
         nsid = itertools.count(0)
@@ -1047,19 +1049,34 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
         
         with BLOCK("public static Client ConnectSock(string host, int port)"):
-            STMT("return new Client(new SocketTransport(host, port))")
+            STMT("return ConnectSock(host, port, true)")
         with BLOCK("public static Client ConnectSock(Socket sock)"):
-            STMT("return new Client(new SocketTransport(sock))")
+            STMT("return ConnectSock(sock, true)")
+        
+        with BLOCK("public static Client ConnectSock(string host, int port, bool checkCompatibility)"):
+            STMT("return new Client(new SocketTransport(host, port), checkCompatibility)")
+        with BLOCK("public static Client ConnectSock(Socket sock, bool checkCompatibility)"):
+            STMT("return new Client(new SocketTransport(sock), checkCompatibility)")
         
         with BLOCK("public static Client ConnectProc(string executable)"):
-            STMT("return new Client(ProcTransport.Connect(executable))")
+            STMT("return ConnectProc(executable, true)")
         with BLOCK("public static Client ConnectProc(Process proc)"):
-            STMT("return new Client(ProcTransport.Connect(proc))")
+            STMT("return ConnectProc(proc, true)")
+        
+        with BLOCK("public static Client ConnectProc(string executable, bool checkCompatibility)"):
+            STMT("return new Client(ProcTransport.Connect(executable), checkCompatibility)")
+        with BLOCK("public static Client ConnectProc(Process proc, bool checkCompatibility)"):
+            STMT("return new Client(ProcTransport.Connect(proc), checkCompatibility)")
 
         with BLOCK("public static Client ConnectUri(string uri)"):
-            STMT("return new Client(new HttpClientTransport(uri))")
+            STMT("return ConnectUri(uri, true)")
         with BLOCK("public static Client ConnectUri(Uri uri)"):
-            STMT("return new Client(new HttpClientTransport(uri))")
+            STMT("return ConnectUri(uri, true)")
+        
+        with BLOCK("public static Client ConnectUri(string uri, bool checkCompatibility)"):
+            STMT("return new Client(new HttpClientTransport(uri), checkCompatibility)")
+        with BLOCK("public static Client ConnectUri(Uri uri, bool checkCompatibility)"):
+            STMT("return new Client(new HttpClientTransport(uri), checkCompatibility)")
 
         SEP()
         with BLOCK("public void AssertServiceCompatibility()"):
