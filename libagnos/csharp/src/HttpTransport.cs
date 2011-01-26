@@ -47,7 +47,7 @@ namespace Agnos.Transports
         }
 
         public HttpClientTransport(Uri uri)
-            : base(null, null)
+            : base(null, null, -1)
         {
             this.uri = uri;
         }

@@ -55,8 +55,28 @@ namespace agnos
 
 		class ITransport : public boost::noncopyable
 		{
+		protected:
+			int compression_threshold;
+
 		public:
+			ITransport() : compression_threshold(-1)
+			{
+			}
+
 			virtual void close() = 0;
+
+			virtual int get_compression_threshold()
+			{
+				return compression_threshold;
+			}
+			virtual void set_compression_threshold(int value)
+			{
+				compression_threshold = value;
+			}
+			virtual void disable_compression()
+			{
+				compression_threshold = -1;
+			}
 
 			virtual int32_t begin_read() = 0;
 			virtual size_t read(char * buf, size_t size) = 0;
@@ -143,6 +163,7 @@ namespace agnos
 			int32_t rseq;
 			size_t rpos;
 			size_t rlength;
+			size_t rcomplength;
 
 			void _assert_good();
 			void _assert_began_read();

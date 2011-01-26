@@ -53,6 +53,24 @@ public abstract class WrappedTransport implements ITransport
 	}
 
 	@Override
+	public int getCompressionThreshold()
+	{
+		return transport.getCompressionThreshold();
+	}
+	
+	@Override
+	public void setCompressionThreshold(int value)
+	{
+		transport.setCompressionThreshold(value);
+	}
+
+	@Override
+	public void disableCompression() 
+	{
+		transport.disableCompression();
+	}	
+	
+	@Override
 	public void close() throws IOException
 	{
 		transport.close();

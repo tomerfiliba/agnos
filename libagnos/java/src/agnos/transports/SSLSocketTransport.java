@@ -49,13 +49,12 @@ public class SSLSocketTransport extends SocketTransport
 	 */
 	public SSLSocketTransport(String host, int port) throws IOException
 	{
-		this(host, port, DEFAULT_BUFFER_SIZE, DEFAULT_COMPRESSION_THRESHOLD);
+		this(host, port, DEFAULT_BUFFER_SIZE);
 	}
 
 	/**
 	 * Constructs an SSLSocketTransport from a host (given as string),
-	 * port number, explicit internal buffering size, and compression
-	 * threshold
+	 * port number, explicit internal buffering size
 	 * 
 	 * @param host
 	 *            The host to connect to
@@ -64,16 +63,13 @@ public class SSLSocketTransport extends SocketTransport
 	 * @param bufsize
 	 *            Buffering size (for BufferedInputStream and
 	 *            BufferedOutputStream)
-	 * @param compressionThreshold
-	 *            Compression threshold ( @see BaseTransport )
 	 * 
 	 * @see SocketTransport
 	 */
-	public SSLSocketTransport(String host, int port, int bufsize,
-			int compressionThreshold) throws IOException
+	public SSLSocketTransport(String host, int port, int bufsize) throws IOException
 	{
 		this((SSLSocket) (SSLSocketFactory.getDefault()
-				.createSocket(host, port)), bufsize, compressionThreshold);
+				.createSocket(host, port)), bufsize);
 	}
 
 	/**
@@ -85,7 +81,7 @@ public class SSLSocketTransport extends SocketTransport
 	 */
 	public SSLSocketTransport(SSLSocket sock) throws IOException
 	{
-		this(sock, DEFAULT_BUFFER_SIZE, DEFAULT_COMPRESSION_THRESHOLD);
+		this(sock, DEFAULT_BUFFER_SIZE);
 	}
 
 	/**
@@ -98,12 +94,9 @@ public class SSLSocketTransport extends SocketTransport
 	 * @param bufsize
 	 *            Buffering size (for BufferedInputStream and
 	 *            BufferedOutputStream)
-	 * @param compressionThreshold
-	 *            Compression threshold ( @see BaseTransport )
 	 */
-	public SSLSocketTransport(SSLSocket sock, int bufsize,
-			int compressionThreshold) throws IOException
+	public SSLSocketTransport(SSLSocket sock, int bufsize) throws IOException
 	{
-		super(sock, bufsize, compressionThreshold);
+		super(sock, bufsize);
 	}
 }

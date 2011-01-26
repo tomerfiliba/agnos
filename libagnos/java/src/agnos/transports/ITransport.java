@@ -47,6 +47,10 @@ public interface ITransport {
 	 */
 	OutputStream getOutputStream();
 
+	int getCompressionThreshold();
+	void setCompressionThreshold(int value);
+	void disableCompression(); 
+	
 	//
 	// read interface
 	//

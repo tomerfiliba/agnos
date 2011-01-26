@@ -151,6 +151,6 @@ public class ProcTransport extends WrappedTransport
 		stderr.close();
 
 		return new ProcTransport(proc, new SocketTransport(hostname, port,
-				SocketTransport.DEFAULT_BUFFER_SIZE, -1));
+				SocketTransport.DEFAULT_BUFFER_SIZE));
 	}
 }

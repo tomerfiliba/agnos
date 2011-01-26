@@ -20,6 +20,9 @@
 
 #include <iostream>
 #include <sstream>
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filter/zlib.hpp>
 #include <iomanip>
 #include <cstdlib>
 #include <cstring>
@@ -69,7 +72,7 @@ namespace agnos
 
 		SocketTransport::SocketTransport(const string& hostname, unsigned short port) :
 				wlock(), wbuf(), wseq(0),
-				rlock(), rseq(0), rpos(0), rlength(0)
+				rlock(), rseq(0), rpos(0), rlength(0), rcomplength(0)
 		{
 			// ugh! the port must be a string, or it silently fails
 			string portstr = convert_to_string(port);
@@ -82,7 +85,7 @@ namespace agnos
 
 		SocketTransport::SocketTransport(const string& hostname, const string& port) :
 				wlock(), wbuf(), wseq(0),
-				rlock(), rseq(0), rpos(0), rlength(0)
+				rlock(), rseq(0), rpos(0), rlength(0), rcomplength(0)
 		{
 			sockstream = shared_ptr<tcp::iostream>(new tcp::iostream(hostname, port.c_str()));
 			if (!sockstream->good()) {
@@ -104,7 +107,7 @@ namespace agnos
 		SocketTransport::SocketTransport(shared_ptr<tcp::iostream> sockstream) :
 				sockstream(sockstream),
 				wlock(), wbuf(), wseq(0),
-				rlock(), rseq(0), rpos(0), rlength(0)
+				rlock(), rseq(0), rpos(0), rlength(0), rcomplength(0)
 		{
 			_assert_good();
 			wbuf.reserve(DEFAULT_BUFFER_SIZE);
@@ -148,14 +151,26 @@ namespace agnos
 			_assert_good();
 
 			int32_t tmp;
-			sockstream->read((char*)&tmp, sizeof(tmp));
-			_assert_good();
-			rlength = ntohl(tmp);
-			DEBUG_LOG("R " << repr((char*)&tmp, sizeof(tmp)) << " rlength = " << rlength);
+
 			sockstream->read((char*)&tmp, sizeof(tmp));
 			_assert_good();
 			rseq = ntohl(tmp);
 			DEBUG_LOG("R " << repr((char*)&tmp, sizeof(tmp)) << " rseq = " << rseq);
+
+			sockstream->read((char*)&tmp, sizeof(tmp));
+			_assert_good();
+			rlength = ntohl(tmp);
+			DEBUG_LOG("R " << repr((char*)&tmp, sizeof(tmp)) << " rlength = " << rlength);
+
+			sockstream->read((char*)&tmp, sizeof(tmp));
+			_assert_good();
+			rcomplength = ntohl(tmp);
+			DEBUG_LOG("R " << repr((char*)&tmp, sizeof(tmp)) << " rcomplength = " << rcomplength);
+
+			if (rcomplength > 0) {
+				throw TransportError("cannot process compressed payload");
+			}
+
 			rpos = 0;
 			return rseq;
 		}
@@ -233,14 +248,24 @@ namespace agnos
 			_assert_good();
 
 			if (wbuf.size() > 0) {
-				tmp = htonl(wbuf.size());
-				DEBUG_LOG("W " << repr((const char*)&tmp, sizeof(tmp)));
-				sockstream->write((const char*)&tmp, sizeof(tmp));
+				// seq
 				tmp = htonl(wseq);
 				DEBUG_LOG("W " << repr((const char*)&tmp, sizeof(tmp)));
 				sockstream->write((const char*)&tmp, sizeof(tmp));
+
+				// length
+				tmp = htonl(wbuf.size());
+				DEBUG_LOG("W " << repr((const char*)&tmp, sizeof(tmp)));
+				sockstream->write((const char*)&tmp, sizeof(tmp));
+
+				// rcomplength
+				tmp = htonl(0);
+				DEBUG_LOG("W " << repr((const char*)&tmp, sizeof(tmp)));
+				sockstream->write((const char*)&tmp, sizeof(tmp));
+
 				DEBUG_LOG("W(" << wbuf.size() << ") " << repr(&wbuf[0], wbuf.size()));
 				sockstream->write(&wbuf[0], wbuf.size());
+
 				sockstream->flush();
 				wbuf.clear();
 				wbuf.reserve(DEFAULT_BUFFER_SIZE);

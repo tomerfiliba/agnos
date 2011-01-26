@@ -48,7 +48,7 @@ public class HttpClientTransport extends BaseTransport
 	protected URL url;
 
 	/**
-	 * Constructs an HttpClientTransport from a URL (given as string)
+	 * Constructs an HttpClientTransport from a URL (given as a string)
 	 */
 	public HttpClientTransport(String url) throws MalformedURLException
 	{
@@ -56,20 +56,11 @@ public class HttpClientTransport extends BaseTransport
 	}
 
 	/**
-	 * Constructs an HttpClientTransport from a URL (given as URL object)
+	 * Constructs an HttpClientTransport from a URL (given as a URL object)
 	 */
 	public HttpClientTransport(URL url)
 	{
-		this(url, DEFAULT_COMPRESSION_THRESHOLD);
-	}
-
-	/**
-	 * Constructs an HttpClientTransport from a URL and a compression 
-	 * threshold
-	 */
-	public HttpClientTransport(URL url, int compressionThreshold)
-	{
-		super(null, null, compressionThreshold);
+		super(null, null);
 		this.url = url;
 	}
 

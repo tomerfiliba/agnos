@@ -20,6 +20,7 @@
 
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.Security;
@@ -42,6 +43,9 @@ namespace Agnos.Transports
 	{
 		void Close ();
 		Stream GetStream ();
+		int GetCompressionThreshold();
+		void SetCompressionThreshold(int value);
+		void DisableCompression();
 
 		// read interface
 		int BeginRead ();
@@ -112,7 +116,9 @@ namespace Agnos.Transports
 		}
 
 		protected MemoryStream buffer;
+		protected MemoryStream compBuffer;
 		protected Stream inputStream;
+		protected Stream inputStream2;
 		protected Stream outputStream;
 		protected Stream asStream;
 		protected ReentrantLock rlock;
@@ -122,12 +128,31 @@ namespace Agnos.Transports
 		protected int rseq;
 		protected int rpos;
 		protected int rlength;
+		protected int rcomplength;
+		protected int compressionThreshold;
 
-		public BaseTransport (Stream inputOuputStream) : this(inputOuputStream, inputOuputStream, 128 * 1024)
+		public int GetCompressionThreshold()
+		{
+			return compressionThreshold;
+		}
+		
+		public void SetCompressionThreshold(int value)
+		{
+			compressionThreshold = value;
+		}
+		
+		public void DisableCompression() 
+		{
+			compressionThreshold = -1;
+		}
+
+		public BaseTransport (Stream inputOuputStream) : 
+			this(inputOuputStream, inputOuputStream, 128 * 1024)
 		{
 		}
 
-		public BaseTransport (Stream inputStream, Stream outputStream) : this(inputStream, outputStream, 128 * 1024)
+		public BaseTransport (Stream inputStream, Stream outputStream) : 
+			this(inputStream, outputStream, 128 * 1024)
 		{
 		}
 
@@ -135,7 +160,10 @@ namespace Agnos.Transports
 		{
 			this.inputStream = inputStream;
 			this.outputStream = outputStream;
+			this.compressionThreshold = -1;
+			inputStream2 = null;
 			buffer = new MemoryStream (bufsize);
+			compBuffer = new MemoryStream (bufsize);
 			wlock = new ReentrantLock ();
 			rlock = new ReentrantLock ();
 			asStream = new TransportStream (this);
@@ -146,6 +174,7 @@ namespace Agnos.Transports
 			if (inputStream != null) {
 				inputStream.Close ();
 				inputStream = null;
+				inputStream2 = null;
 			}
 			if (outputStream != null) {
 				outputStream.Close ();
@@ -174,17 +203,23 @@ namespace Agnos.Transports
 				}
 				
 				rlock.Acquire ();
-				//inputStream.ReadTimeout = msecs;
-				//try {
-				rlength = (int)Packers.Int32.unpack (inputStream);
 				rseq = (int)Packers.Int32.unpack (inputStream);
-				//}
-				//catch (TimeoutException ex) {
-				//	rlock.Release();
-				//	throw ex;
-				//}
-				//inputStream.ReadTimeout = -1;
+				rlength = (int)Packers.Int32.unpack (inputStream);
+				rcomplength = (int)Packers.Int32.unpack (inputStream);
 				rpos = 0;
+				
+				if (rcomplength > 0) {
+					throw new NotImplementedException();
+
+					/*int tmp = rlength;
+					rlength = rcomplength;
+					rcomplength = tmp;
+					inputStream2 = new DeflateStream(inputStream, CompressionMode.Decompress, true);
+					*/
+				}
+				/*else {
+					inputStream2 = inputStream;
+				}*/
 				
 				return rseq;
 			}
@@ -268,12 +303,36 @@ namespace Agnos.Transports
 			lock (this) {
 				AssertBeganWrite ();
 				if (buffer.Length > 0) {
-					Packers.Int32.pack ((int)buffer.Length, outputStream);
 					Packers.Int32.pack (wseq, outputStream);
-					buffer.WriteTo (outputStream);
+					
+					if (compressionThreshold >= 0 && buffer.Length >= compressionThreshold) {
+						throw new NotImplementedException();
+					
+						/*compBuffer.Position = 0;
+						compBuffer.SetLength(0);
+						using (DeflateStream dfl = new DeflateStream(compBuffer, CompressionMode.Compress, true)) {
+							buffer.WriteTo(dfl);
+						}
+						Packers.Int32.pack (compBuffer.Length, outputStream); // actual size
+						Packers.Int32.pack (buffer.Length, outputStream); // uncompressed size
+
+						compBuffer.WriteTo(outputStream);
+						
+						buffer.Position = 0;
+						buffer.SetLength (0);
+						compBuffer.Position = 0;
+						compBuffer.SetLength(0);*/
+					}
+					else {
+						Packers.Int32.pack ((int)buffer.Length, outputStream); // actual size
+						Packers.Int32.pack (0, outputStream); // 0 means no compression
+						
+						buffer.WriteTo (outputStream);
+						buffer.Position = 0;
+						buffer.SetLength (0);
+					}
+					
 					outputStream.Flush ();
-					buffer.Position = 0;
-					buffer.SetLength (0);
 				}
 				wlock.Release ();
 			}
@@ -302,6 +361,18 @@ namespace Agnos.Transports
 		{
 			return transport.GetStream ();
 		}
+		public int GetCompressionThreshold()
+		{
+			return this.GetCompressionThreshold();
+		}
+		public void SetCompressionThreshold(int value)
+		{
+			transport.SetCompressionThreshold(value);
+		}
+		public void DisableCompression() 
+		{
+			transport.DisableCompression();
+		}		
 		public void Close ()
 		{
 			transport.Close ();
@@ -348,6 +419,7 @@ namespace Agnos.Transports
 	{
 		protected readonly Socket sock;
 		public const int DEFAULT_BUFSIZE = 16 * 1024;
+		public const int DEFAULT_COMPRESSION_THRESHOLD = 4 * 1024;
 
 		public SocketTransport (Socket sock) : 
 			base(new BufferedStream (new NetworkStream (sock, true), DEFAULT_BUFSIZE))
@@ -380,6 +452,7 @@ namespace Agnos.Transports
 
 	public class SslSocketTransport : BaseTransport
 	{
+		public const int DEFAULT_COMPRESSION_THRESHOLD = 4 * 1024;
 		protected readonly Socket sock;
 
 		public SslSocketTransport(SslStream stream) : 

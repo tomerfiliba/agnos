@@ -148,27 +148,55 @@ public abstract class BaseTransport implements ITransport
 		return repr(arr, 0, arr.length);
 	}*/
 	
-
 	/**
-	 * Constructs a Transport object from an input stream and an output stream.
+	 * Returns the compression threshold. a negative number means compression
+	 * is disabled
+	 */
+	@Override
+	public int getCompressionThreshold()
+	{
+		return compressionThreshold;
+	}
+	
+	/**
+	 * Sets the compresion threshold. A negative number means compression is
+	 * disabled.
 	 * 
-	 * @param input		an input stream (to be used for read operations)
-	 * 
-	 * @param output		an output stream (to be used for write operations)
-	 * 
-	 * @param compressionThreshold	an integer specifying the minimal packet
+	 * @param value		an integer specifying the minimal packet
 	 * 		length that should be compressed. You can set it to a negative 
 	 * 		number (-1) to disable compression. The value of this parameter
 	 * 		is usually determined by the actual transport: for instance, for 
 	 * 		sockets, it would normally make sense to compress packets that are
 	 * 		longer than the ethernet MTU.
 	 */
-	public BaseTransport(InputStream input, OutputStream output,
-			int compressionThreshold)
+	@Override
+	public void setCompressionThreshold(int value)
+	{
+		compressionThreshold = value;
+	}
+
+	/**
+	 * Disable compression (same as setting the compression threshold to a
+	 * negative number)
+	 */
+	@Override
+	public void disableCompression() 
+	{
+		compressionThreshold = -1;
+	}
+	
+	/**
+	 * Constructs a Transport object from an input stream and an output stream.
+	 * 
+	 * @param input		an input stream (to be used for read operations)
+	 * 
+	 * @param output		an output stream (to be used for write operations)
+	 */ 
+	public BaseTransport(InputStream input, OutputStream output)
 	{
 		this.input = input;
 		this.output = output;
-		this.compressionThreshold = -1; // compressionThreshold;
+		this.compressionThreshold = -1;
 		input2 = null;
 		buffer = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
 		buffer2 = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);

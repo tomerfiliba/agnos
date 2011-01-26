@@ -292,6 +292,10 @@ class ServerGenerator(object):
     def visit_ModuleNode(self, node):
         for child in node.children:
             child.accept(self)
+
+    @classmethod
+    def canonized_attr(cls, modname, *args):
+        return (modname + "." + ".".join(args)).replace("..", ".").strip(".")
     
     def visit_RootNode(self, node):
         self.STMT("#!/usr/bin/env python")
@@ -308,20 +312,25 @@ class ServerGenerator(object):
         
         self.DOC("required modules")
         for modname in self.required_modules:
-            self.STMT("import {0}", modname)
+            if modname.startswith("."):
+                #self.STMT("from . import {0}", modname.strip("."))
+                self.STMT("import {0}", modname.strip("."))
+            else:
+                self.STMT("import {0}", modname)
         self.SEP()
         
         self.DOC("exception map")
         self.STMT("exception_map = {}")
         for (modname, excname), idlexc in self.exception_map.iteritems():
-            self.STMT("exception_map[{0}.{1}] = {2}_bindings.{3}",
-                modname, excname, node.service_name, idlexc)
+            self.STMT("exception_map[{0}] = {1}_bindings.{2}",
+                self.canonized_attr(modname, excname), 
+                node.service_name, idlexc)
         self.SEP()
         
         with self.BLOCK("if __name__ == '__main__'"):
             self.STMT("agnos.servers.server_main({0}_bindings.ProcessorFactory(Handler(), exception_map))", 
                 node.service_name)
-        self.SEP()
+        self.SEP(2)
     
     def visit_FuncNode(self, node):
         args = ", ".join(arg.attrs["name"] for arg in node.children)
@@ -335,8 +344,10 @@ class ServerGenerator(object):
         
         with self.BLOCK("def {0}(_self, {1})", name, args):
             self.required_modules.add(node.parent.modinfo.attrs["name"])
-            self.STMT("return {0}.{1}({2})", node.parent.modinfo.attrs["name"], 
-                node.block.src_name, args)
+            self.STMT("return {0}({1})", 
+                self.canonized_attr(node.parent.modinfo.attrs["name"], 
+                    node.block.src_name),
+                args)
     
     def visit_ExceptionNode(self, node):
         modname = node.parent.modinfo.attrs["name"]
@@ -351,8 +362,10 @@ class ServerGenerator(object):
         args = ", ".join(arg.attrs["name"] for arg in node.children)
         with self.BLOCK("def {0}_create(_self, {1})", node.parent.attrs["name"], args):
             self.required_modules.add(node.parent.modinfo.attrs["name"])
-            self.STMT("return {0}.{1}({2})", node.parent.parent.modinfo.attrs["name"], 
-                node.parent.block.src_name, args)
+            self.STMT("return {0}({1})", 
+                self.canonized_attr(node.parent.parent.modinfo.attrs["name"], 
+                    node.parent.block.src_name),
+                args)
 
     def visit_StaticMethodNode(self, node):
         if node.parent.parent.modinfo.attrs["namespace"]:
@@ -362,8 +375,10 @@ class ServerGenerator(object):
         args = ", ".join(arg.attrs["name"] for arg in node.children)
         with self.BLOCK("def {0}_{1}(_self, {2})", namespace + node.parent.attrs["name"], node.attrs["name"], args):
             self.required_modules.add(node.parent.parent.modinfo.attrs["name"])
-            self.STMT("return {0}.{1}.{2}({3})", node.parent.parent.modinfo.attrs["name"], 
-                node.parent.block.src_name, node.block.src_name, args)
+            self.STMT("return {0}({1})", 
+                self.canonized_attr(node.parent.parent.modinfo.attrs["name"], 
+                    node.parent.block.src_name, node.block.src_name),
+                args)
 
 
 def get_filenames(rootdir, suffix = ".py"):

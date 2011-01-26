@@ -39,7 +39,7 @@ public class SocketTransport extends BaseTransport
 
 	/**
 	 * Constructs a TCP SocketTransport from a host (given as string) and
-	 * port number; uses default compression threshold
+	 * port number
 	 * 
 	 * @param host
 	 *            The host to connect to
@@ -48,13 +48,12 @@ public class SocketTransport extends BaseTransport
 	 */
 	public SocketTransport(String host, int port) throws IOException
 	{
-		this(host, port, DEFAULT_BUFFER_SIZE, DEFAULT_COMPRESSION_THRESHOLD);
+		this(host, port, DEFAULT_BUFFER_SIZE);
 	}
 
 	/**
 	 * Constructs a TCP SocketTransport from a host (given as string) and
-	 * port number, explicit internal buffering size, and compression
-	 * threshold
+	 * port number, explicit internal buffering size
 	 * 
 	 * @param host
 	 *            The host to connect to
@@ -63,13 +62,10 @@ public class SocketTransport extends BaseTransport
 	 * @param bufsize
 	 *            Buffering size (for BufferedInputStream and
 	 *            BufferedOutputStream)
-	 * @param compressionThreshold
-	 *            Compression threshold ( @see BaseTransport )
 	 */
-	public SocketTransport(String host, int port, int bufsize,
-			int compressionThreshold) throws IOException
+	public SocketTransport(String host, int port, int bufsize) throws IOException
 	{
-		this(new Socket(host, port), bufsize, compressionThreshold);
+		this(new Socket(host, port), bufsize);
 	}
 
 	/**
@@ -82,7 +78,7 @@ public class SocketTransport extends BaseTransport
 	 */
 	public SocketTransport(Socket sock) throws IOException
 	{
-		this(sock, DEFAULT_BUFFER_SIZE, DEFAULT_COMPRESSION_THRESHOLD);
+		this(sock, DEFAULT_BUFFER_SIZE);
 	}
 
 	/**
@@ -96,14 +92,11 @@ public class SocketTransport extends BaseTransport
 	 * @param bufsize
 	 *            Buffering size (for BufferedInputStream and
 	 *            BufferedOutputStream)
-	 * @param compressionThreshold
-	 *            Compression threshold ( @see BaseTransport )
 	 */
-	public SocketTransport(Socket sock, int bufsize, int compressionThreshold)
+	public SocketTransport(Socket sock, int bufsize)
 			throws IOException
 	{
 		super(new BufferedInputStream(sock.getInputStream(), bufsize),
-				new BufferedOutputStream(sock.getOutputStream(), bufsize),
-				compressionThreshold);
+				new BufferedOutputStream(sock.getOutputStream(), bufsize));
 	}
 }
