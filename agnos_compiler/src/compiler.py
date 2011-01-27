@@ -308,10 +308,34 @@ class Record(Element):
             if mem.name in names:
                 raise IDLError("name %r is redefined by %r" % (mem.name, self.name))
             members.append(mem)
+        self.local_members = self.members
         self.members = members
 
-class Exception(Record):
+class ExceptionRecord(Record):
     XML_TAG = ["exception"]
+    ATTRS = dict(name = IDENTIFIER, extends = TYPENAME)
+    
+    def _resolve(self, service):
+        names = set()
+        members = []
+        
+        if self.extends:
+            self.extends = service.get_type(self.extends)
+            if not isinstance(rec, ExceptionRecord):
+                raise IDLError("record %r extends %r, which is not a record itself" % (self.name, rec))
+            rec.resolve(service)
+            for mem in rec.members:
+                members.append(mem)
+                if mem.name in names:
+                    raise IDLError("%s: name %r is redefined by %r" % (self.name, mem.name, rec.name))
+                names.add(mem.name)
+        for mem in self.members:
+            mem.resolve(service)
+            if mem.name in names:
+                raise IDLError("name %r is redefined by %r" % (mem.name, self.name))
+            members.append(mem)
+        self.local_members = self.members
+        self.members = members    
 
 class ClassAttr(Element):
     XML_TAG = ["attr"]
@@ -766,7 +790,7 @@ class Service(Element):
     followed by type resolution and post-processing
     """
     XML_TAG = ["service"]
-    CHILDREN = [Typedef, Const, Enum, Record, Exception, Class, Func]
+    CHILDREN = [Typedef, Const, Enum, Record, ExceptionRecord, Class, Func]
     ATTRS = dict(name = IDENTIFIER, package = DEFAULT(None), versions = COMMA_SEP, 
         clientversion = DEFAULT(None))
     BUILTIN_TYPES = {
@@ -945,7 +969,7 @@ class Service(Element):
         return self._get_filtered(lambda mem: isinstance(mem, Record), *predicates)
 
     def exceptions(self, *predicates):
-        return self._get_filtered(lambda mem: isinstance(mem, Exception), *predicates)
+        return self._get_filtered(lambda mem: isinstance(mem, ExceptionRecord), *predicates)
 
 
 

@@ -54,7 +54,7 @@ def type_to_java(t, proxy = False):
     elif isinstance(t, compiler.TMap):
         return "Map<%s, %s>" % (type_to_java(t.keytype, proxy = proxy), 
             type_to_java(t.valtype, proxy = proxy))
-    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
+    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.ExceptionRecord)):
         return "%s" % (t.name,)
     elif isinstance(t, compiler.Class):
         if proxy:
@@ -94,7 +94,7 @@ def type_to_java_full(t, service, proxy = False):
     elif isinstance(t, compiler.TMap):
         return "Map<%s, %s>" % (type_to_java_full(t.keytype, service, proxy = proxy), 
             type_to_java_full(t.valtype, service, proxy = proxy))
-    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
+    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.ExceptionRecord)):
         return "%s.%s" % (service.name, t.name,)
     elif isinstance(t, compiler.Class):
         if proxy:
@@ -129,7 +129,7 @@ def type_to_packer(t):
         return "heteroMapPacker"
     elif isinstance(t, (compiler.TList, compiler.TSet, compiler.TMap)):
         return "_%s" % (t.stringify(),)
-    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
+    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.ExceptionRecord)):
         return "%sPacker" % (t.name,)
     elif isinstance(t, compiler.Class):
         return "%sObjRef" % (t.name,)
@@ -391,7 +391,7 @@ class JavaTarget(TargetBase):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
-        if isinstance(rec, compiler.Exception):
+        if isinstance(rec, compiler.ExceptionRecord):
             extends = "extends PackedException"
         else:
             extends = ""

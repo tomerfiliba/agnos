@@ -70,7 +70,7 @@ def type_to_cpp(t, proxy = False, shared = True, arg = False, ret = False):
             type_to_cpp(t.valtype, proxy = proxy, shared = shared))
     elif isinstance(t, compiler.Enum):
         return t.name
-    elif isinstance(t, (compiler.Record, compiler.Exception)):
+    elif isinstance(t, (compiler.Record, compiler.ExceptionRecord)):
         if arg:
             return "const %s&" % (t.name,)
         elif ret:
@@ -122,7 +122,7 @@ def type_to_packer(t):
         return "_heteromap_packer"
     elif isinstance(t, (compiler.TList, compiler.TSet, compiler.TMap)):
         return "_%s_packer" % (t.stringify(),)
-    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
+    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.ExceptionRecord)):
         return "_%s_packer" % (t.name,)
     elif isinstance(t, compiler.Class):
         return "_%s_objref" % (t.name,)
@@ -159,7 +159,7 @@ def type_to_packer_type(t, proxy = False):
     elif isinstance(t, compiler.TMap):
         return "MapPacker< %s, %s, %s >" % (type_to_cpp(t.keytype, proxy = proxy), 
             type_to_cpp(t.valtype, proxy = proxy), t.id)
-    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
+    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.ExceptionRecord)):
         return "_%sPacker" % (t.name,)
     elif isinstance(t, compiler.Class):
         if proxy:
@@ -301,7 +301,7 @@ class CPPTarget(TargetBase):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
-        if isinstance(rec, compiler.Exception):
+        if isinstance(rec, compiler.ExceptionRecord):
             with BLOCK("class {0} : public PackedException", rec.name):
                 STMT("public:")
                 for mem in rec.members:

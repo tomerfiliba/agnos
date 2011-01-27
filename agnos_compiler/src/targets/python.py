@@ -47,7 +47,7 @@ def type_to_packer(t):
         return "heteroMapPacker"
     elif isinstance(t, (compiler.TList, compiler.TSet, compiler.TMap)):
         return "_%s" % (t.stringify(),)
-    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
+    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.ExceptionRecord)):
         return "%sPacker" % (t.name,)
     elif isinstance(t, compiler.Class):
         return "%sObjRef" % (t.name,)
@@ -197,7 +197,7 @@ class PythonTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        if isinstance(rec, compiler.Exception):
+        if isinstance(rec, compiler.ExceptionRecord):
             base = "agnos.PackedException"
         else:
             base = "agnos.BaseRecord"

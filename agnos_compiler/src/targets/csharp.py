@@ -57,7 +57,7 @@ def type_to_cs(t, proxy = False):
     elif isinstance(t, compiler.TMap):
         return "IDictionary<%s, %s>" % (type_to_cs(t.keytype, proxy = proxy), 
             type_to_cs(t.valtype, proxy = proxy))
-    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
+    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.ExceptionRecord)):
         return "%s" % (t.name,)
     elif isinstance(t, compiler.Class):
         if proxy:
@@ -97,7 +97,7 @@ def type_to_cs_full(t, service, proxy = False):
     elif isinstance(t, compiler.TMap):
         return "IDictionary<%s, %s>" % (type_to_cs_full(t.keytype, service), 
             type_to_cs_full(t.valtype, service))
-    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
+    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.ExceptionRecord)):
         return "%s.%s" % (service.name, t.name,)
     elif isinstance(t, compiler.Class):
         if proxy:
@@ -133,7 +133,7 @@ def type_to_packer(t):
         return "heteroMapPacker"
     elif isinstance(t, (compiler.TList, compiler.TSet, compiler.TMap)):
         return "_%s" % (t.stringify(),)
-    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.Exception)):
+    elif isinstance(t, (compiler.Enum, compiler.Record, compiler.ExceptionRecord)):
         return "%sPacker" % (t.name,)
     elif isinstance(t, compiler.Class):
         return "%sObjRef" % (t.name,)
@@ -418,7 +418,7 @@ class CSharpTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
 
-        is_exc = isinstance(rec, compiler.Exception)
+        is_exc = isinstance(rec, compiler.ExceptionRecord)
 
         with BLOCK("public class {0}{1}", rec.name, " : PackedException" if is_exc else ""):
             for mem in rec.members:

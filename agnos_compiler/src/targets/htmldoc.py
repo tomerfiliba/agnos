@@ -51,11 +51,11 @@ class DocTarget(TargetBase):
                 self.generic_tocer),
             ("Records", 
                 [mem for mem in service.members if isinstance(mem, compiler.Record) 
-                    and not isinstance(mem, compiler.Exception)],
+                    and not isinstance(mem, compiler.ExceptionRecord)],
                 self.docify_record,
                 self.generic_tocer),
             ("Exceptions", 
-                [mem for mem in service.members if isinstance(mem, compiler.Exception)],
+                [mem for mem in service.members if isinstance(mem, compiler.ExceptionRecord)],
                 self.docify_record,
                 self.generic_tocer),
             ("Classes", 
@@ -215,7 +215,7 @@ class DocTarget(TargetBase):
             with BLOCK("dl"):
                 with BLOCK("dt"):
                     with BLOCK("h3", style="background-color: #EEEECC"):
-                        if isinstance(mem, compiler.Exception):
+                        if isinstance(mem, compiler.ExceptionRecord):
                             TEXT("Exception {0}", mem.name)
                         else:
                             TEXT("Record {0}", mem.name)
