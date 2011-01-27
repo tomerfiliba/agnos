@@ -248,7 +248,7 @@ class CPPTarget(TargetBase):
             self.generate_header_signature(module, service)
             SEP()
             
-            for tp in service.records():
+            for tp in service.records_and_exceptions():
                 STMT("class {0}", type_to_cpp(tp))
             for tp in service.classes():
                 STMT("class {0}", type_to_cpp(tp, shared = False))
@@ -260,7 +260,7 @@ class CPPTarget(TargetBase):
                 SEP()
 
             DOC("records", spacer = True)
-            for rec in service.records():
+            for rec in service.records_and_exceptions():
                 self.generate_header_record(module, rec, proxy = False)
                 SEP()
 
@@ -302,9 +302,10 @@ class CPPTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         if isinstance(rec, compiler.ExceptionRecord):
-            with BLOCK("class {0} : public PackedException", rec.name):
+            base = rec.extends.name if rec.extends else "PackedException"
+            with BLOCK("class {0} : public {1}", rec.name, base):
                 STMT("public:")
-                for mem in rec.members:
+                for mem in rec.local_members:
                     STMT("{0} {1}", type_to_cpp(mem.type, proxy = proxy), mem.name)
                 SEP()
                 with BLOCK("{0}()", rec.name):
@@ -318,7 +319,7 @@ class CPPTarget(TargetBase):
                 with BLOCK("~{0}() throw()", rec.name):
                     pass
                 with BLOCK("virtual const char* what() const throw ()"):
-                    STMT('return "{0}"', rec.name) 
+                    STMT('return "{0}"', rec.name)
         else:
             with BLOCK("class {0}", rec.name):
                 STMT("public:")
@@ -425,7 +426,7 @@ class CPPTarget(TargetBase):
                 SEP()
             
             DOC("records", spacer = True)
-            for rec in service.records(lambda mem: not is_complex_type(mem)):
+            for rec in service.records_and_exceptions(lambda mem: not is_complex_type(mem)):
                 self.generate_module_record_cls_and_body(module, rec, static = True, proxy = False)
                 SEP()
     
@@ -565,7 +566,7 @@ class CPPTarget(TargetBase):
                 STMT("{0} {1}", type_to_packer_type(cls), type_to_packer(cls))
             SEP()
             generated_records = []
-            for rec in service.records(is_complex_type):
+            for rec in service.records_and_exceptions(is_complex_type):
                 self.generate_module_record_cls_and_body(module, rec, static = False, proxy = False)
                 generated_records.append(rec)
                 SEP()
@@ -668,6 +669,14 @@ class CPPTarget(TargetBase):
                 STMT('members = group->put_new_map("{0}")', rec.name)
                 for mem in rec.members:
                     STMT('members->put("{0}", "{1}")', mem.name, mem.type)
+            SEP()
+
+            STMT('group = map.put_new_map("exceptions")')
+            for rec in service.exceptions():
+                STMT('members = group->put_new_map("{0}")', rec.name)
+                for mem in rec.members:
+                    STMT('members->put("{0}", "{1}")', mem.name, mem.type)
+                STMT('members->put("__super__", "{0}")', rec.extends.name if rec.extends else "")
             SEP()
             
             STMT('group = map.put_new_map("classes")')
@@ -847,7 +856,7 @@ class CPPTarget(TargetBase):
             self.generate_header_signature(module, service)
             SEP()
             
-            for tp in service.records():
+            for tp in service.records_and_exceptions():
                 STMT("class {0}", type_to_cpp(tp, proxy = True))
             for tp in service.classes():
                 STMT("class _{0}", type_to_cpp(tp, proxy = True))
@@ -860,7 +869,7 @@ class CPPTarget(TargetBase):
                 SEP()
 
             DOC("records", spacer = True)
-            for rec in service.records():
+            for rec in service.records_and_exceptions():
                 self.generate_header_record(module, rec, proxy = True)
                 SEP()
 
@@ -962,7 +971,7 @@ class CPPTarget(TargetBase):
             for cls in service.classes():
                 STMT("{0} {1}", type_to_packer_type(cls, proxy = True), type_to_packer(cls))
             SEP()
-            for rec in service.records(is_complex_type):
+            for rec in service.records_and_exceptions(is_complex_type):
                 self.generate_module_record_cls(module, rec, static = False, proxy = True)
                 SEP()
             for tp in service.all_types:
@@ -1158,7 +1167,7 @@ class CPPTarget(TargetBase):
                 SEP()
             
             DOC("records", spacer = True)
-            for rec in service.records(lambda mem: not is_complex_type(mem)):
+            for rec in service.records_and_exceptions(lambda mem: not is_complex_type(mem)):
                 self.generate_module_record_cls_and_body(module, rec, static = True, proxy = False)
                 SEP()
     
@@ -1275,7 +1284,7 @@ class CPPTarget(TargetBase):
         SEP()
         self.generate_module_client_internal_functions(module, service)
         SEP()
-        for rec in service.records(is_complex_type):
+        for rec in service.records_and_exceptions(is_complex_type):
             self.generate_module_record_body(module, rec, "Client")
         SEP()
         with BLOCK("Client::Client(shared_ptr<ITransport> transport, bool checked) :", prefix = "", suffix = ""):
@@ -1290,7 +1299,7 @@ class CPPTarget(TargetBase):
             for cls in service.classes():
                 STMT("_{0}_proxy_serializer(*this)", cls.name, suffix=",")
                 STMT("{0}(_{1}_proxy_serializer)", type_to_packer(cls), cls.name, suffix = ",")
-            for rec in service.records(is_complex_type):
+            for rec in service.records_and_exceptions(is_complex_type):
                 args = ", ".join(type_to_packer(tp) for tp in rec.get_complicated_types())
                 STMT("{0}({1})", type_to_packer(rec), args, suffix = ",")
             for name, id in self.namespaces:

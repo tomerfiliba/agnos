@@ -235,8 +235,12 @@ class CSharpTarget(TargetBase):
                 for rec in service.records():
                     self.generate_record_class(module, rec, proxy = False)
                     SEP()
+
+                for rec in service.exceptions():
+                    self.generate_exception_record(module, rec, proxy = False)
+                    SEP()
                 
-                for rec in service.records(lambda mem: not is_complex_type(mem)):
+                for rec in service.records_and_exceptions(lambda mem: not is_complex_type(mem)):
                     self.generate_record_packer(module, rec, static = True, proxy = False)
                     SEP()
 
@@ -285,8 +289,12 @@ class CSharpTarget(TargetBase):
                 for rec in service.records():
                     self.generate_record_class(module, rec, proxy = True)
                     SEP()
+
+                for rec in service.exceptions():
+                    self.generate_exception_record(module, rec, proxy = True)
+                    SEP()
                 
-                for rec in service.records(lambda mem: not is_complex_type(mem)):
+                for rec in service.records_and_exceptions(lambda mem: not is_complex_type(mem)):
                     self.generate_record_packer(module, rec, static = True, proxy = True)
                     SEP()
 
@@ -418,13 +426,36 @@ class CSharpTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
 
-        is_exc = isinstance(rec, compiler.ExceptionRecord)
-
-        with BLOCK("public class {0}{1}", rec.name, " : PackedException" if is_exc else ""):
+        with BLOCK("public class {0}", rec.name):
             for mem in rec.members:
                 STMT("public {0} {1}", type_to_cs(mem.type, proxy = proxy), mem.name)
             SEP()
             with BLOCK("public {0}()", rec.name):
+                pass
+            if rec.members:
+                args = ", ".join("%s %s" % (type_to_cs(mem.type, proxy = proxy), mem.name) 
+                    for mem in rec.members)
+                with BLOCK("public {0}({1})", rec.name, args):
+                    for mem in rec.members:
+                        STMT("this.{0} = {0}", mem.name)
+            SEP()
+            with BLOCK("public override string ToString()"):
+                if not rec.members:
+                    STMT('return "{0}()"', rec.name)
+                else:
+                    STMT('return "{0}(" + {1} + ")"', rec.name, ' + ", " + '.join(mem.name
+                        for mem in rec.members))
+
+    def generate_exception_record(self, module, rec, proxy):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+
+        with BLOCK("public class {0} : {1}", rec.name, rec.extends if rec.extends else "PackedException"):
+            for mem in rec.local_members:
+                STMT("public {0} {1}", type_to_cs(mem.type, proxy = proxy), mem.name)
+            SEP()
+            with BLOCK("public {0}() : base()", rec.name):
                 pass
             if rec.members:
                 args = ", ".join("%s %s" % (type_to_cs(mem.type, proxy = proxy), mem.name) 
@@ -607,7 +638,7 @@ class CSharpTarget(TargetBase):
                 STMT("internal readonly Packers.ObjRef {0}ObjRef", cls.name)
             SEP()
             generated_records = []
-            for rec in service.records(is_complex_type):
+            for rec in service.records_and_exceptions(is_complex_type):
                 self.generate_record_packer(module, rec, static = False, proxy = False)
                 generated_records.append(rec)
                 SEP()
@@ -708,6 +739,14 @@ class CSharpTarget(TargetBase):
                 STMT('members = group.AddNewMap("{0}")', rec.name)
                 for mem in rec.members:
                     STMT('members["{0}"] = "{1}"', mem.name, mem.type)
+            SEP()
+            
+            STMT('group = map.AddNewMap("exceptions")')
+            for rec in service.exceptions():
+                STMT('members = group.AddNewMap("{0}")', rec.name)
+                for mem in rec.local_members:
+                    STMT('members.Add("{0}", "{1}")', mem.name, mem.type)
+                STMT('members.Add("__super__", "{0}")', rec.extends.name if rec.extends else "")
             SEP()
             
             STMT('group = map.AddNewMap("classes")')
@@ -891,7 +930,7 @@ class CSharpTarget(TargetBase):
                 STMT("internal readonly Packers.ObjRef {0}ObjRef", cls.name)
             SEP()
             generated_records = []
-            for rec in service.records(is_complex_type):
+            for rec in service.records_and_exceptions(is_complex_type):
                 self.generate_record_packer(module, rec, static = False, proxy = True)
                 generated_records.append(rec)
                 SEP()

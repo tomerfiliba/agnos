@@ -118,8 +118,12 @@ class PythonTarget(TargetBase):
             for rec in service.records():
                 self.generate_record_class(module, rec)
                 SEP()
-            
-            for rec in service.records(lambda mem: not is_complex_type(mem)):
+
+            for rec in service.exceptions():
+                self.generate_exception_record(module, rec)
+                SEP()
+
+            for rec in service.records_and_exceptions(lambda mem: not is_complex_type(mem)):
                 self.generate_record_packer(module, rec)
                 SEP()
             
@@ -197,11 +201,29 @@ class PythonTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         
-        if isinstance(rec, compiler.ExceptionRecord):
-            base = "agnos.PackedException"
-        else:
-            base = "agnos.BaseRecord"
-        with BLOCK("class {0}({1})", rec.name, base):
+        with BLOCK("class {0}(agnos.BaseRecord)", rec.name):
+            STMT('_idl_type = "{0}"', rec.name)
+            STMT("_idl_id = {0}", rec.id)
+            STMT("_idl_attrs = [{0}]", ", ".join(repr(mem.name) for mem in rec.members))
+            SEP()
+            args = ["%s = None" % (mem.name,) for mem in rec.members]
+            with BLOCK("def __init__(self, {0})", ", ".join(args)):
+                if not rec.members:
+                    STMT("pass")
+                for mem in rec.members:
+                    STMT("self.{0} = {0}", mem.name)
+            SEP()
+            with BLOCK("def __repr__(self)"):
+                attrs = ["self.%s" % (mem.name,) for mem in rec.members]
+                STMT("attrs = [{0}]", ", ".join(attrs))
+                STMT("return '{0}(%s)' % (', '.join(repr(a) for a in attrs),)", rec.name)
+
+    def generate_exception_record(self, module, rec):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+        
+        with BLOCK("class {0}({1})", rec.name, rec.extends.name if rec.extends else "agnos.PackedException"):
             STMT('_idl_type = "{0}"', rec.name)
             STMT("_idl_id = {0}", rec.id)
             STMT("_idl_attrs = [{0}]", ", ".join(repr(mem.name) for mem in rec.members))
@@ -315,7 +337,7 @@ class PythonTarget(TargetBase):
                 STMT("heteroMapPacker = packers.HeteroMapPacker(999, packers_map)")
                 STMT("packers_map[999] = heteroMapPacker")
                 SEP()
-                for rec in service.records(is_complex_type):
+                for rec in service.records_and_exceptions(is_complex_type):
                     self.generate_record_packer(module, rec)
                     SEP()
                 self.generate_templated_packers(module, service)
@@ -372,6 +394,13 @@ class PythonTarget(TargetBase):
                     STMT('members = group.new_map("{0}")', rec.name)
                     for mem in rec.members:
                         STMT('members["{0}"] = "{1}"', mem.name, mem.type)
+                SEP()
+                STMT('group = info.new_map("exceptions")')
+                for rec in service.exceptions():
+                    STMT('members = group.new_map("{0}")', rec.name)
+                    for mem in rec.local_members:
+                        STMT('members["{0}"] = "{1}"', mem.name, mem.type)
+                    STMT('members["__super__"] = "{0}"', rec.extends.name if rec.extends else "")
                 SEP()
                 STMT('group = info.new_map("classes")')
                 for cls in service.classes():
@@ -501,7 +530,7 @@ class PythonTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
 
-        for rec in service.records(is_complex_type):
+        for rec in service.records_and_exceptions(is_complex_type):
             self.generate_record_packer(module, rec)
             SEP()
         STMT("packed_exceptions = {}")

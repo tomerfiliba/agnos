@@ -87,6 +87,11 @@ def TYPENAME_NONVOID(name, v):
         raise IDLError("argument or attribute type cannot be void: %r" % (name,))
     return v
 
+def OPTIONAL_TYPENAME(name, v):
+    if not v:
+        return None
+    return TYPENAME(name, v)
+
 def TYPENAME_COMMA_SEP(name, v):
     if not v:
         return []
@@ -295,7 +300,7 @@ class Record(Element):
         
         self.extends = [service.get_type(tp) for tp in self.extends]
         for rec in self.extends:
-            if not isinstance(rec, Record):
+            if not isinstance(rec, Record) or isinstance(rec, ExceptionRecord):
                 raise IDLError("record %r extends %r, which is not a record itself" % (self.name, rec))
             rec.resolve(service)
             for mem in rec.members:
@@ -313,7 +318,7 @@ class Record(Element):
 
 class ExceptionRecord(Record):
     XML_TAG = ["exception"]
-    ATTRS = dict(name = IDENTIFIER, extends = TYPENAME)
+    ATTRS = dict(name = IDENTIFIER, extends = OPTIONAL_TYPENAME)
     
     def _resolve(self, service):
         names = set()
@@ -321,13 +326,13 @@ class ExceptionRecord(Record):
         
         if self.extends:
             self.extends = service.get_type(self.extends)
-            if not isinstance(rec, ExceptionRecord):
-                raise IDLError("record %r extends %r, which is not a record itself" % (self.name, rec))
-            rec.resolve(service)
-            for mem in rec.members:
+            if not isinstance(self.extends, ExceptionRecord):
+                raise IDLError("exception %r extends %r, which is not an exception itself" % (self.name, self.extends))
+            self.extends.resolve(service)
+            for mem in self.extends.members:
                 members.append(mem)
                 if mem.name in names:
-                    raise IDLError("%s: name %r is redefined by %r" % (self.name, mem.name, rec.name))
+                    raise IDLError("%s: name %r is redefined by %r" % (self.name, mem.name, self.extends.name))
                 names.add(mem.name)
         for mem in self.members:
             mem.resolve(service)
@@ -746,6 +751,8 @@ def is_builtin_type(idltype):
 
 def _add_dependencies(coll, *types):
     for tp in types:
+        if tp is None:
+            continue
         if not is_builtin_type(tp):
             coll.add(tp)
     return coll
@@ -753,9 +760,12 @@ def _add_dependencies(coll, *types):
 def _get_depedencies_tree(members):
     deptree = {}
     for mem in members:
-        if isinstance(mem, Record):
+        if isinstance(mem, Record) and not isinstance(mem, ExceptionRecord):
             deptree[mem] = _add_dependencies(set(), *(attr.type for attr in mem.members))
             _add_dependencies(deptree[mem], *mem.extends)
+        elif isinstance(mem, ExceptionRecord):
+            deptree[mem] = _add_dependencies(set(), *(attr.type for attr in mem.members))
+            _add_dependencies(deptree[mem], mem.extends)
         elif isinstance(mem, Class):
             deptree[mem] = _add_dependencies(set(), *(attr.type for attr in mem.attrs)) 
             for meth in mem.methods:
@@ -966,10 +976,14 @@ class Service(Element):
         return self._get_filtered(lambda mem: isinstance(mem, Class), *predicates)
 
     def records(self, *predicates):
-        return self._get_filtered(lambda mem: isinstance(mem, Record), *predicates)
+        return self._get_filtered(lambda mem: isinstance(mem, Record) and 
+            not isinstance(mem, ExceptionRecord), *predicates)
 
     def exceptions(self, *predicates):
         return self._get_filtered(lambda mem: isinstance(mem, ExceptionRecord), *predicates)
+    
+    def records_and_exceptions(self, *predicates):
+        return self._get_filtered(lambda mem: isinstance(mem, Record), *predicates)
 
 
 

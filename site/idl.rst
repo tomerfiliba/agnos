@@ -459,9 +459,13 @@ Defines an exception record. An exception is basically the same as a :ref:`idl-r
 only it inherits the appropriate exception base-class of the target language.
 Exception, being records, are passed **by-value**.
 
+.. note::
+  Unlike records, exceptions can extend only a single type, which must be an 
+  exception on its own.
+
 Syntax
 ------
-``<exception name="NAME" [extends="NAME1,NAME2,..."] >``
+``<exception name="NAME" [extends="NAME"] >``
 
 Contained Elements
 ------------------

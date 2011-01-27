@@ -393,8 +393,8 @@ See example above.
 
 **Nested tags**: :ref:`srcgen-record-attr`
 
-Defines a record. The ``NAME`` and ``EXTENDSLIST`` can be inferred (see more
-about :ref:`inferred inheritance <srcgen-inheritance>`). For example::
+Defines a record. The ``NAME`` and ``EXTENDSLIST`` attributes can be inferred 
+(see more about :ref:`inferred inheritance <srcgen-inheritance>`). For example::
 
   #:: @record
   class Address(object):
@@ -423,19 +423,38 @@ about :ref:`inferred inheritance <srcgen-inheritance>`). For example::
 Defines a record attribute. All attributes are mandatory and none can be 
 inferred. See example above.
 
-
 .. _srcgen-exception:
 
 ``@exception``
 ^^^^^^^^^^^^^^
-**Format**: ``@exception NAME [extends=EXTENDSLIST]``
+**Format**: ``@exception NAME [extends=NAME]``
 
 **IDL element**: :ref:`idl-exception`
 
-**Nested tags**: N/A
+**Nested tags**: :ref:`srcgen-record-attr`
 
-Defines an exception record. This is essentially the same as 
-:ref:`srcgen-record`. The ``NAME`` and  and ``EXTENDSLIST`` can be inferred.
+Defines an exception record. This is essentially the same as a
+:ref:`srcgen-record`, only it derives from the target language's base 
+exception class. The ``NAME`` and ``EXTENDS`` attributes can be inferred.
+Note that unlike records, exceptions may extend only a single type, which must
+be an exception by itself. For example::
+
+  #:: @exception
+  class CLIError(Exception):
+      #:: @attr command type=str
+      #:: @attr parameters type=list[str]
+      
+      def __init__(self, command, params):
+          self.command = command
+          self.parameters = params
+
+  #:: @exception
+  class CLIExecutionFailed(CLIError):
+      #:: @attr errorCode type=str
+      
+      def __init__(self, command, params, errorCode):
+          CLIError.__init__(self, command, params)
+          self.errorCode = errorCode
 
 
 .. _srcgen-class:
