@@ -20,6 +20,10 @@
 
 from datetime import datetime
 import threading
+import sys
+import os
+import time
+import traceback
 try:
     long
 except NameError:
@@ -99,11 +103,12 @@ def make_method(cls):
 MAX_INT32 = 2 ** 31
 
 class HeteroMap(object):
-    def __init__(self, fields = None):
-        if fields is None:
+    def __init__(self, _fields = None, **_kwargs):
+        if _fields is None:
             self.fields = {}
         else:
-            self.fields = fields
+            self.fields = _fields
+        self.update(_kwargs)
     
     def __repr__(self):
         text = "HeteroMap:\n" + "\n".join("%r = %r" % (k, v) for k, v in self.iteritems())
@@ -126,7 +131,7 @@ class HeteroMap(object):
         self.fields.clear()
     def copy(self):
         return HeteroMap(self.fields.copy())
-    def get(self, default = None):
+    def get(self, key, default = None):
         return self.fields.get(key, (default,))[0]
     def items(self):
         return list(self.iteritems())
@@ -152,6 +157,9 @@ class HeteroMap(object):
             return self.fields.pop(key, (default[0],))[0]
         else:
             raise TypeError("pop takes at most two arguments")
+    def popitem(self):
+        k, (vv, kp, vp) = self.fields.popitem()
+        return vv
     def update(self, other):
         if isinstance(other, HeteroMap):
             self.fields.update(other.fields)
@@ -200,7 +208,56 @@ class HeteroMap(object):
             return packers.Buffer
         else:
             return None
+
+class LoggerSink(object):
+    DEFAULT_FORMAT = "[$level $time] $msg"
+    
+    def __init__(self, devices, format = DEFAULT_FORMAT):
+        self.devices = devices
+        self.format = format
+
+    @classmethod
+    def to_file(cls, filename, format = DEFAULT_FORMAT):
+        return cls([open(filename, "w")], format)
+
+    def create_logger(self, name):
+        return SimpleLogger(self, name)
+    
+    def _log(self, level, msg, *args):
+        if not self.devices:
+            return
+        if args:
+            msg %= args
+        text = self.format
+        text = text.replace("$time", time.strftime("%Y-%m-%d %H:%M:%S"))
+        text = text.replace("$pid", str(os.getpid()))
+        text = text.replace("$tid", str(threading.current_thread().ident))
+        text = text.replace("$level", level)
+        text = text.replace("$msg", msg)
         
+        for dev in self.devices:
+            dev.write(text + "\n")
+
+
+class SimpleLogger(object):
+    def __init__(self, sink, name):
+        self.sink = sink
+        self.name = name
+    
+    def info(self, msg, *args):
+        self.sink._log("%s-INFO" % (self.name,), msg, *args)
+    def warn(self, msg, *args):
+        self.sink._log("%s-WARNING" % (self.name,), msg, *args)
+    def exception(self):
+        tbtext = "".join(traceback.format_exception(*sys.exc_info())[:-1])
+        self.sink._log("%s-EXCEPTION" % (self.name,), tbtext)
+    def error(self, msg, *args):
+        self.sink._log("%s-ERROR" % (self.name,), msg, *args)
+
+NullLogger = LoggerSink([])
+
+
+
 
 
 

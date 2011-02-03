@@ -150,14 +150,21 @@ class Transport(object):
     
     @contextmanager
     def reading(self, timeout = None):
-        yield self.begin_read(timeout)
-        self.end_read()
+        try:
+            yield self.begin_read(timeout)
+        finally:
+            self.end_read()
 
     @contextmanager
     def writing(self, seq):
         self.begin_write(seq)
-        yield
-        self.end_write()
+        try:
+            yield
+        except Exception:
+            self.cancel_write()
+            raise
+        else:
+            self.end_write()
 
 
 class WrappedTransport(object):
@@ -293,7 +300,7 @@ class ProcTransport(WrappedTransport):
         if isinstance(filename, str):
             cmdline = [filename]
         else:
-            cmdline = filename 
+            cmdline = filename
         cmdline.extend(args)
         proc = Popen(cmdline, shell = False, stdin = PIPE, stdout = PIPE)
         return cls.from_proc(proc)

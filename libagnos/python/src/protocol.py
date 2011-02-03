@@ -26,7 +26,8 @@ import time
 from . import utils
 from subprocess import Popen, PIPE
 from contextlib import contextmanager
-from .packers import Int8, Int32, Int64, Str, Bool, BuiltinHeteroMapPacker
+from .packers import Int8, Int32, Int64, Str, Bool, BuiltinHeteroMapPacker 
+from .packers import PackingError
 from . import transports
 from . import httptransport
 
@@ -192,6 +193,10 @@ class BaseProcessor(object):
                 except GenericException as ex:
                     self.transport.reset()
                     self.send_generic_exception(ex)
+                except PackingError, ex:
+                    tbtext = "".join(traceback.format_exception(*sys.exc_info())[:-1])
+                    self.transport.reset()
+                    self.send_generic_exception(GenericException(str(ex), tbtext))
                 except PackedException as ex:
                     self.transport.reset()
                     self.send_packed_exception(ex)
@@ -208,15 +213,17 @@ class BaseProcessor(object):
     def process_query_proxy_type(self, seq):
         oid = Int64.unpack(self.transport)
         tp = type(self.load(oid))
-        fqn = tp.__module + "." + tp.__name__
         Int8.pack(REPLY_SUCCESS, self.transport)
-        Str.pack(fqn, self.transport)
+        #Str.pack(tp._idl_type, self.transport)
+        Str.pack(tp.__module__ + "." + tp.__name__, self.transport)
 
     def process_check_cast(self, seq):
         oid = Int64.unpack(self.transport)
-        clsname = Str.unpack(self.transport)
+        idl_class_name = Str.unpack(self.transport)
+        tp = type(self.load(oid))
+        res = _idl in tp._idl_super_classes
         Int8.pack(REPLY_SUCCESS, self.transport)
-        Bool.pack(True, self.transport)
+        Bool.pack(res, self.transport)
 
     def process_incref(self, seq):
         oid = Int64.unpack(self.transport)
@@ -338,17 +345,17 @@ class ClientUtils(object):
     def check_cast(self, objref, clsname):
         seq = self.seq.next()
         with self.transport.writing(seq):
-            Int8.pack(CMD_CHECK_CAST, transport)
-            Int64.pack(objref, transport)
-            Str.pack(clsname, transport)
+            Int8.pack(CMD_CHECK_CAST, self.transport)
+            Int64.pack(objref, self.transport)
+            Str.pack(clsname, self.transport)
         self.replies[seq] = (self.REPLY_SLOT_EMPTY, Bool)
         return self.get_reply(seq)
 
     def get_proxy_type(self, objref):
         seq = self.seq.next()
         with self.transport.writing(seq):
-            Int8.pack(CMD_QUERY_PROXY_TYPE, transport)
-            Int64.pack(objref, transport)
+            Int8.pack(CMD_QUERY_PROXY_TYPE, self.transport)
+            Int64.pack(objref, self.transport)
         self.replies[seq] = (self.REPLY_SLOT_EMPTY, Str)
         return self.get_reply(seq)
 

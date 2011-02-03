@@ -24,6 +24,9 @@ from .utils import HeteroMap
 import time
 
 
+class PackingError(Exception):
+    pass
+
 class Packer(object):
     __slots__ = []
     @classmethod
@@ -44,7 +47,11 @@ class PrimitivePacker(Packer):
     def pack(self, obj, stream):
         if obj is None:
             obj = 0
-        stream.write(self.struct.pack(obj))
+        try:
+            data = self.struct.pack(obj)
+        except (TypeError, ValueError), ex:
+            raise PackingError(ex)
+        stream.write(data)
     def unpack(self, stream):
         data = stream.read(self.struct.size)
         return self.struct.unpack(data)[0]
@@ -99,7 +106,7 @@ class Date(Packer):
             # assume time_t from unix epoch
             time_utc = datetime.utcfromtimestamp(obj)
         else:
-            raise TypeError("cannot encode %r as a datetime object" % (obj,))
+            raise PackingError("cannot encode %r as a datetime object" % (obj,))
         delta = time_utc - cls.EPOCH
         microsecs = (delta.days * 86400 + delta.seconds) * 10**6 + delta.microseconds
         return microsecs
@@ -124,7 +131,10 @@ class Buffer(Packer):
         if obj is None:
             obj = []
         Int32.pack(len(obj), stream)
-        stream.write(obj)
+        try:
+            stream.write(obj)
+        except (TypeError, ValueError), ex:
+            raise PackingError(ex)
     @classmethod
     def unpack(cls, stream):
         length = Int32.unpack(stream)
@@ -137,7 +147,11 @@ class Str(Packer):
     def pack(cls, obj, stream):
         if obj is None:
             obj = ""
-        Buffer.pack(obj.encode("utf-8"), stream)
+        try:
+            data = obj.encode("utf-8")
+        except (TypeError, ValueError), ex:
+            raise PackingError(ex)
+        Buffer.pack(data, stream)
     @classmethod
     def unpack(cls, stream):
         return Buffer.unpack(stream).decode("utf-8")
@@ -161,8 +175,13 @@ class ListOf(Packer):
     def get_id(self):
         return self.id
     def pack(self, obj, stream):
-        Int32.pack(len(obj), stream)
-        for item in obj:
+        try:
+            length = len(obj)
+            iterator = iter(obj)
+        except (TypeError, ValueError, AttributeError), ex:
+            raise PackingError(ex)
+        Int32.pack(length, stream)
+        for item in iterator:
             self.type.pack(item, stream)
     def unpack(self, stream):
         length = Int32.unpack(stream)
@@ -189,7 +208,12 @@ class SetOf(Packer):
     def get_id(self):
         return self.id
     def pack(self, obj, stream):
-        Int32.pack(len(obj), stream)
+        try:
+            length = len(obj)
+            iterator = iter(obj)
+        except (TypeError, ValueError, AttributeError), ex:
+            raise PackingError(ex)
+        Int32.pack(length, stream)
         for item in obj:
             self.type.pack(item, stream)
     def unpack(self, stream):
@@ -218,8 +242,13 @@ class MapOf(Packer):
     def get_id(self):
         return self.id
     def pack(self, obj, stream):
-        Int32.pack(len(obj), stream)
-        for key, val in obj.iteritems():
+        try:
+            length = len(obj)
+            iterator = obj.iteritems()
+        except (TypeError, ValueError, AttributeError), ex:
+            raise PackingError(ex)
+        Int32.pack(length, stream)
+        for key, val in iterator:
             self.keytype.pack(key, stream)
             self.valtype.pack(val, stream)
     def unpack(self, stream):
@@ -261,8 +290,13 @@ class HeteroMapPacker(Packer):
         return self.id
     
     def pack(self, obj, stream):
-        Int32.pack(len(obj), stream)
-        for key, keypacker, val, valpacker in obj.iterfields():
+        try:
+            length = len(obj)
+            iterator = obj.iterfields()
+        except (TypeError, ValueError, AttributeError), ex:
+            raise PackingError(ex)
+        Int32.pack(length, stream)
+        for key, keypacker, val, valpacker in iterator:
             Int32.pack(keypacker.get_id(), stream)
             keypacker.pack(key, stream)
             Int32.pack(valpacker.get_id(), stream)

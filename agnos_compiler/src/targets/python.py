@@ -190,8 +190,10 @@ class PythonTarget(TargetBase):
             with BLOCK("def pack(cls, obj, stream)"):
                 with BLOCK("if isinstance(obj, utils.Enum)"):
                     STMT("packers.Int32.pack(obj.value, stream)")
-                with BLOCK("else"):
+                with BLOCK("elif isinstance(obj, (int, long))"):
                     STMT("packers.Int32.pack(obj, stream)")
+                with BLOCK("else"):
+                    STMT("raise agnos.PackingError('object must be an Enum or an integer')")
             STMT("@classmethod")
             with BLOCK("def unpack(cls, stream)"):
                 STMT("return {0}.get_by_value(packers.Int32.unpack(stream))", enum.name)
@@ -254,6 +256,8 @@ class PythonTarget(TargetBase):
             with BLOCK("def pack(cls, obj, stream)"):
                 if not rec.members:
                     STMT("pass")
+                with BLOCK("if not isinstance(obj, cls)"):
+                    STMT("raise agnos.PackingError('object is not a {0}')", rec.name)
                 for mem in rec.members:
                     STMT("{0}.pack(obj.{1}, stream)", type_to_packer(mem.type), mem.name)
 
