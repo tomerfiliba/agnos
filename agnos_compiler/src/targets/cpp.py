@@ -783,7 +783,7 @@ class CPPTarget(TargetBase):
                 with BLOCK("if (packer != NULL)"):
                     STMT("packer->pack_any(result, *transport)")
             
-            for tp in service.exceptions():
+            for tp in reversed(service.exceptions()):
                 with BLOCK("catch ({0}& ex)", tp.name):
                     STMT('DEBUG_LOG("got packed exception: {0}")', tp.name)
                     STMT("transport->reset()")

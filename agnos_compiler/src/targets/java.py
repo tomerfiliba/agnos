@@ -845,7 +845,7 @@ class JavaTarget(TargetBase):
                     type_to_packer(compiler.t_int8))
                 with BLOCK("if (packer != null)"):
                     STMT("packer.pack(result, outStream)")
-            for tp in service.exceptions():
+            for tp in reversed(service.exceptions()):
                 with BLOCK("catch ({0} ex)", tp.name):
                     STMT("transport.reset()")
                     STMT("{0}.pack(new Byte((byte)constants.REPLY_PACKED_EXCEPTION), outStream)", 

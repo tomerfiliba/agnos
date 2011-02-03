@@ -855,7 +855,7 @@ class CSharpTarget(TargetBase):
                 STMT("{0}.pack((byte)Protocol.REPLY_SUCCESS, stream)", type_to_packer(compiler.t_int8))
                 with BLOCK("if (packer != null)"):
                     STMT("packer.pack(result, stream)")
-            for tp in packed_exceptions:
+            for tp in reversed(packed_exceptions):
                 with BLOCK("catch ({0} ex)", tp.name):
                     STMT("transport.Reset()")
                     STMT("{0}.pack((byte)Protocol.REPLY_PACKED_EXCEPTION, stream)", 
