@@ -27,7 +27,7 @@ import itertools
 import signal
 from optparse import OptionParser
 from .transports import SocketTransportFactory
-from .utils import LoggerSink, NullLogger
+from .utils import Logger, LogSink, NullLogger
 
 
 def _serve_client(processor, logger):
@@ -45,19 +45,21 @@ def _serve_client(processor, logger):
 
 
 class BaseServer(object):
-    def __init__(self, processor_factory, transport_factory, logger_sink, logger_name):
+    def __init__(self, processor_factory, transport_factory, logger):
         self.processor_factory = processor_factory
         self.transport_factory = transport_factory
-        self.logger_sink = logger_sink
-        self.logger = self.logger_sink.create_logger(logger_name)
+        self.logger = logger
+        self.logger.info("server details: %s, pid = %d", self, os.getpid())
     
     def __del__(self):
         self.close()
     
     def close(self):
+        self.logger.info("server is shutting down")
         self.transport_factory.close()
     
     def serve(self):
+        self.logger.info("serving...")
         while True:
             try:
                 trans = self.transport_factory.accept()
@@ -74,26 +76,26 @@ class BaseServer(object):
         raise NotImplementedError()
 
 class SimpleServer(BaseServer):
-    def __init__(self, processor_factory, transport_factory, logger_sink = NullLogger):
-        BaseServer.__init__(self, processor_factory, transport_factory, logger_sink, "SimpleServer")
+    def __init__(self, processor_factory, transport_factory, logger = NullLogger):
+        BaseServer.__init__(self, processor_factory, transport_factory, logger.sublogger("srv"))
     
     def _serve_client(self, processor):
         _serve_client(processor, self.logger)
 
 class ThreadedServer(BaseServer):
-    def __init__(self, processor_factory, transport_factory, logger_sink = NullLogger):
-        BaseServer.__init__(self, processor_factory, transport_factory, logger_sink, "ThreadedServer")
+    def __init__(self, processor_factory, transport_factory, logger = NullLogger):
+        BaseServer.__init__(self, processor_factory, transport_factory, logger.sublogger("srv"))
         self._thread_ids = itertools.count(0)
 
     def _serve_client(self, processor):
-        logger2 = self.logger_sink.create_logger("Thread%d" % (self._thread_ids.next(),))
+        logger2 = self.logger.sublogger("thread%04d" % (self._thread_ids.next(),))
         t = threading.Thread(target = _serve_client, args = (processor, logger2))
         t.start()
 
 class ForkingServer(BaseServer):
-    def __init__(self, processor_factory, transport_factory, logger_sink = NullLogger):
-        BaseServer.__init__(self, processor_factory, transport_factory, logger_sink, 
-            "ForkingServer %s" % (os.getpid(),))
+    def __init__(self, processor_factory, transport_factory, logger):
+        BaseServer.__init__(self, processor_factory, transport_factory, 
+            logger.sublogger("srv"))
         self.child_processes = set()
         self._prev_handler = signal.SIG_DFL
         self._closed = True
@@ -122,7 +124,6 @@ class ForkingServer(BaseServer):
         children = set(self.child_processes)
         self.child_processes.clear()
         
-        self.logger.info("server is shutting down")
         BaseServer.close(self)
         for pid in children:
             try:
@@ -144,10 +145,12 @@ class ForkingServer(BaseServer):
         if pid == 0:
             # child
             try:
-                self.logger = self.logger_sink.create_logger("proc %d" % (os.getpid(),))
+                self.logger = self.logger.sublogger("%d" % (os.getpid(),))
                 self._closed = True
                 signal.signal(signal.SIGCHLD, signal.SIG_DFL)
-                _serve_client(processor)
+                _serve_client(processor, self.logger)
+            except:
+                logger.exception()
             finally:
                 sys.exit()
             os._exit(1)
@@ -188,11 +191,11 @@ def server_main(processor_factory, mode = "simple", port = 0, host = "localhost"
     options.mode = options.mode.lower()
 
     if options.logfile:
-        logger_sink = LoggerSink.to_file(options.logfile)
+        logger = Logger(LogSink([open(options.logfile, "w")]))
     elif logfile:
-        logger_sink = LoggerSink.to_file(logfile)
+        logger = Logger(LogSink([open(logfile, "w")]))
     else:
-        logger_sink = NullLogger
+        logger = NullLogger
 
     transport_factory = SocketTransportFactory(int(options.port), options.host)
     if options.mode == "lib" or options.mode == "library":
@@ -200,15 +203,15 @@ def server_main(processor_factory, mode = "simple", port = 0, host = "localhost"
     elif options.mode == "simple":
         if int(options.port) == 0:
             parser.error("must specify port for simple mode")
-        s = SimpleServer(processor_factory, transport_factory, logger_sink)
+        s = SimpleServer(processor_factory, transport_factory, logger)
     elif options.mode == "threaded":
         if int(options.port) == 0:
             parser.error("must specify port for threaded mode")
-        s = ThreadedServer(processor_factory, transport_factory, logger_sink)
+        s = ThreadedServer(processor_factory, transport_factory, logger)
     elif options.mode == "forking":
         if int(options.port) == 0:
             parser.error("must specify port for forking mode")
-        s = ForkingServer(processor_factory, transport_factory, logger_sink)
+        s = ForkingServer(processor_factory, transport_factory, logger)
     else:
         parser.error("invalid mode: %r" % (options.mode,))
     try:

@@ -170,6 +170,8 @@ class Transport(object):
 class WrappedTransport(object):
     def __init__(self, transport):
         self.transport = transport
+    def __repr__(self):
+        return "WrappedTransport(%s)" % (self.transport,)
     def close(self):
         return self.transport.close()
     def begin_read(self, timeout = None):
@@ -198,9 +200,12 @@ class SocketFile(object):
     CHUNK = 16*1024
     def __init__(self, sock, read_buffer_size = 64*1024):
         self.sock = sock
+        self.sock_host, self.sock_port = sock.getsockname()
+        self.peer_host, self.peer_port = sock.getpeername()
         self.sock.setblocking(False)
         self.read_buffer_size = read_buffer_size
         self.read_buffer = ""
+
     @classmethod
     def connect(cls, host, port):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -257,6 +262,10 @@ class SocketFile(object):
 class SocketTransport(Transport):
     def __init__(self, sockfile, compression_threshold = 4 * 1024):
         Transport.__init__(self, sockfile, sockfile, compression_threshold)
+    def __repr__(self):
+        return "<SocketTransport %s:%s - %s:%s>" % (self.infile.sock_host, 
+            self.infile.sock_port, self.infile.peer_host, self.infile.peer_port)
+    
     @classmethod
     def connect(cls, host, port):
         return cls(SocketFile.connect(host, port))
@@ -268,6 +277,10 @@ class SocketTransport(Transport):
 class SslSocketTransport(Transport):
     def __init__(self, sslsockfile, compression_threshold = 4 * 1024):
         Transport.__init__(self, sslsockfile, sslsockfile, compression_threshold)
+    def __repr__(self):
+        return "<SslSocketTransport %s:%s - %s:%s>" % (self.infile.sock_host, 
+            self.infile.sock_port, self.infile.peer_host, self.infile.peer_port)
+    
     @classmethod
     def connect(cls, host, port, keyfile = None, certfile = None,  
             cert_reqs = ssl.CERT_NONE, **kwargs):
@@ -285,6 +298,8 @@ class ProcTransport(WrappedTransport):
     def __init__(self, proc, transport):
         WrappedTransport.__init__(self, transport)
         self.proc = proc
+    def __repr__(self):
+        return "<ProcTransport pid=%s (%s)>" % (self.proc.pid, "alive" if self.proc.poll() is None else "terminated")
     
     def close(self):
         WrappedTransport.close(self)
@@ -324,6 +339,9 @@ class LoopbackTransport(Transport):
         self.incoming = []
         self.outgoing = []
         self.seqgen = itertools.count(400000)
+
+    def __repr__(self):
+        return "<LoopbackTransport>" 
     
     def insert(self, blob, seq = None):
         """feed the transport with data to read"""

@@ -209,55 +209,82 @@ class HeteroMap(object):
         else:
             return None
 
-class LoggerSink(object):
-    DEFAULT_FORMAT = "[$level $time] $msg"
+class LogSink(object):
+    def __init__(self, files):
+        self.files = list(files)
+        self.lock = threading.RLock()
+
+    def add_file(self, dev):
+        self.files.append(dev)
+
+    def close(self):
+        with self.lock:
+            for f in self.files:
+                f.close()
+            del self.files[:]
     
-    def __init__(self, devices, format = DEFAULT_FORMAT):
-        self.devices = devices
-        self.format = format
+    def write(self, line):
+        with self.lock:
+            line = line + "\n"
+            for f in self.files:
+                f.write(line)
 
-    @classmethod
-    def to_file(cls, filename, format = DEFAULT_FORMAT):
-        return cls([open(filename, "w")], format)
+NullSink = LogSink([])
+StdoutSink = LogSink([sys.stdout])
+StderrSink = LogSink([sys.stderr])
 
-    def create_logger(self, name):
-        return SimpleLogger(self, name)
+class Logger(object):
+    DATE_FORMAT = "%y-%m-%d"
+    TIME_FORMAT = "%H:%M:%S"
+    LINE_FORMAT = "[{date}-{time}|{level:<10}|{source:<15}] {text}"
     
-    def _log(self, level, msg, *args):
-        if not self.devices:
-            return
-        if args:
-            msg %= args
-        text = self.format
-        text = text.replace("$time", time.strftime("%Y-%m-%d %H:%M:%S"))
-        text = text.replace("$pid", str(os.getpid()))
-        text = text.replace("$tid", str(threading.current_thread().ident))
-        text = text.replace("$level", level)
-        text = text.replace("$msg", msg)
-        
-        for dev in self.devices:
-            dev.write(text + "\n")
-
-
-class SimpleLogger(object):
-    def __init__(self, sink, name):
+    def __init__(self, sink, name = None):
         self.sink = sink
         self.name = name
     
+    def _log(self, level, text):
+        line = self.LINE_FORMAT.format(
+            level = level, 
+            source = self.name, 
+            text = text, 
+            pid = os.getpid(), 
+            tid = threading.current_thread().ident,
+            time = time.strftime(self.TIME_FORMAT), 
+            date = time.strftime(self.DATE_FORMAT),
+        )
+        self.sink.write(line)
+
+    def sublogger(self, name):
+        return Logger(self.sink, self.name + "." + name if self.name else name)
+    
+    @staticmethod
+    def _autoformat(fmt, args):
+        if args:
+            fmt %= args
+        return fmt
+    
     def info(self, msg, *args):
-        self.sink._log("%s-INFO" % (self.name,), msg, *args)
+        self._log("INFO", self._autoformat(msg, args))
     def warn(self, msg, *args):
-        self.sink._log("%s-WARNING" % (self.name,), msg, *args)
+        self._log("WARNING", self._autoformat(msg, args))
+    def error(self, msg, *args):
+        self._log("ERROR", self._autoformat(msg, args))
     def exception(self):
         tbtext = "".join(traceback.format_exception(*sys.exc_info())[:-1])
-        self.sink._log("%s-EXCEPTION" % (self.name,), tbtext)
-    def error(self, msg, *args):
-        self.sink._log("%s-ERROR" % (self.name,), msg, *args)
+        self._log("EXCEPTION", tbtext)
 
-NullLogger = LoggerSink([])
+NullLogger = Logger(NullSink)
+StdoutLogger = Logger(StdoutSink)
+StderrLogger = Logger(StderrSink)
 
 
-
+if __name__ == "__main__":
+    logger = StdoutLogger
+    logger.info("hi")
+    logger2 = logger.sublogger("processor")
+    logger2.info("bye")
+    logger3 = logger2.sublogger("food")
+    logger3.info("die")
 
 
 
