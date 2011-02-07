@@ -256,7 +256,7 @@ class PythonTarget(TargetBase):
             with BLOCK("def pack(cls, obj, stream)"):
                 if not rec.members:
                     STMT("pass")
-                with BLOCK("if not isinstance(obj, cls)"):
+                with BLOCK("if not isinstance(obj, {0})", rec.name):
                     STMT("raise agnos.PackingError('object is not a {0}')", rec.name)
                 for mem in rec.members:
                     STMT("{0}.pack(obj.{1}, stream)", type_to_packer(mem.type), mem.name)
