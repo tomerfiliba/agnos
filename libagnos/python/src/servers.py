@@ -107,6 +107,8 @@ class ForkingServer(BaseServer):
         try:
             while True:
                 pid, dummy = os.waitpid(-1, os.WNOHANG)
+                if pid <= 0:
+                    break
                 self.logger.info("collected %s", pid)
                 self.child_processes.discard(pid)
         except OSError:
@@ -220,6 +222,8 @@ def server_main(processor_factory, mode = "simple", port = 0, host = "localhost"
         parser.error("invalid mode: %r" % (options.mode,))
     try:
         s.serve()
+    except KeyboardInterrupt:
+        pass
     finally:
         s.close()
 
