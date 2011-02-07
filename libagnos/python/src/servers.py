@@ -59,7 +59,7 @@ class BaseServer(object):
         self.transport_factory.close()
     
     def serve(self):
-        self.logger.info("serving...")
+        self.logger.info("started serving")
         while True:
             try:
                 trans = self.transport_factory.accept()
@@ -147,9 +147,10 @@ class ForkingServer(BaseServer):
             try:
                 self.logger = self.logger.sublogger("%d" % (os.getpid(),))
                 self._closed = True
+                self.logger.info("childproc running")
                 signal.signal(signal.SIGCHLD, signal.SIG_DFL)
                 _serve_client(processor, self.logger)
-            except:
+            except Exception, ex:
                 logger.exception()
             finally:
                 sys.exit()
@@ -163,7 +164,7 @@ class ForkingServer(BaseServer):
 
 class LibraryModeServer(BaseServer):
     def serve(self):
-        sys.stdout.write("AGNOS\n%s\n%d\n" % (self.transport_factory.host, self.transport_factory.port))
+        sys.stdout.write("AGNOS\n%s\n%d\n\n" % (self.transport_factory.host, self.transport_factory.port))
         sys.stdout.flush()
         sys.stdout.close()
         trans = self.transport_factory.accept()
@@ -199,7 +200,7 @@ def server_main(processor_factory, mode = "simple", port = 0, host = "localhost"
 
     transport_factory = SocketTransportFactory(int(options.port), options.host)
     if options.mode == "lib" or options.mode == "library":
-        s = LibraryModeServer(processor_factory, transport_factory)
+        s = LibraryModeServer(processor_factory, transport_factory, logger)
     elif options.mode == "simple":
         if int(options.port) == 0:
             parser.error("must specify port for simple mode")

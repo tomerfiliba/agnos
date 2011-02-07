@@ -225,9 +225,16 @@ class LogSink(object):
     
     def write(self, line):
         with self.lock:
+            pruned = []
             line = line + "\n"
             for f in self.files:
-                f.write(line)
+                try:
+                    f.write(line)
+                    f.flush()
+                except IOError, ex:
+                    pruned.append(f)
+            for f in pruned:
+                self.files.remove(f)
 
 NullSink = LogSink([])
 StdoutSink = LogSink([sys.stdout])
@@ -236,7 +243,7 @@ StderrSink = LogSink([sys.stderr])
 class Logger(object):
     DATE_FORMAT = "%y-%m-%d"
     TIME_FORMAT = "%H:%M:%S"
-    LINE_FORMAT = "[{date}-{time}|{level:<10}|{source:<15}] {text}"
+    LINE_FORMAT = "[{time}|{level:<10}|{source:<15}] {text}"
     
     def __init__(self, sink, name = None):
         self.sink = sink
