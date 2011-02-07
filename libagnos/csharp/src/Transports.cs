@@ -43,9 +43,9 @@ namespace Agnos.Transports
 	{
 		void Close ();
 		Stream GetStream ();
-		int GetCompressionThreshold();
-		void SetCompressionThreshold(int value);
+        int GetCompressionThreshold();
 		void DisableCompression();
+        void EnableCompression(int threshold);
 
 		// read interface
 		int BeginRead ();
@@ -131,21 +131,6 @@ namespace Agnos.Transports
 		protected int rcomplength;
 		protected int compressionThreshold;
 
-		public int GetCompressionThreshold()
-		{
-			return compressionThreshold;
-		}
-		
-		public void SetCompressionThreshold(int value)
-		{
-			compressionThreshold = value;
-		}
-		
-		public void DisableCompression() 
-		{
-			compressionThreshold = -1;
-		}
-
 		public BaseTransport (Stream inputOuputStream) : 
 			this(inputOuputStream, inputOuputStream, 128 * 1024)
 		{
@@ -186,6 +171,21 @@ namespace Agnos.Transports
 		{
 			return asStream;
 		}
+
+        public int GetCompressionThreshold()
+        {
+            return compressionThreshold;
+        }
+
+        public void EnableCompression(int value)
+        {
+            compressionThreshold = value;
+        }
+
+        public void DisableCompression()
+        {
+            compressionThreshold = -1;
+        }
 
 		//
 		// read interface
@@ -365,9 +365,9 @@ namespace Agnos.Transports
 		{
 			return this.GetCompressionThreshold();
 		}
-		public void SetCompressionThreshold(int value)
+        public void EnableCompression(int value)
 		{
-			transport.SetCompressionThreshold(value);
+            transport.EnableCompression(value);
 		}
 		public void DisableCompression() 
 		{
