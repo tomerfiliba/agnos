@@ -30,19 +30,22 @@ from .transports import SocketTransportFactory
 from .utils import Logger, LogSink, NullLogger
 
 
-def _serve_client(processor, logger):
-    logger.info("serving %s", processor)
+def _handle_client(processor, logger):
+    logger.info("handling %s", processor.transport)
     try:
         while True:
             processor.process()
     except EOFError:
         logger.info("got EOF")
+    except KeyboardInterrupt:
+        logger.info("got SIGINT")
+        raise
     except Exception:
         logger.exception()
         raise
     finally:
+        logger.info("client handler quits")
         processor.transport.close()
-
 
 class BaseServer(object):
     def __init__(self, processor_factory, transport_factory, logger):
@@ -80,7 +83,7 @@ class SimpleServer(BaseServer):
         BaseServer.__init__(self, processor_factory, transport_factory, logger.sublogger("srv"))
     
     def _serve_client(self, processor):
-        _serve_client(processor, self.logger)
+        self._handle_client(processor, self.logger)
 
 class ThreadedServer(BaseServer):
     def __init__(self, processor_factory, transport_factory, logger = NullLogger):
@@ -89,7 +92,7 @@ class ThreadedServer(BaseServer):
 
     def _serve_client(self, processor):
         logger2 = self.logger.sublogger("thread%04d" % (self._thread_ids.next(),))
-        t = threading.Thread(target = _serve_client, args = (processor, logger2))
+        t = threading.Thread(target = _handle_client, args = (processor, logger2))
         t.start()
 
 class ForkingServer(BaseServer):
@@ -147,9 +150,9 @@ class ForkingServer(BaseServer):
             try:
                 self.logger = self.logger.sublogger("%d" % (os.getpid(),))
                 self._closed = True
-                self.logger.info("childproc running")
+                self.logger.info("child proc started")
                 signal.signal(signal.SIGCHLD, signal.SIG_DFL)
-                _serve_client(processor, self.logger)
+                _handle_client(processor, self.logger)
             except Exception, ex:
                 logger.exception()
             finally:
@@ -170,7 +173,7 @@ class LibraryModeServer(BaseServer):
         trans = self.transport_factory.accept()
         self.transport_factory.close()
         processor = self.processor_factory(trans)
-        _serve_client(processor)
+        _handle_client(processor, self.logger)
 
 
 def server_main(processor_factory, mode = "simple", port = 0, host = "localhost", 
@@ -217,8 +220,6 @@ def server_main(processor_factory, mode = "simple", port = 0, host = "localhost"
         parser.error("invalid mode: %r" % (options.mode,))
     try:
         s.serve()
-    except KeyboardInterrupt:
-        sys.stderr.write("server quits after SIGINT\n")
     finally:
         s.close()
 
