@@ -23,6 +23,7 @@ class FeatureTestClient(TargetTest):
         
         try:
             self.baseurl = "http://localhost:%s" % (port,)
+            #raw_input()
             self.client()
             print "===== success ======"
         finally:
