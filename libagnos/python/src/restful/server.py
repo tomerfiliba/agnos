@@ -22,7 +22,7 @@ import sys
 import traceback
 import urlparse
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-from .. import INFO_REFLECTION
+from .. import INFO_SERVICE, INFO_REFLECTION
 from .xmlser import dumps as dump_xml, loads as load_xml
 from .jsonser import dumps as dump_json, loads_root as load_json
 from .util import import_file
@@ -52,6 +52,7 @@ class RESTfulAgnosServer(object):
     def __init__(self, bindings_module, agnos_client):
         self.bindings_module = bindings_module
         self.client = agnos_client
+        self.service_info = agnos_client.get_service_info(INFO_SERVICE)
         self.reflection = agnos_client.get_service_info(INFO_REFLECTION)
         self.func_map = {}
         self.proxy_map = {}
@@ -94,7 +95,11 @@ class RequestHandler(BaseHTTPRequestHandler):
         pass
     
     def _get_root(self):
-        return self.root.service
+        return dict(info = "this is the RESTful server's root",
+            service = dict(self.root.service_info),
+            functions_url = "/funcs",
+            objects_url = "/objs",
+        )
     
     def _get_func(self, parts):
         if not len(parts):
