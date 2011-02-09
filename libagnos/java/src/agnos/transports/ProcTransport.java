@@ -59,6 +59,11 @@ public class ProcTransport extends WrappedTransport
 		this.proc = proc;
 	}
 
+	@Override
+	protected int getCompressionThreshold() {
+		return -1; // it makes no sense to compress on localhost
+	}
+	
 	/**
 	 * Spawns a process (given as a filename) with the default command-line
 	 * arguments ("-m lib"), and connects to it.
@@ -103,7 +108,8 @@ public class ProcTransport extends WrappedTransport
 	 *            The ProcessBuilder instance
 	 * 
 	 * @return The ProcTransport instance
-	 */	public static ProcTransport connect(ProcessBuilder procbuilder)
+	 */	
+	public static ProcTransport connect(ProcessBuilder procbuilder)
 			throws Exception
 	{
 		Process proc = procbuilder.start();

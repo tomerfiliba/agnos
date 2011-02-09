@@ -1,10 +1,9 @@
 package agnos.packers;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import agnos.transports.ITransport;
 
-public class _Int32 extends AbstractPacker
+public final class _Int32 extends AbstractPacker
 {
 	private byte[] buffer = new byte[4];
 
@@ -19,29 +18,29 @@ public class _Int32 extends AbstractPacker
 	}
 
 	@Override
-	public void pack(Object obj, OutputStream stream) throws IOException
+	public void pack(Object obj, ITransport transport) throws IOException
 	{
 		if (obj == null) {
-			pack(0, stream);
+			pack(0, transport);
 		}
 		else {
-			pack(((Number) obj).intValue(), stream);
+			pack(((Number) obj).intValue(), transport);
 		}
 	}
 
-	public void pack(int val, OutputStream stream) throws IOException
+	public void pack(int val, ITransport transport) throws IOException
 	{
 		buffer[0] = (byte) ((val >> 24) & 0xff);
 		buffer[1] = (byte) ((val >> 16) & 0xff);
 		buffer[2] = (byte) ((val >> 8) & 0xff);
 		buffer[3] = (byte) (val & 0xff);
-		_write(stream, buffer);
+		_write(transport, buffer);
 	}
 
 	@Override
-	public Object unpack(InputStream stream) throws IOException
+	public Object unpack(ITransport transport) throws IOException
 	{
-		_read(stream, buffer);
+		_read(transport, buffer);
 		return new Integer(((int) (buffer[0] & 0xff) << 24)
 				| ((int) (buffer[1] & 0xff) << 16)
 				| ((int) (buffer[2] & 0xff) << 8)

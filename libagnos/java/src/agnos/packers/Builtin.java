@@ -22,7 +22,7 @@ package agnos.packers;
 
 import agnos.util._HeteroMapPacker;
 
-public class Builtin {
+public final class Builtin {
 	public static final int CUSTOM_PACKER_ID_BASE = 2000;
 
 	public static final _Int8 Int8 = new _Int8();

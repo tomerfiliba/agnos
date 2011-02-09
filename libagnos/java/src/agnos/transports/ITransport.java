@@ -38,17 +38,39 @@ public interface ITransport {
 	/**
 	 * returns a view of this Transport as an InputStream. note that you can use
 	 * this InputStream only after beginRead() has been issued.
+	 * issuing close() on the returned stream has the effect of endRead()
 	 */
 	InputStream getInputStream();
 
 	/**
 	 * returns a view of this Transport as an OutputStream. note that you can
 	 * use this OutputStream only after beginWrite() has been issued.
+	 * issuing close() on the returned stream has the effect of endWrite()
 	 */
 	OutputStream getOutputStream();
 
-	int getCompressionThreshold();
-	void setCompressionThreshold(int value);
+	/**
+	 * returns a boolean indicating whether the stream is compressed or not.
+	 * initially, compression is disabled.
+	 */
+	boolean isCompressionEnabled();
+
+	/**
+	 * enables compression of the stream; all packets longer than some threshold
+	 * will be compressed (using the Deflate algorithm as defined by ZLIB) 
+	 * before being sent to the other side.
+	 * 
+	 * note: initially, compression is disabled. you may enable it explicitly,
+	 * after verifying that the other side supports compression.
+	 * 
+	 * returns true if compression has been enabled, false otherwise (i.e., 
+	 * compression is not supported by underlying transport)
+	 */
+	boolean enableCompression();
+
+	/**
+	 * disables compression of the stream
+	 */
 	void disableCompression(); 
 	
 	//
@@ -67,14 +89,6 @@ public interface ITransport {
 	 * @return the sequence number of the incoming transaction
 	 */
 	int beginRead() throws IOException;
-
-	/**
-	 * a version of beginRead that accepts a timeout in milliseconds. it is
-	 * deprecated and may be removed in future versions.
-	 * 
-	 * @deprecated
-	 */
-	int beginRead(int msecs) throws IOException;
 
 	/**
 	 * reads up to `len` bytes of data from the underlying input stream, into
@@ -144,7 +158,7 @@ public interface ITransport {
 	 * 
 	 * Note: may be called only after beginWrite()
 	 */
-	void reset() throws IOException;
+	void restartWrite() throws IOException;
 
 	/**
 	 * sends the data written so far and ends the current transaction.

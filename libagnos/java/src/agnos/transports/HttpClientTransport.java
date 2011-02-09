@@ -42,9 +42,6 @@ import agnos.packers.Builtin;
  */
 public class HttpClientTransport extends BaseTransport
 {
-	public static final int DEFAULT_IO_SIZE = 32 * 1024;
-	public static final int DEFAULT_COMPRESSION_THRESHOLD = 4 * 1024;
-
 	protected URL url;
 
 	/**
@@ -64,10 +61,15 @@ public class HttpClientTransport extends BaseTransport
 		this.url = url;
 	}
 
+	@Override
+	protected int getCompressionThreshold() {
+		return 4 * 1024;
+	}
+
 	/**
 	 * helper method that constructs an HttpURLConnection
 	 */
-	protected HttpURLConnection buildConnection() throws IOException
+	/*protected HttpURLConnection buildConnection() throws IOException
 	{
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
@@ -79,34 +81,28 @@ public class HttpClientTransport extends BaseTransport
 		conn.setRequestProperty("content-type", "application/octet-stream");
 		conn.connect();
 		return conn;
-	}
+	}*/
 
-	@Override
+	/*@Override
 	public int beginRead() throws IOException
-	{
-		return beginRead(-1);
-	}
-
-	@Override
-	public int beginRead(int msecs) throws IOException
 	{
 		if (input == null) {
 			throw new IOException(
 					"beginRead must be called only after endWrite");
 		}
-		return super.beginRead(msecs);
-	}
+		return super.beginRead();
+	}*/
 
-	@Override
+	/*@Override
 	public synchronized void endRead() throws IOException
 	{
 		assertBeganRead();
 		input.close();
 		input = null;
 		rlock.unlock();
-	}
+	}*/
 
-	@Override
+	/*@Override
 	public synchronized void endWrite() throws IOException
 	{
 		//
@@ -132,5 +128,5 @@ public class HttpClientTransport extends BaseTransport
 					DEFAULT_IO_SIZE);
 		}
 		wlock.unlock();
-	}
+	}*/
 }

@@ -1,10 +1,9 @@
 package agnos.packers;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import agnos.transports.ITransport;
 
-public class _Float extends AbstractPacker
+public final class _Float extends AbstractPacker
 {
 	protected _Float()
 	{
@@ -17,25 +16,25 @@ public class _Float extends AbstractPacker
 	}
 	
 	@Override
-	public void pack(Object obj, OutputStream stream) throws IOException
+	public void pack(Object obj, ITransport transport) throws IOException
 	{
 		if (obj == null) {
-			pack(0.0, stream);
+			pack(0.0, transport);
 		}
 		else {
-			pack(((Number) obj).doubleValue(), stream);
+			pack(((Number) obj).doubleValue(), transport);
 		}
 	}
 
-	public void pack(double val, OutputStream stream) throws IOException
+	public void pack(double val, ITransport transport) throws IOException
 	{
-		Builtin.Int64.pack(Double.doubleToLongBits(val), stream);
+		Builtin.Int64.pack(Double.doubleToLongBits(val), transport);
 	}
 
 	@Override
-	public Object unpack(InputStream stream) throws IOException
+	public Object unpack(ITransport transport) throws IOException
 	{
 		return new Double(Double.longBitsToDouble(((Long) (Builtin.Int64
-				.unpack(stream))).longValue()));
+				.unpack(transport))).longValue()));
 	}
 }

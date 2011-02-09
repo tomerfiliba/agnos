@@ -1,11 +1,10 @@
 package agnos.packers;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import agnos.transports.ITransport;
 
 
-public class _Bool extends AbstractPacker
+public final class _Bool extends AbstractPacker
 {
 	protected _Bool()
 	{
@@ -18,24 +17,24 @@ public class _Bool extends AbstractPacker
 	}
 
 	@Override
-	public void pack(Object obj, OutputStream stream) throws IOException
+	public void pack(Object obj, ITransport transport) throws IOException
 	{
 		if (obj == null) {
-			pack(false, stream);
+			pack(false, transport);
 		}
 		else {
-			pack(((Boolean) obj).booleanValue(), stream);
+			pack(((Boolean) obj).booleanValue(), transport);
 		}
 	}
 
-	public void pack(boolean val, OutputStream stream) throws IOException
+	public void pack(boolean val, ITransport transport) throws IOException
 	{
-		Builtin.Int8.pack((byte)(val ? 1 : 0), stream);
+		Builtin.Int8.pack((byte)(val ? 1 : 0), transport);
 	}
 
 	@Override
-	public Object unpack(InputStream stream) throws IOException
+	public Object unpack(ITransport transport) throws IOException
 	{
-		return new Boolean((((Byte) Builtin.Int8.unpack(stream))).byteValue() != 0);
+		return new Boolean((((Byte) Builtin.Int8.unpack(transport))).byteValue() != 0);
 	}
 }

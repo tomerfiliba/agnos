@@ -1,10 +1,9 @@
 package agnos.packers;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import agnos.transports.ITransport;
 
-public class ObjRef extends AbstractPacker
+public final class ObjRef extends AbstractPacker
 {
 	protected ISerializer serializer;
 	protected int id;
@@ -22,16 +21,16 @@ public class ObjRef extends AbstractPacker
 	}
 
 	@Override
-	public void pack(Object obj, OutputStream stream) throws IOException
+	public void pack(Object obj, ITransport transport) throws IOException
 	{
 		Long obj2 = serializer.store(obj);
-		Builtin.Int64.pack(obj2, stream);
+		Builtin.Int64.pack(obj2, transport);
 	}
 
 	@Override
-	public Object unpack(InputStream stream) throws IOException
+	public Object unpack(ITransport transport) throws IOException
 	{
-		Long obj = (Long) Builtin.Int64.unpack(stream);
+		Long obj = (Long) Builtin.Int64.unpack(transport);
 		return serializer.load(obj);
 	}
 }

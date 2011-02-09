@@ -35,7 +35,6 @@ import java.net.Socket;
 public class SocketTransport extends BaseTransport
 {
 	public static final int DEFAULT_BUFFER_SIZE = 32 * 1024;
-	public static final int DEFAULT_COMPRESSION_THRESHOLD = 4 * 1024;
 
 	/**
 	 * Constructs a TCP SocketTransport from a host (given as string) and
@@ -99,4 +98,10 @@ public class SocketTransport extends BaseTransport
 		super(new BufferedInputStream(sock.getInputStream(), bufsize),
 				new BufferedOutputStream(sock.getOutputStream(), bufsize));
 	}
+	
+	@Override
+	protected int getCompressionThreshold() {
+		return 4 * 1024;
+	}
+	
 }

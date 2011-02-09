@@ -21,13 +21,15 @@
 package agnos.transports;
 
 import java.io.ByteArrayOutputStream;
-import java.io.EOFException;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.EOFException;
+import java.io.IOException;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.DeflaterOutputStream;
-
+import java.util.zip.InflaterInputStream;
+import agnos.util.ClosedOutputStream;
+import agnos.util.ClosedInputStream;
 import agnos.packers.Builtin;
 
 
@@ -39,187 +41,80 @@ import agnos.packers.Builtin;
  *
  */
 public abstract class BaseTransport implements ITransport
-{
-	// write buffer
-	protected ByteArrayOutputStream buffer;
-	// compression buffer
-	protected ByteArrayOutputStream buffer2;
-	// the input stream
-	protected InputStream input;
-	// decompressed input-stream
-	protected InputStream input2;
-	// the output stream
-	protected OutputStream output;
-	// locks that are used to sync reading and writing
-	protected ReentrantLock rlock;
-	protected ReentrantLock wlock;
-	// cached InputStream and OutputStream adapters
-	protected InputStream asInputStream;
-	protected OutputStream asOutputStream;
-
-	// write sequence number
-	protected int wseq; 
-	// read sequence number
-	protected int rseq;
-	// read position (within the current packet)
-	protected int rpos;
-	// read length (size of physical packet)
-	protected int rlength;
-	// decompressed length (size of packet after decompression)
-	protected int rcomplength;
-	// compression threshold. if negative, compression is disabled
-	protected int compressionThreshold;
-
-	// initial size of write buffers
-	protected static final int DEFAULT_BUFFER_SIZE = 128 * 1024;
-
-	/**
-	 * An adapter class for getInputStream() that makes the transport object
-	 * look like an InputStream.
-	 */
-	protected static final class TransportInputStream extends InputStream
-	{
-		ITransport transport;
-
-		public TransportInputStream(ITransport transport)
-		{
-			this.transport = transport;
-		}
-
+	protected final static int INITIAL_BUFFER_CAPACITY = 128 * 1024; 
+		
+	protected InputStream inStream;
+	protected OutputStream outStream;
+	protected final ReentrantLock rlock = new ReentrantLock();
+	protected final ReentrantLock wlock = new ReentrantLock();
+	
+	private BoundedInputStream readStream = null;
+	
+	private int compressionThreshold = -1;
+	private int wseq = 0;
+	
+	private final ByteArrayOutputStream wbuffer = 
+		new ByteArrayOutputStream(INITIAL_BUFFER_CAPACITY);
+	private final ByteArrayOutputStream compressionBuffer = 
+		new ByteArrayOutputStream(INITIAL_BUFFER_CAPACITY);
+	
+	private final InputStream asInputStream = new InputStream() {
 		@Override
 		public int read() throws IOException
 		{
 			byte[] buffer = { 0 };
-			read(buffer);
+			if (read(buffer) < 0) {
+				return -1;
+			}
 			return buffer[0];
 		}
-
-		@Override
+		@Override 
 		public int read(byte[] data, int off, int len) throws IOException
 		{
-			return transport.read(data, off, len);
+			return BaseTransport.this.read(data, off, len);
 		}
-	}
-
-	/**
-	 * An adapter class for getOutStream() that makes the transport object
-	 * look like an OutputStream.
-	 */
-	protected static final class TransportOutputStream extends OutputStream
-	{
-		ITransport transport;
-
-		public TransportOutputStream(ITransport transport)
-		{
-			this.transport = transport;
-		}
-
 		@Override
+		public void close() throws IOException
+		{
+			endRead();
+		}
+	};
+	
+	private final OutputStream asOutputStream = new OutputStream() {
+		@Override 
 		public void write(int b) throws IOException
 		{
 			byte[] buffer = { (byte) b };
 			write(buffer);
 		}
-
-		@Override
+		@Override 
 		public void write(byte[] data, int off, int len) throws IOException
 		{
-			transport.write(data, off, len);
+			BaseTransport.this.write(data, off, len);
 		}
+		@Override
+		public void close() throws IOException
+		{
+			endWrite();
+		}
+	};
+	
+	public BaseTransport(InputStream inStream, OutputStream outStream) {
+		this.inStream = inStream;
+		this.outStream = outStream;
 	}
 	
-	/*protected static String repr(byte[] arr, int off, int len)
-	{
-		StringBuffer sb = new StringBuffer(len*2);
-		int end = Math.min(arr.length, off+len);
-		for (int i = off; i < end; i++) {
-			if (arr[i] < 32 || arr[i] > 126) {
-				sb.append(String.format("\\x%02x", arr[i])); 
-			}
-			else {
-				sb.append((char)(arr[i]));
-			}
-		}
-		return sb.toString();
-	}
-
-	protected static String repr(byte[] arr)
-	{
-		return repr(arr, 0, arr.length);
-	}*/
-	
-	/**
-	 * Returns the compression threshold. a negative number means compression
-	 * is disabled
-	 */
 	@Override
-	public int getCompressionThreshold()
-	{
-		return compressionThreshold;
+	public void close() throws IOException {
+		if (readStream != null) {
+			readStream.close();
+		}
+		inStream.close();
+		inStream = ClosedInputStream.getInstance();
+		outStream.close();
+		outStream = ClosedOutputStream.getInstance();
 	}
 	
-	/**
-	 * Sets the compresion threshold. A negative number means compression is
-	 * disabled.
-	 * 
-	 * @param value		an integer specifying the minimal packet
-	 * 		length that should be compressed. You can set it to a negative 
-	 * 		number (-1) to disable compression. The value of this parameter
-	 * 		is usually determined by the actual transport: for instance, for 
-	 * 		sockets, it would normally make sense to compress packets that are
-	 * 		longer than the ethernet MTU.
-	 */
-	@Override
-	public void setCompressionThreshold(int value)
-	{
-		compressionThreshold = value;
-	}
-
-	/**
-	 * Disable compression (same as setting the compression threshold to a
-	 * negative number)
-	 */
-	@Override
-	public void disableCompression() 
-	{
-		compressionThreshold = -1;
-	}
-	
-	/**
-	 * Constructs a Transport object from an input stream and an output stream.
-	 * 
-	 * @param input		an input stream (to be used for read operations)
-	 * 
-	 * @param output		an output stream (to be used for write operations)
-	 */ 
-	public BaseTransport(InputStream input, OutputStream output)
-	{
-		this.input = input;
-		this.output = output;
-		this.compressionThreshold = -1;
-		input2 = null;
-		buffer = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
-		buffer2 = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
-		wlock = new ReentrantLock();
-		rlock = new ReentrantLock();
-		asInputStream = new TransportInputStream(this);
-		asOutputStream = new TransportOutputStream(this);
-	}
-
-	@Override
-	public void close() throws IOException
-	{
-		// System.out.printf("[%s.close]\n", this);
-		if (input != null) {
-			input.close();
-			input = null;
-		}
-		if (output != null) {
-			output.close();
-			output = null;
-		}
-	}
-
 	@Override
 	public InputStream getInputStream()
 	{
@@ -231,46 +126,42 @@ public abstract class BaseTransport implements ITransport
 	{
 		return asOutputStream;
 	}
-
-	//
-	// read interface
-	//
+	
 	@Override
-	public synchronized int beginRead() throws IOException
-	{
-		return beginRead(-1);
+	public boolean enableCompression() {
+		compressionThreshold = getCompressionThreshold();
+		return compressionThreshold > 0;
 	}
-
+	
+	protected abstract int getCompressionThreshold();
+	
 	@Override
-	public synchronized int beginRead(int msecs) throws IOException
-	{
-		// System.out.printf("[%s.beginRead] ", this);
-		if (rlock.isHeldByCurrentThread()) {
-			throw new IOException("beginRead is not reentrant");
+	public void disableCompression() {
+		compressionThreshold = -1;
+	}
+	
+	@Override
+	public int isCompressionEnabled() {
+		return compressionThreshold > 0;
+	}
+	
+	protected static int readSInt32(InputStream in) throws IOException {
+		byte[] buf = new byte[4];
+		int len = in.read(buf, 0, buf.length);
+		if (len != buf.length) {
+			throw new EOFException("expected " + buf.length + " bytes, got " + len);
 		}
-
-		rlock.lock();
-		rseq = (Integer) Builtin.Int32.unpack(input);
-		rlength = (Integer) Builtin.Int32.unpack(input);
-		rcomplength = (Integer) Builtin.Int32.unpack(input);
-		rpos = 0;
-		// System.out.printf("length = %d, seq = %d, compressed = %s\n",
-		// rlength, rseq, (rcomplength > 0) ? "T" : "F");
-
-		// if (rcomplength > 0) {
-		// input2 = new InflaterInputStream(input);
-		// int tmp = rlength;
-		// rlength = rcomplength;
-		// rcomplength = tmp;
-		// }
-		// else {
-		input2 = input;
-		// }
-
-		return rseq;
+		return ((int) (buf[0] & 0xff) << 24) | ((int) (buf[1] & 0xff) << 16) | 
+			((int) (buf[2] & 0xff) << 8) | ((int) (buf[3] & 0xff));
 	}
 
-	protected void assertBeganRead() throws IOException
+	protected static void writeSInt32(OutputStream out, int val) throws IOException {
+		byte[] buf = {(byte) ((val >> 24) & 0xff), (byte) ((val >> 16) & 0xff),
+				(byte) ((val >> 8) & 0xff), (byte) (val & 0xff)};		
+		out.write(buf, 0, buf.length);
+	}
+
+	protected final void assertBeganRead() throws IOException
 	{
 		if (!rlock.isHeldByCurrentThread()) {
 			throw new IOException("thread must first call beginRead");
@@ -278,45 +169,46 @@ public abstract class BaseTransport implements ITransport
 	}
 
 	@Override
-	public int read(byte[] data, int offset, int len) throws IOException
-	{
-		// System.out.printf("[%s.read(%d)] ", this, len);
-		assertBeganRead();
-		if (rpos + len > rlength) {
-			throw new EOFException("request to read more than available");
+	public int beginRead() throws IOException {
+		if (rlock.isHeldByCurrentThread()) {
+			throw new IOException("beginRead is not reentrant");
 		}
-		int actually_read = input2.read(data, offset, len);
-		// System.out.printf("%s\n", repr(data, offset, len));
-		rpos += actually_read;
-		return actually_read;
+
+		rlock.lock();
+		assert readStream == null;
+		
+		int seq = readSInt32(inStream);
+		int packetLength = readSInt32(inStream);
+		int uncompressedLength = readSInt32(inStream);
+		if (uncompressedLength <= 0) {
+			// no compression
+			readStream = new BoundedInputStream(inStream, packetLength, false);
+		}
+		else {
+			// compressed stream
+			InputStream inf = new InflaterInputStream(
+					new BoundedInputStream(inStream, packetLength, false));
+			readStream = new BoundedInputStream(inf, uncompressedLength, true);
+		}
+		
+		return seq;
+	}
+	
+	@Override
+	public int read(byte[] buf, int off, int len) throws IOException {
+		assertBeganRead();
+		return readStream.read(buf, off, len);
 	}
 
 	@Override
-	public synchronized void endRead() throws IOException
-	{
-		// System.out.printf("[%s.endRead()]\n", this);
+	public void endRead() throws IOException {
 		assertBeganRead();
-		input2.skip(rlength - rpos);
+		readStream.close();
+		readStream = null;
 		rlock.unlock();
-		input2 = null;
 	}
-
-	//
-	// write interface
-	//
-	@Override
-	public synchronized void beginWrite(int seq) throws IOException
-	{
-		// System.out.printf("[%s.beginWrite(%d)]\n", this, seq);
-		if (wlock.isHeldByCurrentThread()) {
-			throw new IOException("beginWrite is not reentrant");
-		}
-		wlock.lock();
-		wseq = seq;
-		buffer.reset();
-	}
-
-	protected void assertBeganWrite() throws IOException
+	
+	protected final void assertBeganWrite() throws IOException
 	{
 		if (!wlock.isHeldByCurrentThread()) {
 			throw new IOException("thread must first call beginWrite");
@@ -324,63 +216,65 @@ public abstract class BaseTransport implements ITransport
 	}
 
 	@Override
-	public void write(byte[] data, int offset, int len) throws IOException
-	{
-		// System.out.printf("[%s.write(%d)] %s\n", this, len,
-		// repr(data, offset, len));
+	public void beginWrite(int seq) throws IOException {
+		if (wlock.isHeldByCurrentThread()) {
+			throw new IOException("beginWrite is not reentrant");
+		}
+		
+		wlock.lock();
+		wbuffer.reset();
+		wseq = seq;
+	}
+	
+	@Override
+	public void write(byte[] buf, int off, int len) throws IOException {
 		assertBeganWrite();
-		buffer.write(data, offset, len);
+		wbuffer.write(buf, off, len);
 	}
 
 	@Override
-	public void reset() throws IOException
-	{
-		// System.out.printf("[%s.reset()]\n", this);
+	public void restartWrite() throws IOException {
 		assertBeganWrite();
-		buffer.reset();
+		wbuffer.reset();
 	}
-
+	
 	@Override
-	public synchronized void endWrite() throws IOException
-	{
-		int len = buffer.size();
-		// System.out.printf("[%s.endWrite(%d)] ", this, len);
+	public void endWrite() throws IOException {
 		assertBeganWrite();
-
+		int len = wbuffer.size();
 		if (len > 0) {
-			Builtin.Int32.pack(wseq, output);
-
-			if (compressionThreshold >= 0 && len > compressionThreshold) {
-				buffer2.reset();
-				DeflaterOutputStream comp = new DeflaterOutputStream(buffer2);
-				buffer.writeTo(comp);
-				comp.finish();
-
-				// System.out.printf("compressed to %d\n", buffer2.size());
-				Builtin.Int32.pack(buffer2.size(), output); // actual size
-				Builtin.Int32.pack(len, output); // uncompressed size
-				buffer2.writeTo(output);
+			writeSInt32(outStream, wseq);
+			
+			if (compressionThreshold > 0 && len > compressionThreshold) {
+				// compress
+				compressionBuffer.reset();
+				DeflaterOutputStream defl = new DeflaterOutputStream(compressionBuffer);
+				wbuffer.writeTo(defl);
+				defl.close(); // compressionBuffer is unharmed by close()
+				
+				writeSInt32(outStream, compressionBuffer.size()); // packetLength
+				writeSInt32(outStream, len); // uncompressedLength
+				compressionBuffer.writeTo(outStream);
 			}
 			else {
-				// System.out.printf("uncompressed\n");
-
-				Builtin.Int32.pack(len, output); // actual size
-				Builtin.Int32.pack(0, output); // 0 means no compression
-				buffer.writeTo(output);
+				// no compression
+				writeSInt32(outStream, len); // packetLength
+				writeSInt32(outStream, 0); // uncompressedLength <= 0 means no compression
+				wbuffer.writeTo(outStream);
 			}
-
-			output.flush();
-			buffer.reset();
+			outStream.flush();
 		}
 		wlock.unlock();
 	}
-
+	
+	/**
+	 * cancels the currently active write transaction (nothing will be written 
+	 * to the stream). you can issue a new beginWrite afterwards.
+	 */
 	@Override
-	public synchronized void cancelWrite() throws IOException
-	{
-		// System.out.printf("[%s.cancelWrite()]\n", this);
+	public void cancelWrite() throws IOException {
 		assertBeganWrite();
-		buffer.reset();
+		wbuffer.reset();
 		wlock.unlock();
 	}
 }

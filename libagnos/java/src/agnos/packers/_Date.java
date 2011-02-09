@@ -1,9 +1,8 @@
 package agnos.packers;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Date;
+import agnos.transports.ITransport;
 
 public final class _Date extends AbstractPacker
 {
@@ -20,16 +19,16 @@ public final class _Date extends AbstractPacker
 	}
 	
 	@Override
-	public void pack(Object obj, OutputStream stream) throws IOException
+	public void pack(Object obj, ITransport transport) throws IOException
 	{
 		long microsecs = ((Date) obj).getTime() * 1000;
-		Builtin.Int64.pack(new Long(UNIX_EPOCH_UTC_MICROSECS + microsecs), stream);
+		Builtin.Int64.pack(new Long(UNIX_EPOCH_UTC_MICROSECS + microsecs), transport);
 	}
 
 	@Override
-	public Object unpack(InputStream stream) throws IOException
+	public Object unpack(ITransport transport) throws IOException
 	{
-		long microsecs = (Long)Builtin.Int64.unpack(stream);
+		long microsecs = (Long)Builtin.Int64.unpack(transport);
 		return new Date((microsecs - UNIX_EPOCH_UTC_MICROSECS) / 1000);
 	}
 }

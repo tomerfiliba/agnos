@@ -1,10 +1,9 @@
 package agnos.packers;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import agnos.transports.ITransport;
 
-public class _Str extends AbstractPacker
+public final class _Str extends AbstractPacker
 {
 	private static final String encoding = "UTF-8";
 
@@ -19,20 +18,20 @@ public class _Str extends AbstractPacker
 	}
 	
 	@Override
-	public void pack(Object obj, OutputStream stream) throws IOException
+	public void pack(Object obj, ITransport transport) throws IOException
 	{
 		if (obj == null) {
-			Builtin.Buffer.pack(null, stream);
+			Builtin.Buffer.pack(null, transport);
 		}
 		else {
-			Builtin.Buffer.pack(((String) obj).getBytes(encoding), stream);
+			Builtin.Buffer.pack(((String) obj).getBytes(encoding), transport);
 		}
 	}
 
 	@Override
-	public Object unpack(InputStream stream) throws IOException
+	public Object unpack(ITransport transport) throws IOException
 	{
-		byte[] buf = (byte[]) Builtin.Buffer.unpack(stream);
+		byte[] buf = (byte[]) Builtin.Buffer.unpack(transport);
 		return new String(buf, encoding);
 	}
 }

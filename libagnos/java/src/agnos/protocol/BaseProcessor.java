@@ -165,10 +165,10 @@ public abstract class BaseProcessor implements ISerializer {
 				throw new ProtocolException("unknown command code: " + cmdid);
 			}
 		} catch (ProtocolException exc) {
-			transport.reset();
+			transport.restartWrite();
 			sendProtocolException(exc);
 		} catch (GenericException exc) {
-			transport.reset();
+			transport.restartWrite();
 			sendGenericException(exc);
 		} catch (Exception ex) {
 			transport.cancelWrite();

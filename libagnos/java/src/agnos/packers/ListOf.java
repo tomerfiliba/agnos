@@ -1,12 +1,12 @@
 package agnos.packers;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import agnos.transports.ITransport;
 
-public class ListOf<T> extends AbstractPacker
+
+public final class ListOf<T> extends AbstractPacker
 {
 	protected AbstractPacker type;
 	protected int id;
@@ -27,36 +27,36 @@ public class ListOf<T> extends AbstractPacker
 	}
 
 	@Override
-	public void pack(Object obj, OutputStream stream) throws IOException
+	public void pack(Object obj, ITransport transport) throws IOException
 	{
 		if (obj == null) {
-			Builtin.Int32.pack(0, stream);
+			Builtin.Int32.pack(0, transport);
 		}
 		else if (obj.getClass().isArray()) {
 			T[] arr = (T[])obj;
-			Builtin.Int32.pack(arr.length, stream);
+			Builtin.Int32.pack(arr.length, transport);
 
 			for (T item : arr) {
-				type.pack(item, stream);
+				type.pack(item, transport);
 			}
 		}
 		else {
-			List<T> lst = (List<T>)obj;
-			Builtin.Int32.pack(lst.size(), stream);
+			List<? extends T> lst = (List<? extends T>)obj;
+			Builtin.Int32.pack(lst.size(), transport);
 
 			for (T item : lst) {
-				type.pack(item, stream);
+				type.pack(item, transport);
 			}
 		}
 	}
 
 	@Override
-	public Object unpack(InputStream stream) throws IOException
+	public Object unpack(ITransport transport) throws IOException
 	{
-		int length = (Integer) Builtin.Int32.unpack(stream);
+		int length = (Integer) Builtin.Int32.unpack(transport);
 		List<T> lst = new ArrayList<T>(length);
 		for (int i = 0; i < length; i++) {
-			lst.add((T)(type.unpack(stream)));
+			lst.add((T)(type.unpack(transport)));
 		}
 		return lst;
 	}
