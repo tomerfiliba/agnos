@@ -30,6 +30,7 @@ import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 import agnos.util.ClosedOutputStream;
 import agnos.util.ClosedInputStream;
+import agnos.util.BoundedInputStream;
 import agnos.packers.Builtin;
 
 
@@ -40,7 +41,7 @@ import agnos.packers.Builtin;
  * @author Tomer Filiba
  *
  */
-public abstract class BaseTransport implements ITransport
+public abstract class BaseTransport implements ITransport {
 	protected final static int INITIAL_BUFFER_CAPACITY = 128 * 1024; 
 		
 	protected InputStream inStream;
@@ -141,7 +142,7 @@ public abstract class BaseTransport implements ITransport
 	}
 	
 	@Override
-	public int isCompressionEnabled() {
+	public boolean isCompressionEnabled() {
 		return compressionThreshold > 0;
 	}
 	

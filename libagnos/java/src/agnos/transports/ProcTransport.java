@@ -60,10 +60,10 @@ public class ProcTransport extends WrappedTransport
 	}
 
 	@Override
-	protected int getCompressionThreshold() {
-		return -1; // it makes no sense to compress on localhost
+	public boolean enableCompression() {
+		return false; // it makes no sense to compress data on the localhost
 	}
-	
+
 	/**
 	 * Spawns a process (given as a filename) with the default command-line
 	 * arguments ("-m lib"), and connects to it.

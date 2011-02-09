@@ -1,10 +1,9 @@
 package agnos.util;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Map;
 
+import agnos.transports.ITransport;
 import agnos.packers.AbstractPacker;
 import agnos.packers.Builtin;
 
@@ -26,43 +25,43 @@ public class _HeteroMapPacker extends AbstractPacker
 	}
 
 	@Override
-	public void pack(Object obj, OutputStream stream) throws IOException
+	public void pack(Object obj, ITransport transport) throws IOException
 	{
 		HeteroMap map = (HeteroMap) obj;
 		if (map == null) {
-			Builtin.Int32.pack(0, stream);
+			Builtin.Int32.pack(0, transport);
 		}
 		else {
-			Builtin.Int32.pack(map.size(), stream);
+			Builtin.Int32.pack(map.size(), transport);
 			for (Map.Entry<Object, Object> e : map.entrySet()) {
 				Object key = e.getKey();
 				Object val = e.getValue();
 				AbstractPacker keypacker = map.getKeyPacker(key);
 				AbstractPacker valpacker = map.getValuePacker(key);
 
-				Builtin.Int32.pack(keypacker.getId(), stream);
-				keypacker.pack(key, stream);
+				Builtin.Int32.pack(keypacker.getId(), transport);
+				keypacker.pack(key, transport);
 
-				Builtin.Int32.pack(valpacker.getId(), stream);
-				valpacker.pack(val, stream);
+				Builtin.Int32.pack(valpacker.getId(), transport);
+				valpacker.pack(val, transport);
 			}
 		}
 	}
 
 	@Override
-	public Object unpack(InputStream stream) throws IOException
+	public Object unpack(ITransport transport) throws IOException
 	{
-		int length = (Integer) Builtin.Int32.unpack(stream);
+		int length = (Integer) Builtin.Int32.unpack(transport);
 		HeteroMap hmap = new HeteroMap(length);
 
 		for (int i = 0; i < length; i++) {
-			Integer keypid = (Integer) Builtin.Int32.unpack(stream);
+			Integer keypid = (Integer) Builtin.Int32.unpack(transport);
 			AbstractPacker keypacker = getPacker(keypid);
-			Object key = keypacker.unpack(stream);
+			Object key = keypacker.unpack(transport);
 
-			Integer valpid = (Integer) Builtin.Int32.unpack(stream);
+			Integer valpid = (Integer) Builtin.Int32.unpack(transport);
 			AbstractPacker valpacker = getPacker(valpid);
-			Object val = valpacker.unpack(stream);
+			Object val = valpacker.unpack(transport);
 
 			hmap.put(key, keypacker, val, valpacker);
 		}

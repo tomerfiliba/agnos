@@ -1,3 +1,5 @@
+package agnos.util;
+
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -8,7 +10,7 @@ public class ClosedOutputStream extends OutputStream
 	private ClosedOutputStream() {
 	}
 	
-	public static getInstance() {
+	public static ClosedOutputStream getInstance() {
 		if (instance == null) {
 			instance = new ClosedOutputStream();
 		}

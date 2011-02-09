@@ -53,15 +53,15 @@ public abstract class WrappedTransport implements ITransport
 	}
 
 	@Override
-	public bool isCompressionEnabled()
+	public boolean isCompressionEnabled()
 	{
 		return transport.isCompressionEnabled();
 	}
 	
 	@Override
-	public void enableCompression()
+	public boolean enableCompression()
 	{
-		transport.enableCompression();
+		return transport.enableCompression();
 	}
 
 	@Override
@@ -80,12 +80,6 @@ public abstract class WrappedTransport implements ITransport
 	public int beginRead() throws IOException
 	{
 		return transport.beginRead();
-	}
-
-	@Override
-	public int beginRead(int msecs) throws IOException
-	{
-		return transport.beginRead(msecs);
 	}
 
 	@Override
