@@ -388,10 +388,10 @@ class JavaTarget(TargetBase):
         with BLOCK("protected static class _{0}Packer extends AbstractPacker", enum.name):
             with BLOCK("public int getId()"):
                 STMT("return {0}", enum.id)
-            with BLOCK("public void pack(Object obj, OutputStream stream) throws IOException"):
-                STMT("Builtin.Int32.pack((({0})obj).value, stream)", enum.name)
-            with BLOCK("public Object unpack(InputStream stream) throws IOException"):
-                STMT("return {0}.getByValue((Integer)Builtin.Int32.unpack(stream))", enum.name)
+            with BLOCK("public void pack(Object obj, ITransport transport) throws IOException"):
+                STMT("Builtin.Int32.pack((({0})obj).value, transport)", enum.name)
+            with BLOCK("public Object unpack(ITransport transport) throws IOException"):
+                STMT("return {0}.getByValue((Integer)Builtin.Int32.unpack(transport))", enum.name)
         SEP()
         STMT("protected static _{0}Packer {0}Packer = new _{0}Packer()", enum.name)
 
@@ -455,18 +455,18 @@ class JavaTarget(TargetBase):
                 "static " if static else "", rec.name):
             with BLOCK("public int getId()"):
                 STMT("return {0}", rec.id)
-            with BLOCK("public void pack(Object obj, OutputStream stream) throws IOException"):
+            with BLOCK("public void pack(Object obj, ITransport transport) throws IOException"):
                 STMT("{0} val = ({0})obj", rec.name)
                 for mem in rec.members:
-                    STMT("{0}.pack(val.{1}, stream)", type_to_packer(mem.type), mem.name)
-            with BLOCK("public Object unpack(InputStream stream) throws IOException"):
+                    STMT("{0}.pack(val.{1}, transport)", type_to_packer(mem.type), mem.name)
+            with BLOCK("public Object unpack(ITransport transport) throws IOException"):
                 with BLOCK("return new {0}(", rec.name, prefix = "", suffix = ");"):
                     for mem in rec.members[:-1]:
-                        STMT("({0}){1}.unpack(stream)", type_to_java(mem.type, proxy = proxy), 
+                        STMT("({0}){1}.unpack(transport)", type_to_java(mem.type, proxy = proxy), 
                             type_to_packer(mem.type), suffix = ",")
                     if rec.members:
                         mem = rec.members[-1]
-                        STMT("({0}){1}.unpack(stream)", type_to_java(mem.type, proxy = proxy), 
+                        STMT("({0}){1}.unpack(transport)", type_to_java(mem.type, proxy = proxy), 
                             type_to_packer(mem.type), suffix = "")
         SEP()
         if static:
@@ -826,9 +826,7 @@ class JavaTarget(TargetBase):
             STMT("Object result = null")
             STMT("Object inst = null")
             STMT("Object[] args = null")
-            STMT("InputStream inStream = transport.getInputStream()")
-            STMT("OutputStream outStream = transport.getOutputStream()")
-            STMT("int funcid = (Integer){0}.unpack(inStream)", type_to_packer(compiler.t_int32))
+            STMT("int funcid = (Integer){0}.unpack(transport)", type_to_packer(compiler.t_int32))
 
             with BLOCK("try") if service.exceptions() else NOOP:
                 with BLOCK("switch (funcid)"):
@@ -841,17 +839,17 @@ class JavaTarget(TargetBase):
                     with BLOCK("default:", prefix = None, suffix = None):
                         STMT('throw new ProtocolException("unknown function id: " + funcid)')
                 SEP()
-                STMT("{0}.pack(new Byte((byte)constants.REPLY_SUCCESS), outStream)", 
+                STMT("{0}.pack(new Byte((byte)constants.REPLY_SUCCESS), transport)", 
                     type_to_packer(compiler.t_int8))
                 with BLOCK("if (packer != null)"):
-                    STMT("packer.pack(result, outStream)")
+                    STMT("packer.pack(result, transport)")
             for tp in reversed(service.exceptions()):
                 with BLOCK("catch ({0} ex)", tp.name):
-                    STMT("transport.reset()")
-                    STMT("{0}.pack(new Byte((byte)constants.REPLY_PACKED_EXCEPTION), outStream)", 
+                    STMT("transport.restartWrite()")
+                    STMT("{0}.pack(new Byte((byte)constants.REPLY_PACKED_EXCEPTION), transport)", 
                         type_to_packer(compiler.t_int8))
-                    STMT("{0}.pack({1}, outStream)", type_to_packer(compiler.t_int32), tp.id)
-                    STMT("{0}.pack(ex, outStream)", type_to_packer(tp))
+                    STMT("{0}.pack({1}, transport)", type_to_packer(compiler.t_int32), tp.id)
+                    STMT("{0}.pack(ex, transport)", type_to_packer(tp))
 
     def generate_invocation_case(self, module, func):
         BLOCK = module.block
@@ -862,10 +860,10 @@ class JavaTarget(TargetBase):
             if func.args:
                 with BLOCK("args = new Object[] {0}", "{", prefix = "", suffix = "};"):
                     for arg in func.args[:-1]:
-                        STMT("{0}.unpack(inStream)", type_to_packer(arg.type), suffix = ",")
+                        STMT("{0}.unpack(transport)", type_to_packer(arg.type), suffix = ",")
                     if func.args:
                         arg = func.args[-1]
-                        STMT("{0}.unpack(inStream)", type_to_packer(arg.type), suffix = ",")
+                        STMT("{0}.unpack(transport)", type_to_packer(arg.type), suffix = ",")
             callargs = ", ".join("(%s)args[%s]" % (type_to_java(arg.type), i) 
                 for i, arg in enumerate(func.args))
             if func.type == compiler.t_void:
@@ -874,15 +872,15 @@ class JavaTarget(TargetBase):
                 invocation = "result = handler.%s" % (func.fullname,)
         else:
             insttype = func.args[0].type
-            STMT("inst = ({0})({1}.unpack(inStream))", 
+            STMT("inst = ({0})({1}.unpack(transport))", 
                 type_to_java(insttype), type_to_packer(insttype))
 
             if len(func.args) > 1:
                 with BLOCK("args = new Object[] {0}", "{", prefix = "", suffix = "};"):
                     for arg in func.args[1:-1]:
-                        STMT("{0}.unpack(inStream)", type_to_packer(arg.type), suffix = ",")
+                        STMT("{0}.unpack(transport)", type_to_packer(arg.type), suffix = ",")
                     arg = func.args[-1]
-                    STMT("{0}.unpack(inStream)", type_to_packer(arg.type), suffix = ",")
+                    STMT("{0}.unpack(transport)", type_to_packer(arg.type), suffix = ",")
             callargs = ", ".join("(%s)args[%s]" % (type_to_java(arg.type), i) 
                 for i, arg in enumerate(func.args[1:]))
             
@@ -1128,10 +1126,9 @@ class JavaTarget(TargetBase):
                 with BLOCK("public {0} sync_{1}({2}) throws Exception", 
                         type_to_java(func.type, proxy = True), func.id, args):
                     STMT("int seq = utils.beginCall({0}, {1})", func.id, type_to_packer(func.type))
-                    STMT("OutputStream outStream = utils.transport.getOutputStream()")
                     with BLOCK("try"):
                         for arg in func.args:
-                            STMT("{0}.pack({1}, outStream)", type_to_packer(arg.type), arg.name)
+                            STMT("{0}.pack({1}, utils.transport)", type_to_packer(arg.type), arg.name)
                     with BLOCK("catch (Exception ex)"):
                         STMT("utils.cancelCall()")
                         STMT("throw ex")
