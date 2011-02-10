@@ -176,23 +176,25 @@ public abstract class BaseTransport implements ITransport {
 		}
 
 		rlock.lock();
-		assert readStream == null;
-		
-		int seq = readSInt32(inStream);
-		int packetLength = readSInt32(inStream);
-		int uncompressedLength = readSInt32(inStream);
-		if (uncompressedLength <= 0) {
-			// no compression
-			readStream = new BoundedInputStream(inStream, packetLength, false);
+		try {
+			assert readStream == null;
+			
+			int seq = readSInt32(inStream);
+			int packetLength = readSInt32(inStream);
+			int uncompressedLength = readSInt32(inStream);
+			readStream = new BoundedInputStream(inStream, packetLength, true, false);
+			if (uncompressedLength > 0) {
+				readStream = new BoundedInputStream(new InflaterInputStream(readStream),
+						uncompressedLength, false, true);
+			}
+			
+			return seq;
 		}
-		else {
-			// compressed stream
-			InputStream inf = new InflaterInputStream(
-					new BoundedInputStream(inStream, packetLength, false));
-			readStream = new BoundedInputStream(inf, uncompressedLength, true);
+		catch (Exception ex) {
+			readStream = null;
+			rlock.unlock();
+			throw;
 		}
-		
-		return seq;
 	}
 	
 	@Override

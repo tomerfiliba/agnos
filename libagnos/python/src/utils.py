@@ -300,6 +300,8 @@ class BoundedStream(object):
         return self.remaining_length
     
     def close(self):
+        if self.stream is None:
+            return
         if self.skip_underlying:
             self.skip(-1)
         if self.close_underlying:

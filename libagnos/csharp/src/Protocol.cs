@@ -227,10 +227,10 @@ namespace Agnos
 						throw new ProtocolError ("unknown command code: " + cmdid);
 					}
 				} catch (ProtocolError exc) {
-					transport.Reset ();
+					transport.RestartWrite ();
 					sendProtocolError (exc);
 				} catch (GenericException exc) {
-					transport.Reset ();
+					transport.RestartWrite ();
 					sendGenericException (exc);
 				} catch (Exception ex) {
 					transport.CancelWrite ();
@@ -472,7 +472,7 @@ namespace Agnos
 
 			public void ProcessIncoming (int msecs)
 			{
-				int seq = transport.BeginRead (msecs);
+				int seq = transport.BeginRead ();
 				
 				try {
 					int code = (byte)(Packers.Int8.unpack (transport));

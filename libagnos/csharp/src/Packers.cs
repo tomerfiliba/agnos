@@ -45,24 +45,14 @@ namespace Agnos
 
 		public abstract class AbstractPacker
 		{
-			public abstract void pack (object obj, Stream stream);
-			public abstract object unpack (Stream stream);
+			public abstract void pack (object obj, ITransport transport);
+			public abstract object unpack (ITransport transport);
 			public abstract int getId ();
 
-			public void pack (object obj, ITransport transport)
-			{
-				pack (obj, transport.GetStream ());
-			}
-
-			public object unpack (ITransport transport)
-			{
-				return unpack (transport.GetStream ());
-			}
-
-			protected static void _write (Stream stream, byte[] buf)
+			protected static void _write (ITransport transport, byte[] buf)
 			{
 				try {
-					stream.Write (buf, 0, buf.Length);
+					transport.Write (buf, 0, buf.Length);
 				} catch (IOException ex) {
 					throw new EndOfStreamException ("write error", ex);
 				} catch (SocketException ex) {
@@ -70,17 +60,17 @@ namespace Agnos
 				}
 			}
 
-			protected static void _read (Stream stream, byte[] buf)
+			protected static void _read (ITransport transport, byte[] buf)
 			{
 				int total_got = 0;
 				int got;
 				
 				try {
 					while (total_got < buf.Length) {
-						got = stream.Read (buf, total_got, buf.Length - total_got);
+						got = transport.Read (buf, total_got, buf.Length - total_got);
 						total_got += got;
 						if (got <= 0 && total_got < buf.Length) {
-							throw new EndOfStreamException ("premature end of stream detected");
+							throw new EndOfStreamException ("premature end of transport detected");
 						}
 					}
 				} catch (IOException ex) {
@@ -106,24 +96,24 @@ namespace Agnos
 				return 1;
 			}
 
-			public override void pack (object obj, Stream stream)
+			public override void pack (object obj, ITransport transport)
 			{
 				if (obj == null) {
-					pack ((byte)0, stream);
+					pack ((byte)0, transport);
 				} else {
-					pack ((byte)obj, stream);
+					pack ((byte)obj, transport);
 				}
 			}
 
-			public void pack (byte val, Stream stream)
+			public void pack (byte val, ITransport transport)
 			{
 				buffer[0] = val;
-				_write (stream, buffer);
+				_write (transport, buffer);
 			}
 
-			public override object unpack (Stream stream)
+			public override object unpack (ITransport transport)
 			{
-				_read (stream, buffer);
+				_read (transport, buffer);
 				return buffer[0];
 			}
 		}
@@ -143,27 +133,27 @@ namespace Agnos
 				return 2;
 			}
 
-			public override void pack (object obj, Stream stream)
+			public override void pack (object obj, ITransport transport)
 			{
 				if (obj == null) {
-					pack (false, stream);
+					pack (false, transport);
 				} else {
-					pack ((bool)obj, stream);
+					pack ((bool)obj, transport);
 				}
 			}
 
-			public void pack (bool val, Stream stream)
+			public void pack (bool val, ITransport transport)
 			{
 				if (val) {
-					Int8.pack ((byte)1, stream);
+					Int8.pack ((byte)1, transport);
 				} else {
-					Int8.pack ((byte)1, stream);
+					Int8.pack ((byte)1, transport);
 				}
 			}
 
-			public override object unpack (Stream stream)
+			public override object unpack (ITransport transport)
 			{
-				return ((byte)Int8.unpack (stream)) != 0;
+				return ((byte)Int8.unpack (transport)) != 0;
 			}
 		}
 
@@ -184,25 +174,25 @@ namespace Agnos
 				return 3;
 			}
 
-			public override void pack (object obj, Stream stream)
+			public override void pack (object obj, ITransport transport)
 			{
 				if (obj == null) {
-					pack ((short)0, stream);
+					pack ((short)0, transport);
 				} else {
-					pack ((short)obj, stream);
+					pack ((short)obj, transport);
 				}
 			}
 
-			public void pack (short val, Stream stream)
+			public void pack (short val, ITransport transport)
 			{
 				buffer[0] = (byte)((val >> 8) & 0xff);
 				buffer[1] = (byte)((val) & 0xff);
-				_write (stream, buffer);
+				_write (transport, buffer);
 			}
 
-			public override object unpack (Stream stream)
+			public override object unpack (ITransport transport)
 			{
-				_read (stream, buffer);
+				_read (transport, buffer);
 				return (short)((buffer[0] & 0xff) << 8 | (buffer[1] & 0xff));
 			}
 		}
@@ -224,27 +214,27 @@ namespace Agnos
 				return 4;
 			}
 			
-			public override void pack (object obj, Stream stream)
+			public override void pack (object obj, ITransport transport)
 			{
 				if (obj == null) {
-					pack ((int)0, stream);
+					pack ((int)0, transport);
 				} else {
-					pack ((int)obj, stream);
+					pack ((int)obj, transport);
 				}
 			}
 
-			public void pack (int val, Stream stream)
+			public void pack (int val, ITransport transport)
 			{
 				buffer[0] = (byte)((val >> 24) & 0xff);
 				buffer[1] = (byte)((val >> 16) & 0xff);
 				buffer[2] = (byte)((val >> 8) & 0xff);
 				buffer[3] = (byte)((val) & 0xff);
-				_write (stream, buffer);
+				_write (transport, buffer);
 			}
 
-			public override object unpack (Stream stream)
+			public override object unpack (ITransport transport)
 			{
-				_read (stream, buffer);
+				_read (transport, buffer);
 				return ((int)(buffer[0] & 0xff) << 24) | 
 						((int)(buffer[1] & 0xff) << 16) | 
 						((int)(buffer[2] & 0xff) << 8) | 
@@ -269,16 +259,16 @@ namespace Agnos
 				return 5;
 			}
 			
-			public override void pack (object obj, Stream stream)
+			public override void pack (object obj, ITransport transport)
 			{
 				if (obj == null) {
-					pack ((long)0, stream);
+					pack ((long)0, transport);
 				} else {
-					pack ((long)obj, stream);
+					pack ((long)obj, transport);
 				}
 			}
 
-			public void pack (long val, Stream stream)
+			public void pack (long val, ITransport transport)
 			{
 				buffer[0] = (byte)((val >> 56) & 0xff);
 				buffer[1] = (byte)((val >> 48) & 0xff);
@@ -288,12 +278,12 @@ namespace Agnos
 				buffer[5] = (byte)((val >> 16) & 0xff);
 				buffer[6] = (byte)((val >> 8) & 0xff);
 				buffer[7] = (byte)(val & 0xff);
-				_write (stream, buffer);
+				_write (transport, buffer);
 			}
 
-			public override object unpack (Stream stream)
+			public override object unpack (ITransport transport)
 			{
-				_read (stream, buffer);
+				_read (transport, buffer);
 				return (((long)(buffer[0] & (uint)0xff)) << 56) | 
 						(((long)(buffer[1] & (uint)0xff)) << 48) | 
 						(((long)(buffer[2] & (uint)0xff)) << 40) | 
@@ -331,14 +321,14 @@ namespace Agnos
 				return id;
 			}
 			
-			public override void pack (object obj, Stream stream)
+			public override void pack (object obj, ITransport transport)
 			{
-				Int64.pack (serializer.store (obj), stream);
+				Int64.pack (serializer.store (obj), transport);
 			}
 
-			public override object unpack (Stream stream)
+			public override object unpack (ITransport transport)
 			{
-				return serializer.load ((long)Int64.unpack (stream));
+				return serializer.load ((long)Int64.unpack (transport));
 			}
 		}
 
@@ -355,23 +345,23 @@ namespace Agnos
 				return 6;
 			}
 			
-			public override void pack (object obj, Stream stream)
+			public override void pack (object obj, ITransport transport)
 			{
 				if (obj == null) {
-					pack (0.0, stream);
+					pack (0.0, transport);
 				} else {
-					pack ((double)obj, stream);
+					pack ((double)obj, transport);
 				}
 			}
 
-			public void pack (double val, Stream stream)
+			public void pack (double val, ITransport transport)
 			{
-				Int64.pack (BitConverter.DoubleToInt64Bits (val), stream);
+				Int64.pack (BitConverter.DoubleToInt64Bits (val), transport);
 			}
 
-			public override object unpack (Stream stream)
+			public override object unpack (ITransport transport)
 			{
-				return BitConverter.Int64BitsToDouble ((long)Int64.unpack (stream));
+				return BitConverter.Int64BitsToDouble ((long)Int64.unpack (transport));
 			}
 		}
 
@@ -390,22 +380,22 @@ namespace Agnos
 				return 7;
 			}
 			
-			public override void pack (object obj, Stream stream)
+			public override void pack (object obj, ITransport transport)
 			{
 				if (obj == null) {
-					Int32.pack (0, stream);
+					Int32.pack (0, transport);
 				} else {
 					byte[] val = (byte[])obj;
-					Int32.pack (val.Length, stream);
-					_write (stream, val);
+					Int32.pack (val.Length, transport);
+					_write (transport, val);
 				}
 			}
 
-			public override object unpack (Stream stream)
+			public override object unpack (ITransport transport)
 			{
-				int length = (int)Int32.unpack (stream);
+				int length = (int)Int32.unpack (transport);
 				byte[] buf = new byte[length];
-				_read (stream, buf);
+				_read (transport, buf);
 				return buf;
 			}
 		}
@@ -425,15 +415,15 @@ namespace Agnos
 				return 8;
 			}
 			
-			public override void pack (object obj, Stream stream)
+			public override void pack (object obj, ITransport transport)
 			{
 				long timestamp = ((DateTime)obj).ToUniversalTime().Ticks / 10;
-				Int64.pack (timestamp, stream);
+				Int64.pack (timestamp, transport);
 			}
 
-			public override object unpack (Stream stream)
+			public override object unpack (ITransport transport)
 			{
-				long timestamp = (long)Int64.unpack(stream);
+				long timestamp = (long)Int64.unpack(transport);
 				return new DateTime(timestamp * 10, DateTimeKind.Utc);
 			}
 		}
@@ -455,18 +445,18 @@ namespace Agnos
 				return 9;
 			}
 			
-			public override void pack (object obj, Stream stream)
+			public override void pack (object obj, ITransport transport)
 			{
 				if (obj == null) {
-					Buffer.pack (null, stream);
+					Buffer.pack (null, transport);
 				} else {
-					Buffer.pack (utf8.GetBytes ((string)obj), stream);
+					Buffer.pack (utf8.GetBytes ((string)obj), transport);
 				}
 			}
 
-			public override object unpack (Stream stream)
+			public override object unpack (ITransport transport)
 			{
-				byte[] buf = (byte[])Buffer.unpack (stream);
+				byte[] buf = (byte[])Buffer.unpack (transport);
 				return utf8.GetString (buf);
 			}
 		}
@@ -486,11 +476,11 @@ namespace Agnos
 				return 10;
 			}
 			
-			public override void pack (object obj, Stream stream)
+			public override void pack (object obj, ITransport transport)
 			{
 			}
 
-			public override object unpack (Stream stream)
+			public override object unpack (ITransport transport)
 			{
 				return null;
 			}
@@ -516,33 +506,33 @@ namespace Agnos
 				return id;
 			}
 			
-			public override void pack (object obj, Stream stream)
+			public override void pack (object obj, ITransport transport)
 			{
 				if (obj == null) {
-					Int32.pack (0, stream);
+					Int32.pack (0, transport);
 				} 
 				else if (obj is T[]) {
 					T[] val = (T[])obj;
-					Int32.pack (val.Length, stream);
+					Int32.pack (val.Length, transport);
 					foreach (T item in val) {
-						type.pack (item, stream);
+						type.pack (item, transport);
 					}
 				}
 				else {
 					IList<T> coll = (IList<T>)obj;
-					Int32.pack (coll.Count, stream);
+					Int32.pack (coll.Count, transport);
 					foreach (T item in coll) {
-						type.pack (item, stream);
+						type.pack (item, transport);
 					}
 				}
 			}
 
-			public override object unpack (Stream stream)
+			public override object unpack (ITransport transport)
 			{
-				int length = (int)Int32.unpack (stream);
+				int length = (int)Int32.unpack (transport);
 				List<T> lst = new List<T> (length);
 				for (int i = 0; i < length; i++) {
-					lst.Add ((T)(type.unpack (stream)));
+					lst.Add ((T)(type.unpack (transport)));
 				}
 				return lst;
 			}
@@ -576,26 +566,26 @@ namespace Agnos
 				return id;
 			}
 			
-			public override void pack (object obj, Stream stream)
+			public override void pack (object obj, ITransport transport)
 			{
 				if (obj == null) {
-					Int32.pack (0, stream);
+					Int32.pack (0, transport);
 				} 
 				else {
 					ICollection<T> coll = (ICollection<T>)obj;
-					Int32.pack (coll.Count, stream);
+					Int32.pack (coll.Count, transport);
 					foreach (T item in coll) {
-						type.pack (item, stream);
+						type.pack (item, transport);
 					}
 				}
 			}
 
-			public override object unpack (Stream stream)
+			public override object unpack (ITransport transport)
 			{
-				int length = (int)Int32.unpack (stream);
+				int length = (int)Int32.unpack (transport);
 				HashSet<T> obj = new HashSet<T> ();
 				for (int i = 0; i < length; i++) {
-					obj.Add ((T)(type.unpack (stream)));
+					obj.Add ((T)(type.unpack (transport)));
 				}
 				return obj;
 			}
@@ -631,27 +621,27 @@ namespace Agnos
 				return id;
 			}
 			
-			public override void pack (object obj, Stream stream)
+			public override void pack (object obj, ITransport transport)
 			{
 				if (obj == null) {
-					Int32.pack (0, stream);
+					Int32.pack (0, transport);
 				} else {
 					IDictionary coll = (IDictionary)obj;
-					Int32.pack (coll.Count, stream);
+					Int32.pack (coll.Count, transport);
 					foreach (DictionaryEntry item in coll) {
-						keytype.pack (item.Key, stream);
-						valtype.pack (item.Value, stream);
+						keytype.pack (item.Key, transport);
+						valtype.pack (item.Value, transport);
 					}
 				}
 			}
 
-			public override object unpack (Stream stream)
+			public override object unpack (ITransport transport)
 			{
-				int length = (int)Int32.unpack (stream);
+				int length = (int)Int32.unpack (transport);
 				Dictionary<K, V> map = new Dictionary<K, V>(length);
 				for (int i = 0; i < length; i++) {
-					K k = (K)(keytype.unpack (stream));
-					V v = (V)(valtype.unpack (stream));
+					K k = (K)(keytype.unpack (transport));
+					V v = (V)(valtype.unpack (transport));
 					map.Add (k, v);
 				}
 				return map;
@@ -681,40 +671,40 @@ namespace Agnos
 				return id;
 			}
 
-			public override void pack (Object obj, Stream stream)
+			public override void pack (Object obj, ITransport transport)
 			{
 				HeteroMap map = (HeteroMap)obj;
 				if (map == null) {
-					Int32.pack (0, stream);
+					Int32.pack (0, transport);
 				} 
 				else {
-					Int32.pack (map.Count, stream);
+					Int32.pack (map.Count, transport);
 					foreach (DictionaryEntry e in map) {
 						AbstractPacker keypacker = map.getKeyPacker(e.Key);
 						AbstractPacker valpacker = map.getValuePacker(e.Key);
 						
-						Int32.pack (keypacker.getId (), stream);
-						keypacker.pack (e.Key, stream);
+						Int32.pack (keypacker.getId (), transport);
+						keypacker.pack (e.Key, transport);
 						
-						Int32.pack (valpacker.getId (), stream);
-						valpacker.pack (e.Value, stream);
+						Int32.pack (valpacker.getId (), transport);
+						valpacker.pack (e.Value, transport);
 					}
 				}
 			}
 
-			public override Object unpack (Stream stream)
+			public override Object unpack (ITransport transport)
 			{
-				int length = (int)Int32.unpack (stream);
+				int length = (int)Int32.unpack (transport);
 				HeteroMap map = new HeteroMap (length);
 				
 				for (int i = 0; i < length; i++) {
-					int keypid = (int)Int32.unpack (stream);
+					int keypid = (int)Int32.unpack (transport);
 					AbstractPacker keypacker = getPacker (keypid);
-					Object key = keypacker.unpack (stream);
+					Object key = keypacker.unpack (transport);
 					
-					int valpid = (int)Int32.unpack (stream);
+					int valpid = (int)Int32.unpack (transport);
 					AbstractPacker valpacker = getPacker (valpid);
-					Object val = valpacker.unpack (stream);
+					Object val = valpacker.unpack (transport);
 					
 					map.Add(key, keypacker, val, valpacker);
 				}

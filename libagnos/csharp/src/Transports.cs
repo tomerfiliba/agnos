@@ -39,189 +39,225 @@ namespace Agnos.Transports
 		}
 	}
 
-	public interface ITransport
+	public interface ITransport : IDisposable
 	{
 		void Close ();
-		Stream GetStream ();
-        int GetCompressionThreshold();
-		void DisableCompression();
-        void EnableCompression(int threshold);
+		Stream GetInputStream ();
+		Stream GetOutputStream ();
+
+		bool IsCompressionEnabled ();
+		bool EnableCompression ();
+		void DisableCompression ();
 
 		// read interface
 		int BeginRead ();
-		int BeginRead (int msecs);
 		int Read (byte[] data, int offset, int len);
 		void EndRead ();
 
 		// write interface
 		void BeginWrite (int seq);
 		void Write (byte[] data, int offset, int len);
-		void Reset ();
+		void RestartWrite ();
 		void EndWrite ();
 		void CancelWrite ();
 	}
 
+	internal sealed class TransportStream : Stream
+	{
+		readonly private ITransport transport;
+		readonly private bool output;
+		
+		public TransportStream (ITransport transport, bool output)
+		{
+			this.transport = transport;
+			this.output = output;
+		}
+
+		public override void Close ()
+		{
+			if (output) {
+				transport.EndWrite();
+			}
+			else {
+				transport.EndRead();
+			}
+		}
+
+		public override void Write (byte[] buffer, int offset, int count)
+		{
+			if (!output) {
+				throw new InvalidOperationException("this stream is opened for reading only");
+			}
+			transport.Write (buffer, offset, count);
+		}
+		public override int Read (byte[] buffer, int offset, int count)
+		{
+			if (output) {
+				throw new InvalidOperationException("this stream is opened for writing only");
+			}
+			return transport.Read (buffer, offset, count);
+		}
+
+		public override bool CanRead {
+			get { return !output; }
+		}
+		public override bool CanSeek {
+			get { return false; }
+		}
+		public override bool CanWrite {
+			get { return output; }
+		}
+		public override long Length {
+			get {
+				throw new IOException ("not implemented");
+			}
+		}
+		public override long Position {
+			get {
+				throw new IOException ("not implemented");
+			}
+			set {
+				throw new IOException ("not implemented");
+			}
+		}
+		public override void SetLength (long value)
+		{
+			throw new IOException ("not implemented");
+		}
+		public override long Seek (long offset, SeekOrigin origin)
+		{
+			throw new IOException ("not implemented");
+		}
+		public override void Flush ()
+		{
+		}
+	}
+
+
 	public abstract class BaseTransport : ITransport
 	{
-		protected sealed class TransportStream : Stream
-		{
-			readonly ITransport transport;
-			public TransportStream (ITransport transport)
-			{
-				this.transport = transport;
-			}
+		protected const int INITIAL_BUFFER_SIZE = 128 * 1024;
 
-			public override void Write (byte[] buffer, int offset, int count)
-			{
-				transport.Write (buffer, offset, count);
-			}
-			public override int Read (byte[] buffer, int offset, int count)
-			{
-				return transport.Read (buffer, offset, count);
-			}
+		protected Stream inStream;
+		protected Stream outStream;
 
-			public override bool CanRead {
-				get { return true; }
-			}
-			public override bool CanSeek {
-				get { return false; }
-			}
-			public override bool CanWrite {
-				get { return true; }
-			}
-			public override long Length {
-				get {
-					throw new IOException ("not implemented");
-				}
-			}
-			public override long Position {
-				get {
-					throw new IOException ("not implemented");
-				}
-				set {
-					throw new IOException ("not implemented");
-				}
-			}
-			public override void SetLength (long value)
-			{
-				throw new IOException ("not implemented");
-			}
-			public override long Seek (long offset, SeekOrigin origin)
-			{
-				throw new IOException ("not implemented");
-			}
-			public override void Flush ()
-			{
-			}
-		}
+		protected readonly MemoryStream wbuffer = new MemoryStream (INITIAL_BUFFER_SIZE);
+		protected readonly MemoryStream compressionBuffer = new MemoryStream (INITIAL_BUFFER_SIZE);
+		private readonly TransportStream asInputStream;
+		private readonly TransportStream asOutputStream;
+		protected readonly ReentrantLock rlock = new ReentrantLock ();
+		protected readonly ReentrantLock wlock = new ReentrantLock ();
 
-		protected MemoryStream buffer;
-		protected MemoryStream compBuffer;
-		protected Stream inputStream;
-		protected Stream inputStream2;
-		protected Stream outputStream;
-		protected Stream asStream;
-		protected ReentrantLock rlock;
-		protected ReentrantLock wlock;
+		protected BoundInputStream readStream;
+		protected int wseq = 0;
+		protected int compressionThreshold = -1;
 
-		protected int wseq;
-		protected int rseq;
-		protected int rpos;
-		protected int rlength;
-		protected int rcomplength;
-		protected int compressionThreshold;
-
-		public BaseTransport (Stream inputOuputStream) : 
-			this(inputOuputStream, inputOuputStream, 128 * 1024)
+		public BaseTransport (Stream inOutStream) : this(inOutStream, inOutStream)
 		{
 		}
 
-		public BaseTransport (Stream inputStream, Stream outputStream) : 
-			this(inputStream, outputStream, 128 * 1024)
+		public BaseTransport (Stream inStream, Stream outStream)
 		{
+			this.inStream = inStream;
+			this.outStream = outStream;
+			asInputStream = new TransportStream (this, false);
+			asOutputStream = new TransportStream (this, true);
 		}
 
-		public BaseTransport (Stream inputStream, Stream outputStream, int bufsize)
+		public void Dispose ()
 		{
-			this.inputStream = inputStream;
-			this.outputStream = outputStream;
-			this.compressionThreshold = -1;
-			inputStream2 = null;
-			buffer = new MemoryStream (bufsize);
-			compBuffer = new MemoryStream (bufsize);
-			wlock = new ReentrantLock ();
-			rlock = new ReentrantLock ();
-			asStream = new TransportStream (this);
+			Close();
 		}
 
 		public virtual void Close ()
 		{
-			if (inputStream != null) {
-				inputStream.Close ();
-				inputStream = null;
-				inputStream2 = null;
+			if (inStream != null) {
+				inStream.Close ();
+				inStream = null;
 			}
-			if (outputStream != null) {
-				outputStream.Close ();
-				outputStream = null;
+			if (outStream != null) {
+				outStream.Close ();
+				outStream = null;
 			}
 		}
 
-		public virtual Stream GetStream ()
+		public virtual Stream GetInputStream ()
 		{
-			return asStream;
+			return asInputStream;
+		}
+		public virtual Stream GetOutputStream ()
+		{
+			return asOutputStream;
+		}
+		public virtual bool IsCompressionEnabled ()
+		{
+			return compressionThreshold > 0;
+		}
+		public virtual bool EnableCompression ()
+		{
+			compressionThreshold = getCompressionThreshold ();
+			return compressionThreshold > 0;
+		}
+		public virtual void DisableCompression ()
+		{
+			compressionThreshold = -1;
 		}
 
-        public int GetCompressionThreshold()
-        {
-            return compressionThreshold;
-        }
+		protected virtual int getCompressionThreshold ()
+		{
+			return -1;
+		}
 
-        public void EnableCompression(int value)
-        {
-            compressionThreshold = value;
-        }
+		protected static int readSInt32(Stream stream) 
+		{
+			byte[] buf = new byte[4];
+			int len = stream.Read(buf, 0, buf.Length);
+			if (len < buf.Length) {
+				throw new EndOfStreamException("expected " + buf.Length + " bytes, got " + len);
+			}
+			return ((int)(buf[0] & 0xff) << 24) | 
+					((int)(buf[1] & 0xff) << 16) | 
+					((int)(buf[2] & 0xff) << 8) | 
+					((int)(buf[3] & 0xff));
+		}
 
-        public void DisableCompression()
-        {
-            compressionThreshold = -1;
-        }
+		protected static void writeSInt32(Stream stream, int val) 
+		{
+			byte[] buf = {(byte)((val >> 24) & 0xff),
+				(byte)((val >> 16) & 0xff),
+				(byte)((val >> 8) & 0xff),
+				(byte)((val) & 0xff)};
+			stream.Write(buf, 0, buf.Length);
+		}
 
 		//
 		// read interface
 		//
 		public virtual int BeginRead ()
 		{
-			return BeginRead (-1);
-		}
-
-		public virtual int BeginRead (int msecs)
-		{
-			lock (this) {
-				if (rlock.IsHeldByCurrentThread ()) {
-					throw new IOException ("beginRead is not reentrant");
+			if (rlock.IsHeldByCurrentThread ()) {
+				throw new IOException ("beginRead is not reentrant");
+			}
+			
+			rlock.Acquire ();
+			try {
+				int seq = readSInt32(inStream);
+				int packetLength = readSInt32(inStream);
+				int uncompressedLength = readSInt32(inStream);
+				
+				if (readStream != null) {
+					throw new InvalidOperationException ("readStream must be null at this point");
 				}
 				
-				rlock.Acquire ();
-				rseq = (int)Packers.Int32.unpack (inputStream);
-				rlength = (int)Packers.Int32.unpack (inputStream);
-				rcomplength = (int)Packers.Int32.unpack (inputStream);
-				rpos = 0;
-				
-				if (rcomplength > 0) {
-					throw new NotImplementedException();
-
-					/*int tmp = rlength;
-					rlength = rcomplength;
-					rcomplength = tmp;
-					inputStream2 = new DeflateStream(inputStream, CompressionMode.Decompress, true);
-					*/
+				readStream = new BoundInputStream (inStream, packetLength, true, false);
+				if (uncompressedLength > 0) {
+					readStream = new BoundInputStream (new DeflateStream (readStream, CompressionMode.Decompress, false), packetLength, false, true);
 				}
-				/*else {
-					inputStream2 = inputStream;
-				}*/
-				
-				return rseq;
+				return seq;
+			} catch (Exception) {
+				readStream = null;
+				rlock.Release ();
+				throw;
 			}
 		}
 
@@ -235,31 +271,18 @@ namespace Agnos.Transports
 		public virtual int Read (byte[] data, int offset, int len)
 		{
 			AssertBeganRead ();
-			if (rpos + len > rlength) {
+			if (len > readStream.Available) {
 				throw new EndOfStreamException ("request to read more than available");
 			}
-			int actually_read = inputStream.Read (data, offset, len);
-			rpos += actually_read;
-			return actually_read;
+			return readStream.Read (data, offset, len);
 		}
 
 		public virtual void EndRead ()
 		{
-			lock (this) {
-				AssertBeganRead ();
-				byte[] garbage = new byte[16 * 1024];
-				int to_skip = rlength - rpos;
-				
-				for (int i = 0; i < to_skip;) {
-					int chunk = to_skip - i;
-					if (chunk > garbage.Length) {
-						chunk = garbage.Length;
-					}
-					i += inputStream.Read (garbage, 0, chunk);
-				}
-				
-				rlock.Release ();
-			}
+			AssertBeganRead ();
+			readStream.Close ();
+			readStream = null;
+			rlock.Release ();
 		}
 
 		//
@@ -267,15 +290,13 @@ namespace Agnos.Transports
 		//
 		public virtual void BeginWrite (int seq)
 		{
-			lock (this) {
-				if (wlock.IsHeldByCurrentThread ()) {
-					throw new IOException ("beginWrite is not reentrant");
-				}
-				wlock.Acquire ();
-				wseq = seq;
-				buffer.Position = 0;
-				buffer.SetLength (0);
+			if (wlock.IsHeldByCurrentThread ()) {
+				throw new IOException ("beginWrite is not reentrant");
 			}
+			wlock.Acquire ();
+			wseq = seq;
+			wbuffer.Position = 0;
+			wbuffer.SetLength (0);
 		}
 
 		protected virtual void AssertBeganWrite ()
@@ -288,64 +309,52 @@ namespace Agnos.Transports
 		public virtual void Write (byte[] data, int offset, int len)
 		{
 			AssertBeganWrite ();
-			buffer.Write (data, offset, len);
+			wbuffer.Write (data, offset, len);
 		}
 
-		public virtual void Reset ()
+		public virtual void RestartWrite ()
 		{
 			AssertBeganWrite ();
-			buffer.Position = 0;
-			buffer.SetLength (0);
+			wbuffer.Position = 0;
+			wbuffer.SetLength (0);
 		}
 
 		public virtual void EndWrite ()
 		{
-			lock (this) {
-				AssertBeganWrite ();
-				if (buffer.Length > 0) {
-					Packers.Int32.pack (wseq, outputStream);
-					
-					if (compressionThreshold >= 0 && buffer.Length >= compressionThreshold) {
-						throw new NotImplementedException();
-					
-						/*compBuffer.Position = 0;
-						compBuffer.SetLength(0);
-						using (DeflateStream dfl = new DeflateStream(compBuffer, CompressionMode.Compress, true)) {
-							buffer.WriteTo(dfl);
-						}
-						Packers.Int32.pack (compBuffer.Length, outputStream); // actual size
-						Packers.Int32.pack (buffer.Length, outputStream); // uncompressed size
-
-						compBuffer.WriteTo(outputStream);
-						
-						buffer.Position = 0;
-						buffer.SetLength (0);
-						compBuffer.Position = 0;
-						compBuffer.SetLength(0);*/
+			AssertBeganWrite ();
+			if (wbuffer.Length > 0) {
+				writeSInt32(outStream, wseq);
+				
+				if (compressionThreshold > 0 && wbuffer.Length >= compressionThreshold) {
+					compressionBuffer.Position = 0;
+					compressionBuffer.SetLength (0);
+					using (DeflateStream dfl = new DeflateStream (compressionBuffer, CompressionMode.Compress, true)) {
+						wbuffer.WriteTo (dfl);
 					}
-					else {
-						Packers.Int32.pack ((int)buffer.Length, outputStream); // actual size
-						Packers.Int32.pack (0, outputStream); // 0 means no compression
-						
-						buffer.WriteTo (outputStream);
-						buffer.Position = 0;
-						buffer.SetLength (0);
-					}
-					
-					outputStream.Flush ();
+					writeSInt32 (outStream, (int)compressionBuffer.Length); // packet length
+					writeSInt32 (outStream, (int)wbuffer.Length); // uncompressed length
+					compressionBuffer.WriteTo (outStream);
+				} 
+				else {
+					writeSInt32 (outStream, (int)wbuffer.Length); // packet length
+					writeSInt32 (outStream, 0); // 0 means no compression
+					wbuffer.WriteTo (outStream);
 				}
-				wlock.Release ();
+				
+				outStream.Flush ();
 			}
+			
+			wbuffer.Position = 0;
+			wbuffer.SetLength (0);
+			wlock.Release ();
 		}
 
 		public virtual void CancelWrite ()
 		{
-			lock (this) {
-				AssertBeganWrite ();
-				buffer.Position = 0;
-				buffer.SetLength (0);
-				wlock.Release ();
-			}
+			AssertBeganWrite ();
+			wbuffer.Position = 0;
+			wbuffer.SetLength (0);
+			wlock.Release ();
 		}
 	}
 
@@ -357,22 +366,30 @@ namespace Agnos.Transports
 		{
 			this.transport = transport;
 		}
-		public Stream GetStream ()
+		public Stream GetInputStream ()
 		{
-			return transport.GetStream ();
+			return transport.GetInputStream ();
 		}
-		public int GetCompressionThreshold()
+		public Stream GetOutputStream ()
 		{
-			return this.GetCompressionThreshold();
+			return transport.GetOutputStream ();
 		}
-        public void EnableCompression(int value)
+		public bool IsCompressionEnabled ()
 		{
-            transport.EnableCompression(value);
+			return this.IsCompressionEnabled ();
 		}
-		public void DisableCompression() 
+		public bool EnableCompression ()
 		{
-			transport.DisableCompression();
-		}		
+			return transport.EnableCompression ();
+		}
+		public void DisableCompression ()
+		{
+			transport.DisableCompression ();
+		}
+		public void Dispose ()
+		{
+			Close();
+		}
 		public void Close ()
 		{
 			transport.Close ();
@@ -380,10 +397,6 @@ namespace Agnos.Transports
 		public int BeginRead ()
 		{
 			return transport.BeginRead ();
-		}
-		public int BeginRead (int msecs)
-		{
-			return transport.BeginRead (msecs);
 		}
 		public int Read (byte[] data, int offset, int len)
 		{
@@ -401,9 +414,9 @@ namespace Agnos.Transports
 		{
 			transport.Write (data, offset, len);
 		}
-		public void Reset ()
+		public void RestartWrite ()
 		{
-			transport.Reset ();
+			transport.RestartWrite ();
 		}
 		public void EndWrite ()
 		{
@@ -421,13 +434,12 @@ namespace Agnos.Transports
 		public const int DEFAULT_BUFSIZE = 16 * 1024;
 		public const int DEFAULT_COMPRESSION_THRESHOLD = 4 * 1024;
 
-		public SocketTransport (Socket sock) : 
-			base(new BufferedStream (new NetworkStream (sock, true), DEFAULT_BUFSIZE))
+		public SocketTransport (Socket sock) : base(new BufferedStream (new NetworkStream (sock, true), DEFAULT_BUFSIZE))
 		{
 			this.sock = sock;
 		}
 
-		internal static Socket _connect (String host, int port)
+		static internal Socket _connect (String host, int port)
 		{
 			Socket sock = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 			sock.Connect (host, port);
@@ -438,7 +450,7 @@ namespace Agnos.Transports
 		{
 		}
 
-		internal static Socket _connect (IPAddress addr, int port)
+		static internal Socket _connect (IPAddress addr, int port)
 		{
 			Socket sock = new Socket (addr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 			sock.Connect (addr, port);
@@ -455,30 +467,24 @@ namespace Agnos.Transports
 		public const int DEFAULT_COMPRESSION_THRESHOLD = 4 * 1024;
 		protected readonly Socket sock;
 
-		public SslSocketTransport(SslStream stream) : 
-			this(stream, SocketTransport.DEFAULT_BUFSIZE)
+		public SslSocketTransport (SslStream stream) : this(stream, SocketTransport.DEFAULT_BUFSIZE)
 		{
 		}
 
-		public SslSocketTransport(SslStream stream, int bufsize) : 
-			base(new BufferedStream(stream, bufsize))
+		public SslSocketTransport (SslStream stream, int bufsize) : base(new BufferedStream (stream, bufsize))
 		{
 			this.sock = null;
 		}
 
-		public SslSocketTransport(String host, int port) : 
-			this(SocketTransport._connect(host, port))
+		public SslSocketTransport (String host, int port) : this(SocketTransport._connect (host, port))
 		{
 		}
 
-		public SslSocketTransport(IPAddress addr, int port) : 
-			this(SocketTransport._connect(addr, port))
+		public SslSocketTransport (IPAddress addr, int port) : this(SocketTransport._connect (addr, port))
 		{
 		}
 
-		public SslSocketTransport(Socket sock) : 
-			base(new BufferedStream(new SslStream(new NetworkStream(sock, true), false), 
-					SocketTransport.DEFAULT_BUFSIZE))
+		public SslSocketTransport (Socket sock) : base(new BufferedStream (new SslStream (new NetworkStream (sock, true), false), SocketTransport.DEFAULT_BUFSIZE))
 		{
 			this.sock = sock;
 		}

@@ -47,7 +47,7 @@ namespace Agnos.Transports
         }
 
         public HttpClientTransport(Uri uri)
-            : base(null, null, -1)
+            : base(null, null)
         {
             this.uri = uri;
         }
@@ -72,58 +72,48 @@ namespace Agnos.Transports
 
 		public override int BeginRead()
 		{
-			return BeginRead(-1);
-		}
-
-		public override int BeginRead(int msecs)
-		{
-			if (inputStream == null) {
+			if (inStream == null) {
 				throw new IOException("BeginRead must be called only after EndWrite");
 			}
-			return base.BeginRead(msecs);
+			return base.BeginRead();
 		}
 		
         public override void EndRead()
         {
-            lock (this)
-            {
-                AssertBeganRead();
-                inputStream.Close();
-                inputStream = null;
-				resp = null;
-                rlock.Release();
-            }
+            AssertBeganRead();
+            inStream.Close();
+            inStream = null;
+            readStream = null;
+			resp = null;
+            rlock.Release();
         }
 
         public override void EndWrite()
         {
-            lock (this)
+            AssertBeganWrite();
+            if (wbuffer.Length > 0)
             {
-                AssertBeganWrite();
-                if (buffer.Length > 0)
-                {
-                    WebRequest req = buildRequest();
-                    req.ContentLength = buffer.Length + 8;
-                    
-                    outputStream = req.GetRequestStream();
-                    Packers.Int32.pack((int)buffer.Length, outputStream);
-                    Packers.Int32.pack(wseq, outputStream);
-                    buffer.WriteTo(outputStream);
-                    outputStream.Flush();
-                    buffer.Position = 0;
-                    buffer.SetLength(0);
-                    outputStream.Close();
-                    outputStream = null;
+                WebRequest req = buildRequest();
+                req.ContentLength = wbuffer.Length + 12;
+                
+                outStream = req.GetRequestStream();
+                writeSInt32(outStream, wseq);
+                writeSInt32(outStream, (int)wbuffer.Length);
+                writeSInt32(outStream, 0);
+                wbuffer.WriteTo(outStream);
+                outStream.Flush();
+                wbuffer.Position = 0;
+                wbuffer.SetLength(0);
+                outStream.Close();
+                outStream = null;
 
-                    if (inputStream != null)
-                    {
-                        inputStream.Close();
-                    }
-                    resp = req.GetResponse();
-                    inputStream = new BufferedStream(resp.GetResponseStream(), ioBufferSize);
+                if (inStream != null) {
+                    inStream.Close();
                 }
-                wlock.Release();
+                resp = req.GetResponse();
+                inStream = new BufferedStream(resp.GetResponseStream(), ioBufferSize);
             }
+            wlock.Release();
         }
 
     }

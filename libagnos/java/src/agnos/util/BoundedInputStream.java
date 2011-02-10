@@ -9,10 +9,12 @@ public class BoundedInputStream extends InputStream
 	private InputStream inputStream;
 	private int remainingLength;
 	private boolean closeUnderlying;
+	private boolean skipUnderlying;
 	
-	public BoundedInputStream(InputStream inputStream, int length, boolean closeUnderlying) {
+	public BoundedInputStream(InputStream inputStream, int length, boolean skipUnderlying, boolean closeUnderlying) {
 		this.inputStream = inputStream;
 		this.remainingLength = length;
+		this.skipUnderlying = skipUnderlying;
 		this.closeUnderlying = closeUnderlying;
 	}
 
@@ -26,7 +28,9 @@ public class BoundedInputStream extends InputStream
 		if (inputStream == null) {
 			return;
 		}
-		skip(-1);
+		if (skipUnderlying) {
+			skip(-1);
+		}
 		if (closeUnderlying) {
 			inputStream.close();
 		}

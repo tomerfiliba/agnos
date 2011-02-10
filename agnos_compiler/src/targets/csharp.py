@@ -414,10 +414,10 @@ class CSharpTarget(TargetBase):
         with BLOCK("internal class _{0}Packer : Packers.AbstractPacker", enum.name):
             with BLOCK("public override int getId()"):
                 STMT("return {0}", enum.id)
-            with BLOCK("public override void pack(object obj, Stream stream)"):
-                STMT("Packers.Int32.pack((int)(({0})obj), stream)", enum.name)
-            with BLOCK("public override object unpack(Stream stream)"):
-                STMT("return ({0})((int)Packers.Int32.unpack(stream))", enum.name)
+            with BLOCK("public override void pack(object obj, ITransport transport)"):
+                STMT("Packers.Int32.pack((int)(({0})obj), transport)", enum.name)
+            with BLOCK("public override object unpack(ITransport transport)"):
+                STMT("return ({0})((int)Packers.Int32.unpack(transport))", enum.name)
         SEP()
         STMT("internal static _{0}Packer {0}Packer = new _{0}Packer()", enum.name)
 
@@ -491,19 +491,19 @@ class CSharpTarget(TargetBase):
             with BLOCK("public override int getId()"):
                 STMT("return {0}", rec.id)
 
-            with BLOCK("public override void pack(object obj, Stream stream)"):
+            with BLOCK("public override void pack(object obj, ITransport transport)"):
                 STMT("{0} val = ({0})obj", rec.name)
                 for mem in rec.members:
-                    STMT("{0}.pack(val.{1}, stream)", type_to_packer(mem.type), mem.name)
+                    STMT("{0}.pack(val.{1}, transport)", type_to_packer(mem.type), mem.name)
 
-            with BLOCK("public override object unpack(Stream stream)"):
+            with BLOCK("public override object unpack(ITransport transport)"):
                 with BLOCK("return new {0}(", rec.name, prefix = "", suffix = ");"):
                     for mem in rec.members[:-1]:
-                        STMT("({0}){1}.unpack(stream)", type_to_cs(mem.type, proxy = proxy), 
+                        STMT("({0}){1}.unpack(transport)", type_to_cs(mem.type, proxy = proxy), 
                             type_to_packer(mem.type), suffix = ",")
                     if rec.members:
                         mem = rec.members[-1]
-                        STMT("({0}){1}.unpack(stream)", type_to_cs(mem.type, proxy = proxy), 
+                        STMT("({0}){1}.unpack(transport)", type_to_cs(mem.type, proxy = proxy), 
                             type_to_packer(mem.type), suffix = "")
         SEP()
         if static:
@@ -837,8 +837,7 @@ class CSharpTarget(TargetBase):
             STMT("object result = null")
             STMT("object inst = null")
             STMT("object[] args = null")
-            STMT("Stream stream = transport.GetStream()")
-            STMT("int funcid = (int){0}.unpack(stream)", type_to_packer(compiler.t_int32))
+            STMT("int funcid = (int){0}.unpack(transport)", type_to_packer(compiler.t_int32))
             packed_exceptions = service.exceptions()
 
             with BLOCK("try") if packed_exceptions else NOOP:
@@ -852,16 +851,16 @@ class CSharpTarget(TargetBase):
                     with BLOCK("default:", prefix = None, suffix = None):
                         STMT('throw new ProtocolError("unknown function id: " + funcid)')
                 SEP()
-                STMT("{0}.pack((byte)Protocol.REPLY_SUCCESS, stream)", type_to_packer(compiler.t_int8))
+                STMT("{0}.pack((byte)Protocol.REPLY_SUCCESS, transport)", type_to_packer(compiler.t_int8))
                 with BLOCK("if (packer != null)"):
-                    STMT("packer.pack(result, stream)")
+                    STMT("packer.pack(result, transport)")
             for tp in reversed(packed_exceptions):
                 with BLOCK("catch ({0} ex)", tp.name):
-                    STMT("transport.Reset()")
-                    STMT("{0}.pack((byte)Protocol.REPLY_PACKED_EXCEPTION, stream)", 
+                    STMT("transport.RestartWrite()")
+                    STMT("{0}.pack((byte)Protocol.REPLY_PACKED_EXCEPTION, transport)", 
                         type_to_packer(compiler.t_int8))
-                    STMT("{0}.pack({1}, stream)", type_to_packer(compiler.t_int32), tp.id)
-                    STMT("{0}.pack(ex, stream)", type_to_packer(tp))
+                    STMT("{0}.pack({1}, transport)", type_to_packer(compiler.t_int32), tp.id)
+                    STMT("{0}.pack(ex, transport)", type_to_packer(tp))
 
     def generate_invocation_case(self, module, func):
         BLOCK = module.block
@@ -872,10 +871,10 @@ class CSharpTarget(TargetBase):
             if func.args:
                 with BLOCK("args = new object[] {0}", "{", prefix = "", suffix = "};"):
                     for arg in func.args[:-1]:
-                        STMT("{0}.unpack(stream)", type_to_packer(arg.type), suffix = ",")
+                        STMT("{0}.unpack(transport)", type_to_packer(arg.type), suffix = ",")
                     if func.args:
                         arg = func.args[-1]
-                        STMT("{0}.unpack(stream)", type_to_packer(arg.type), suffix = ",")
+                        STMT("{0}.unpack(transport)", type_to_packer(arg.type), suffix = ",")
             callargs = ", ".join("(%s)args[%s]" % (type_to_cs(arg.type), i) 
                 for i, arg in enumerate(func.args))
             if func.type == compiler.t_void:
@@ -884,15 +883,15 @@ class CSharpTarget(TargetBase):
                 invocation = "result = handler.%s(%s)" % (func.fullname, callargs)
         else:
             insttype = func.args[0].type
-            STMT("inst = ({0})({1}.unpack(stream))", 
+            STMT("inst = ({0})({1}.unpack(transport))", 
                 type_to_cs(insttype), type_to_packer(insttype))
 
             if len(func.args) > 1:
                 with BLOCK("args = new object[] {0}", "{", prefix = "", suffix = "};"):
                     for arg in func.args[1:-1]:
-                        STMT("{0}.unpack(stream)", type_to_packer(arg.type), suffix = ",")
+                        STMT("{0}.unpack(transport)", type_to_packer(arg.type), suffix = ",")
                     arg = func.args[-1]
-                    STMT("{0}.unpack(stream)", type_to_packer(arg.type), suffix = ",")
+                    STMT("{0}.unpack(transport)", type_to_packer(arg.type), suffix = ",")
             callargs = ", ".join("(%s)args[%s]" % (type_to_cs(arg.type), i) 
                 for i, arg in enumerate(func.args[1:]))
             
@@ -1156,13 +1155,12 @@ class CSharpTarget(TargetBase):
                         STMT("int seq = client._utils.BeginCall({0}, {1})", func.id, 
                             type_to_packer(func.type))
                     if func.args:
-                        STMT("Stream stream = client._utils.transport.GetStream()")
                         with BLOCK("try"):
                             for arg in func.args:
                                 if is_complex_type(arg.type):
-                                    STMT("client.{0}.pack({1}, stream)", type_to_packer(arg.type), arg.name)
+                                    STMT("client.{0}.pack({1}, client._utils.transport)", type_to_packer(arg.type), arg.name)
                                 else:
-                                    STMT("{0}.pack({1}, stream)", type_to_packer(arg.type), arg.name)
+                                    STMT("{0}.pack({1}, client._utils.transport)", type_to_packer(arg.type), arg.name)
                         with BLOCK("catch (Exception ex)"):
                             STMT("client._utils.CancelCall()")
                             STMT("throw ex")

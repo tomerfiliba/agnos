@@ -20,7 +20,6 @@
 
 import socket
 import ssl
-import sys
 import signal
 import time
 import itertools
@@ -70,8 +69,8 @@ class Transport(object):
     def begin_read(self, timeout = None):
         if self._rlock.is_held_by_current_thread():
             raise IOError("begin_read is not reentrant")
+        self._rlock.acquire()
         try:
-            self._rlock.acquire()
             if timeout is not None and timeout < 0:
                 timeout = 0
             if not select([self.infile], [], [], timeout)[0]:
@@ -83,18 +82,18 @@ class Transport(object):
             uncompressed_length = packers.Int32.unpack(self.infile)
             
             assert self._rstream is None
+
+            self._rstream = BoundedStream(self.infile, packet_length, 
+                skip_underlying = True, close_underlying = False)
             
             if uncompressed_length > 0:
-                s = BoundedStream(self.infile, packet_length, skip_underlying = True,
-                    close_underlying = False)
-                self._rstream = BoundedStream(ZlibStream(s), uncompressed_length,
-                    skip_underlying = False, close_underlying = True)
-            else:
-                self._rstream = BoundedStream(self.infile, packet_length, 
-                    skip_underlying = True, close_underlying = False)
+                self._rstream = BoundedStream(ZlibStream(self._rstream), 
+                    uncompressed_length, skip_underlying = False, 
+                    close_underlying = True)
 
             return seq
         except Exception:
+            self._rstream = None
             self._rlock.release()
             raise
     
@@ -106,17 +105,14 @@ class Transport(object):
         self._assert_rlock()
         if count > self._rstream.available():
             raise EOFError("request to read more than available")
-        print >>sys.stderr, "@@2", self._rstream
         return self._rstream.read(count)
     
     def read_all(self):
         self._assert_rlock()
-        print >>sys.stderr, "@@3", self._rstream
         return self._rstream.read()
     
     def end_read(self):
         self._assert_rlock()
-        print >>sys.stderr, "@@4", self._rstream
         if self._rstream is not None:
             self._rstream.close()
             self._rstream = None
