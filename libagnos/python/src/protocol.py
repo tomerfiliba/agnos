@@ -188,17 +188,17 @@ class BaseProcessor(object):
                     else:
                         raise ProtocolError("unknown command code: %d" % (cmd,))
                 except ProtocolError as ex:
-                    self.transport.reset()
+                    self.transport.restart_write()
                     self.send_protocol_error(ex)
                 except GenericException as ex:
-                    self.transport.reset()
+                    self.transport.restart_write()
                     self.send_generic_exception(ex)
                 except PackingError, ex:
                     tbtext = "".join(traceback.format_exception(*sys.exc_info())[:-1])
-                    self.transport.reset()
+                    self.transport.restart_write()
                     self.send_generic_exception(GenericException(str(ex), tbtext))
                 except PackedException as ex:
-                    self.transport.reset()
+                    self.transport.restart_write()
                     self.send_packed_exception(ex)
 
     def process_ping(self, seq):

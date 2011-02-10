@@ -32,6 +32,10 @@ try:
     basestring
 except NameError:
     basestring = str
+try:
+    import zlib
+except ImportError:
+    zlib = None
 
 
 class RLock(object):
@@ -285,13 +289,83 @@ StdoutLogger = Logger(StdoutSink)
 StderrLogger = Logger(StderrSink)
 
 
-if __name__ == "__main__":
-    logger = StdoutLogger
-    logger.info("hi")
-    logger2 = logger.sublogger("processor")
-    logger2.info("bye")
-    logger3 = logger2.sublogger("food")
-    logger3.info("die")
+class BoundedStream(object):
+    def __init__(self, stream, length, skip_underlying, close_underlying):
+        self.stream = stream
+        self.remaining_length = length
+        self.skip_underlying = skip_underlying
+        self.close_underlying = close_underlying
+    
+    def available(self):
+        return self.remaining_length
+    
+    def close(self):
+        if self.skip_underlying:
+            self.skip(-1)
+        if self.close_underlying:
+            self.stream.close()
+        self.stream = None
+    
+    def read(self, count = -1):
+        if self.remaining_length <= 0:
+            return ""
+        if count < 0 or count > self.remaining_length:
+            count = self.remaining_length
+        data = self.stream.read(count)
+        self.remaining_length -= len(data)
+        return data
+    
+    def skip(self, count):
+        self.read(count)
+
+
+class ZlibStream(object):
+    def __init__(self, stream, underlying_read_size = 1024):
+        self.stream = stream
+        self.underlying_read_size = underlying_read_size
+        self.buffer = ""
+        self.decompressobj = zlib.decompressobj()
+    
+    def close(self):
+        self.stream.close()
+    
+    def read(self, count):
+        if self.decompressobj is None:
+            return ""
+        while len(self.buffer) < count:
+            chunk = self.stream.read(self.underlying_read_size)
+            if not chunk:
+                self.buffer += self.decompressobj.flush()
+                self.decompressobj = None
+                break
+            self.buffer += self.decompressobj.decompress(chunk)
+        data = self.buffer[:count]
+        self.buffer = self.buffer[:count]
+        return data
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

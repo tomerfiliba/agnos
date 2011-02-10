@@ -20,6 +20,7 @@
 
 import socket
 import ssl
+import sys
 import signal
 import time
 import itertools
@@ -31,25 +32,32 @@ except ImportError:
 from contextlib import contextmanager
 from subprocess import Popen, PIPE
 from . import packers
-from .utils import RLock
+from .utils import RLock, BoundedStream, ZlibStream
 
 
 class TransportTimeout(IOError):
     pass
 
 class Transport(object):
-    def __init__(self, infile, outfile, compression_threshold = -1):
+    def __init__(self, infile, outfile):
         self.infile = infile
         self.outfile = outfile
-        self.compression_threshold = -1 #compression_threshold
+        self.compression_threshold = -1
         self._rlock = RLock()
         self._wlock = RLock()
-        self._read_length = -1
-        self._read_comp_length = -1
-        self._read_pos = -1
-        self._read_seq = -1
-        self._write_seq = -1
-        self._write_buffer = []
+        self._wseq = -1
+        self._wbuffer = []
+        self._rstream = None
+    
+    def is_compression_enabled(self):
+        return self.compression_threshold > 0
+    def enabled_compression(self):
+        self.compression_threshold = self._get_compression_threshold()
+        return self.is_compression_enabled()
+    def disable_compresion(self):
+        self.compression_threshold = -1
+    def _get_compression_threshold(self):
+        return -1
     
     def close(self):
         if self.infile:
@@ -62,27 +70,33 @@ class Transport(object):
     def begin_read(self, timeout = None):
         if self._rlock.is_held_by_current_thread():
             raise IOError("begin_read is not reentrant")
-        self._rlock.acquire()
-        if timeout is not None and timeout < 0:
-            timeout = 0
-        rl, _, _ = select([self.infile], [], [], timeout)
-        if not rl:
+        try:
+            self._rlock.acquire()
+            if timeout is not None and timeout < 0:
+                timeout = 0
+            if not select([self.infile], [], [], timeout)[0]:
+                self._rlock.release()
+                raise TransportTimeout("no data received within %r seconds" % (timeout,))
+            
+            seq = packers.Int32.unpack(self.infile)
+            packet_length = packers.Int32.unpack(self.infile)
+            uncompressed_length = packers.Int32.unpack(self.infile)
+            
+            assert self._rstream is None
+            
+            if uncompressed_length > 0:
+                s = BoundedStream(self.infile, packet_length, skip_underlying = True,
+                    close_underlying = False)
+                self._rstream = BoundedStream(ZlibStream(s), uncompressed_length,
+                    skip_underlying = False, close_underlying = True)
+            else:
+                self._rstream = BoundedStream(self.infile, packet_length, 
+                    skip_underlying = True, close_underlying = False)
+
+            return seq
+        except Exception:
             self._rlock.release()
-            raise TransportTimeout("no data received within %r seconds" % (timeout,))
-        
-        self._read_seq = packers.Int32.unpack(self.infile)
-        self._read_length = packers.Int32.unpack(self.infile)
-        self._read_comp_length = packers.Int32.unpack(self.infile)
-        self._read_pos = 0
-        
-        if self._read_comp_length > 0:
-            tmp = self._read_length
-            self._read_length = self._read_comp_length
-            self._read_comp_length = tmp
-        else:
-            pass
-        
-        return self._read_seq
+            raise
     
     def _assert_rlock(self):
         if not self._rlock.is_held_by_current_thread():
@@ -90,29 +104,30 @@ class Transport(object):
     
     def read(self, count):
         self._assert_rlock()
-        if self._read_pos + count > self._read_length:
+        if count > self._rstream.available():
             raise EOFError("request to read more than available")
-        data = self.infile.read(count)
-        self._read_pos += len(data)
-        return data
+        print >>sys.stderr, "@@2", self._rstream
+        return self._rstream.read(count)
     
     def read_all(self):
-        return self.read(self._read_length - self._read_pos)
+        self._assert_rlock()
+        print >>sys.stderr, "@@3", self._rstream
+        return self._rstream.read()
     
     def end_read(self):
         self._assert_rlock()
-        remaining = self._read_length - self._read_pos
-        while remaining > 0:
-            chunk = self.infile.read(min(remaining, 16*1024))
-            remaining -= len(chunk)
+        print >>sys.stderr, "@@4", self._rstream
+        if self._rstream is not None:
+            self._rstream.close()
+            self._rstream = None
         self._rlock.release()
     
     def begin_write(self, seq):
         if self._wlock.is_held_by_current_thread():
             raise IOError("begin_write() is not reentrant")
         self._wlock.acquire()
-        self._write_seq = seq
-        del self._write_buffer[:]
+        self._wseq = seq
+        del self._wbuffer[:]
     
     def _assert_wlock(self):
         if not self._wlock.is_held_by_current_thread():
@@ -120,38 +135,39 @@ class Transport(object):
     
     def write(self, data):
         self._assert_wlock()
-        self._write_buffer.append(data)
+        self._wbuffer.append(data)
     
-    def reset(self):
+    def restart_write(self):
         self._assert_wlock()
-        del self._write_buffer[:]
+        del self._wbuffer[:]
     
     def end_write(self):
         self._assert_wlock()
-        data = "".join(self._write_buffer)
-        del self._write_buffer[:]
+        data = "".join(self._wbuffer)
+        del self._wbuffer[:]
         if data:
-            packers.Int32.pack(self._write_seq, self.outfile)
+            packers.Int32.pack(self._wseq, self.outfile)
             if self.compression_threshold > 0 and len(data) > self.compression_threshold:
-                raw_length = len(data)
+                uncompressed_length = len(data)
                 data = data.encode("zlib")
             else:
-                raw_length = 0
+                uncompressed_length = 0
             packers.Int32.pack(len(data), self.outfile)
-            packers.Int32.pack(raw_length, self.outfile)
+            packers.Int32.pack(uncompressed_length, self.outfile)
             self.outfile.write(data)
             self.outfile.flush()
         self._wlock.release()
     
     def cancel_write(self):
         self._assert_wlock()
-        del self._write_buffer[:]
+        del self._wbuffer[:]
         self._wlock.release()
     
     @contextmanager
     def reading(self, timeout = None):
+        seq = self.begin_read(timeout)
         try:
-            yield self.begin_read(timeout)
+            yield seq
         finally:
             self.end_read()
 
@@ -172,6 +188,12 @@ class WrappedTransport(object):
         self.transport = transport
     def __repr__(self):
         return "WrappedTransport(%s)" % (self.transport,)
+    def is_compression_enabled(self):
+        return self.transport.is_compression_enabled()
+    def enabled_compression(self):
+        return self.transport.enabled_compression()
+    def disable_compresion(self):
+        self.transport.disable_compresion()
     def close(self):
         return self.transport.close()
     def begin_read(self, timeout = None):
@@ -184,8 +206,8 @@ class WrappedTransport(object):
         return self.transport.begin_write(seq)
     def write(self, data):
         return self.transport.write(data)
-    def reset(self):
-        return self.transport.reset()
+    def restart_write(self):
+        return self.transport.restart_write()
     def end_write(self):
         return self.transport.end_write()
     def cancel_write(self):
@@ -260,11 +282,14 @@ class SocketFile(object):
 
 
 class SocketTransport(Transport):
-    def __init__(self, sockfile, compression_threshold = 4 * 1024):
-        Transport.__init__(self, sockfile, sockfile, compression_threshold)
+    def __init__(self, sockfile):
+        Transport.__init__(self, sockfile, sockfile)
     def __repr__(self):
         return "<SocketTransport %s:%s - %s:%s>" % (self.infile.sock_host, 
             self.infile.sock_port, self.infile.peer_host, self.infile.peer_port)
+    
+    def _get_compression_threshold(self):
+        return 4 * 1024
     
     @classmethod
     def connect(cls, host, port):
@@ -275,8 +300,8 @@ class SocketTransport(Transport):
 
 
 class SslSocketTransport(Transport):
-    def __init__(self, sslsockfile, compression_threshold = 4 * 1024):
-        Transport.__init__(self, sslsockfile, sslsockfile, compression_threshold)
+    def __init__(self, sslsockfile):
+        Transport.__init__(self, sslsockfile, sslsockfile)
     def __repr__(self):
         return "<SslSocketTransport %s:%s - %s:%s>" % (self.infile.sock_host, 
             self.infile.sock_port, self.infile.peer_host, self.infile.peer_port)
@@ -301,14 +326,17 @@ class ProcTransport(WrappedTransport):
     def __repr__(self):
         return "<ProcTransport pid=%s (%s)>" % (self.proc.pid, "alive" if self.proc.poll() is None else "terminated")
     
-    def close(self):
+    def close(self, grace_period = 0.7):
         WrappedTransport.close(self)
         self.proc.send_signal(signal.SIGINT)
-        tend = time.time() + 0.5
+        tend = time.time() + grace_period
         while self.proc.poll() is None and time.time() <= tend:
             time.sleep(0.1)
         if self.proc.poll() is None:
             self.proc.terminate()
+    
+    def enable_compression(self):
+        return False
     
     @classmethod
     def from_executable(cls, filename, args = ("-m", "lib")):
@@ -331,58 +359,6 @@ class ProcTransport(WrappedTransport):
         proc.stdout.close()
         transport = SocketTransport.connect(host, port)
         return cls(proc, transport)
-
-
-class LoopbackTransport(Transport):
-    def __init__(self):
-        Transport.__init__(self, None, None, -1)
-        self.incoming = []
-        self.outgoing = []
-        self.seqgen = itertools.count(400000)
-
-    def __repr__(self):
-        return "<LoopbackTransport>" 
-    
-    def insert(self, blob, seq = None):
-        """feed the transport with data to read"""
-        if seq is None:
-            seq = self.seqgen.next()
-        self.incoming.append((seq, blob))
-    def pop(self):
-        """get the result of the previous end_write() operation"""
-        if not self.outgoing:
-            raise ValueError("pop() called before end_write()")
-        return self.outgoing.pop(0)
-    
-    def close(self):
-        self.incoming = None
-        self.outgoing = None
-
-    def begin_read(self, timeout = None):
-        if self._rlock.is_held_by_current_thread():
-            raise IOError("begin_read is not reentrant")
-        self._rlock.acquire()
-        if not self.incoming:
-            self._rlock.release()
-            raise IOError("begin_read() called before insert()")
-        seq, data = self.incoming.pop(0)
-        self.infile = StringIO(data)
-        self._read_length = len(data)
-        self._read_seq = seq
-        self._read_pos = 0
-        return self._read_seq
-    
-    def end_read(self):
-        self._assert_rlock()
-        self.infile = None
-        self._rlock.release()
-    
-    def end_write(self):
-        self._assert_wlock()
-        data = "".join(self._write_buffer)
-        del self._write_buffer[:]
-        self.outgoing.append(data)
-        self._wlock.release()
 
 
 #===============================================================================
