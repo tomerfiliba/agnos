@@ -190,10 +190,10 @@ public abstract class BaseTransport implements ITransport {
 			
 			return seq;
 		}
-		catch (Exception ex) {
+		catch (IOException ex) {
 			readStream = null;
 			rlock.unlock();
-			throw;
+			throw ex;
 		}
 	}
 	
