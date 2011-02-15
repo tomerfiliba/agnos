@@ -27,29 +27,48 @@ The following statements was required by our lawyers:
 ==============================================================================
 1) Clone this repository
 
-2) Create a symlink (on Windows use mklink) to agnos_compiler/src and place
-   it somewherein your PYTHONPATH, e.g.:
+2) Install scons (http://www.scons.com)
+
+3) Create a symlink (on Windows use mklink) to agnos_compiler/src and place
+   it somewhere in your PYTHONPATH, e.g.:
    
-   ln -s /absolute/path/of/this/repo/agnos_compiler/src /usr/lib/python2.6/site-packages/agnos_compiler
+   $ ln -s /absolute/path/of/agnos_toolchain/agnos_compiler/src /usr/lib/python2.6/site-packages/agnos_compiler
    
    Note: the link should be named "agnos_compiler"
 
-3) Create a symlink to libagnos/python/src and place it somewhere in your 
+4) Create a symlink to libagnos/python/src and place it somewhere in your 
    PYTHONPATH, e.g:
 
-   ln -s /absolute/path/of/this/repo/libagnos/python/src /usr/lib/python2.6/site-packages/agnos
+   $ ln -s /absolute/path/of/agnos_toolchain/libagnos/python/src /usr/lib/python2.6/site-packages/agnos
    
    Note: the link should be named "agnos"
 
-4) Put bin/agnosc and bin/agnosrc-py in your PATH (either by changing PATH or
-   by creating symlinks to /usr/bin, etc.)
+5) Put bin/agnosc and bin/agnosrc-py in your PATH (either by adding them to the
+   PATH or by creating symlinks to /usr/bin, etc.)
 
-5) Build the parts of libagnos that you wish to use:
+   $ ln -s /absolute/path/of/agnos_toolchain/agnos_compiler/bin/agnosc /usr/bin/agnosc
+   $ ln -s /absolute/path/of/agnos_toolchain/agnos_compiler/bin/agnosrc-py /usr/bin/agnosrc-py
+   
+   Note: on Windows, create the links to agnos.bat and agnosrc-py.bat
+
+6) Build the parts of libagnos that you wish to use:
    * Java: cd to libagnos/java and run scons
+
+   * C#: cd to libagnos/csharp/src and run "msbuild Agnos.sln" or "xbuild Agnos.sln" 
    
    * C++: cd to libagnos/cpp and run scons
      you may need to tweak the scons file, to define/undefine 
      BOOST_PROCESS_SUPPORTED
-   
-   * C#: cd to libagnos/csharp/src and run "msbuild Agnos.sln" or "xbuild Agnos.sln" 
+
+7) See that everything's working:
+   $ agnosc
+   Usage: agnosc [options]
+    
+   agnosc: error: must specify agnos input file(s)
+    
+   $ agnosrc-py
+   Usage: agnosrc-py [options]
+    
+   agnosrc-py: error: must specify agnos input file(s)
+
 
