@@ -27,6 +27,9 @@ using System.Net.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Diagnostics;
+#if AGNOS_TRANSPORT_DEBUG
+using System.Text;
+#endif
 using Agnos.Utils;
 
 
@@ -230,21 +233,50 @@ namespace Agnos.Transports
 			stream.Write(buf, 0, buf.Length);
 		}
 
+#if AGNOS_TRANSPORT_DEBUG
+		internal static String repr(byte[] arr) {
+			return repr(arr, 0, arr.Length);
+		}
+
+		internal static String repr(byte[] arr, int offset, int len) {
+			StringBuilder sb = new StringBuilder(5000);
+			sb.Append("\"");
+			for (int i = offset; i < offset + len; i++) {
+				byte b = arr[i];
+				if (b < 32 || b > 127 || b == '"') {
+					sb.AppendFormat("\\x{0:X2}", b);
+				}
+				else {
+					sb.Append((char) b);
+				}
+			}
+			sb.Append("\"");
+			return sb.ToString();
+		}
+#endif
+
 		//
 		// read interface
 		//
 		public virtual int BeginRead ()
 		{
 			if (rlock.IsHeldByCurrentThread ()) {
-				throw new IOException ("beginRead is not reentrant");
+				throw new IOException ("BeginRead is not reentrant");
 			}
-			
+
+#if AGNOS_TRANSPORT_DEBUG
+			System.Console.WriteLine("TransportBegin.BeginRead");
+#endif				
 			rlock.Acquire ();
+
 			try {
 				int seq = readSInt32(inStream);
 				int packetLength = readSInt32(inStream);
 				int uncompressedLength = readSInt32(inStream);
-				
+
+#if AGNOS_TRANSPORT_DEBUG
+				System.Console.WriteLine(">> seq={0}, len={1}, uncomp={2}", seq, packetLength, uncompressedLength);
+#endif				
 				if (readStream != null) {
 					throw new InvalidOperationException ("readStream must be null at this point");
 				}
@@ -264,25 +296,40 @@ namespace Agnos.Transports
 		protected void AssertBeganRead ()
 		{
 			if (!rlock.IsHeldByCurrentThread ()) {
-				throw new IOException ("thread must first call beginRead");
+				throw new IOException ("thread must first call BeginRead");
 			}
 		}
 
 		public virtual int Read (byte[] data, int offset, int len)
 		{
 			AssertBeganRead ();
+#if AGNOS_TRANSPORT_DEBUG
+		    System.Console.WriteLine("Transport.Read len={0}", len);
+#endif
 			if (len > readStream.Available) {
 				throw new EndOfStreamException ("request to read more than available");
 			}
+#if AGNOS_TRANSPORT_DEBUG
+			int cnt = readStream.Read (data, offset, len);
+		    System.Console.WriteLine(">> " + repr(data, offset, len));
+		    return cnt;
+#else
 			return readStream.Read (data, offset, len);
+#endif
 		}
 
 		public virtual void EndRead ()
 		{
 			AssertBeganRead ();
+#if AGNOS_TRANSPORT_DEBUG
+		    System.Console.WriteLine("Transport.EndRead");
+#endif
 			readStream.Close ();
 			readStream = null;
 			rlock.Release ();
+#if AGNOS_TRANSPORT_DEBUG
+		    System.Console.WriteLine(">> okay");
+#endif
 		}
 
 		//
@@ -291,36 +338,52 @@ namespace Agnos.Transports
 		public virtual void BeginWrite (int seq)
 		{
 			if (wlock.IsHeldByCurrentThread ()) {
-				throw new IOException ("beginWrite is not reentrant");
+				throw new IOException ("BeginWrite is not reentrant");
 			}
+#if AGNOS_TRANSPORT_DEBUG
+			System.Console.WriteLine("Transport.BeginWrite");
+#endif
 			wlock.Acquire ();
 			wseq = seq;
 			wbuffer.Position = 0;
 			wbuffer.SetLength (0);
+#if AGNOS_TRANSPORT_DEBUG
+			System.Console.WriteLine(">> okay");
+#endif
 		}
 
 		protected virtual void AssertBeganWrite ()
 		{
 			if (!wlock.IsHeldByCurrentThread ()) {
-				throw new IOException ("thread must first call beginWrite");
+				throw new IOException ("thread must first call BeginWrite");
 			}
 		}
 
 		public virtual void Write (byte[] data, int offset, int len)
 		{
 			AssertBeganWrite ();
+#if AGNOS_TRANSPORT_DEBUG
+			System.Console.WriteLine("Transport.Write len={0}", len);
+//		    System.Console.WriteLine(">> " + repr(data, offset, len));
+#endif
 			wbuffer.Write (data, offset, len);
 		}
 
 		public virtual void RestartWrite ()
 		{
 			AssertBeganWrite ();
+#if AGNOS_TRANSPORT_DEBUG
+			System.Console.WriteLine("Transport.RestartWrite");
+#endif
 			wbuffer.Position = 0;
 			wbuffer.SetLength (0);
 		}
 
 		public virtual void EndWrite ()
 		{
+#if AGNOS_TRANSPORT_DEBUG
+			System.Console.WriteLine("Transport.EndWrite");
+#endif
 			AssertBeganWrite ();
 			if (wbuffer.Length > 0) {
 				writeSInt32(outStream, wseq);
@@ -331,11 +394,19 @@ namespace Agnos.Transports
 					using (DeflateStream dfl = new DeflateStream (compressionBuffer, CompressionMode.Compress, true)) {
 						wbuffer.WriteTo (dfl);
 					}
+#if AGNOS_TRANSPORT_DEBUG
+				    //System.Console.WriteLine("Transport.EndWrite seq={0}, len={1}, uncomp={2}", wseq, compressionBuffer.Length, wbuffer.Length);
+				    System.Console.WriteLine(">> " + repr(wbuffer.ToArray()));
+#endif
 					writeSInt32 (outStream, (int)compressionBuffer.Length); // packet length
 					writeSInt32 (outStream, (int)wbuffer.Length); // uncompressed length
 					compressionBuffer.WriteTo (outStream);
 				} 
 				else {
+#if AGNOS_TRANSPORT_DEBUG
+				    System.Console.WriteLine(">> seq={0}, len={1}, uncomp=0", wseq, wbuffer.Length);
+				    System.Console.WriteLine(">> " + repr(wbuffer.ToArray()));
+#endif
 					writeSInt32 (outStream, (int)wbuffer.Length); // packet length
 					writeSInt32 (outStream, 0); // 0 means no compression
 					wbuffer.WriteTo (outStream);
@@ -352,6 +423,9 @@ namespace Agnos.Transports
 		public virtual void CancelWrite ()
 		{
 			AssertBeganWrite ();
+#if AGNOS_TRANSPORT_DEBUG
+			System.Console.WriteLine("Transport.CancelWrite");
+#endif
 			wbuffer.Position = 0;
 			wbuffer.SetLength (0);
 			wlock.Release ();

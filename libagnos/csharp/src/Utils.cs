@@ -109,7 +109,9 @@ namespace Agnos.Utils
     		if (count <= 0) {
     			return 0;
     		}
-    		return stream.Read(data, offset, count);
+    		int actual = stream.Read(data, offset, count);
+    		remaining_length -= actual;
+    		return actual;
     	}
     	
     	public int Skip(int count)

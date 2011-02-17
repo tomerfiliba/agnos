@@ -63,7 +63,10 @@ class TestCSharp(TargetTest):
             print clientproc.stdout.read()
             print clientproc.stderr.read()
             print "==================="
-            self.assertTrue(clientproc.wait() == 0)
+            self.failUnless(clientproc.wait() == 0)
+        except Exception, ex:
+            print "!!! %r" % (ex,)
+            raise
         finally:
             try:
                 serverproc.send_signal(signal.SIGINT)

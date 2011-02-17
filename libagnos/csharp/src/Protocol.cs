@@ -232,13 +232,13 @@ namespace Agnos
 				} catch (GenericException exc) {
 					transport.RestartWrite ();
 					sendGenericException (exc);
-				} catch (Exception ex) {
+				} catch (Exception) {
 					transport.CancelWrite ();
-					throw ex;
+					throw;
 				} finally {
 					transport.EndRead ();
 				}
-				transport.EndWrite ();
+				transport.EndWrite();
 			}
 
 			protected void processDecref (int seq)

@@ -53,7 +53,7 @@ namespace Agnos.Servers
 
         protected abstract void serveClient(Protocol.BaseProcessor processor);
 
-        internal static void _serveClient(Protocol.BaseProcessor processor)
+        protected static void handleClient(Protocol.BaseProcessor processor)
         {
             try
             {
@@ -82,7 +82,7 @@ namespace Agnos.Servers
 
         protected override void serveClient(Protocol.BaseProcessor processor)
 		{
-            _serveClient(processor);
+            handleClient(processor);
 		}
 	}
 
@@ -98,14 +98,14 @@ namespace Agnos.Servers
 
         protected override void serveClient(Protocol.BaseProcessor processor)
         {
-            Thread t = new Thread(new ParameterizedThreadStart(threadproc));
-            t.Start();
+            Thread t = new Thread(threadproc);
+            t.Start(processor);
             //client_threads.Add(t);
         }
 
         protected void threadproc(object obj)
         {
-            _serveClient((Protocol.BaseProcessor)obj);
+            handleClient((Protocol.BaseProcessor)obj);
         }
     }
 
@@ -136,7 +136,7 @@ namespace Agnos.Servers
             transportFactory.Close();
 			
             Protocol.BaseProcessor processor = processorFactory.Create(transport);
-            _serveClient(processor);
+            handleClient(processor);
         }
 
 		protected override void serveClient(Protocol.BaseProcessor processor)

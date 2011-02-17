@@ -1011,6 +1011,7 @@ class CSharpTarget(TargetBase):
             STMT("heteroMapPacker = new Packers.HeteroMapPacker(999, packersMap)")
             STMT("packersMap[999] = heteroMapPacker")
             with BLOCK("if (checkCompatibility)"):
+                STMT('System.Console.WriteLine("!! checkCompatibility is true")')
                 STMT("AssertServiceCompatibility()")
 
     def generate_client_namespaces(self, module, service):

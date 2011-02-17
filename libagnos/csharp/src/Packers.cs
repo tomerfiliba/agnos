@@ -70,7 +70,8 @@ namespace Agnos
 						got = transport.Read (buf, total_got, buf.Length - total_got);
 						total_got += got;
 						if (got <= 0 && total_got < buf.Length) {
-							throw new EndOfStreamException ("premature end of transport detected");
+							throw new EndOfStreamException (String.Format("premature end of transport detected: " +
+								"got={0}, expected={1}", total_got, buf.Length));
 						}
 					}
 				} catch (IOException ex) {
