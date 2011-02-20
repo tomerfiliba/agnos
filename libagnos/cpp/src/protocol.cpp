@@ -113,10 +113,7 @@ namespace agnos
 				DEBUG_LOG("INFO_META");
 				// fall-through
 			default:
-				map.put("INFO_META", INFO_META);
-				map.put("INFO_SERVICE", INFO_SERVICE);
-				map.put("INFO_FUNCTIONS", INFO_FUNCTIONS);
-				map.put("INFO_REFLECTION", INFO_REFLECTION);
+				process_get_meta_info(map);
 				break;
 			}
 

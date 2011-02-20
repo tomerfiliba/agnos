@@ -242,11 +242,8 @@ class BaseProcessor(object):
             self.process_get_functions_info(info)
         elif code == INFO_REFLECTION:
             self.process_get_reflection_info(info)
-        else: # INFO_META:
-            info["INFO_META"] = INFO_META
-            info["INFO_SERVICE"] = INFO_SERVICE
-            info["INFO_FUNCTIONS"] = INFO_FUNCTIONS
-            info["INFO_REFLECTION"] = INFO_REFLECTION
+        else: # INFO_META
+            self.process_get_meta_info(info)
         
         Int8.pack(REPLY_SUCCESS, self.transport)
         BuiltinHeteroMapPacker.pack(info, self.transport)

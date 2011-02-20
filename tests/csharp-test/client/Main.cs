@@ -17,7 +17,7 @@ public class myclient
 		string host = args[0];
 		int port = int.Parse(args[1]);
 
-		using (FeatureTest.Client conn = FeatureTest.Client.ConnectSock(host, port, false)) {
+		using (FeatureTest.Client conn = FeatureTest.Client.ConnectSock(host, port)) {
 		    test(conn);
         }
 	}

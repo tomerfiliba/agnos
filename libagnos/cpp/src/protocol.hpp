@@ -142,6 +142,7 @@ namespace agnos
 			objref_t store(objref_t oid, any obj);
 			any load(objref_t oid);
 
+			virtual void process_get_meta_info(HeteroMap& map) = 0;
 			virtual void process_get_service_info(HeteroMap& map) = 0;
 			virtual void process_get_functions_info(HeteroMap& map) = 0;
 			virtual void process_get_reflection_info(HeteroMap& map) = 0;

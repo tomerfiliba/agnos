@@ -215,10 +215,7 @@ public abstract class BaseProcessor implements ISerializer, Closeable {
 			break;
 		case constants.INFO_META:
 		default:
-			map.put("INFO_META", constants.INFO_META);
-			map.put("INFO_SERVICE", constants.INFO_SERVICE);
-			map.put("INFO_FUNCTIONS", constants.INFO_FUNCTIONS);
-			map.put("INFO_REFLECTION", constants.INFO_REFLECTION);
+			processGetMetaInfo(map);
 			break;
 		}
 
@@ -226,10 +223,9 @@ public abstract class BaseProcessor implements ISerializer, Closeable {
 		Builtin.heteroMapPacker.pack(map, transport);
 	}
 
+	protected abstract void processGetMetaInfo(HeteroMap map);
 	protected abstract void processGetServiceInfo(HeteroMap map);
-
 	protected abstract void processGetFunctionsInfo(HeteroMap map);
-
 	protected abstract void processGetReflectionInfo(HeteroMap map);
 
 	abstract protected void processInvoke(int seq) throws Exception;

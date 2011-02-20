@@ -616,9 +616,20 @@ class CPPTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
 
-        with BLOCK("void process_get_service_info(HeteroMap& map)"):
+        with BLOCK("void process_get_meta_info(HeteroMap& map)"):
             STMT('map.put("AGNOS_PROTOCOL_VERSION", AGNOS_PROTOCOL_VERSION)')
             STMT('map.put("AGNOS_TOOLCHAIN_VERSION", AGNOS_TOOLCHAIN_VERSION)')
+            STMT('map.put("COMPRESSION_SUPPORTED", string_packer, false, bool_packer)')
+            STMT('map.put("IMPLEMENTATION", "libagnos-c++")')
+            STMT('std::map<string, int> codes')
+            STMT('codes.put("INFO_META", INFO_META)')
+            STMT('codes.put("INFO_SERVICE", INFO_SERVICE)')
+            STMT('codes.put("INFO_FUNCTIONS", INFO_FUNCTIONS)')
+            STMT('codes.put("INFO_REFLECTION", INFO_REFLECTION)')
+            STMT('map.put("INFO_CODES", string_packer, codes, map_of_string_string_packer)')
+        SEP()
+        ##
+        with BLOCK("void process_get_service_info(HeteroMap& map)"):
             STMT('map.put("IDL_MAGIC", IDL_MAGIC)')
             STMT('map.put("SERVICE_NAME", "{0}")', service.name)
             STMT('map.put("SUPPORTED_VERSIONS", string_packer, SUPPORTED_VERSIONS, list_of_string_packer)')

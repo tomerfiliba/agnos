@@ -184,6 +184,7 @@ class CSharpTarget(TargetBase):
             SEP = module.sep
             DOC = module.doc
             
+            self.emit_doc(service.doc)
             STMT("using System")
             STMT("using System.IO")
             STMT("using System.Net")
@@ -401,11 +402,38 @@ class CSharpTarget(TargetBase):
                 definition = self._generate_templated_packer_for_type(tp, proxy)
                 STMT("_{0} = {1}", tp.stringify(), definition)
 
+    def emit_doc(self, text, module):
+        if "doc" not in self.options:
+            return
+        if isinstance(text, str):
+            text = [text]
+        text = "\n".join(text)
+        text = text.strip()
+        if not text:
+            return
+        module.stmt("/// <summary>", suffix="")
+        for line in text.splitlines():
+            module.stmt("/// {0}", line.strip(), suffix="")
+        module.stmt("/// </summary>", suffix="")
+
+    def emit_func_doc(self, func, module):
+        self.emit_doc(func.doc, module)
+        for arg in func.args:
+            text = "\n".join([l.strip() for l in arg.doc.splitlines()])
+            if "\n" in text:
+                module.stmt('/// <param name="{0}">', arg.name, suffix = "")
+                for line in text.splitlines():
+                    module.stmt("/// {0}", line, suffix = "")
+                module.stmt('/// </param>', suffix = "")
+            else:
+                module.stmt('/// <param name="{0}">{1}</param>', arg.name, text, suffix = "")
+
     def generate_enum(self, module, enum):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
 
+        self.emit_doc(enum.doc, module)
         with BLOCK("public enum {0}", enum.name):
             for mem in enum.members[:-1]:
                 STMT("{0} = {1}", mem.name, mem.value, suffix = ",")
@@ -426,8 +454,10 @@ class CSharpTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
 
+        self.emit_doc(rec.doc)
         with BLOCK("public class {0}", rec.name):
             for mem in rec.members:
+                self.emit_doc(mem.doc, module)
                 STMT("public {0} {1}", type_to_cs(mem.type, proxy = proxy), mem.name)
             SEP()
             with BLOCK("public {0}()", rec.name):
@@ -451,8 +481,10 @@ class CSharpTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
 
+        self.emit_doc(rec.doc, module)
         with BLOCK("public class {0} : {1}", rec.name, rec.extends if rec.extends else "PackedException"):
             for mem in rec.local_members:
+                self.emit_doc(mem.doc, module)
                 STMT("public {0} {1}", type_to_cs(mem.type, proxy = proxy), mem.name)
             SEP()
             with BLOCK("public {0}() : base()", rec.name):
@@ -553,10 +585,12 @@ class CSharpTarget(TargetBase):
         else:
             extends = ""
 
+        self.emit_doc(cls.doc, module)
         with BLOCK("public interface I{0}{1}", cls.name, extends):
             if cls.attrs:
                 DOC("attributes")
             for attr in cls.attrs:
+                self.emit_doc(attr.doc, module)
                 with BLOCK("{0} {1}", type_to_cs(attr.type), attr.name):
                     if attr.get:
                         STMT("get")
@@ -568,6 +602,7 @@ class CSharpTarget(TargetBase):
             for method in cls.methods:
                 args = ", ".join("%s %s" % (type_to_cs(arg.type), arg.name) 
                     for arg in method.args)
+                self.emit_func_doc(method, module)
                 STMT("{0} {1}({2})", type_to_cs(method.type), method.name, args)
 
     def generate_class_proxy(self, module, service, cls):
@@ -576,12 +611,14 @@ class CSharpTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
 
+        self.emit_doc(cls.doc, module)
         with BLOCK("public class {0}Proxy : BaseProxy", cls.name):
             with BLOCK("internal {0}Proxy(Client client, long objref, bool owns_ref) :"
                     " base(client, objref, owns_ref)", cls.name):
                 pass
             SEP()
             for attr in cls.all_attrs:
+                self.emit_doc(attr.doc, module)
                 with BLOCK("public {0} {1}", type_to_cs(attr.type, proxy = True), attr.name):
                     if attr.get:
                         with BLOCK("get"):
@@ -595,6 +632,7 @@ class CSharpTarget(TargetBase):
                     continue
                 args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) 
                     for arg in method.args)
+                self.emit_func_doc(method, module)
                 with BLOCK("public {0} {1}({2})", type_to_cs(method.type, proxy = True), method.name, args):
                     callargs = ["this"] + [arg.name for arg in method.args]
                     if method.type == compiler.t_void:
@@ -624,6 +662,7 @@ class CSharpTarget(TargetBase):
                 if isinstance(member, compiler.Func):
                     args = ", ".join("%s %s" % (type_to_cs(arg.type), arg.name) 
                         for arg in member.args)
+                    self.emit_func_doc(member, module)
                     STMT("{0} {1}({2})", type_to_cs(member.type), member.fullname, args)
 
     def generate_processor(self, module, service):
@@ -691,9 +730,20 @@ class CSharpTarget(TargetBase):
                 has_annotations = True
                 break
         
-        with BLOCK("protected override void processGetServiceInfo(HeteroMap map)"):
+        with BLOCK("protected void processGetMetaInfo(HeteroMap map)"):
             STMT('map["AGNOS_PROTOCOL_VERSION"] = AGNOS_PROTOCOL_VERSION')
             STMT('map["AGNOS_TOOLCHAIN_VERSION"] = AGNOS_TOOLCHAIN_VERSION')
+            STMT('map["COMPRESSION_SUPPORTED"] = true')
+            STMT('map["IMPLEMENTATION"] = "libagnos-csharp"')
+            STMT('Dictionary<string, int> codes = new Dictionary<string, int>()')
+            STMT('codes["INFO_META"] = Protocol.INFO_META)')
+            STMT('codes["INFO_SERVICE"] = Protocol.INFO_SERVICE)')
+            STMT('codes["INFO_FUNCTIONS"] = Protocol.INFO_FUNCTIONS)')
+            STMT('codes["INFO_REFLECTION"] = Protocol.INFO_REFLECTION)')
+            STMT('map.Add("INFO_CODES", codes, Packers.mapOfStrStr)')
+        SEP()
+        ##
+        with BLOCK("protected override void processGetServiceInfo(HeteroMap map)"):
             STMT('map["IDL_MAGIC"] = IDL_MAGIC')
             STMT('map["SERVICE_NAME"] = "{0}"', service.name)
             STMT('map.Add("SUPPORTED_VERSIONS", SUPPORTED_VERSIONS, Packers.listOfStr)')
@@ -1011,7 +1061,6 @@ class CSharpTarget(TargetBase):
             STMT("heteroMapPacker = new Packers.HeteroMapPacker(999, packersMap)")
             STMT("packersMap[999] = heteroMapPacker")
             with BLOCK("if (checkCompatibility)"):
-                STMT('System.Console.WriteLine("!! checkCompatibility is true")')
                 STMT("AssertServiceCompatibility()")
 
     def generate_client_namespaces(self, module, service):
@@ -1119,9 +1168,11 @@ class CSharpTarget(TargetBase):
 
         SEP()
         with BLOCK("public void AssertServiceCompatibility()"):
-            STMT("HeteroMap info = GetServiceInfo(Protocol.INFO_SERVICE)")
-            STMT('string agnos_protocol_version = (string)info["AGNOS_PROTOCOL_VERSION"]')
-            STMT('string service_name = (string)info["SERVICE_NAME"]')
+            STMT("HeteroMap meta_info = GetServiceInfo(Protocol.INFO_META)")
+            STMT("HeteroMap service_info = GetServiceInfo(Protocol.INFO_SERVICE)")
+
+            STMT('string agnos_protocol_version = (string)meta_info["AGNOS_PROTOCOL_VERSION"]')
+            STMT('string service_name = (string)service_info["SERVICE_NAME"]')
             
             with BLOCK('if (agnos_protocol_version != AGNOS_PROTOCOL_VERSION)'):
                 STMT('''throw new WrongAgnosVersion("expected protocol '" + AGNOS_PROTOCOL_VERSION + "', found '" + agnos_protocol_version + "'")''')
@@ -1129,7 +1180,7 @@ class CSharpTarget(TargetBase):
                 STMT('''throw new WrongServiceName("expected service '{0}', found '" + service_name + "'")''', service.name)
             if service.clientversion:
                 STMT("object output = null")
-                STMT('info.TryGetValue("SUPPORTED_VERSIONS", out output)')
+                STMT('service_info.TryGetValue("SUPPORTED_VERSIONS", out output)')
                 STMT('List<string> supported_versions = (List<string>)output')
                 with BLOCK('if (supported_versions == null || !supported_versions.Contains(CLIENT_VERSION))'):
                     STMT('''throw new IncompatibleServiceVersion("server does not support client version '" + CLIENT_VERSION + "'")''')
@@ -1185,6 +1236,8 @@ class CSharpTarget(TargetBase):
             args = ", ".join("%s %s" % (type_to_cs(arg.type, proxy = True), arg.name) 
                 for arg in func.args)
             callargs = ", ".join(arg.name for arg in func.args)
+            
+            self.emit_func_doc(func, module)
             with BLOCK("public {0} {1}({2})", type_to_cs(func.type, proxy = True), func.name, args):
                 if func.type == compiler.t_void:
                     STMT("_funcs.sync_{0}({1})", func.id, callargs)

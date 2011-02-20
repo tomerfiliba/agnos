@@ -55,19 +55,25 @@ parser.add_option("-o", "--outdir", dest="outdir", default=None,
 parser.add_option("-t", "--target", dest="target",
                   help="specify the target output language ('python', 'java', 'csharp', 'cpp', or 'doc')", 
                   metavar="TARGET")
-parser.add_option("-d", "--debug",
+parser.add_option("--doc",
+                  action="store_true", dest="emitdoc", default=False,
+                  help="emit documentation into generated code")
+parser.add_option("--debug",
                   action="store_true", dest="debug", default=False,
                   help="set debug flag")
+parser.add_option("-O", "--opt",
+                  action="append", dest="options", default=[],
+                  help="pass target-specific options")
+
 
 if __name__ == "__main__":
     options, args = parser.parse_args()
-    #args = ["../ut2/features.xml"]
-    #options.target = "python"
-    #options.debug = True
     if not args:
-        parser.error("must specify agnos input file(s)")
+        parser.error("must specify IDL input file(s)")
     if not options.target:
         parser.error("must specify target")
+    if options.emitdoc:
+        options.options.append("doc")
     try:
         target = TARGET_ALIASES[options.target.lower()]
     except KeyError:
@@ -80,7 +86,7 @@ if __name__ == "__main__":
                 outdir = os.path.dirname(filename)
                 if not outdir:
                     outdir = "."
-            compile(filename, target(outdir))
+            compile(filename, target(outdir, set(options.options)))
     except IDLError:
         raise
     except Exception, ex:

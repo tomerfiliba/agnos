@@ -43,6 +43,9 @@ namespace Agnos
 		
 		/////////////////////////////////////////////////////////////////////
 
+        /// <summary>
+        /// abstract packer
+        /// </summary>
 		public abstract class AbstractPacker
 		{
 			public abstract void pack (object obj, ITransport transport);

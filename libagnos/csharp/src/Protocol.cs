@@ -301,18 +301,16 @@ namespace Agnos
                     break;
 				case INFO_META:
 				default:
-					info["INFO_META"] = INFO_META;
-					info["INFO_SERVICE"] = INFO_SERVICE;
-					info["INFO_FUNCTIONS"] = INFO_FUNCTIONS;
-                    info["INFO_REFLECTION"] = INFO_REFLECTION;
-					break;
+                    processGetMetaInfo(info);
+                    break;
 				}
 				
 				Packers.Int8.pack (REPLY_SUCCESS, transport);
 				Packers.builtinHeteroMapPacker.pack(info, transport);
 			}
 
-			protected abstract void processGetServiceInfo (HeteroMap info);
+            protected abstract void processGetMetaInfo(HeteroMap info);
+            protected abstract void processGetServiceInfo(HeteroMap info);
 			protected abstract void processGetFunctionsInfo (HeteroMap info);
             protected abstract void processGetReflectionInfo (HeteroMap info);
 

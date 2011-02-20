@@ -32,10 +32,11 @@ NOOP = NOOP()
 class TargetBase(object):
     LANGUAGE = None
     
-    def __init__(self, path):
+    def __init__(self, path, options):
         self.path = path
         # make sure the path we're working on exists
         self.mkdir("")
+        self.options = options
 
     def generate(self, service):
         """implement me"""

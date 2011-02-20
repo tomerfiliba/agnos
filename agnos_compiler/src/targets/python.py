@@ -359,9 +359,20 @@ class PythonTarget(TargetBase):
                     STMT("packers_map[{0}] = {1}", tp.id, type_to_packer(tp))
             SEP()
             ######
-            with BLOCK("def process_get_service_info(self, info)"):
+            with BLOCK("def process_get_meta_info(self, info)"):
                 STMT('info["AGNOS_TOOLCHAIN_VERSION"] = AGNOS_TOOLCHAIN_VERSION')
                 STMT('info["AGNOS_PROTOCOL_VERSION"] = AGNOS_PROTOCOL_VERSION')
+                STMT('info["COMPRESSION_SUPPORTED"] = True')
+                STMT('info["IMPLEMENTATION"] = "libagnos-python"')
+                STMT('codes = {}')
+                STMT('codes["INFO_META"] = agnos.INFO_META')
+                STMT('codes["INFO_SERVICE"] = agnos.INFO_SERVICE')
+                STMT('codes["INFO_FUNCTIONS"] = agnos.INFO_FUNCTIONS')
+                STMT('codes["INFO_REFLECTION"] = agnos.INFO_REFLECTION')
+                STMT('info.add("INFO_CODES", packers.Str, codes, packers.map_of_str_str)')
+            SEP()
+            #####
+            with BLOCK("def process_get_service_info(self, info)"):
                 STMT('info["IDL_MAGIC"] = IDL_MAGIC')
                 STMT('info["SERVICE_NAME"] = "{0}"', service.name)
                 STMT('info.add("SUPPORTED_VERSIONS", packers.Str, SUPPORTED_VERSIONS, packers.list_of_str)')
@@ -383,7 +394,7 @@ class PythonTarget(TargetBase):
                         with BLOCK("anno = ", prefix = "{", suffix = "}"):
                             for anno in func.annotations:
                                 STMT('"{0}" : "{1}",', anno.name, repr(anno.value))
-                        STMT('funcinfo.add("annotations", packers. anno, packers.map_of_str_str)')
+                        STMT('funcinfo.add("annotations", packers.Str, anno, packers.map_of_str_str)')
             SEP()
             ######
             with BLOCK("def process_get_reflection_info(self, info)"):
@@ -598,14 +609,17 @@ class PythonTarget(TargetBase):
         SEP = module.sep
 
         with BLOCK("def assert_service_compatibility(self)"):
-            STMT("info = self.get_service_info(agnos.INFO_SERVICE)")
+            STMT("meta_info = self.get_service_info(agnos.INFO_META)")
+            STMT("service_info = self.get_service_info(agnos.INFO_SERVICE)")
             
-            with BLOCK('if info["AGNOS_PROTOCOL_VERSION"] != AGNOS_PROTOCOL_VERSION'):
-                STMT('''raise agnos.WrongAgnosVersion("expected protocol '%s' found '%s'" % (AGNOS_PROTOCOL_VERSION, info["AGNOS_PROTOCOL_VERSION"]))''')
-            with BLOCK('if info["SERVICE_NAME"] != "{0}"', service.name):
-                STMT('''raise agnos.WrongServiceName("expected service '{0}', found '%s'" % (info["SERVICE_NAME"],))''', service.name)
+            with BLOCK('if meta_info["AGNOS_PROTOCOL_VERSION"] != AGNOS_PROTOCOL_VERSION'):
+                STMT('''raise agnos.WrongAgnosVersion("expected protocol '%s' found '%s'" % '''
+                    '''(AGNOS_PROTOCOL_VERSION, meta_info["AGNOS_PROTOCOL_VERSION"]))''')
+            with BLOCK('if service_info["SERVICE_NAME"] != "{0}"', service.name):
+                STMT('''raise agnos.WrongServiceName("expected service '{0}', found '%s'" % '''
+                    '''(service_info["SERVICE_NAME"],))''', service.name)
             with BLOCK('if CLIENT_VERSION'):
-                STMT('supported_versions = info.get("SUPPORTED_VERSIONS", None)')
+                STMT('supported_versions = service_info.get("SUPPORTED_VERSIONS", None)')
                 with BLOCK('if not supported_versions or CLIENT_VERSION not in supported_versions'):
                     STMT('''raise agnos.IncompatibleServiceVersion("server does not support client version '%s'" % (CLIENT_VERSION,))''')
 

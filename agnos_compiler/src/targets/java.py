@@ -226,6 +226,7 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
         
+        self.emit_javadoc(service.doc, module)
         with BLOCK("public final class {0}", service.name):
             STMT('public static final String AGNOS_TOOLCHAIN_VERSION = "{0}"', compiler.AGNOS_TOOLCHAIN_VERSION)
             STMT('public static final String AGNOS_PROTOCOL_VERSION = "{0}"', compiler.AGNOS_PROTOCOL_VERSION)
@@ -281,6 +282,7 @@ class JavaTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
 
+        self.emit_javadoc(service.doc, module)
         with BLOCK("public final class {0}", service.name):
             STMT('public static final String AGNOS_TOOLCHAIN_VERSION = "{0}"', compiler.AGNOS_TOOLCHAIN_VERSION)
             STMT('public static final String AGNOS_PROTOCOL_VERSION = "{0}"', compiler.AGNOS_PROTOCOL_VERSION)
@@ -364,11 +366,35 @@ class JavaTarget(TargetBase):
         for tp in service.all_types:
             if isinstance(tp, (compiler.TList, compiler.TSet, compiler.TMap)):
                 STMT("_{0} = {1}", tp.stringify(), self._generate_templated_packer_for_type(tp, proxy = proxy))
-    
+
+    def emit_javadoc(self, text, module):
+        if "doc" not in self.options:
+            return
+        if isinstance(text, str):
+            text = [text]
+        text = "\n".join(text)
+        text = text.strip()
+        if not text:
+            return
+        module.stmt("/**", suffix = "")
+        for line in text.splitlines():
+            module.stmt(" * {0}", line.strip(), suffix = "")
+        module.stmt(" */", suffix = "")
+
+    def emit_func_javadoc(self, func, module):
+        chunks = [func.doc]
+        if func.doc:
+            chunks.append("")
+        for arg in func.args:
+            chunks.append("@param %s \t%s" % (arg.name, arg.doc)) 
+        self.emit_javadoc(chunks, module)
+        
     def generate_enum(self, module, enum):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
+        
+        self.emit_javadoc(enum.doc, module)
         with BLOCK("public enum {0}", enum.name):
             for mem in enum.members[:-1]:
                 STMT("{0} ({1})", mem.name, mem.value, suffix = ",")
@@ -400,8 +426,11 @@ class JavaTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
         SEP()
+        
+        self.emit_javadoc(rec.doc, module)
         with BLOCK("public static class {0}", rec.name):
             for mem in rec.members:
+                self.emit_javadoc(mem.doc, module)
                 STMT("public {0} {1}", type_to_java(mem.type, proxy = proxy), mem.name)
             SEP()
             with BLOCK("public {0}()", rec.name):
@@ -428,8 +457,11 @@ class JavaTarget(TargetBase):
         else:
             extends = "PackedException"
         SEP()
+        
+        self.emit_javadoc(rec.doc, module)
         with BLOCK("public static class {0} extends {1}", rec.name, extends):
             for mem in rec.local_members:
+                self.emit_javadoc(mem.doc, module)
                 STMT("public {0} {1}", type_to_java(mem.type, proxy = proxy), mem.name)
             SEP()
             with BLOCK("public {0}()", rec.name):
@@ -483,13 +515,16 @@ class JavaTarget(TargetBase):
             extends = " extends " + ", ".join("I%s" % (c.name,) for c in cls.extends)
         else:
             extends = ""
+        self.emit_javadoc(cls.doc, module)
         with BLOCK("public interface I{0}{1}", cls.name, extends):
             if cls.attrs:
                 DOC("attributes")
             for attr in cls.attrs:
                 if attr.get:
+                    self.emit_javadoc(["Getter for %s" % (attr.name,), attr.doc], module)
                     STMT("{0} get_{1}() throws Exception", type_to_java(attr.type), attr.name)
                 if attr.set:
+                    self.emit_javadoc(["Setter for %s" % (attr.name,), attr.doc], module)
                     STMT("void set_{0}({1} value) throws Exception", attr.name, 
                         type_to_java(attr.type))
             if cls.attrs:
@@ -499,6 +534,7 @@ class JavaTarget(TargetBase):
             for method in cls.methods:
                 args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) 
                     for arg in method.args)
+                self.emit_func_javadoc(method, module)
                 STMT("{0} {1}({2}) throws Exception", type_to_java(method.type), 
                     method.name, args)
 
@@ -530,43 +566,25 @@ class JavaTarget(TargetBase):
             with BLOCK("public String toString()"):
                 STMT('return super.toString() + "<" + _objref + ">"')
 
-    def emit_javadoc(self, text, module):
-        if isinstance(text, str):
-            text = [text]
-        text = "\n".join(text)
-        text = text.strip()
-        if not text:
-            return
-        module.stmt("/**", suffix = "")
-        for line in text.splitlines():
-            module.stmt(" * {0}", line.strip(), suffix = "")
-        module.stmt(" */", suffix = "")
-
-    def emit_func_javadoc(self, func, module):
-        chunks = [func.doc]
-        if func.doc:
-            chunks.append("")
-        for arg in func.args:
-            chunks.append(" @param %s     %s" % (arg.name, arg.doc)) 
-        self.emit_javadoc(chunks, module)
-    
     def generate_class_proxy(self, module, service, cls):
         BLOCK = module.block
         STMT = module.stmt
         SEP = module.sep
         DOC = module.doc
+        
+        self.emit_javadoc(cls.doc, module)
         with BLOCK("public static class {0}Proxy extends BaseProxy", cls.name):
             with BLOCK("protected {0}Proxy(Client client, Long objref, boolean owns_ref)", cls.name):
                 STMT("super(client, objref, owns_ref)")
             SEP()
             for attr in cls.all_attrs:
                 if attr.get:
-                    #self.emit_javadoc(["Getter for %s" % (attr.name,), attr.doc], module)
+                    self.emit_javadoc(["Getter for %s" % (attr.name,), attr.doc], module)
                     with BLOCK("public {0} get_{1}() throws Exception", 
                             type_to_java(attr.type, proxy = True), attr.name):
                         STMT("return _client._funcs.sync_{0}(this)", attr.getter.id)
                 if attr.set:
-                    #self.emit_javadoc(["Setter for %s" % (attr.name,), attr.doc], module)
+                    self.emit_javadoc(["Setter for %s" % (attr.name,), attr.doc], module)
                     with BLOCK("public void set_{0}({1} value) throws Exception", 
                             attr.name, type_to_java(attr.type, proxy = True)):
                         STMT("_client._funcs.sync_{0}(this, value)", attr.setter.id)
@@ -574,7 +592,7 @@ class JavaTarget(TargetBase):
             for method in cls.all_methods:
                 if not method.clientside:
                     continue
-                #self.emit_func_javadoc(method, module)
+                self.emit_func_javadoc(method, module)
                 args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) 
                     for arg in method.args)
                 with BLOCK("public {0} {1}({2}) throws Exception", 
@@ -606,6 +624,7 @@ class JavaTarget(TargetBase):
                 if isinstance(member, compiler.Func):
                     args = ", ".join("%s %s" % (type_to_java(arg.type), arg.name) 
                         for arg in member.args)
+                    self.emit_func_javadoc(member, module)
                     STMT("{0} {1}({2}) throws Exception", type_to_java(member.type),
                         member.fullname, args)
 
@@ -677,9 +696,20 @@ class JavaTarget(TargetBase):
                 has_annotations = True
                 break
         
-        with BLOCK("protected void processGetServiceInfo(HeteroMap map)"):
+        with BLOCK("protected void processGetMetaInfo(HeteroMap map)"):
             STMT('map.put("AGNOS_PROTOCOL_VERSION", AGNOS_PROTOCOL_VERSION)')
             STMT('map.put("AGNOS_TOOLCHAIN_VERSION", AGNOS_TOOLCHAIN_VERSION)')
+            STMT('map.put("COMPRESSION_SUPPORTED", true)')
+            STMT('map.put("IMPLEMENTATION", "libagnos-java")')
+            STMT('HashMap<String, Integer> codes = new HashMap<String, Integer>()')
+            STMT('codes.put("INFO_META", constants.INFO_META)')
+            STMT('codes.put("INFO_SERVICE", constants.INFO_SERVICE)')
+            STMT('codes.put("INFO_FUNCTIONS", constants.INFO_FUNCTIONS)')
+            STMT('codes.put("INFO_REFLECTION", constants.INFO_REFLECTION)')
+            STMT('map.put("INFO_CODES", codes, Builtin.mapOfStrStr)')
+        SEP()
+        ##
+        with BLOCK("protected void processGetServiceInfo(HeteroMap map)"):
             STMT('map.put("IDL_MAGIC", IDL_MAGIC)')
             STMT('map.put("SERVICE_NAME", "{0}")', service.name)
             STMT('map.put("SUPPORTED_VERSIONS", SUPPORTED_VERSIONS, Builtin.listOfStr)')
@@ -1097,16 +1127,18 @@ class JavaTarget(TargetBase):
         
         SEP()
         with BLOCK("public void assertServiceCompatibility() throws IOException, ProtocolException, PackedException, GenericException"):
-            STMT("HeteroMap info = getServiceInfo(constants.INFO_SERVICE)")
-            STMT('String agnos_protocol_version = (String)info.get("AGNOS_PROTOCOL_VERSION")')
-            STMT('String service_name = (String)info.get("SERVICE_NAME")')
+            STMT("HeteroMap meta_info = getServiceInfo(constants.INFO_META)")
+            STMT("HeteroMap service_info = getServiceInfo(constants.INFO_SERVICE)")
+            
+            STMT('String agnos_protocol_version = (String)meta_info.get("AGNOS_PROTOCOL_VERSION")')
+            STMT('String service_name = (String)service_info.get("SERVICE_NAME")')
             
             with BLOCK('if (!agnos_protocol_version.equals(AGNOS_PROTOCOL_VERSION))'):
                 STMT('''throw new WrongAgnosVersion("expected protocol '" + AGNOS_PROTOCOL_VERSION + "', found '" + agnos_protocol_version + "'")''')
             with BLOCK('if (!service_name.equals("{0}"))', service.name):
                 STMT('''throw new WrongServiceName("expected service '{0}', found '" + service_name + "'")''', service.name)
             if service.clientversion:
-                STMT('List<String> supported_versions = (List<String>)info.get("SUPPORTED_VERSIONS")')
+                STMT('List<String> supported_versions = (List<String>)service_info.get("SUPPORTED_VERSIONS")')
                 with BLOCK('if (supported_versions == null || !supported_versions.contains(CLIENT_VERSION))'):
                     STMT('''throw new IncompatibleServiceVersion("server does not support client version '" + CLIENT_VERSION + "'")''')
     
@@ -1150,7 +1182,8 @@ class JavaTarget(TargetBase):
                 continue
             args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) for arg in func.args)
             callargs = ", ".join(arg.name for arg in func.args)
-            #self.emit_func_javadoc(func, module)
+            
+            self.emit_func_javadoc(func, module)
             with BLOCK("public {0} {1}({2}) throws Exception", 
                     type_to_java(func.type, proxy = True), func.name, args):
                 if func.type == compiler.t_void:
