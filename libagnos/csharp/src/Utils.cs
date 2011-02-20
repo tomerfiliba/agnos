@@ -24,6 +24,11 @@ using System.Threading;
 
 namespace Agnos.Utils
 {
+    /// <summary>
+    /// A utility class that implements a reentrant lock (that may be locked 
+    /// multiple times by the same thread), as well as the 
+    /// IsHeldByCurrentThread() query
+    /// </summary>
     public sealed class ReentrantLock
     {
         private volatile Thread owner;
@@ -35,6 +40,10 @@ namespace Agnos.Utils
             count = 0;
         }
         
+        /// <summary>
+        /// acquires the lock. the lock must be released the same number 
+        /// of times it's been locked
+        /// </summary>
         public void Acquire()
         {
             Monitor.Enter(this);
@@ -42,6 +51,9 @@ namespace Agnos.Utils
             count += 1;
         }
 
+        /// <summary>
+        /// releases the lock (must be called one for every Acquire())
+        /// </summary>
         public void Release()
         {
     		count -= 1;
@@ -55,20 +67,37 @@ namespace Agnos.Utils
             Monitor.Exit(this);
         }
 
+        /// <summary>
+        /// tests whether the lock is held by the current (calling) thread
+        /// </summary>
+        /// <returns>true if the current thread holds the lock, 
+        /// false otherwise</returns>
         public bool IsHeldByCurrentThread()
         {
             return owner == Thread.CurrentThread;
         }
     }
     
+    /// <summary>
+    /// implements a bounded (fixed length) input stream. when closed,
+    /// the stream will skip all the unread data
+    /// </summary>
     public sealed class BoundInputStream : Stream
     {
-    
     	private int remaining_length;
     	private Stream stream;
     	private bool skip_underlying;
     	private bool close_underlying;
     	
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="stream">the underlying stream</param>
+        /// <param name="length">the length of the substream</param>
+        /// <param name="skip_underlying">whether to skip all unread data 
+        /// when closed</param>
+        /// <param name="close_underlying">whether to close the underlying 
+        /// stream when this stream is closed</param>
     	public BoundInputStream(Stream stream, int length, bool skip_underlying, bool close_underlying)
     	{
     		this.stream = stream;
@@ -77,6 +106,9 @@ namespace Agnos.Utils
     		this.close_underlying = close_underlying;
     	}
 
+        /// <summary>
+        /// closes the stream
+        /// </summary>
     	public override void Close() 
     	{
     		if (stream == null) {
@@ -91,6 +123,9 @@ namespace Agnos.Utils
     		stream = null;
     	}
     	
+        /// <summary>
+        /// returns the number of available bytes
+        /// </summary>
     	public int Available
     	{
     		get {
@@ -98,6 +133,10 @@ namespace Agnos.Utils
     		}
     	}
     	
+        /// <summary>
+        /// see Stream.Read for reference. will not read passed the 
+        /// predetermined length
+        /// </summary>
     	public override int Read(byte[] data, int offset, int count)
     	{
     		if (count < 0) {
@@ -114,6 +153,12 @@ namespace Agnos.Utils
     		return actual;
     	}
     	
+        /// <summary>
+        /// skips `count` bytes
+        /// </summary>
+        /// <param name="count">the number of bytes to skip. if negative, skip 
+        /// all the way to the end of stream</param>
+        /// <returns>the actual number of bytes skipped</returns>
     	public int Skip(int count)
     	{
     		byte[] tmp = new byte[16 * 1024];
@@ -137,45 +182,76 @@ namespace Agnos.Utils
 		//
     	// Stream interface
     	//
+        /// <summary>
+        /// Not supported
+        /// </summary>
 		public override void Write (byte[] buffer, int offset, int count)
 		{
-			throw new IOException ("not implemented");
+            throw new NotSupportedException("not supported");
 		}
-		public override bool CanRead {
+        /// <summary>
+        /// Read supported
+        /// </summary>
+        public override bool CanRead
+        {
 			get { return true; }
 		}
-		public override bool CanSeek {
+        /// <summary>
+        /// Cannot seek
+        /// </summary>
+        public override bool CanSeek
+        {
 			get { return false; }
 		}
-		public override bool CanWrite {
+        /// <summary>
+        /// Cannot write
+        /// </summary>
+        public override bool CanWrite
+        {
 			get { return false; }
 		}
-		public override long Length {
+        /// <summary>
+        /// Not supported
+        /// </summary>
+        public override long Length
+        {
 			get {
-				throw new IOException ("not implemented");
-			}
+                throw new NotSupportedException("not supported");
+            }
 		}
-		public override long Position {
+        /// <summary>
+        /// Not supported
+        /// </summary>
+        public override long Position
+        {
 			get {
-				throw new IOException ("not implemented");
-			}
+                throw new NotSupportedException("not supported");
+            }
 			set {
-				throw new IOException ("not implemented");
-			}
+                throw new NotSupportedException("not supported");
+            }
 		}
-		public override void SetLength (long value)
+        /// <summary>
+        /// Not supported
+        /// </summary>
+        public override void SetLength(long value)
 		{
-			throw new IOException ("not implemented");
-		}
-		public override long Seek (long offset, SeekOrigin origin)
+            throw new NotSupportedException("not supported");
+        }
+        /// <summary>
+        /// Not supported
+        /// </summary>
+        public override long Seek(long offset, SeekOrigin origin)
 		{
-			throw new IOException ("not implemented");
-		}
-		public override void Flush ()
+            throw new NotSupportedException("not supported");
+        }
+        /// <summary>
+        /// Not supported
+        /// </summary>
+        public override void Flush()
 		{
-			throw new IOException ("not implemented");
-		}
-
+            throw new NotSupportedException("not supported");
+        }
     }
 
 

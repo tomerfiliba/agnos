@@ -21,6 +21,7 @@
 package agnos.protocol;
 
 import java.io.IOException;
+import java.io.Closeable;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,7 +37,7 @@ import agnos.util.HeteroMap;
  * 
  * @author Tomer Filiba
  */
-public final class ClientUtils {
+public final class ClientUtils implements Closeable {
 	protected enum ReplySlotType {
 		SLOT_EMPTY(false), 
 		SLOT_DISCARDED(false),

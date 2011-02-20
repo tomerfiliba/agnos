@@ -100,7 +100,7 @@ namespace Agnos
 			BaseProcessor Create(ITransport transport);
 		}
 		
-		public abstract class BaseProcessor : Packers.ISerializer
+		public abstract class BaseProcessor : Packers.ISerializer, IDisposable
 		{
 			protected struct Cell
 			{
@@ -136,7 +136,12 @@ namespace Agnos
 				idGenerator = new ObjectIDGenerator ();
 				cells = new Dictionary<long, Cell> ();
 			}
-			
+
+            ~BaseProcessor()
+            {
+                Close();
+            }
+
 			public long store (Object obj)
 			{
 				if (obj == null) {
@@ -174,6 +179,21 @@ namespace Agnos
 					}
 				}
 			}
+
+            public void Dispose()
+            {
+                Close();
+                GC.SuppressFinalize(this);
+            }
+
+            public void Close()
+            {
+                if (transport != null)
+                {
+                    transport.Close();
+                    transport = null;
+                }
+            }
 
 			protected void incref (long id)
 			{

@@ -28,7 +28,7 @@ import java.io.*;
  * @author Tomer Filiba
  * 
  */
-public interface ITransport {
+public interface ITransport extends Closeable {
 	/**
 	 * closes the transport (including all the underlying operating-system
 	 * resources)

@@ -21,12 +21,18 @@
 package agnos.protocol;
 
 import java.io.IOException;
+import java.io.Closeable;
 
 import agnos.util.HeteroMap;
 
-public class BaseClient
+public class BaseClient implements Closeable
 {
 	public ClientUtils _utils;
+	
+	public void close() throws IOException
+	{
+		_utils.close();
+	}
 
 	public HeteroMap getServiceInfo(int code) throws IOException,
 			ProtocolException, PackedException, GenericException

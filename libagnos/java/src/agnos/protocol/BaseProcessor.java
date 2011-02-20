@@ -21,6 +21,7 @@
 package agnos.protocol;
 
 import java.io.IOException;
+import java.io.Closeable;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.HashMap;
@@ -32,7 +33,7 @@ import agnos.transports.ITransport;
 import agnos.util.HeteroMap;
 import agnos.util.ObjectIDGenerator;
 
-public abstract class BaseProcessor implements ISerializer {
+public abstract class BaseProcessor implements ISerializer, Closeable {
 	protected static final class Cell {
 		public int refcount;
 		public final Object obj;

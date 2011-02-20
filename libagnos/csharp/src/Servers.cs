@@ -73,7 +73,7 @@ namespace Agnos.Servers
             }
             finally 
 			{
-                processor.transport.Close();
+                processor.Close();
 			}
         }
     }

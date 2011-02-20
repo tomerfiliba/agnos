@@ -20,6 +20,7 @@
 
 package agnos.transportFactories;
 
+import java.io.Closeable
 import java.io.IOException;
 import agnos.transports.ITransport;
 
@@ -28,7 +29,7 @@ import agnos.transports.ITransport;
  * 
  * @author Tomer Filiba
  */
-public interface ITransportFactory {
+public interface ITransportFactory extends Closeable {
 	/**
 	 * closes the transport factory and releases all related system resources
 	 */

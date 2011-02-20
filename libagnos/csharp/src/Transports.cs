@@ -42,26 +42,120 @@ namespace Agnos.Transports
 		}
 	}
 
+    /// <summary>
+    /// the ITransport interface defines
+    /// </summary>
 	public interface ITransport : IDisposable
 	{
-		void Close ();
+        /// <summary>
+        /// closes the transport and releases any system resources 
+        /// associated with it
+        /// </summary>
+        void Close ();
+        
+        /// <summary>
+        /// returns a Stream-view of this transport, that can be used 
+        /// for reading
+        /// </summary>
+        /// <returns>Stream</returns>
 		Stream GetInputStream ();
-		Stream GetOutputStream ();
+        
+        /// <summary>
+        /// returns a Stream-view of this transport, that can be used 
+        /// for writing
+        /// </summary>
+        /// <returns>Stream</returns>
+        Stream GetOutputStream();
 
+        /// <summary>
+        /// tests whether compression has been enabled on this transport
+        /// </summary>
+        /// <returns>whether compression is enabled on this transport</returns>
 		bool IsCompressionEnabled ();
+        
+        /// <summary>
+        /// attempts to enable compression on this transport. note that not
+        /// all transports support compression, and the function will return
+        /// a boolean indicating whether compression has been successfully
+        /// enabled. initially, compression is disabled.
+        /// 
+        /// note that some implementations of libagnos may not support 
+        /// compression, so before attempting to enable compression, be sure 
+        /// that the remote side can handle compression.
+        /// </summary>
+        /// <returns>whether compression has been enabled on this transport</returns>
 		bool EnableCompression ();
+        
+        /// <summary>
+        /// disables the use of compression on this transport
+        /// </summary>
 		void DisableCompression ();
 
+        //
 		// read interface
+        //
+
+        /// <summary>
+        /// begins a read transaction. only a single thread can hold an on-going 
+        /// read transaction; if some thread has an on-going read transaction,
+        /// any other thread calling this method will block.
+        /// this method will block until a read transaction is received.
+        /// </summary>
+        /// <returns>transaction sequence number</returns>
 		int BeginRead ();
+        
+        /// <summary>
+        /// reads up to `len` bytes from the stream
+        /// </summary>
+        /// <param name="data">data (output) array</param>
+        /// <param name="offset">the offset into the data array</param>
+        /// <param name="len">the maximal number of bytes to read</param>
+        /// <returns>the actual number of bytes read</returns>
 		int Read (byte[] data, int offset, int len);
+        
+        /// <summary>
+        /// finalizes the active read transaction. 
+        /// </summary>
 		void EndRead ();
 
+        //
 		// write interface
+        //
+        
+        /// <summary>
+        /// begins a write transaction. only a single thread can hold the 
+        /// transaction at any point of time; if some thread has an on-going
+        /// transaction, other threads calling this method will block.
+        /// note that EndWrite() and CancelWrite() must be called to finalize the
+        /// active transaction.
+        /// </summary>
+        /// <param name="seq"></param>
 		void BeginWrite (int seq);
+        
+        /// <summary>
+        /// writes the given data to the active write transaction. this method
+        /// guarantees that all of the data will be written.
+        /// </summary>
+        /// <param name="data">data (input) array</param>
+        /// <param name="offset">the offset into the data array</param>
+        /// <param name="len">the number of bytes to write</param>
 		void Write (byte[] data, int offset, int len);
+        
+        /// <summary>
+        /// restarts the active write transaction (a rollback, discards all 
+        /// the data written so far)
+        /// </summary>
 		void RestartWrite ();
+        
+        /// <summary>
+        /// finalizes the active transaction (commits all the data written so far)
+        /// </summary>
 		void EndWrite ();
+        
+        /// <summary>
+        /// cancels the active write transaction (nothing will be written to the 
+        /// stream)
+        /// </summary>
 		void CancelWrite ();
 	}
 
@@ -136,7 +230,10 @@ namespace Agnos.Transports
 		}
 	}
 
-
+    /// <summary>
+    /// implements the common logic that is shared between (virtually) 
+    /// all concrete transports
+    /// </summary>
 	public abstract class BaseTransport : ITransport
 	{
 		protected const int INITIAL_BUFFER_SIZE = 128 * 1024;
@@ -212,6 +309,13 @@ namespace Agnos.Transports
 			compressionThreshold = -1;
 		}
 
+        /// <summary>
+        /// returns the compression threshold (packets larger than this threshold 
+        /// will be compressed).
+        /// this method is expected to be overriden by implementing classes
+        /// </summary>
+        /// <returns>the compression threshold; a negative number means 
+        /// compression is not supported</returns>
 		protected virtual int getCompressionThreshold ()
 		{
 			return -1;
@@ -468,7 +572,7 @@ namespace Agnos.Transports
 		}
 		public void Dispose ()
 		{
-			Close();
+			transport.Dispose();
 		}
 		public void Close ()
 		{
