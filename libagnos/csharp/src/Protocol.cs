@@ -401,6 +401,9 @@ namespace Agnos
 
 			public void Decref (long id)
 			{
+                if (transport == null) {
+                    return;
+                }
 				int seq = getSeq ();
 				transport.BeginWrite (seq);
 				try {
@@ -583,9 +586,25 @@ namespace Agnos
 			}
 		}
 
-		public class BaseClient
+		public class BaseClient : IDisposable
 		{
 			public ClientUtils _utils;
+
+            ~BaseClient()
+            {
+                Close();
+            }
+
+            public void Close()
+            {
+                _utils.Close();
+            }
+
+            public void Dispose()
+            {
+                Close();
+                GC.SuppressFinalize(this);
+            }
 			
 	        public HeteroMap GetServiceInfo(int code)
 	        {

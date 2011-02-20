@@ -11,12 +11,15 @@ public class myclient
 		foreach(string item in args) {
 			Console.WriteLine(item);
 		}
+
+        System.Threading.Thread.Sleep(2000);
 		
 		string host = args[0];
 		int port = int.Parse(args[1]);
 
-		FeatureTest.Client conn = FeatureTest.Client.ConnectSock(host, port, false);
-		test(conn);
+		using (FeatureTest.Client conn = FeatureTest.Client.ConnectSock(host, port, false)) {
+		    test(conn);
+        }
 	}
 
 	protected static void test(FeatureTest.Client conn)

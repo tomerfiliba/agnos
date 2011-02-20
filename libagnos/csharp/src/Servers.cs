@@ -66,7 +66,12 @@ namespace Agnos.Servers
             {
                 // finish on EOF
             }
-			finally 
+            catch (IOException)
+            {
+                // usually a "connection reset by peer" -- just clean up nicely,
+                // the connection is dead anyway
+            }
+            finally 
 			{
                 processor.transport.Close();
 			}

@@ -159,6 +159,11 @@ namespace Agnos.Transports
 		{
 		}
 
+        ~BaseTransport()
+        {
+            Close();
+        }
+
 		public BaseTransport (Stream inStream, Stream outStream)
 		{
 			this.inStream = inStream;
@@ -170,6 +175,7 @@ namespace Agnos.Transports
 		public void Dispose ()
 		{
 			Close();
+            GC.SuppressFinalize(this);
 		}
 
 		public virtual void Close ()
