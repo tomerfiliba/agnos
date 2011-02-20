@@ -45,7 +45,7 @@ namespace agnos
 			{
 				any res = unpack_any(transport);
 				DEBUG_LOG("res is " << res.type().name());
-				return any_cast<T>(unpack_any(transport));
+				return any_cast<T>(res);
 			}
 		};
 
@@ -70,6 +70,7 @@ namespace agnos
 			} \
 			void pack_any(const any& obj, ITransport& transport) const \
 			{ \
+				DEBUG_LOG( typeid(TYPE).name() << "::pack_any got " << obj.type().name() ); \
 				if (obj.type() == typeid(shared_ptr<data_type>)) { \
 					shared_ptr<data_type> tmp = any_cast< shared_ptr<data_type> >(obj); \
 					pack(*tmp, transport); \
@@ -373,6 +374,7 @@ namespace agnos
 			} \
 			void pack_any(const any& obj, ITransport& transport) const \
 			{ \
+				DEBUG_LOG("record packer impl " #TYPE "::pack_any got " << obj.type().name() ); \
 				if (obj.type() == typeid(shared_ptr<data_type>)) { \
 					shared_ptr<data_type> tmp = any_cast< shared_ptr<data_type> >(obj); \
 					pack(*tmp, transport); \
@@ -450,6 +452,7 @@ namespace agnos
 
 			void pack_any(const any& obj, ITransport& transport) const
 			{
+				DEBUG_LOG("ObjrefPacker::pack_any got " << obj.type().name() ); \
 				pack(any_cast<data_type>(obj), transport);
 			}
 

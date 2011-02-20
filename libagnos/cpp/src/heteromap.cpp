@@ -252,6 +252,7 @@ namespace agnos
 
 		void HeteroMapPacker::pack_any(const any& obj, ITransport& transport) const
 		{
+			DEBUG_LOG("HeteroMapPacker::pack_any got " << obj.type().name() );
 			if (obj.type() == typeid(shared_ptr<HeteroMap>)) {
 				shared_ptr<HeteroMap> tmp = any_cast< shared_ptr<HeteroMap> >(obj);
 				pack(*tmp, transport);

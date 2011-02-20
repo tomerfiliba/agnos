@@ -184,7 +184,7 @@ class CSharpTarget(TargetBase):
             SEP = module.sep
             DOC = module.doc
             
-            self.emit_doc(service.doc)
+            self.emit_doc(service.doc, module)
             STMT("using System")
             STMT("using System.IO")
             STMT("using System.Net")
@@ -454,7 +454,7 @@ class CSharpTarget(TargetBase):
         STMT = module.stmt
         SEP = module.sep
 
-        self.emit_doc(rec.doc)
+        self.emit_doc(rec.doc, module)
         with BLOCK("public class {0}", rec.name):
             for mem in rec.members:
                 self.emit_doc(mem.doc, module)
@@ -730,17 +730,17 @@ class CSharpTarget(TargetBase):
                 has_annotations = True
                 break
         
-        with BLOCK("protected void processGetMetaInfo(HeteroMap map)"):
+        with BLOCK("protected override void processGetMetaInfo(HeteroMap map)"):
             STMT('map["AGNOS_PROTOCOL_VERSION"] = AGNOS_PROTOCOL_VERSION')
             STMT('map["AGNOS_TOOLCHAIN_VERSION"] = AGNOS_TOOLCHAIN_VERSION')
-            STMT('map["COMPRESSION_SUPPORTED"] = true')
+            STMT('map.Add("COMPRESSION_SUPPORTED", true, Packers.Bool)')
             STMT('map["IMPLEMENTATION"] = "libagnos-csharp"')
             STMT('Dictionary<string, int> codes = new Dictionary<string, int>()')
-            STMT('codes["INFO_META"] = Protocol.INFO_META)')
-            STMT('codes["INFO_SERVICE"] = Protocol.INFO_SERVICE)')
-            STMT('codes["INFO_FUNCTIONS"] = Protocol.INFO_FUNCTIONS)')
-            STMT('codes["INFO_REFLECTION"] = Protocol.INFO_REFLECTION)')
-            STMT('map.Add("INFO_CODES", codes, Packers.mapOfStrStr)')
+            STMT('codes["INFO_META"] = Protocol.INFO_META')
+            STMT('codes["INFO_SERVICE"] = Protocol.INFO_SERVICE')
+            STMT('codes["INFO_FUNCTIONS"] = Protocol.INFO_FUNCTIONS')
+            STMT('codes["INFO_REFLECTION"] = Protocol.INFO_REFLECTION')
+            STMT('map.Add("INFO_CODES", codes, Packers.mapOfStrInt32)')
         SEP()
         ##
         with BLOCK("protected override void processGetServiceInfo(HeteroMap map)"):

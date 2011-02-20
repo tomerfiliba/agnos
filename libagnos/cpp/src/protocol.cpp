@@ -118,7 +118,7 @@ namespace agnos
 			}
 
 			Int8Packer::pack(REPLY_SUCCESS, *transport);
-			packers::builtin_heteromap_packer.pack(map, *transport);
+            packers::builtin_heteromap_packer.pack(map, *transport);
 		}
 
 		objref_t BaseProcessor::store(objref_t oid, any obj)

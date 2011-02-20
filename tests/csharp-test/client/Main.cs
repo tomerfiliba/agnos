@@ -12,7 +12,7 @@ public class myclient
 			Console.WriteLine(item);
 		}
 
-        System.Threading.Thread.Sleep(2000);
+        //System.Threading.Thread.Sleep(2000);
 		
 		string host = args[0];
 		int port = int.Parse(args[1]);

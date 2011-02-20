@@ -32,7 +32,7 @@ NOOP = NOOP()
 class TargetBase(object):
     LANGUAGE = None
     
-    def __init__(self, path, options):
+    def __init__(self, path, options = set()):
         self.path = path
         # make sure the path we're working on exists
         self.mkdir("")

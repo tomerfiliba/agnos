@@ -369,7 +369,7 @@ class PythonTarget(TargetBase):
                 STMT('codes["INFO_SERVICE"] = agnos.INFO_SERVICE')
                 STMT('codes["INFO_FUNCTIONS"] = agnos.INFO_FUNCTIONS')
                 STMT('codes["INFO_REFLECTION"] = agnos.INFO_REFLECTION')
-                STMT('info.add("INFO_CODES", packers.Str, codes, packers.map_of_str_str)')
+                STMT('info.add("INFO_CODES", packers.Str, codes, packers.map_of_str_int32)')
             SEP()
             #####
             with BLOCK("def process_get_service_info(self, info)"):

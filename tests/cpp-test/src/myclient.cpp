@@ -20,12 +20,12 @@ int main(int argc, const char * argv[])
 	SocketClient client(argv[1], argv[2]);
 	client.assert_service_compatibility();
 
-	PersonProxy NULL_PERSON_PROXY;
+	PersonProxy NO_ONE;
 
-	cout << "(1) " << typeid(NULL_PERSON_PROXY).name() << endl;
+	cout << "(1) " << typeid(NO_ONE).name() << endl;
 
-	PersonProxy eve = client.Person.init("eve", NULL_PERSON_PROXY, NULL_PERSON_PROXY);
-	PersonProxy adam = client.Person.init("adam", NULL_PERSON_PROXY, NULL_PERSON_PROXY);
+	PersonProxy eve = client.Person.init("eve", NO_ONE, NO_ONE);
+	PersonProxy adam = client.Person.init("adam", NO_ONE, NO_ONE);
 
 	cout << "(2) " << eve << endl;
 	cout << "(3) " << adam->get_name() << endl;
@@ -72,7 +72,6 @@ int main(int argc, const char * argv[])
 
     succ = true;
     try {
-		// division by zero does not throw in c++
 		adam->think(17, 0);
 	} catch (GenericException) {
 		// okay
@@ -81,9 +80,9 @@ int main(int argc, const char * argv[])
 
 	cout << "(10)" << endl;
 
-    /*if (succ) {
+    if (succ) {
         throw std::runtime_error("an exception should have been thrown!");
-    }*/
+    }
 
 	shared_ptr<HeteroMap> info = client.get_service_info(agnos::protocol::INFO_SERVICE);
 	if (info->get_as<string>("SERVICE_NAME") != "FeatureTest") {
@@ -92,22 +91,25 @@ int main(int argc, const char * argv[])
 
 	cout << "(11)" << endl;
 
-	/*info = client.get_service_info(agnos::protocol::INFO_FUNCTIONS);
+	info = client.get_service_info(agnos::protocol::INFO_FUNCTIONS);
 
 	cout << "(12)" << endl;
 
 	for (HeteroMap::const_iterator it = info->begin(); it != info->end(); it++) {
-		cout << it->first << endl;
-		//" = " << (any_cast< shared_ptr<HeteroMap> >(it->second))->get_as<string>("name") << endl;
-	}*/
-
-	info = client.get_service_info(agnos::protocol::INFO_META);
-	for (HeteroMap::const_iterator it = info->begin(); it != info->end(); it++) {
-		cout << it->first << " = " << any_cast<int>(it->second) << endl;
+		cout << it->first << " = ";
+		HeteroMap v = any_cast<HeteroMap>(it->second);
+		cout << " = " << v.get_as<string>("name") << endl;
 	}
 
-
 	cout << "(13)" << endl;
+
+	info = client.get_service_info(agnos::protocol::INFO_META);
+
+	for (HeteroMap::const_iterator it = info->begin(); it != info->end(); it++) {
+		cout << it->first << " = " << (it->second).type().name() << endl;;
+	}
+
+	cout << "(14)" << endl;
 
 	cout << "test passed!" << endl;
 

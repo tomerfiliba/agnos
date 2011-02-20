@@ -10,7 +10,7 @@ class TestCPP(TargetTest):
     def runTest(self):
         #self.run_agnosc("c++", "tests/features.xml", "tests/cpp-test/bindings")
         print "scons"
-        self.run_cmdline("scons", cwd = self.REL("tests/cpp-test"), redirect = False)
+        self.run_cmdline(["scons"], cwd = self.REL("tests/cpp-test"), redirect = False)
 
         print "./myserver -m lib"
         serverproc = self.spawn(["./myserver", "-m", "lib"], cwd = self.REL("tests/cpp-test"))

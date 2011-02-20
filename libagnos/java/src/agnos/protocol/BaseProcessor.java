@@ -214,6 +214,7 @@ public abstract class BaseProcessor implements ISerializer, Closeable {
 			processGetReflectionInfo(map);
 			break;
 		case constants.INFO_META:
+			// fall-through
 		default:
 			processGetMetaInfo(map);
 			break;

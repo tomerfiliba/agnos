@@ -237,6 +237,9 @@ class Person : public IPerson, public boost::enable_shared_from_this<Person>
 
 	double think(double a, double b)
 	{
+		if (b == 0) {
+			throw std::runtime_error("division by zero!");
+		}
 		return a / b;
 	}
 

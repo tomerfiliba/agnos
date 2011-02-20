@@ -48,8 +48,24 @@ namespace Agnos
         /// </summary>
 		public abstract class AbstractPacker
 		{
+            /// <summary>
+            /// packs the given object into the given transport
+            /// </summary>
+            /// <param name="obj">the object to pack (must be of appropriate type)</param>
+            /// <param name="transport">the transport to pack into</param>
 			public abstract void pack (object obj, ITransport transport);
+
+            /// <summary>
+            /// unpacks an object from the given transport
+            /// </summary>
+            /// <param name="transport">the transport to unpack from</param>
+            /// <returns>the unpacked object</returns>
 			public abstract object unpack (ITransport transport);
+
+            /// <summary>
+            /// returns the unique id of this packer
+            /// </summary>
+            /// <returns>the unique id of this packer</returns>
 			public abstract int getId ();
 
 			protected static void _write (ITransport transport, byte[] buf)

@@ -81,6 +81,7 @@ static inline int64_t _bswap_64(int64_t n)
 	} \
 	void CLS::pack_any(const any& obj, ITransport& transport) const \
 	{ \
+		DEBUG_LOG( #CLS "::pack_any got " << obj.type().name() ); \
 		if (obj.type() == typeid(shared_ptr<data_type>)) { \
 			shared_ptr<data_type> tmp = any_cast< shared_ptr<data_type> >(obj); \
 			pack(*tmp, transport); \
@@ -296,6 +297,7 @@ namespace agnos
 		{
 			int32_t size;
 			Int32Packer::unpack(size, transport);
+			DEBUG_LOG("BufferPacker::unpack; size = " << size);
 			obj.resize(size);
 			transport.read(const_cast<char*> (obj.data()), size);
 		}
@@ -370,8 +372,8 @@ namespace agnos
 		SetPacker<string, 828> set_of_string_packer(string_packer);
 
 		MapPacker<int32_t, int32_t, 850> map_of_int32_int32_packer(int32_packer, int32_packer);
-		MapPacker<int32_t, string, 851> map_of_int32_string_packer(string_packer, int32_packer);
-		MapPacker<string, int32_t, 852> map_of_string_int32_packer(int32_packer, string_packer);
+		MapPacker<int32_t, string, 851> map_of_int32_string_packer(int32_packer, string_packer);
+		MapPacker<string, int32_t, 852> map_of_string_int32_packer(string_packer, int32_packer);
 		MapPacker<string, string, 853> map_of_string_string_packer(string_packer, string_packer);
 
 	}

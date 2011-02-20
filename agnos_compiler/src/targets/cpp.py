@@ -622,11 +622,11 @@ class CPPTarget(TargetBase):
             STMT('map.put("COMPRESSION_SUPPORTED", string_packer, false, bool_packer)')
             STMT('map.put("IMPLEMENTATION", "libagnos-c++")')
             STMT('std::map<string, int> codes')
-            STMT('codes.put("INFO_META", INFO_META)')
-            STMT('codes.put("INFO_SERVICE", INFO_SERVICE)')
-            STMT('codes.put("INFO_FUNCTIONS", INFO_FUNCTIONS)')
-            STMT('codes.put("INFO_REFLECTION", INFO_REFLECTION)')
-            STMT('map.put("INFO_CODES", string_packer, codes, map_of_string_string_packer)')
+            STMT('codes["INFO_META"] = INFO_META')
+            STMT('codes["INFO_SERVICE"] = INFO_SERVICE')
+            STMT('codes["INFO_FUNCTIONS"] = INFO_FUNCTIONS')
+            STMT('codes["INFO_REFLECTION"] = INFO_REFLECTION')
+            STMT('map.put("INFO_CODES", string_packer, codes, map_of_string_int32_packer)')
         SEP()
         ##
         with BLOCK("void process_get_service_info(HeteroMap& map)"):
@@ -692,12 +692,12 @@ class CPPTarget(TargetBase):
             
             STMT('group = map.put_new_map("classes")')
             STMT("HeteroMap *cls_group = NULL, *attr_group = NULL, *meth_group = NULL, *a = NULL, *m = NULL")
-            STMT("vector<string> extends_list");
+            STMT("vector<string> extends_list")
 
             for cls in service.classes():
                 STMT('cls_group = group->put_new_map("{0}")', cls.name)
                 if cls.extends:
-                    STMT("extends_list.clear()");
+                    STMT("extends_list.clear()")
                     for cls2 in cls.extends:
                         STMT('extends_list.push_back("{0}")', cls2.name)
                     STMT('cls_group->put("extends", string_packer, extends_list, list_of_string_packer)')
@@ -776,7 +776,7 @@ class CPPTarget(TargetBase):
             STMT("any result")
             STMT("vector<any> args")
             STMT("any current")
-            STMT("int32_t funcid;")
+            STMT("int32_t funcid")
             STMT("{0}.unpack(funcid, *transport)", type_to_packer(compiler.t_int32))
             
             with BLOCK("try") if service.exceptions() else NOOP:
@@ -821,7 +821,7 @@ class CPPTarget(TargetBase):
                 invocation = "result = handler->%s(%s)" % (func.fullname, callargs)
         else:
             insttype = func.args[0].type
-            STMT("{0} inst", type_to_cpp(insttype));
+            STMT("{0} inst", type_to_cpp(insttype))
             STMT("{0}.unpack(inst, *transport)", type_to_packer(insttype))
             
             for arg in func.args[1:]:
@@ -1325,7 +1325,7 @@ class CPPTarget(TargetBase):
                 STMT("map_put(_utils.packed_exceptions_map, {0}, static_cast<IPacker*>(&{1}))", exc.id, type_to_packer(exc))
             SEP()
             with BLOCK("if (checked)"):
-                STMT("assert_service_compatibility()");
+                STMT("assert_service_compatibility()")
             SEP()
             STMT("}", suffix = "")
         SEP()
@@ -1389,18 +1389,24 @@ class CPPTarget(TargetBase):
         SEP = module.sep
         
         with BLOCK("void Client::assert_service_compatibility()"):
-            STMT("shared_ptr<HeteroMap> info = get_service_info(INFO_SERVICE)")
-            STMT('string agnos_protocol_version = info->get_as<string>("AGNOS_PROTOCOL_VERSION")')
-            STMT('string service_name = info->get_as<string>("SERVICE_NAME")')
+            STMT("shared_ptr<HeteroMap> meta_info = get_service_info(INFO_META)")
+            STMT("shared_ptr<HeteroMap> service_info = get_service_info(INFO_SERVICE)")
             
+            STMT('string agnos_protocol_version = meta_info->get_as<string>("AGNOS_PROTOCOL_VERSION")')
+            STMT('string service_name = service_info->get_as<string>("SERVICE_NAME")')
+
             with BLOCK('if (agnos_protocol_version != AGNOS_PROTOCOL_VERSION)'):
-                STMT('''THROW_FORMATTED(WrongAgnosVersion, "expected protocol " << AGNOS_PROTOCOL_VERSION << ", found " << agnos_protocol_version)''')
+                STMT('''THROW_FORMATTED(WrongAgnosVersion, "expected protocol " << AGNOS_PROTOCOL_VERSION '''
+                    '''<< ", found " << agnos_protocol_version)''')
+
             with BLOCK('if (service_name != "{0}")', service.name):
-                STMT('''THROW_FORMATTED(WrongServiceName, "expected service '{0}', found '" << service_name << "'")''', service.name)
+                STMT('''THROW_FORMATTED(WrongServiceName, "expected service '{0}', found '" << service_name << "'")''', 
+                    service.name)
+
             if service.clientversion:
                 STMT("bool found = false")
-                with BLOCK('if (info->contains("SUPPORTED_VERSIONS"))'):
-                    STMT('vector<string> supported_versions = info->get_as< vector<string> >("SUPPORTED_VERSIONS")')
+                with BLOCK('if (service_info->contains("SUPPORTED_VERSIONS"))'):
+                    STMT('vector<string> supported_versions = service_info->get_as< vector<string> >("SUPPORTED_VERSIONS")')
                     STMT("vector<string>::const_iterator it")
                     with BLOCK("for (it = supported_versions.begin(); it != supported_versions.end(); it++)"):
                         with BLOCK("if (*it == CLIENT_VERSION)"):

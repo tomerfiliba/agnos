@@ -699,14 +699,14 @@ class JavaTarget(TargetBase):
         with BLOCK("protected void processGetMetaInfo(HeteroMap map)"):
             STMT('map.put("AGNOS_PROTOCOL_VERSION", AGNOS_PROTOCOL_VERSION)')
             STMT('map.put("AGNOS_TOOLCHAIN_VERSION", AGNOS_TOOLCHAIN_VERSION)')
-            STMT('map.put("COMPRESSION_SUPPORTED", true)')
+            STMT('map.put("COMPRESSION_SUPPORTED", true, Builtin.Bool)')
             STMT('map.put("IMPLEMENTATION", "libagnos-java")')
             STMT('HashMap<String, Integer> codes = new HashMap<String, Integer>()')
             STMT('codes.put("INFO_META", constants.INFO_META)')
             STMT('codes.put("INFO_SERVICE", constants.INFO_SERVICE)')
             STMT('codes.put("INFO_FUNCTIONS", constants.INFO_FUNCTIONS)')
             STMT('codes.put("INFO_REFLECTION", constants.INFO_REFLECTION)')
-            STMT('map.put("INFO_CODES", codes, Builtin.mapOfStrStr)')
+            STMT('map.put("INFO_CODES", codes, Builtin.mapOfStrInt32)')
         SEP()
         ##
         with BLOCK("protected void processGetServiceInfo(HeteroMap map)"):
@@ -1133,8 +1133,9 @@ class JavaTarget(TargetBase):
             STMT('String agnos_protocol_version = (String)meta_info.get("AGNOS_PROTOCOL_VERSION")')
             STMT('String service_name = (String)service_info.get("SERVICE_NAME")')
             
-            with BLOCK('if (!agnos_protocol_version.equals(AGNOS_PROTOCOL_VERSION))'):
-                STMT('''throw new WrongAgnosVersion("expected protocol '" + AGNOS_PROTOCOL_VERSION + "', found '" + agnos_protocol_version + "'")''')
+            with BLOCK('if (!AGNOS_PROTOCOL_VERSION.equals(agnos_protocol_version))'):
+                STMT('''throw new WrongAgnosVersion("expected protocol '" + AGNOS_PROTOCOL_VERSION + '''
+                    '''"', found '" + agnos_protocol_version + "'")''')
             with BLOCK('if (!service_name.equals("{0}"))', service.name):
                 STMT('''throw new WrongServiceName("expected service '{0}', found '" + service_name + "'")''', service.name)
             if service.clientversion:
