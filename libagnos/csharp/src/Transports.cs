@@ -159,6 +159,9 @@ namespace Agnos.Transports
 		void CancelWrite ();
 	}
 
+	/// <summary>
+	/// an implementation of an input/output stream over a transport
+	/// </summary>
 	internal sealed class TransportStream : Stream
 	{
 		readonly private ITransport transport;
@@ -256,11 +259,6 @@ namespace Agnos.Transports
 		{
 		}
 
-        ~BaseTransport()
-        {
-            Close();
-        }
-
 		public BaseTransport (Stream inStream, Stream outStream)
 		{
 			this.inStream = inStream;
@@ -268,6 +266,11 @@ namespace Agnos.Transports
 			asInputStream = new TransportStream (this, false);
 			asOutputStream = new TransportStream (this, true);
 		}
+
+        ~BaseTransport()
+        {
+            Close();
+        }
 
 		public void Dispose ()
 		{
@@ -542,6 +545,9 @@ namespace Agnos.Transports
 		}
 	}
 
+	/// <summary>
+	/// implements a transport that wraps an underlying transport
+	/// </summary>
 	public abstract class WrappedTransport : ITransport
 	{
 		protected ITransport transport;
@@ -612,26 +618,38 @@ namespace Agnos.Transports
 		}
 	}
 
+	/// <summary>
+	/// an implementation of a transport over sockets.
+	/// example:
+	///     SocketTransport t = new SocketTransport("localhost", 12345)
+	/// </summary>
 	public class SocketTransport : BaseTransport
 	{
 		protected readonly Socket sock;
 		public const int DEFAULT_BUFSIZE = 16 * 1024;
 		public const int DEFAULT_COMPRESSION_THRESHOLD = 4 * 1024;
 
-		public SocketTransport (Socket sock) : base(new BufferedStream (new NetworkStream (sock, true), DEFAULT_BUFSIZE))
+		public SocketTransport (Socket sock) : 
+			base(new BufferedStream (new NetworkStream (sock, true), DEFAULT_BUFSIZE))
 		{
 			this.sock = sock;
 		}
 
+		public SocketTransport (String host, int port) : this(_connect (host, port))
+		{
+		}
+
+		public SocketTransport (IPAddress addr, int port) : this(_connect (addr, port))
+		{
+		}
+
+		//
+		
 		static internal Socket _connect (String host, int port)
 		{
 			Socket sock = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 			sock.Connect (host, port);
 			return sock;
-		}
-
-		public SocketTransport (String host, int port) : this(_connect (host, port))
-		{
 		}
 
 		static internal Socket _connect (IPAddress addr, int port)
@@ -640,12 +658,16 @@ namespace Agnos.Transports
 			sock.Connect (addr, port);
 			return sock;
 		}
-
-		public SocketTransport (IPAddress addr, int port) : this(_connect (addr, port))
-		{
-		}
 	}
 
+	/// <summary>
+	/// an implementation of a transport over SSL sockets.
+	/// example:
+	///     SslSocketTransport t = new SslSocketTransport("localhost", 12345)
+	///
+	/// in order to configure an SSL connection, create an SslStream and pass 
+	/// it to the constructor
+	/// </summary>
 	public class SslSocketTransport : BaseTransport
 	{
 		public const int DEFAULT_COMPRESSION_THRESHOLD = 4 * 1024;
@@ -668,12 +690,20 @@ namespace Agnos.Transports
 		{
 		}
 
-		public SslSocketTransport (Socket sock) : base(new BufferedStream (new SslStream (new NetworkStream (sock, true), false), SocketTransport.DEFAULT_BUFSIZE))
+		public SslSocketTransport (Socket sock) : 
+			base(new BufferedStream (new SslStream (new NetworkStream (sock, true), false), SocketTransport.DEFAULT_BUFSIZE))
 		{
 			this.sock = sock;
 		}
 	}
 
+	/// <summary>
+	/// a transport to a newly created process.
+	/// use one of the Connect() variants to spawn the server process and 
+	/// establish a connection to it. the server process is expected to operate
+	/// in library mode, and is thus expected to die when the connection is 
+	/// closed.
+	/// </summary>
 	public class ProcTransport : WrappedTransport
 	{
 		public readonly Process proc;

@@ -22,8 +22,13 @@ using System;
 using System.Collections.Generic;
 
 
-namespace Agnos
+namespace Agnos.Utils
 {
+	/// <summary>
+	/// A class that acts like a dictionary with weakref'ed keys, meaning,
+	/// the entry will be removed once its key is garbage-collected.
+	/// required by ObjectIDGenerator
+	/// </summary>
 	internal class WeakKeyDict<TKey, TValue>
 	{
 		private struct Pair
@@ -124,6 +129,9 @@ namespace Agnos
 		}
 	}
 
+	/// <summary>
+	/// a class that generates a unique identifier for every object
+	/// </summary>
 	internal sealed class ObjectIDGenerator {
         private readonly WeakKeyDict<Object, long> dict;
 		private long counter;

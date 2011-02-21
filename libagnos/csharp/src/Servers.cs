@@ -30,6 +30,11 @@ using Agnos.TransportFactories;
 
 namespace Agnos.Servers
 {	
+	/// <summary>
+	/// The base class of all Agnos servers. note that you're not required
+	/// to extend this class in order to be implement a server -- it's just
+	/// a place to store all of the common logic
+	/// </summary>
 	public abstract class BaseServer
 	{
 		protected Protocol.IProcessorFactory processorFactory;
@@ -51,9 +56,23 @@ namespace Agnos.Servers
 			}
 		}
 
-        protected abstract void serveClient(Protocol.BaseProcessor processor);
+		/// <summary>
+		/// implement this method to serve the client in whatever which way
+		/// is appropriate (blocking, threaded, forking, threadpool, ...)
+		/// </summary>
+		/// <param name="processor">
+		/// the processor instance that represents the client
+		/// </param>
+	    protected abstract void serveClient(Protocol.BaseProcessor processor);
 
-        protected static void handleClient(Protocol.BaseProcessor processor)
+		/// <summary>
+		/// the basic client handler -- calls processor.process in a loop, 
+		/// until the client disconnects
+		/// </summary>
+		/// <param name="processor">
+		/// the processor instance that represents the client
+		/// </param>
+	    protected static void handleClient(Protocol.BaseProcessor processor)
         {
             try
             {
@@ -78,6 +97,9 @@ namespace Agnos.Servers
         }
     }
 
+	/// <summary>
+	/// the SimpleServer can handle a single client at any point of time
+	/// </summary>
 	public class SimpleServer : BaseServer
 	{
 		public SimpleServer(Protocol.IProcessorFactory processorFactory, ITransportFactory transportFactory) :
@@ -91,6 +113,9 @@ namespace Agnos.Servers
 		}
 	}
 
+	/// <summary>
+	/// creates a thread-per-client to handle each client in parallel
+	/// </summary>
     public class ThreadedServer : BaseServer
     {
         //List<Thread> client_threads;
@@ -114,6 +139,12 @@ namespace Agnos.Servers
         }
     }
 
+	/// <summary>
+	/// the library-mode server -- opens an arbitrary socket, writes its 
+	/// details (host and port number) to stdout, and serves for a single
+	/// connection on that socket. when the connection is closed, the server
+	/// quits and the application will usually terminate
+	/// </summary>
     public class LibraryModeServer : BaseServer
     {
 		public LibraryModeServer(Protocol.IProcessorFactory processorFactory) : 
@@ -150,6 +181,11 @@ namespace Agnos.Servers
 		}
     }
 	
+	/// <summary>
+	/// command-line server. provides a common Main() function for the application
+	/// that parses command-line options and invokes the appropriate server, until
+	/// it quits
+	/// </summary>
 	public class CmdlineServer
 	{
 		protected Protocol.IProcessorFactory processorFactory;

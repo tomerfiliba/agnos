@@ -30,6 +30,9 @@ using Agnos.Transports;
 
 namespace Agnos
 {
+	/// <summary>
+	/// a base-class for exceptions that can be packed and sent over the wire
+	/// </summary>
 	public abstract class PackedException : Exception
 	{
 		public PackedException ()
@@ -37,6 +40,10 @@ namespace Agnos
 		}
 	}
 
+	/// <summary>
+	/// represents fatal protocol errors, which normally cause the connection
+	/// to be aborted
+	/// </summary>
 	public class ProtocolError : Exception
 	{
 		public ProtocolError (string message) : base(message) {}
@@ -57,6 +64,10 @@ namespace Agnos
 		public IncompatibleServiceVersion (string message) : base(message) {}
 	}
 	
+	/// <summary>
+	/// a wrapper for unknown exceptions that were sent over the wire (ones
+	/// that were not defined by the IDL, such as NullPointerException, etc.)
+	/// </summary>
 	public class GenericException : Exception
 	{
 		public string Traceback;
@@ -124,7 +135,7 @@ namespace Agnos
 			}
 
 			private Dictionary<long, Cell> cells;
-			private ObjectIDGenerator idGenerator;
+			private Agnos.Utils.ObjectIDGenerator idGenerator;
 			private int compacting_counter = 0;
 			private const int COMPACTING_THRESHOLD = 2000;
 			
@@ -133,7 +144,7 @@ namespace Agnos
 			public BaseProcessor (ITransport transport)
 			{
 				this.transport = transport;
-				idGenerator = new ObjectIDGenerator ();
+				idGenerator = new Agnos.Utils.ObjectIDGenerator ();
 				cells = new Dictionary<long, Cell> ();
 			}
 

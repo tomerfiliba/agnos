@@ -44,7 +44,8 @@ namespace Agnos
 		/////////////////////////////////////////////////////////////////////
 
         /// <summary>
-        /// abstract packer
+        /// abstract packer. a packer is basically a serializer for a certain 
+        /// type; it supports pack() and unpack()
         /// </summary>
 		public abstract class AbstractPacker
 		{

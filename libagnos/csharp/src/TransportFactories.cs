@@ -30,12 +30,32 @@ using Agnos.Transports;
 
 namespace Agnos.TransportFactories
 {
+	/// <summary>
+	/// a factory class for transports
+	/// </summary>
 	public interface ITransportFactory
 	{
-		Transports.ITransport Accept();
+		/// <summary>
+		/// waits (blocking) for an incoming connection and returns it as an
+		/// instance of ITransport
+		/// </summary>
+		/// <returns>
+		/// A <see cref="ITransport"/>
+		/// </returns>
+		ITransport Accept();
+		
+		/// <summary>
+		/// Closes the transport factory and releases all associated system
+		/// resources (e.g., the listener socket, etc.)
+		/// </summary>
 		void Close();
 	}
 
+
+	/// <summary>
+	/// A TransportFactory that waits for incoming TCP connections and 
+	/// returns SocketTransport instances
+	/// </summary>
 	public class SocketTransportFactory : ITransportFactory
 	{
 		internal TcpListener listener;
@@ -93,6 +113,9 @@ namespace Agnos.TransportFactories
 		}
 	}
 	
+	/// <summary>
+	/// SSL-enabled version of SocketTransportFactory
+	/// </summary>
 	public class SslSocketTransportFactory : SocketTransportFactory
 	{
 		RemoteCertificateValidationCallback certificateValidationCallback;

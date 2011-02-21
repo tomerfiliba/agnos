@@ -26,6 +26,17 @@ using System.Collections.Generic;
 
 namespace Agnos
 {
+	/// <summary>
+	/// an heterogeneous map. it is basically a regular Dictionary, but it 
+	/// associates with each entry a packer for the key and a packer for the 
+	/// value. for "simple types", for which a packer can be inferred, you may
+	/// use the 2-argument version of Add() or the [] operator, but for all
+	/// other types, you should use the 4-argument version of Add(), where you
+	/// specify the packers for the key and value.
+	///
+	/// note: this class implements IDictionary, so it can be used by third-party
+	/// code, but only for "simple types", for which a packer can be inferred
+	/// </summary>
 	public class HeteroMap : IDictionary
 	{
 		protected sealed class FieldInfo
@@ -174,6 +185,22 @@ namespace Agnos
 			return null;
 		}
 
+		/// <summary>
+		/// Adds the given given value (with the given value-packer) under the
+		/// given key (with the given key packer) 
+		/// </summary>
+		/// <param name="key">
+		/// The key (any object)
+		/// </param>
+		/// <param name="keypacker">
+		/// The packer for the key (an AbstractPacker)
+		/// </param>
+		/// <param name="value">
+		/// The value (any object)
+		/// </param>
+		/// <param name="valpacker">
+		/// The packer for the value (an AbstractPacker)
+		/// </param>
 		public void Add (Object key, Packers.AbstractPacker keypacker, Object value, Packers.AbstractPacker valpacker)
 		{
 			//System.Console.Error.WriteLine("Add: {0}, {1}, {2}, {3}", key, keypacker, value, valpacker);
@@ -190,23 +217,39 @@ namespace Agnos
 			data.Add (key, value);
 		}
 
+		/// <summary>
+		/// specialized version of Add
+		/// </summary>
 		public void Add (String key, String value)
 		{
 			Add (key, Packers.Str, value, Packers.Str);
 		}
+		/// <summary>
+		/// specialized version of Add
+		/// </summary>
 		public void Add (String key, int value)
 		{
 			Add (key, Packers.Str, value, Packers.Int32);
 		}
+		/// <summary>
+		/// specialized version of Add
+		/// </summary>
 		public void Add (int key, String value)
 		{
 			Add (key, Packers.Int32, value, Packers.Str);
 		}
+		/// <summary>
+		/// specialized version of Add
+		/// </summary>
 		public void Add (int key, int value)
 		{
 			Add (key, Packers.Int32, value, Packers.Int32);
 		}
 
+		/// <summary>
+		/// a Version of Add that implements IDictionary.Add. It attempts to 
+		/// infer the packers for the key and for the value
+		/// </summary>
 		public void Add (Object key, Object value)
 		{
 			Packers.AbstractPacker keypacker = getPackerForBuiltinType (key);
@@ -220,6 +263,10 @@ namespace Agnos
 			Add (key, keypacker, value, valpacker);
 		}
 
+		/// <summary>
+		/// specialized version of Add that attempts to infer the packer for 
+		/// the key, but the packer for the value must be provided
+		/// </summary>
 		public void Add (Object key, Object value, Packers.AbstractPacker valpacker)
 		{
 			Packers.AbstractPacker keypacker = getPackerForBuiltinType (key);
@@ -232,6 +279,17 @@ namespace Agnos
 			Add (key, keypacker, value, valpacker);
 		}
 
+		/// <summary>
+		/// Adds a new HeteroMap instance to this HeteroMap under the given key
+		/// This is a convenience function, used by the Agnos binding code,
+		/// but it's not expected to be useful to the general public.
+		/// </summary>
+		/// <param name="name">
+		/// The key
+		/// </param>
+		/// <returns>
+		/// a new HeteroMap instance
+		/// </returns>
 		public HeteroMap AddNewMap (String name)
 		{
 			HeteroMap hm = new HeteroMap ();
@@ -255,11 +313,17 @@ namespace Agnos
 			set { Add (key, value); }
 		}
 
+		/// <summary>
+		/// returns the key-packer associated with the given vey
+		/// </summary>
 		public Packers.AbstractPacker getKeyPacker (Object key)
 		{
 			return fields[key].keypacker;
 		}
 
+		/// <summary>
+		/// returns the value-packer associated with the given vey
+		/// </summary>
 		public Packers.AbstractPacker getValuePacker (Object key)
 		{
 			return fields[key].valpacker;
