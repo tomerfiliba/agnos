@@ -32,12 +32,24 @@ from contextlib import contextmanager
 from subprocess import Popen, PIPE
 from . import packers
 from .utils import RLock, BoundedStream, ZlibStream
+try:
+    from zlib import compress as zlib_compress
+except ImportError:
+    zlib_compress = None
 
 
 class TransportTimeout(IOError):
     pass
 
 class Transport(object):
+    """
+    a transport is a thread-safe, compression-aware, transaction-based, 
+    file-like object that supports up to a single ongoing write transaction 
+    and a single ongoing read transaction. it operates over two file-like 
+    objects (one for input and the other for output), which may be the same 
+    e.g., in the case of sockets.
+    """
+    
     def __init__(self, infile, outfile):
         self.infile = infile
         self.outfile = outfile
@@ -49,13 +61,25 @@ class Transport(object):
         self._rstream = None
     
     def is_compression_enabled(self):
+        """returns whether compression is enabled on this transport"""
         return self.compression_threshold > 0
     def enabled_compression(self):
-        self.compression_threshold = self._get_compression_threshold()
+        """
+        attempts to enable compression on this transport, and returns whether 
+        compression has been enabled. note that not all transport implementation
+        support compression, and not all implementations of libagnos support
+        compression. before calling this method, be sure to test that the other
+        party reports True under "COMPRESSION_SUPPOTED" in INFO_META.
+        """
+        self.compression_threshold = zlib_compress is not None and self._get_compression_threshold()
         return self.is_compression_enabled()
     def disable_compresion(self):
+        """disables compression on this transport"""
         self.compression_threshold = -1
     def _get_compression_threshold(self):
+        """returns the compression threshold to be used on this transport. 
+        packets larger than this threshold will be compressed. a negative value
+        means compression is not supported"""
         return -1
     
     def close(self):
@@ -67,6 +91,13 @@ class Transport(object):
             self.outfile = None
     
     def begin_read(self, timeout = None):
+        """
+        begins a read transaction. only a single thread can have an ongoing read
+        transaction. other threads calling this method will block until the 
+        ongoing transaction ends. this method will also block until enough
+        data is received to begin the transaction, unless timeout is specified.
+        be sure to call end_read when done.
+        """
         if self._rlock.is_held_by_current_thread():
             raise IOError("begin_read is not reentrant")
         self._rlock.acquire()
@@ -102,16 +133,22 @@ class Transport(object):
             raise IOError("thread must first call begin_read")
     
     def read(self, count):
+        """reads up to `count` bytes from the ongoing read transaction. 
+        begin_read() must have been called prior to this"""
         self._assert_rlock()
         if count > self._rstream.available():
             raise EOFError("request to read more than available")
         return self._rstream.read(count)
     
     def read_all(self):
+        """reads all the available data in the ongoing read transaction.
+        begin_read() must have been called prior to this"""
         self._assert_rlock()
         return self._rstream.read()
     
     def end_read(self):
+        """ends the ongoing read transaction. begin_read() must have been 
+        called prior to this. you must call this to finalize the transaction"""
         self._assert_rlock()
         if self._rstream is not None:
             self._rstream.close()
@@ -119,6 +156,11 @@ class Transport(object):
         self._rlock.release()
     
     def begin_write(self, seq):
+        """begins a write transaction. only a single thread can have an ongoing
+        write transaction. other threads calling this method will block until
+        the ongoing transaction ends. end_write() or cancel_write() must be
+        called to finalize the transaction.
+        """
         if self._wlock.is_held_by_current_thread():
             raise IOError("begin_write() is not reentrant")
         self._wlock.acquire()
@@ -130,14 +172,21 @@ class Transport(object):
             raise IOError("thread must first call begin_write()")
     
     def write(self, data):
+        """writes the given data to the transaction buffer (non-blocking).
+        begin_write must have been called prior to this"""
         self._assert_wlock()
         self._wbuffer.append(data)
     
     def restart_write(self):
+        """clears the transaction buffer (non-blocking), effectively restarting
+        the write transaction. begin_write must have been called prior to this"""
         self._assert_wlock()
         del self._wbuffer[:]
     
     def end_write(self):
+        """finalizes the transaction and flushes all the write buffer to the 
+        underlying stream. begin_write must have been called prior to this.
+        must be called to finalize the transaction"""
         self._assert_wlock()
         data = "".join(self._wbuffer)
         del self._wbuffer[:]
@@ -145,7 +194,7 @@ class Transport(object):
             packers.Int32.pack(self._wseq, self.outfile)
             if self.compression_threshold > 0 and len(data) > self.compression_threshold:
                 uncompressed_length = len(data)
-                data = data.encode("zlib")
+                data = zlib_compress(data)
             else:
                 uncompressed_length = 0
             packers.Int32.pack(len(data), self.outfile)
@@ -155,12 +204,17 @@ class Transport(object):
         self._wlock.release()
     
     def cancel_write(self):
+        """finalizes the transaction and WITHOUT writing anything to the 
+        underlying stream. allows one to cancel an ongoing write transaction. 
+        begin_write must have been called prior to this. do not call end_write
+        after canceling the transaction"""
         self._assert_wlock()
         del self._wbuffer[:]
         self._wlock.release()
     
     @contextmanager
     def reading(self, timeout = None):
+        """a convenience context that takes care of begin_read and end_read"""
         seq = self.begin_read(timeout)
         try:
             yield seq
@@ -169,6 +223,8 @@ class Transport(object):
 
     @contextmanager
     def writing(self, seq):
+        """a convenience context that takes care of begin_write and end_write.
+        will cancel the transaction in case of an exception"""
         self.begin_write(seq)
         try:
             yield
@@ -180,6 +236,7 @@ class Transport(object):
 
 
 class WrappedTransport(object):
+    """a transport that wraps an underlying transport object"""
     def __init__(self, transport):
         self.transport = transport
     def __repr__(self):
@@ -215,6 +272,8 @@ class WrappedTransport(object):
 
 
 class SocketFile(object):
+    """file-like wrapper for sockets"""
+    
     CHUNK = 16*1024
     def __init__(self, sock, read_buffer_size = 64*1024):
         self.sock = sock
@@ -278,6 +337,7 @@ class SocketFile(object):
 
 
 class SocketTransport(Transport):
+    """implementation of a socket-backed transport"""
     def __init__(self, sockfile):
         Transport.__init__(self, sockfile, sockfile)
     def __repr__(self):
@@ -296,6 +356,7 @@ class SocketTransport(Transport):
 
 
 class SslSocketTransport(Transport):
+    """implementation of an SSL socket-backed transport"""
     def __init__(self, sslsockfile):
         Transport.__init__(self, sslsockfile, sslsockfile)
     def __repr__(self):
@@ -316,6 +377,12 @@ class SslSocketTransport(Transport):
 
 
 class ProcTransport(WrappedTransport):
+    """an implementation of a process-backed transport. spawns a server (as a
+    child processor) and connects to it. the child process is expected to die
+    when the connection is closed. to create, use the from_executable() or
+    from_proc() factory methods.
+    """
+    
     def __init__(self, proc, transport):
         WrappedTransport.__init__(self, transport)
         self.proc = proc
@@ -323,6 +390,8 @@ class ProcTransport(WrappedTransport):
         return "<ProcTransport pid=%s (%s)>" % (self.proc.pid, "alive" if self.proc.poll() is None else "terminated")
     
     def close(self, grace_period = 0.7):
+        """closes the transport and kills the child process, should it not die
+        within the given grace period"""
         WrappedTransport.close(self)
         self.proc.send_signal(signal.SIGINT)
         tend = time.time() + grace_period
@@ -336,6 +405,8 @@ class ProcTransport(WrappedTransport):
     
     @classmethod
     def from_executable(cls, filename, args = ("-m", "lib")):
+        """spawn the given executable wit the given arguments. expected to be 
+        a library-mode Agnos server"""
         if isinstance(filename, str):
             cmdline = [filename]
         else:
@@ -346,6 +417,7 @@ class ProcTransport(WrappedTransport):
 
     @classmethod
     def from_proc(cls, proc):
+        """connect to a running subprocess.Popen instance"""
         if proc.poll() is not None:
             raise ValueError("process terminated with exit code %r" % (proc.poll(),))
         if proc.stdout.readline().strip() != "AGNOS":
@@ -362,13 +434,20 @@ class ProcTransport(WrappedTransport):
 #===============================================================================
 
 class TransportFactory(object):
+    """transport factory"""
+    
     def accept(self):
+        """accepts and returns a new Transport instance. blocks until one 
+        arrives"""
         raise NotImplementedError()
     def close(self):
+        """closes the transport factory (i.e., the listening socket)"""
         raise NotImplementedError()
 
 
 class SocketTransportFactory(TransportFactory):
+    """socket-backed transport factory"""
+    
     def __init__(self, port, host = "0.0.0.0", backlog = 10):
         self.sock = socket.socket()
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -382,6 +461,8 @@ class SocketTransportFactory(TransportFactory):
 
 
 class SslSocketTransportFactory(TransportFactory):
+    """SSL socket-backed transport factory"""
+
     def __init__(self, port, keyfile, certfile, host = "0.0.0.0", backlog = 10, **kwargs):
         self.sock = socket.socket()
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

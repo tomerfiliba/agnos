@@ -33,12 +33,17 @@ try:
 except NameError:
     basestring = str
 try:
-    import zlib
+    from zlib import decompressobj
 except ImportError:
-    zlib = None
+    def decompressobj():
+        raise ImportError("zlib is not supported")
 
 
 class RLock(object):
+    """
+    a version of threading.RLock that supports is_held_by_current_thread
+    """
+    
     def __init__(self):
         self._lock = threading.RLock()
         self._owner = None
@@ -65,6 +70,10 @@ class EnumError(Exception):
     pass
 
 class Enum(object):
+    """
+    an implementation of an enum for python. use create_enum
+    """
+    
     def __init__(self, name, value):
         self.name = name
         self.value = value
@@ -91,6 +100,7 @@ class Enum(object):
             raise EnumError("no member named %r" % (val,))
 
 def create_enum(name, members):
+    """creates an enum class with the given name and given members"""
     cls = type(name, (Enum,), dict(_BY_VALUE = {}))
     cls._idl_type = name
     for n, v in members.iteritems():
@@ -99,14 +109,19 @@ def create_enum(name, members):
         cls._BY_VALUE[v] = em
     return cls
 
-def make_method(cls):
-    def deco(func):
-        setattr(cls, func.__name__, func)
-    return deco
-
 MAX_INT32 = 2 ** 31
 
 class HeteroMap(object):
+    """
+    a heterogeneous map. basically same as a dict, but it also associates
+    with each entry a packer for the key and a packer for the value, allowing 
+    them to be serailized over the wire.
+    
+    when adding items using the [] operator (__setitem__), the HeteroMap 
+    attempts to infer the packers for the given key and value. if this fails, 
+    an exception is raised, and you will have to use the explicit add() method 
+    """
+    
     def __init__(self, _fields = None, **_kwargs):
         if _fields is None:
             self.fields = {}
@@ -119,12 +134,17 @@ class HeteroMap(object):
         return text.replace("\n", "\n  ")
     
     def new_map(self, name):
+        """creates a new HeteroMap, inserts it under the given key, and returns 
+        it. it's a utility method used by the generated binding code, and is not
+        expected to be useful for end users"""
         from . import packers
         map2 = HeteroMap()
         self.add(name, self._get_packer(name), map2, packers.BuiltinHeteroMapPacker)
         return map2
     
     def add(self, key, keypacker, val, valpacker):
+        """adds the given key-value pair (with the given key and value packer)
+        to the map. if the key already exists, it will be replaced"""
         if keypacker is None:
             raise TypeError("keypacker not given")
         if valpacker is None:
@@ -134,6 +154,7 @@ class HeteroMap(object):
     def clear(self):
         self.fields.clear()
     def copy(self):
+        """returns a copy of this map"""
         return HeteroMap(self.fields.copy())
     def get(self, key, default = None):
         return self.fields.get(key, (default,))[0]
@@ -245,6 +266,8 @@ StdoutSink = LogSink([sys.stdout])
 StderrSink = LogSink([sys.stderr])
 
 class Logger(object):
+    """lightweight, simple to use logger object"""
+    
     DATE_FORMAT = "%y-%m-%d"
     TIME_FORMAT = "%H:%M:%S"
     LINE_FORMAT = "[{time}|{level:<10}|{source:<15}] {text}"
@@ -290,13 +313,22 @@ StderrLogger = Logger(StderrSink)
 
 
 class BoundedStream(object):
+    """a fixed-length input stream (file-like object)"""
+    
     def __init__(self, stream, length, skip_underlying, close_underlying):
+        """
+        if skip_underlying is True, all the unread data in the underlying 
+        stream will be skipped when this stream is closed. 
+        if close_underlying is True, the underlying stream will be closed
+        when this stream is closed.
+        """ 
         self.stream = stream
         self.remaining_length = length
         self.skip_underlying = skip_underlying
         self.close_underlying = close_underlying
     
     def available(self):
+        """returns the number of remaining, unread bytes""" 
         return self.remaining_length
     
     def close(self):
@@ -309,6 +341,9 @@ class BoundedStream(object):
         self.stream = None
     
     def read(self, count = -1):
+        """reads up to `count` bytes from the underlying stream. if the end
+        of the stream is reached, less bytes will be read. on EOF, returns the
+        empty string. if count is negative, reads all the available data"""
         if self.remaining_length <= 0:
             return ""
         if count < 0 or count > self.remaining_length:
@@ -318,15 +353,21 @@ class BoundedStream(object):
         return data
     
     def skip(self, count):
+        """same as read(), only it does not return the buffer.
+        if count < 0, skips all the unread data"""
         self.read(count)
 
 
 class ZlibStream(object):
+    """
+    a version of encodings.zlib_codec.StreamReader that actually works
+    """
+    
     def __init__(self, stream, underlying_read_size = 1024):
         self.stream = stream
         self.underlying_read_size = underlying_read_size
         self.buffer = ""
-        self.decompressobj = zlib.decompressobj()
+        self.decompressobj = decompressobj()
     
     def close(self):
         self.stream.close()
