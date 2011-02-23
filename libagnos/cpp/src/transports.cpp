@@ -20,7 +20,10 @@
 
 #include <iostream>
 #include <sstream>
-#include <boost/iostreams/filtering_streambuf.hpp>
+#include <fstream>
+#include <boost/iostreams/filtering_stream.hpp>
+//#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/device/back_inserter.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
 #include <iomanip>
@@ -106,32 +109,31 @@ namespace agnos
 		}
 		*/
 
-		/*
 		static void zlib_compress(const std::vector<char>& data, std::vector<char>& compressed)
 		{
 		    boost::iostreams::filtering_streambuf<boost::iostreams::output> out;
 		    out.push(boost::iostreams::zlib_compressor());
 		    out.push(boost::iostreams::back_inserter(compressed));
-		    boost::iostreams::copy(boost::iostreams::array_source(data, data.size()), out);
+		    boost::iostreams::array_source src(&data[0], data.size());
+		    boost::iostreams::copy(src, out);
 		}
 
 		static void zlib_decompress(const std::vector<char>& data, std::vector<char>& uncompressed)
 		{
 		    boost::iostreams::filtering_streambuf<boost::iostreams::input> in;
 		    in.push(boost::iostreams::zlib_decompressor());
-		    //in.push(boost::iostreams::array_sink(data, data.size()));
-		    in.push(boost::make_iterator_range(data));
+		    boost::iostreams::array_source src(&data[0], data.size());
+		    in.push(src);
+		    //?in.push(boost::make_iterator_range(data));
 		    boost::iostreams::copy(in, boost::iostreams::back_inserter(uncompressed));
 		}
-		*/
 
 		//////////////////////////////////////////////////////////////////////
 		// SocketTransport
 		//////////////////////////////////////////////////////////////////////
 
 		SocketTransport::SocketTransport(const string& hostname, unsigned short port) :
-				wlock(), wbuf(), wseq(0),
-				rlock(), rseq(0), rpos(0), rlength(0), rcomplength(0)
+				wlock(), wbuf(), compbuf(), wseq(0), rlock(), instream()
 		{
 			// ugh! the port must be a string, or it silently (!!) fails
 			string portstr = convert_to_string(port);
@@ -143,8 +145,7 @@ namespace agnos
 		}
 
 		SocketTransport::SocketTransport(const string& hostname, const string& port) :
-				wlock(), wbuf(), wseq(0),
-				rlock(), rseq(0), rpos(0), rlength(0), rcomplength(0)
+				wlock(), wbuf(), wseq(0), rlock(), instream()
 		{
 			sockstream = shared_ptr<tcp::iostream>(new tcp::iostream(hostname, port.c_str()));
 			if (!sockstream->good()) {
@@ -165,8 +166,7 @@ namespace agnos
 
 		SocketTransport::SocketTransport(shared_ptr<tcp::iostream> sockstream) :
 				sockstream(sockstream),
-				wlock(), wbuf(), wseq(0),
-				rlock(), rseq(0), rpos(0), rlength(0), rcomplength(0)
+				wlock(), wbuf(), wseq(0), rlock(), instream()
 		{
 			_assert_good();
 			wbuf.reserve(DEFAULT_BUFFER_SIZE);
@@ -201,6 +201,23 @@ namespace agnos
 			sockstream.reset();
 		}
 
+		inline int32_t SocketTransport::_read_int32()
+		{
+			int32_t tmp;
+			sockstream->read((char*)&tmp, sizeof(tmp));
+			_assert_good();
+			DEBUG_LOG("R " << repr((const char*)&tmp, sizeof(tmp)));
+			return ntohl(tmp);
+		}
+
+		inline void SocketTransport::_write_int32(int32_t val)
+		{
+			int32_t tmp = htonl(val);
+			DEBUG_LOG("W " << repr((const char*)&tmp, sizeof(tmp)));
+			sockstream->write((const char*)&tmp, sizeof(tmp));
+			_assert_good();
+		}
+
 		int SocketTransport::begin_read()
 		{
 			if (rlock.is_held_by_current_thread()) {
@@ -210,35 +227,27 @@ namespace agnos
 			try {
 				_assert_good();
 
-				int32_t tmp;
+				int rseq = _read_int32();
+				DEBUG_LOG("rseq = " << rseq);
 
-				// seq
-				sockstream->read((char*)&tmp, sizeof(tmp));
-				_assert_good();
-				rseq = ntohl(tmp);
-				DEBUG_LOG("R " << repr((char*)&tmp, sizeof(tmp)) << " rseq = " << rseq);
+				int packet_length = _read_int32();
+				DEBUG_LOG("packet_length = " << rlength);
 
-				// packet length
-				sockstream->read((char*)&tmp, sizeof(tmp));
-				_assert_good();
-				rlength = ntohl(tmp);
-				DEBUG_LOG("R " << repr((char*)&tmp, sizeof(tmp)) << " rlength = " << rlength);
+				int uncompressed_length = _read_int32();
+				DEBUG_LOG("uncompressed_length = " << rcomplength);
 
-				// uncompressed length
-				sockstream->read((char*)&tmp, sizeof(tmp));
-				_assert_good();
-				rcomplength = ntohl(tmp);
-				DEBUG_LOG("R " << repr((char*)&tmp, sizeof(tmp)) << " rcomplength = " << rcomplength);
-
-				if (rcomplength > 0) {
+				if (uncompressed_length > 0) {
 					throw TransportError("cannot process compressed payload");
 				}
 
-				rpos = 0;
+				instream = shared_ptr<BoundInputStream<tcp::iostream> >(
+						new BoundInputStream<tcp::iostream>(sockstream, packet_length, true, false));
+
 				return rseq;
 			}
 			catch (std::exception &ex) {
 				rlock.unlock();
+				throw;
 			}
 		}
 
@@ -253,12 +262,7 @@ namespace agnos
 		{
 			_assert_began_read();
 			_assert_good();
-			if (rpos + size > rlength) {
-				THROW_FORMATTED(TransportError, "request to read more bytes (" << size << ") than available (" << rlength - rpos << ")");
-			}
-			sockstream->read(buf, size);
-			size_t actually_read = sockstream->gcount();
-			rpos += actually_read;
+			size_t actually_read = instream->read(buf, size);
 			DEBUG_LOG("R (" << size << ", " << actually_read << ") " << repr(buf, actually_read));
 			return actually_read;
 		}
@@ -267,8 +271,8 @@ namespace agnos
 		{
 			DEBUG_LOG("");
 			_assert_began_read();
-			_assert_good();
-			sockstream->ignore(rlength - rpos);
+			instream->close();
+			instream.reset();
 			rlock.unlock();
 		}
 
@@ -300,7 +304,7 @@ namespace agnos
 			wbuf.insert(wbuf.end(), buf, buf + size);
 		}
 
-		void SocketTransport::reset()
+		void SocketTransport::restart_write()
 		{
 			DEBUG_LOG("");
 			_assert_began_write();
@@ -315,25 +319,30 @@ namespace agnos
 			_assert_good();
 
 			if (wbuf.size() > 0) {
-				// seq
-				tmp = htonl(wseq);
-				DEBUG_LOG("W " << repr((const char*)&tmp, sizeof(tmp)));
-				sockstream->write((const char*)&tmp, sizeof(tmp));
+				if (wbuf.size() > compression_threshold) {
+					DEBUG_LOG("COMPRESSING!");
+					compbuf.clear();
+					compbuf.reserve(wbuf.size());
+					zlib_compress(wbuf, compbuf);
 
-				// packet length
-				tmp = htonl(wbuf.size());
-				DEBUG_LOG("W " << repr((const char*)&tmp, sizeof(tmp)));
-				sockstream->write((const char*)&tmp, sizeof(tmp));
+					_write_int32(wseq);            // seq
+					_write_int32(compbuf.size());  // packet length
+					_write_int32(wbuf.size());     // 0 means uncompressed
 
-				// uncompressed length
-				tmp = htonl(0);
-				DEBUG_LOG("W " << repr((const char*)&tmp, sizeof(tmp)));
-				sockstream->write((const char*)&tmp, sizeof(tmp));
+					DEBUG_LOG("W(" << compbuf.size() << ") " << repr(&compbuf[0], compbuf.size()));
+					sockstream->write(&compbuf[0], compbuf.size());
+					compbuf.clear();
+				}
+				else {
+					_write_int32(wseq);            // seq
+					_write_int32(wbuf.size());     // packet length
+					_write_int32(0);               // 0 means uncompressed
 
-				DEBUG_LOG("W(" << wbuf.size() << ") " << repr(&wbuf[0], wbuf.size()));
-				sockstream->write(&wbuf[0], wbuf.size());
-
+					DEBUG_LOG("W(" << wbuf.size() << ") " << repr(&wbuf[0], wbuf.size()));
+					sockstream->write(&wbuf[0], wbuf.size());
+				}
 				sockstream->flush();
+				_assert_good();
 				wbuf.clear();
 				wbuf.reserve(DEFAULT_BUFFER_SIZE);
 			}

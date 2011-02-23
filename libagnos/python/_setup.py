@@ -33,7 +33,7 @@ setup(name = 'agnos',
     url = 'http://agnos.sourceforge.net',
     license = 'Apache License 2.0',
     packages = ['agnos', 'agnos.restful'],
-    package_dir = {'agnos' : 'src'},
+    package_dir = {'' : 'src'},
     platforms = ["POSIX", "Windows"],
 )
 

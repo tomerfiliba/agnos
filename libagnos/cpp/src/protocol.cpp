@@ -191,11 +191,11 @@ namespace agnos
 				}
 			} catch (ProtocolError& exc) {
 				DEBUG_LOG("got a ProtocolError: " << exc.what());
-				transport->reset();
+				transport->restart_write();
 				send_protocol_error(exc);
 			} catch (GenericException& exc) {
 				DEBUG_LOG("got a GenericException: " << exc.what());
-				transport->reset();
+				transport->restart_write();
 				send_generic_exception(exc);
 			} catch (std::exception& exc) {
 				DEBUG_LOG("got an unknown exception: " << exc.what());

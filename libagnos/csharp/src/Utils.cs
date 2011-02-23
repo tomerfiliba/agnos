@@ -162,7 +162,7 @@ namespace Agnos.Utils
     	public int Skip(int count)
     	{
     		byte[] tmp = new byte[16 * 1024];
-    		if (count < 0) {
+    		if (count < 0 || count > remaining_length) {
     			count = remaining_length;
     		}
     		int total_skipped = 0;
