@@ -66,6 +66,65 @@ namespace agnos
 			return stream;
 		}
 
+		/*
+		http://lists.boost.org/boost-users/att-48158/IoStreams.cpp
+
+
+		void gzipDeCompress(const string& compressed, string& sink)
+		{
+		#ifdef WONT_WORK
+		   boost::iostreams::filtering_ostream decompressingStream;
+		   decompressingStream.push(boost::iostreams::gzip_decompressor());
+		   decompressingStream.push(boost::iostreams::back_inserter(sink));
+
+		   decompressingStream << compressed;
+		#else
+		   boost::iostreams::filtering_istream decompressingStream;
+		   decompressingStream.push(boost::iostreams::gzip_decompressor());
+		   decompressingStream.push(boost::make_iterator_range(compressed));
+
+		   boost::iostreams::copy(decompressingStream, boost::iostreams::back_inserter(sink));
+		#endif
+		}
+
+		void zlibCompress(const string& source, string& compressed)
+		{
+		   boost::iostreams::filtering_ostream compressingStream;
+		   compressingStream.push(boost::iostreams::zlib_compressor());
+		   compressingStream.push(boost::iostreams::back_inserter(compressed));
+
+		   compressingStream << source;
+		}
+
+		void zlibDeCompress(const string& compressed, string& sink)
+		{
+		   boost::iostreams::filtering_ostream decompressingStream;
+		   decompressingStream.push(boost::iostreams::zlib_decompressor());
+		   decompressingStream.push(boost::iostreams::back_inserter(sink));
+
+		   decompressingStream << compressed;
+		}
+		*/
+
+		/*
+		static void zlib_compress(const std::vector<char>& data, std::vector<char>& compressed)
+		{
+		    boost::iostreams::filtering_streambuf<boost::iostreams::output> out;
+		    out.push(boost::iostreams::zlib_compressor());
+		    out.push(boost::iostreams::back_inserter(compressed));
+		    boost::iostreams::copy(boost::iostreams::array_source(data, data.size()), out);
+		}
+
+		static void zlib_decompress(const std::vector<char>& data, std::vector<char>& uncompressed)
+		{
+		    boost::iostreams::filtering_streambuf<boost::iostreams::input> in;
+		    in.push(boost::iostreams::zlib_decompressor());
+		    //in.push(boost::iostreams::array_sink(data, data.size()));
+		    in.push(boost::make_iterator_range(data));
+		    boost::iostreams::copy(in, boost::iostreams::back_inserter(uncompressed));
+		}
+		*/
+
 		//////////////////////////////////////////////////////////////////////
 		// SocketTransport
 		//////////////////////////////////////////////////////////////////////
@@ -74,7 +133,7 @@ namespace agnos
 				wlock(), wbuf(), wseq(0),
 				rlock(), rseq(0), rpos(0), rlength(0), rcomplength(0)
 		{
-			// ugh! the port must be a string, or it silently fails
+			// ugh! the port must be a string, or it silently (!!) fails
 			string portstr = convert_to_string(port);
 			sockstream = shared_ptr<tcp::iostream>(new tcp::iostream(hostname, portstr.c_str()));
 			if (!sockstream->good()) {
@@ -148,31 +207,39 @@ namespace agnos
 				throw TransportError("begin_read is not reentrant");
 			}
 			rlock.lock();
-			_assert_good();
+			try {
+				_assert_good();
 
-			int32_t tmp;
+				int32_t tmp;
 
-			sockstream->read((char*)&tmp, sizeof(tmp));
-			_assert_good();
-			rseq = ntohl(tmp);
-			DEBUG_LOG("R " << repr((char*)&tmp, sizeof(tmp)) << " rseq = " << rseq);
+				// seq
+				sockstream->read((char*)&tmp, sizeof(tmp));
+				_assert_good();
+				rseq = ntohl(tmp);
+				DEBUG_LOG("R " << repr((char*)&tmp, sizeof(tmp)) << " rseq = " << rseq);
 
-			sockstream->read((char*)&tmp, sizeof(tmp));
-			_assert_good();
-			rlength = ntohl(tmp);
-			DEBUG_LOG("R " << repr((char*)&tmp, sizeof(tmp)) << " rlength = " << rlength);
+				// packet length
+				sockstream->read((char*)&tmp, sizeof(tmp));
+				_assert_good();
+				rlength = ntohl(tmp);
+				DEBUG_LOG("R " << repr((char*)&tmp, sizeof(tmp)) << " rlength = " << rlength);
 
-			sockstream->read((char*)&tmp, sizeof(tmp));
-			_assert_good();
-			rcomplength = ntohl(tmp);
-			DEBUG_LOG("R " << repr((char*)&tmp, sizeof(tmp)) << " rcomplength = " << rcomplength);
+				// uncompressed length
+				sockstream->read((char*)&tmp, sizeof(tmp));
+				_assert_good();
+				rcomplength = ntohl(tmp);
+				DEBUG_LOG("R " << repr((char*)&tmp, sizeof(tmp)) << " rcomplength = " << rcomplength);
 
-			if (rcomplength > 0) {
-				throw TransportError("cannot process compressed payload");
+				if (rcomplength > 0) {
+					throw TransportError("cannot process compressed payload");
+				}
+
+				rpos = 0;
+				return rseq;
 			}
-
-			rpos = 0;
-			return rseq;
+			catch (std::exception &ex) {
+				rlock.unlock();
+			}
 		}
 
 		inline void SocketTransport::_assert_began_read()
@@ -253,12 +320,12 @@ namespace agnos
 				DEBUG_LOG("W " << repr((const char*)&tmp, sizeof(tmp)));
 				sockstream->write((const char*)&tmp, sizeof(tmp));
 
-				// length
+				// packet length
 				tmp = htonl(wbuf.size());
 				DEBUG_LOG("W " << repr((const char*)&tmp, sizeof(tmp)));
 				sockstream->write((const char*)&tmp, sizeof(tmp));
 
-				// rcomplength
+				// uncompressed length
 				tmp = htonl(0);
 				DEBUG_LOG("W " << repr((const char*)&tmp, sizeof(tmp)));
 				sockstream->write((const char*)&tmp, sizeof(tmp));

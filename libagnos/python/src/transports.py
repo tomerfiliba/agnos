@@ -90,6 +90,9 @@ class Transport(object):
             self.outfile.close()
             self.outfile = None
     
+    def fileno(self):
+        return self.infile.fileno()
+    
     def begin_read(self, timeout = None):
         """
         begins a read transaction. only a single thread can have an ongoing read
@@ -443,6 +446,9 @@ class TransportFactory(object):
     def close(self):
         """closes the transport factory (i.e., the listening socket)"""
         raise NotImplementedError()
+    def fileno(self):
+        """returns the file descriptor (to allow passing this to select())"""
+        raise NotImplementedError()
 
 
 class SocketTransportFactory(TransportFactory):
@@ -458,6 +464,8 @@ class SocketTransportFactory(TransportFactory):
         return SocketTransport.from_socket(self.sock.accept()[0])
     def close(self):
         self.sock.close()
+    def fileno(self):
+        return self.sock.fileno()
 
 
 class SslSocketTransportFactory(TransportFactory):
@@ -479,6 +487,9 @@ class SslSocketTransportFactory(TransportFactory):
     
     def close(self):
         self.sock.close()
+
+    def fileno(self):
+        return self.sock.fileno()
 
 
 

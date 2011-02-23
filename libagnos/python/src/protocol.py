@@ -115,6 +115,12 @@ class BaseProcessor(object):
         self.transport = transport
         self.cells = {}
     
+    def close(self):
+        self.transport.close()
+    
+    def fileno(self):
+        return self.transport.fileno()
+    
     def post_init(self, func_mapping, packed_exceptions, exception_map):
         self.func_mapping = func_mapping
         self.packed_exceptions = packed_exceptions

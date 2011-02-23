@@ -31,6 +31,7 @@ from .utils import Logger, LogSink, NullLogger
 
 
 def _handle_client(processor, logger):
+    """the default implementation of handling a client"""
     logger.info("handling %s", processor.transport)
     try:
         while True:
@@ -45,9 +46,10 @@ def _handle_client(processor, logger):
         raise
     finally:
         logger.info("client handler quits")
-        processor.transport.close()
+        processor.close()
 
 class BaseServer(object):
+    """abstract Agnos server"""
     def __init__(self, processor_factory, transport_factory, logger):
         self.processor_factory = processor_factory
         self.transport_factory = transport_factory
@@ -58,10 +60,12 @@ class BaseServer(object):
         self.close()
     
     def close(self):
+        """terminates the listener and terminates all client handlers"""
         self.logger.info("server is shutting down")
         self.transport_factory.close()
     
     def serve(self):
+        """the server's main-loop: accepts a client and serves it"""
         self.logger.info("started serving")
         while True:
             try:
@@ -76,16 +80,65 @@ class BaseServer(object):
             self._serve_client(processor)
         
     def _serve_client(self, processor):
+        """implement this to create customize serving schemes"""
         raise NotImplementedError()
 
 class SimpleServer(BaseServer):
+    """
+    an implementation of an Agnos server where only a single client can be
+    served at any point of time.
+    """
     def __init__(self, processor_factory, transport_factory, logger = NullLogger):
         BaseServer.__init__(self, processor_factory, transport_factory, logger.sublogger("srv"))
     
     def _serve_client(self, processor):
         self._handle_client(processor, self.logger)
 
+class SelectingServer(BaseServer):
+    """
+    an implementation of an Agnos server where only a a number of clients can
+    be juggled simultaneously using select()
+    """
+    def serve(self):
+        self.logger.info("started serving")
+        sources = [self.transport_factory]
+        try:
+            while True:
+                try:
+                    rlist = select(sources, (), (), None)[0]
+                except IOError, ex:
+                    if ex.errno == errno.EINTR:
+                        continue
+                    else:
+                        raise
+    
+                for src in rlist:
+                    if src is self.transport_factory:
+                        trans = self.transport_factory.accept()
+                        self.logger.info("accepted %s", trans)
+                        processor = self.processor_factory(trans)
+                        sources.add(processor)
+                    else:
+                        try:
+                            src.process()
+                        except EOFError:
+                            self.logger.info("%s got EOF", src)
+                            src.close()
+                            self.logger.info("disconnected %s", src)
+                        except Exception:
+                            self.logger.exception()
+                            src.close()
+                            self.logger.info("disconnected %s", src)
+        except KeyboardInterrupt:
+            self.logger.info("got SIGINT")
+            raise
+
+            
 class ThreadedServer(BaseServer):
+    """
+    an implementation of an Agnos server where each client is served by a 
+    separate thread
+    """
     def __init__(self, processor_factory, transport_factory, logger = NullLogger):
         BaseServer.__init__(self, processor_factory, transport_factory, logger.sublogger("srv"))
         self._thread_ids = itertools.count(0)
@@ -96,6 +149,10 @@ class ThreadedServer(BaseServer):
         t.start()
 
 class ForkingServer(BaseServer):
+    """
+    an implementation of an Agnos server where each client is served by a 
+    separate child process
+    """
     def __init__(self, processor_factory, transport_factory, logger):
         BaseServer.__init__(self, processor_factory, transport_factory, 
             logger.sublogger("srv"))
@@ -168,6 +225,11 @@ class ForkingServer(BaseServer):
     
 
 class LibraryModeServer(BaseServer):
+    """
+    library-mode server: writes the server's details (host and port number) to
+    stdout and serves a single connection. when the connection is closed, the
+    server finishes and the process is expected to quit
+    """
     def serve(self):
         sys.stdout.write("AGNOS\n%s\n%d\n\n" % (self.transport_factory.host, self.transport_factory.port))
         sys.stdout.flush()
@@ -180,9 +242,16 @@ class LibraryModeServer(BaseServer):
 
 def server_main(processor_factory, mode = "simple", port = 0, host = "localhost", 
         logfile = ".server.log"):
+    SERVER_MODES = {
+        "lib" : LibraryModeServer,
+        "simple" : SimpleServer,
+        "threaded" : ThreadedServer,
+        "forking" : ForkingServer,
+    }
+
     parser = OptionParser(conflict_handler="resolve")
     parser.add_option("-m", "--mode", dest="mode", default=mode,
-                      help="server mode (simple, threaded, forking, library)",  
+                      help="server mode (%s)" % (", ".join(SERVER_MODES.keys()),),  
                       metavar="MODE")
     parser.add_option("-p", "--port", dest="port", default=port,
                       help="tcp port number; 0 = random port", metavar="PORT")
@@ -206,18 +275,11 @@ def server_main(processor_factory, mode = "simple", port = 0, host = "localhost"
     transport_factory = SocketTransportFactory(int(options.port), options.host)
     if options.mode == "lib" or options.mode == "library":
         s = LibraryModeServer(processor_factory, transport_factory, logger)
-    elif options.mode == "simple":
+    elif options.mode in SERVER_MODES:
         if int(options.port) == 0:
-            parser.error("must specify port for simple mode")
-        s = SimpleServer(processor_factory, transport_factory, logger)
-    elif options.mode == "threaded":
-        if int(options.port) == 0:
-            parser.error("must specify port for threaded mode")
-        s = ThreadedServer(processor_factory, transport_factory, logger)
-    elif options.mode == "forking":
-        if int(options.port) == 0:
-            parser.error("must specify port for forking mode")
-        s = ForkingServer(processor_factory, transport_factory, logger)
+            parser.error("must specify port for %s mode" % (options.mode,))
+        cls = SERVER_MODES[options.mode]
+        s = cls(processor_factory, transport_factory, logger)
     else:
         parser.error("invalid mode: %r" % (options.mode,))
     try:

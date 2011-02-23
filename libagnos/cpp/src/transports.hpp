@@ -53,48 +53,152 @@ namespace agnos
 		DEFINE_EXCEPTION2(TransportEOFError, TransportError);
 		DEFINE_EXCEPTION2(SocketTransportError, TransportError);
 
+		/**
+		 * the abstract Transport base class
+		 */
 		class ITransport : public boost::noncopyable
 		{
 		protected:
 			int compression_threshold;
+
+			/**
+			 * OVERRIDE ME
+			 *
+			 * returns the compression threshold. packets larger than this
+			 * threshold value will be compressed. a negative value means
+			 * compression is not supported on this transport.
+			 */
+			virtual void get_compression_threshold()
+			{
+				return -1;
+			}
 
 		public:
 			ITransport() : compression_threshold(-1)
 			{
 			}
 
+			/**
+			 * closes the transport and releases all underlying operating
+			 * system resources
+			 */
 			virtual void close() = 0;
 
-			virtual int get_compression_threshold()
+			/**
+			 * returns a string representation of this transport (usually for
+			 * debugging)
+			 */
+			virtual string to_string() const = 0;
+
+			/**
+			 * returns whether compression has been enabled on this transport
+			 */
+			virtual int is_compression_enabled()
 			{
-				return compression_threshold;
+				return compression_threshold >= 0;
 			}
-			virtual void set_compression_threshold(int value)
+
+			/**
+			 * attempts to enable compression on this transport. initially,
+			 * compression is disabled by default, and must be explicitly
+			 * enabled. note that not all transport implementations support
+			 * compression, and not all versions of libagnos support compression.
+			 * therefore, call this function only after checking that the other
+			 * party supports compression ("COMPRESSION_SUPPORTED" is true in
+			 * INFO_META)
+			 *
+			 * returns whether compression has been enabled.
+			 */
+			virtual bool enable_compression(int value)
 			{
 				compression_threshold = value;
+				return compression_threshold >= 0;
 			}
+
+			/**
+			 * disables compression on this transport
+			 */
 			virtual void disable_compression()
 			{
 				compression_threshold = -1;
 			}
 
+			//
+			// read interface
+			//
+
+			/**
+			 * begins a read transaction. only a single thread can have an
+			 * ongoing read transaction at any point in time; other threads
+			 * calling this method will block until the transaction is
+			 * finalized. this method will block until enough data is received
+			 * to begin the transaction. end_read() must be called to finalize
+			 * the transaction.
+			 * returns the sequence number of the retrieved transaction.
+			 */
 			virtual int32_t begin_read() = 0;
+
+			/**
+			 * reads up to `size` bytes into `buf`, and returns the actual
+			 * number of bytes read.
+			 * begin_read() must have been called prior to calling this.
+			 */
 			virtual size_t read(char * buf, size_t size) = 0;
+
+			/**
+			 * ends the ongoing read transaction (skips all unread data).
+			 * begin_read() must have been called prior to calling this.
+			 */
 			virtual void end_read() = 0;
 
-			virtual void begin_write(int32_t seq) = 0;
-			virtual void write(const char * buf, size_t size) = 0;
-			virtual void reset() = 0;
-			virtual void end_write() = 0;
-			virtual void cancel_write() = 0;
+			//
+			// write interface
+			//
 
-			virtual string to_string() const = 0;
+			/**
+			 * begins a write transaction with the given sequence number. only
+			 * a single thread can have an ongoing write transaction; other
+			 * threads calling this method will block until the write transaction
+			 * is finalized. end_write() or cancel_write() must be called to
+			 * finalize the ongoing transaction.
+			 */
+			virtual void begin_write(int32_t seq) = 0;
+
+			/**
+			 * writes the given data of length `size` to the transport.
+			 * begin_write must have been called prior to calling this.
+			 */
+			virtual void write(const char * buf, size_t size) = 0;
+
+			/**
+			 * discards all data written so far to the transaction, essentially
+			 * restarting the transaction.
+			 * begin_write must have been called prior to calling this.
+			 */
+			virtual void restart_write() = 0;
+
+			/**
+			 * writes all the buffered data to the underlying stream and
+			 * finalizes the transaction.
+			 * begin_write must have been called prior to calling this.
+			 */
+			virtual void end_write() = 0;
+
+			/**
+			 * cancels the ongoing write transaction. all written data is
+			 * discarded and the transaction is canceled.
+			 * begin_write must have been called prior to calling this.
+			 */
+			virtual void cancel_write() = 0;
 		};
 
 		std::ostream& operator<< (std::ostream& stream, const ITransport& trns);
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * implements a transport that wraps an underlying transport object
+		 */
 		class WrappedTransport : public ITransport
 		{
 		protected:
@@ -148,6 +252,9 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * socket-backed transport implementation
+		 */
 		class SocketTransport : public ITransport
 		{
 		protected:
@@ -194,6 +301,9 @@ namespace agnos
 #ifdef BOOST_PROCESS_SUPPORTED
 		DEFINE_EXCEPTION(ProcTransportError)
 
+		/**
+		 * process-backed transport implementation
+		 */
 		class ProcTransport : public WrappedTransport
 		{
 		protected:

@@ -362,7 +362,12 @@ class PythonTarget(TargetBase):
             with BLOCK("def process_get_meta_info(self, info)"):
                 STMT('info["AGNOS_TOOLCHAIN_VERSION"] = AGNOS_TOOLCHAIN_VERSION')
                 STMT('info["AGNOS_PROTOCOL_VERSION"] = AGNOS_PROTOCOL_VERSION')
-                STMT('info["COMPRESSION_SUPPORTED"] = True')
+                with BLOCK("try"):
+                    STMT("import zlib")
+                with BLOCK("except ImportError"):
+                    STMT('info["COMPRESSION_SUPPORTED"] = False')
+                with BLOCK("else"):
+                    STMT('info["COMPRESSION_SUPPORTED"] = True')
                 STMT('info["IMPLEMENTATION"] = "libagnos-python"')
                 STMT('codes = {}')
                 STMT('codes["INFO_META"] = agnos.INFO_META')

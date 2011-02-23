@@ -28,13 +28,17 @@ class PackingError(Exception):
     pass
 
 class Packer(object):
+    """a packer is a serializer/deserializer for a certain type"""
     __slots__ = []
     @classmethod
     def get_id(cls):
+        """returns this packer's unique ID"""
         return cls.ID
     def pack(self, obj, stream):
+        """packs (writes) the given object to the given stream"""
         raise NotImplementedError()
     def unpack(self, stream):
+        """unpacks (reads) an object from the given stream"""
         raise NotImplementedError()
 
 class PrimitivePacker(Packer):
