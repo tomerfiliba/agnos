@@ -619,7 +619,7 @@ class CPPTarget(TargetBase):
         with BLOCK("void process_get_meta_info(HeteroMap& map)"):
             STMT('map.put("AGNOS_PROTOCOL_VERSION", AGNOS_PROTOCOL_VERSION)')
             STMT('map.put("AGNOS_TOOLCHAIN_VERSION", AGNOS_TOOLCHAIN_VERSION)')
-            STMT('map.put("COMPRESSION_SUPPORTED", string_packer, false, bool_packer)')
+            STMT('map.put("COMPRESSION_SUPPORTED", string_packer, true, bool_packer)')
             STMT('map.put("IMPLEMENTATION", "libagnos-c++")')
             STMT('std::map<string, int> codes')
             STMT('codes["INFO_META"] = INFO_META')

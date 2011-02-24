@@ -69,46 +69,7 @@ namespace agnos
 			return stream;
 		}
 
-		/*
-		http://lists.boost.org/boost-users/att-48158/IoStreams.cpp
-
-
-		void gzipDeCompress(const string& compressed, string& sink)
-		{
-		#ifdef WONT_WORK
-		   boost::iostreams::filtering_ostream decompressingStream;
-		   decompressingStream.push(boost::iostreams::gzip_decompressor());
-		   decompressingStream.push(boost::iostreams::back_inserter(sink));
-
-		   decompressingStream << compressed;
-		#else
-		   boost::iostreams::filtering_istream decompressingStream;
-		   decompressingStream.push(boost::iostreams::gzip_decompressor());
-		   decompressingStream.push(boost::make_iterator_range(compressed));
-
-		   boost::iostreams::copy(decompressingStream, boost::iostreams::back_inserter(sink));
-		#endif
-		}
-
-		void zlibCompress(const string& source, string& compressed)
-		{
-		   boost::iostreams::filtering_ostream compressingStream;
-		   compressingStream.push(boost::iostreams::zlib_compressor());
-		   compressingStream.push(boost::iostreams::back_inserter(compressed));
-
-		   compressingStream << source;
-		}
-
-		void zlibDeCompress(const string& compressed, string& sink)
-		{
-		   boost::iostreams::filtering_ostream decompressingStream;
-		   decompressingStream.push(boost::iostreams::zlib_decompressor());
-		   decompressingStream.push(boost::iostreams::back_inserter(sink));
-
-		   decompressingStream << compressed;
-		}
-		*/
-
+		// adapted from http://lists.boost.org/boost-users/att-48158/IoStreams.cpp
 		static void zlib_compress(const std::vector<char>& data, std::vector<char>& compressed)
 		{
 		    boost::iostreams::filtering_streambuf<boost::iostreams::output> out;
@@ -118,6 +79,7 @@ namespace agnos
 		    boost::iostreams::copy(src, out);
 		}
 
+		/*
 		static void zlib_decompress(const std::vector<char>& data, std::vector<char>& uncompressed)
 		{
 		    boost::iostreams::filtering_streambuf<boost::iostreams::input> in;
@@ -127,6 +89,7 @@ namespace agnos
 		    //?in.push(boost::make_iterator_range(data));
 		    boost::iostreams::copy(in, boost::iostreams::back_inserter(uncompressed));
 		}
+		*/
 
 		//////////////////////////////////////////////////////////////////////
 		// SocketTransport
@@ -218,6 +181,36 @@ namespace agnos
 			_assert_good();
 		}
 
+		template<typename T> class ZlibDecompressingStream : public BasicInputStream
+		{
+		protected:
+			shared_ptr<T> stream;
+		    boost::iostreams::filtering_stream<boost::iostreams::input> in;
+
+		public:
+			ZlibDecompressingStream(shared_ptr<T> stream) : stream(stream), in()
+			{
+			    in.push(boost::iostreams::zlib_decompressor());
+			    in.push(*stream);
+			}
+
+			void close()
+			{
+				if (!stream) {
+					return;
+				}
+				stream->close();
+				stream.reset();
+			}
+
+			std::streamsize readn(char* buf, std::streamsize count)
+			{
+				stream->read(buf, count);
+				_gcount = stream->gcount();
+				return _gcount;
+			}
+		};
+
 		int SocketTransport::begin_read()
 		{
 			if (rlock.is_held_by_current_thread()) {
@@ -236,12 +229,21 @@ namespace agnos
 				int uncompressed_length = _read_int32();
 				DEBUG_LOG("uncompressed_length = " << rcomplength);
 
-				if (uncompressed_length > 0) {
-					throw TransportError("cannot process compressed payload");
-				}
-
 				instream = shared_ptr<BoundInputStream<tcp::iostream> >(
 						new BoundInputStream<tcp::iostream>(sockstream, packet_length, true, false));
+
+				if (uncompressed_length > 0) {
+					//throw TransportError("cannot process compressed payload");
+
+					shared_ptr<ZlibDecompressingStream<BasicInputStream> > zdc(
+							new ZlibDecompressingStream<BasicInputStream>(instream));
+
+					shared_ptr<BoundInputStream<ZlibDecompressingStream<BasicInputStream> > > bis(
+							new BoundInputStream<ZlibDecompressingStream<BasicInputStream> >(
+									zdc, uncompressed_length, false, true));
+
+					instream = bis;
+				}
 
 				return rseq;
 			}
@@ -262,7 +264,7 @@ namespace agnos
 		{
 			_assert_began_read();
 			_assert_good();
-			size_t actually_read = instream->read(buf, size);
+			size_t actually_read = instream->readn(buf, size);
 			DEBUG_LOG("R (" << size << ", " << actually_read << ") " << repr(buf, actually_read));
 			return actually_read;
 		}

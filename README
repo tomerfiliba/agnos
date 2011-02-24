@@ -29,25 +29,25 @@ The following statements was required by our lawyers:
 
 2) Install scons (http://www.scons.com)
 
-3) Create a symlink (on Windows use mklink) to agnos_compiler/src and place
+3) Create a symlink (on Windows use mklink) to compiler/src/agnos_compiler and place
    it somewhere in your PYTHONPATH, e.g.:
    
-   $ ln -s /absolute/path/of/agnos_toolchain/agnos_compiler/src /usr/lib/python2.6/site-packages/agnos_compiler
+   $ ln -s /absolute/path/of/agnos_toolchain/compiler/src/agnos_compiler /usr/lib/python2.6/site-packages/agnos_compiler
    
    Note: the link should be named "agnos_compiler"
 
-4) Create a symlink to libagnos/python/src and place it somewhere in your 
+4) Create a symlink to libagnos/python/src/agnos and place it somewhere in your 
    PYTHONPATH, e.g:
 
-   $ ln -s /absolute/path/of/agnos_toolchain/libagnos/python/src /usr/lib/python2.6/site-packages/agnos
+   $ ln -s /absolute/path/of/agnos_toolchain/libagnos/python/src/agnos /usr/lib/python2.6/site-packages/agnos
    
    Note: the link should be named "agnos"
 
-5) Put bin/agnosc and bin/agnosrc-py in your PATH (either by adding them to the
-   PATH or by creating symlinks to /usr/bin, etc.)
+5) Put compiler/bin/agnosc and compiler/bin/agnosrc-py in your PATH (either by
+   adding them to the PATH or by creating symlinks to /usr/bin, etc.)
 
-   $ ln -s /absolute/path/of/agnos_toolchain/agnos_compiler/bin/agnosc /usr/bin/agnosc
-   $ ln -s /absolute/path/of/agnos_toolchain/agnos_compiler/bin/agnosrc-py /usr/bin/agnosrc-py
+   $ ln -s /absolute/path/of/agnos_toolchain/compiler/bin/agnosc /usr/bin/agnosc
+   $ ln -s /absolute/path/of/agnos_toolchain/compiler/bin/agnosrc-py /usr/bin/agnosrc-py
    
    Note: on Windows, create the links to agnos.bat and agnosrc-py.bat
 
