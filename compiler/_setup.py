@@ -50,11 +50,10 @@ technologies like ``SOAP``, ``WSDL``, ``CORBA``, and others, but takes a
         'agnos_compiler',
         'agnos_compiler.langs',
         'agnos_compiler.targets',
-        'agnos_compiler.restful',
         'agnos_compiler.pysrcgen',
     ],
     package_dir = {
-        'agnos_compiler' : 'src',
+        '' : 'src',
     },
     scripts = [
         'bin/agnosc',

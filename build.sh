@@ -25,18 +25,31 @@ mkdir release
 # compiler
 ###############################################################################
 
-pushd agnos_compiler
+pushd compiler
 rm -rf dist
-rm setup.py
+rm setup.py &> /dev/null
 sed -e "s/__AGNOS_TOOLCHAIN_VERSION__/$AGNOS_TOOLCHAIN_VERSION/" _setup.py > setup.py
 python setup.py sdist --formats=gztar,zip
+
+if [ $? -ne 0 ] ; then
+    echo "buidling agnos_compiler failed gztar,zip"
+    exit 1
+fi
+
 python setup.py bdist --formats=egg,wininst --plat-name="win32"
-rm setup.py
+
+if [ $? -ne 0 ] ; then
+    echo "buidling agnos_compiler failed egg,wininst"
+    exit 1
+fi
+
+rm setup.py &> /dev/null
+
 rm -rf build
 rm -rf *.egg-info
 popd
 mkdir release/agnos_compiler
-cp agnos_compiler/dist/* release/agnos_compiler
+cp compiler/dist/* release/agnos_compiler
 rm -rf agnos_compiler/dist
 
 ###############################################################################
@@ -45,11 +58,24 @@ rm -rf agnos_compiler/dist
 
 pushd libagnos/python
 rm -rf dist
-rm setup.py
+rm setup.py &> /dev/null
 sed -e "s/__AGNOS_TOOLCHAIN_VERSION__/$AGNOS_TOOLCHAIN_VERSION/" _setup.py > setup.py
+
 python setup.py sdist --formats=gztar,zip
+
+if [ $? -ne 0 ] ; then
+    echo "buidling libagnos-python failed gztar,zip"
+    exit 1
+fi
+
 python setup.py bdist --formats=egg,wininst --plat-name="win32"
-rm setup.py
+
+if [ $? -ne 0 ] ; then
+    echo "buidling libagnos-python failed egg,wininst"
+    exit 1
+fi
+
+rm setup.py &> /dev/null
 rm -rf build
 rm -rf *.egg-info
 cd dist
@@ -59,8 +85,7 @@ popd
 
 mkdir -p release/libagnos/python
 cp libagnos/python/dist/* release/libagnos/python
-rm -rf libagnos/python/dist
-
+rm -rf libagnos/python/dist &> /dev/null
 
 ###############################################################################
 # java
@@ -68,11 +93,12 @@ rm -rf libagnos/python/dist
 mkdir -p release/agnos-java/src
 mkdir -p release/libagnos/java
 
-cp libagnos/java/src/*.java release/agnos-java/src/
+cp -R libagnos/java/src/ release/agnos-java/
 cp libagnos/java/SConstruct release/agnos-java/
 pushd release
 tar -czf libagnos-java.tar.gz agnos-java
 zip -r libagnos-java.zip agnos-java
+
 pushd agnos-java
 scons
 popd
