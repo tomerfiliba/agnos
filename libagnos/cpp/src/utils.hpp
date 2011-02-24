@@ -38,11 +38,17 @@
 
 namespace agnos
 {
+	/**
+	 * wrapper for std::map::insert
+	 */
 	template<typename K, typename V> inline static void map_put(map<K, V>& m, const K& k, const V& v)
 	{
 		m.insert(typename map<K, V>::value_type(k, v));
 	}
 
+	/**
+	 * wrapper for std::map::find
+	 */
 	template<typename K, typename V> inline static V * map_get(const map<K, V>& m, const K& k, bool raise = true)
 	{
 		typename map<K, V>::const_iterator it = m.find(k);
@@ -57,6 +63,9 @@ namespace agnos
 		return const_cast<V*>(&it->second);
 	}
 
+	/**
+	 * wrapper for std::map::find
+	 */
 	template<typename K, typename V> inline static bool map_contains(map<K, V>& m, const K& k)
 	{
 		typename map<K, V>::const_iterator it = m.find(k);
@@ -92,6 +101,9 @@ namespace agnos
 
 		DEFINE_EXCEPTION(MutexError);
 
+		/**
+		 * wrapper for boost::mutex that supports is_held_by_current_thread
+		 */
 		class Mutex
 		{
 		protected:

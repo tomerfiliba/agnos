@@ -35,15 +35,32 @@ namespace agnos
 		{
 			using boost::asio::ip::tcp;
 
+			/**
+			 * a factory for transports
+			 */
 			class ITransportFactory : public boost::noncopyable
 			{
 			public:
+				virtual ~ITransportFactory();
+
+				/**
+				 * closes the factory and releases any operatign system
+				 * resources it holds (e,g., listening socket)
+				 */
 				virtual void close() = 0;
+
+				/**
+				 * accepts a new transport instance. this method would block
+				 * until a connection request arrives
+				 */
 				virtual shared_ptr<ITransport> accept() = 0;
 			};
 
 			//////////////////////////////////////////////////////////////////
 
+			/**
+			 * socket-backed transport factory
+			 */
 			class SocketTransportFactory : public ITransportFactory
 			{
 			public:

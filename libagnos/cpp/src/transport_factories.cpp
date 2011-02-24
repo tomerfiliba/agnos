@@ -29,6 +29,11 @@ namespace agnos
 		{
 			boost::asio::io_service the_io_service;
 
+			ITransportFactory::~ITransportFactory()
+			{
+				close();
+			}
+
 			static inline shared_ptr<tcp::acceptor> _connect(const tcp::endpoint& endpoint, int backlog)
 			{
 				shared_ptr<tcp::acceptor> acceptor(new tcp::acceptor(the_io_service));

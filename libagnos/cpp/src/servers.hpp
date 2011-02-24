@@ -41,6 +41,9 @@ namespace agnos
 
 		DEFINE_EXCEPTION(SwitchError);
 
+		/**
+		 * base class for Agnos servers
+		 */
 		class BaseServer : public boost::noncopyable
 		{
 		protected:
@@ -50,14 +53,29 @@ namespace agnos
 			virtual void serve_client(shared_ptr<BaseProcessor> proc) = 0;
 
 		public:
+			/**
+			 * instantiate a base server with a processor factory and a
+			 * transport factory
+			 */
 			BaseServer(IProcessorFactory& processor_factory, shared_ptr<ITransportFactory> transport_factory);
+
+			/**
+			 * the server's main loop
+			 */
 			virtual void serve();
+
+			/**
+			 * closes the serves and disconnects all active clients
+			 */
 			virtual void close();
 		};
 
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * a server that supports only a single client at any point of time
+		 */
 		class SimpleServer : public BaseServer
 		{
 		protected:
@@ -69,6 +87,9 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * a server that creates a separate thread to handle each client
+		 */
 		class ThreadedServer : public BaseServer
 		{
 		protected:
@@ -82,6 +103,12 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * the library mode server: when serve() is called, the server prints
+		 * its details (host and port number) to stdout and waits for a single
+		 * connection. when this connection terminates, serve() returns and
+		 * the server process is expected to quit
+		 */
 		class LibraryModeServer : public BaseServer
 		{
 		protected:
@@ -95,6 +122,11 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * a simple entry point for an Agnos server process. it parses the
+		 * command-line arguments and chooses the appropriate server to
+		 * start
+		 */
 		class CmdlineServer : public boost::noncopyable
 		{
 		protected:
