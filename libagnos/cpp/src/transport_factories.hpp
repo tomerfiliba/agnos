@@ -41,10 +41,8 @@ namespace agnos
 			class ITransportFactory : public boost::noncopyable
 			{
 			public:
-				virtual ~ITransportFactory();
-
 				/**
-				 * closes the factory and releases any operatign system
+				 * closes the factory and releases any operating system
 				 * resources it holds (e,g., listening socket)
 				 */
 				virtual void close() = 0;
@@ -59,7 +57,7 @@ namespace agnos
 			//////////////////////////////////////////////////////////////////
 
 			/**
-			 * socket-backed transport factory
+			 * listener-socket-based transport factory
 			 */
 			class SocketTransportFactory : public ITransportFactory
 			{
@@ -71,6 +69,7 @@ namespace agnos
 				SocketTransportFactory(unsigned short port, int backlog = DEFAULT_BACKLOG);
 				SocketTransportFactory(const char * host, unsigned short port, int backlog = DEFAULT_BACKLOG);
 				SocketTransportFactory(const tcp::endpoint& endpoint, int backlog = DEFAULT_BACKLOG);
+				~SocketTransportFactory();
 
 				virtual void close();
 				shared_ptr<ITransport> accept();

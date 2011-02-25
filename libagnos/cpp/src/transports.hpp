@@ -252,123 +252,22 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * a version of istream that supports close()
+		 */
 		class BasicInputStream : public std::istream
 		{
 		protected:
 			std::streamsize _gcount;
 
 		public:
-			BasicInputStream() : _gcount(0)
-			{
-			}
+			BasicInputStream();
 			virtual void close() = 0;
 			virtual std::streamsize readn(char * buf, std::streamsize count) = 0;
-			std::istream& read(char* buf, std::streamsize count)
-			{
-				_gcount = readn(buf, count);
-				return *this;
-			}
-			std::streamsize gcount() const
-			{
-				return _gcount;
-			}
+
+			std::istream& read(char* buf, std::streamsize count);
+			std::streamsize gcount() const;
 		};
-
-
-		/**
-		 * a finite (bounded) input stream
-		 */
-		template <typename T> class BoundInputStream : public BasicInputStream
-		{
-		protected:
-			shared_ptr<T> stream;
-			std::streamsize remaining_length;
-			bool skip_underlying;
-			bool close_underlying;
-			std::streamsize _gcount;
-
-		public:
-			BoundInputStream(shared_ptr<T> stream, std::streamsize length,
-					bool skip_underlying = true, bool close_underlying = false) :
-				stream(stream), remaining_length(length),
-				skip_underlying(skip_underlying), close_underlying(close_underlying),
-				_gcount(-1)
-			{
-				if (length < 0) {
-					throw std::runtime_error("length must be >= 0");
-				}
-			}
-
-			~BoundInputStream()
-			{
-				close();
-			}
-
-			void close()
-			{
-				DEBUG_LOG("BoundInputStream::close()");
-				if (!stream) {
-					return;
-				}
-				if (skip_underlying) {
-					skip(-1);
-				}
-				if (close_underlying) {
-					stream->close();
-				}
-				stream.reset();
-			}
-
-			std::streamsize available() const
-			{
-				return remaining_length;
-			}
-
-			std::streamsize readn(char* buf, std::streamsize count)
-			{
-				DEBUG_LOG("BoundInputStream::read(" << count << ")");
-				if (count > remaining_length) {
-					THROW_FORMATTED(TransportEOFError, "request to read more bytes (" <<
-						count << ") than available (" << remaining_length << ")");
-				}
-				stream->read(buf, count);
-				_gcount = stream->gcount();
-				remaining_length -= _gcount;
-				return _gcount;
-			}
-
-			std::streamsize gcount() const
-			{
-				return _gcount;
-			}
-
-			size_t skip(int count)
-			{
-				DEBUG_LOG("BoundInputStream::skip(" << count << ")");
-				if (count < 0 || count > remaining_length) {
-					count = remaining_length;
-				}
-				if (count <= 0) {
-					return 0;
-				}
-				char buf[16*1024];
-				std::streamsize total_skipped = 0;
-
-				while (count > 0) {
-					stream->read(buf, sizeof(buf));
-					std::streamsize actually_read = stream->gcount();
-					if (actually_read <= 0) {
-						remaining_length = 0;
-						break;
-					}
-					total_skipped += actually_read;
-					count -= actually_read;
-					remaining_length -= actually_read;
-				}
-				return total_skipped;
-			}
-		};
-
 
 		//////////////////////////////////////////////////////////////////////
 

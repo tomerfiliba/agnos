@@ -30,12 +30,18 @@
 
 namespace agnos
 {
-	//DEFINE_EXCEPTION(PackedException);
+	/**
+	 * ProtocolError is the base class for all non-recoverable protocol-level
+	 * errors
+	 */
 	DEFINE_EXCEPTION(ProtocolError);
 	DEFINE_EXCEPTION2(WrongAgnosVersion, ProtocolError);
 	DEFINE_EXCEPTION2(WrongServiceName, ProtocolError);
 	DEFINE_EXCEPTION2(IncompatibleServiceVersion, ProtocolError);
 
+	/**
+	 * base class for packed exceptions (as defined in the IDL)
+	 */
 	class PackedException : public std::exception
 	{
 	public:
@@ -48,6 +54,10 @@ namespace agnos
 		}
 	};
 
+	/**
+	 * an exception class that wraps all other exceptions (those not defined
+	 * in the IDL). it attempts to provide as much info as possible.
+	 */
 	class GenericException : public std::exception
 	{
 	protected:
@@ -142,21 +152,40 @@ namespace agnos
 			objref_t store(objref_t oid, any obj);
 			any load(objref_t oid);
 
+			//
+			// implemented by generated code
+			//
+			virtual void process_invoke(int32_t seq) = 0;
+
 			virtual void process_get_meta_info(HeteroMap& map) = 0;
 			virtual void process_get_service_info(HeteroMap& map) = 0;
 			virtual void process_get_functions_info(HeteroMap& map) = 0;
 			virtual void process_get_reflection_info(HeteroMap& map) = 0;
 
-			virtual void process_invoke(int32_t seq) = 0;
-
 		public:
 			BaseProcessor(shared_ptr<ITransport> transport);
+			~BaseProcessor();
+
+			/**
+			 * process a single request
+			 */
 			void process();
+
+			/**
+			 * process until EOF
+			 */
 			void serve();
+
+			/**
+			 * explicitly close the processor (disconnects the client)
+			 */
 			void close();
 		};
 
 
+		/**
+		 * factory for processor instances (implemented by generated code)
+		 */
 		class IProcessorFactory
 		{
 		public:
@@ -186,6 +215,9 @@ namespace agnos
 			}
 		};
 
+		/**
+		 * a collection of utilities required by BaseClient
+		 */
 		class ClientUtils : public boost::noncopyable
 		{
 		public:
@@ -204,6 +236,7 @@ namespace agnos
 
 		public:
 			ClientUtils(shared_ptr<ITransport> transport);
+			~ClientUtils();
 
 			void close();
 
@@ -246,6 +279,9 @@ namespace agnos
 			}
 		};
 
+		/**
+		 * the base client (extended by generated code)
+		 */
 		class BaseClient : public boost::noncopyable
 		{
 		public:

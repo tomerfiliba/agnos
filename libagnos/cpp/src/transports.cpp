@@ -22,7 +22,6 @@
 #include <sstream>
 #include <fstream>
 #include <boost/iostreams/filtering_stream.hpp>
-//#include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/device/back_inserter.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
@@ -70,7 +69,8 @@ namespace agnos
 		}
 
 		// adapted from http://lists.boost.org/boost-users/att-48158/IoStreams.cpp
-		static void zlib_compress(const std::vector<char>& data, std::vector<char>& compressed)
+
+		template<typename T> inline static void zlib_compress(const T& data, T& compressed)
 		{
 		    boost::iostreams::filtering_streambuf<boost::iostreams::output> out;
 		    out.push(boost::iostreams::zlib_compressor());
@@ -79,17 +79,155 @@ namespace agnos
 		    boost::iostreams::copy(src, out);
 		}
 
-		/*
-		static void zlib_decompress(const std::vector<char>& data, std::vector<char>& uncompressed)
+		template<typename T> inline static void zlib_decompress(const T& data, T& uncompressed)
 		{
 		    boost::iostreams::filtering_streambuf<boost::iostreams::input> in;
 		    in.push(boost::iostreams::zlib_decompressor());
 		    boost::iostreams::array_source src(&data[0], data.size());
 		    in.push(src);
-		    //?in.push(boost::make_iterator_range(data));
 		    boost::iostreams::copy(in, boost::iostreams::back_inserter(uncompressed));
 		}
-		*/
+
+		//////////////////////////////////////////////////////////////////////
+		// BasicInputStream
+		//////////////////////////////////////////////////////////////////////
+
+		BasicInputStream::BasicInputStream() : _gcount(0)
+		{
+		}
+
+		std::istream& BasicInputStream::read(char* buf, std::streamsize count)
+		{
+			_gcount = readn(buf, count);
+			return *this;
+		}
+
+		std::streamsize BasicInputStream::gcount() const
+		{
+			return _gcount;
+		}
+
+		//////////////////////////////////////////////////////////////////////
+		// BoundInputStream - a fixed-length input stream
+		//////////////////////////////////////////////////////////////////////
+
+		template <typename T> class BoundInputStream : public BasicInputStream
+		{
+		protected:
+			shared_ptr<T> stream;
+			std::streamsize remaining_length;
+			bool skip_underlying;
+			bool close_underlying;
+
+		public:
+			BoundInputStream(shared_ptr<T> stream, std::streamsize length,
+					bool skip_underlying = true, bool close_underlying = false) :
+				BasicInputStream(), stream(stream), remaining_length(length),
+				skip_underlying(skip_underlying), close_underlying(close_underlying)
+			{
+				if (length < 0) {
+					throw std::runtime_error("length must be >= 0");
+				}
+			}
+
+			~BoundInputStream()
+			{
+				close();
+			}
+
+			void close()
+			{
+				DEBUG_LOG("BoundInputStream::close()");
+				if (!stream) {
+					return;
+				}
+				if (skip_underlying) {
+					skip(-1);
+				}
+				if (close_underlying) {
+					stream->close();
+				}
+				stream.reset();
+			}
+
+			std::streamsize available() const
+			{
+				return remaining_length;
+			}
+
+			std::streamsize readn(char* buf, std::streamsize count)
+			{
+				DEBUG_LOG("BoundInputStream::read(" << count << ")");
+				if (count > remaining_length) {
+					THROW_FORMATTED(TransportEOFError, "request to read more bytes (" <<
+						count << ") than available (" << remaining_length << ")");
+				}
+				stream->read(buf, count);
+				_gcount = stream->gcount();
+				remaining_length -= _gcount;
+				return _gcount;
+			}
+
+			size_t skip(int count)
+			{
+				DEBUG_LOG("BoundInputStream::skip(" << count << ")");
+				if (count < 0 || count > remaining_length) {
+					count = remaining_length;
+				}
+				if (count <= 0) {
+					return 0;
+				}
+				char buf[16*1024];
+				std::streamsize total_skipped = 0;
+
+				while (count > 0) {
+					stream->read(buf, sizeof(buf));
+					std::streamsize actually_read = stream->gcount();
+					if (actually_read <= 0) {
+						remaining_length = 0;
+						break;
+					}
+					total_skipped += actually_read;
+					count -= actually_read;
+					remaining_length -= actually_read;
+				}
+				return total_skipped;
+			}
+		};
+
+		//////////////////////////////////////////////////////////////////////
+		// ZlibDecompressingStream - a zlib-decompressed input stream
+		//////////////////////////////////////////////////////////////////////
+
+		template<typename T> class ZlibDecompressingStream : public BasicInputStream
+		{
+		protected:
+			shared_ptr<T> stream;
+		    boost::iostreams::filtering_stream<boost::iostreams::input> in;
+
+		public:
+			ZlibDecompressingStream(shared_ptr<T> stream) : stream(stream), in()
+			{
+			    in.push(boost::iostreams::zlib_decompressor());
+			    in.push(*stream);
+			}
+
+			void close()
+			{
+				if (!stream) {
+					return;
+				}
+				stream->close();
+				stream.reset();
+			}
+
+			std::streamsize readn(char* buf, std::streamsize count)
+			{
+				stream->read(buf, count);
+				_gcount = stream->gcount();
+				return _gcount;
+			}
+		};
 
 		//////////////////////////////////////////////////////////////////////
 		// SocketTransport
@@ -181,36 +319,6 @@ namespace agnos
 			_assert_good();
 		}
 
-		template<typename T> class ZlibDecompressingStream : public BasicInputStream
-		{
-		protected:
-			shared_ptr<T> stream;
-		    boost::iostreams::filtering_stream<boost::iostreams::input> in;
-
-		public:
-			ZlibDecompressingStream(shared_ptr<T> stream) : stream(stream), in()
-			{
-			    in.push(boost::iostreams::zlib_decompressor());
-			    in.push(*stream);
-			}
-
-			void close()
-			{
-				if (!stream) {
-					return;
-				}
-				stream->close();
-				stream.reset();
-			}
-
-			std::streamsize readn(char* buf, std::streamsize count)
-			{
-				stream->read(buf, count);
-				_gcount = stream->gcount();
-				return _gcount;
-			}
-		};
-
 		int SocketTransport::begin_read()
 		{
 			if (rlock.is_held_by_current_thread()) {
@@ -224,23 +332,22 @@ namespace agnos
 				DEBUG_LOG("rseq = " << rseq);
 
 				int packet_length = _read_int32();
-				DEBUG_LOG("packet_length = " << rlength);
+				DEBUG_LOG("packet_length = " << packet_length);
 
 				int uncompressed_length = _read_int32();
-				DEBUG_LOG("uncompressed_length = " << rcomplength);
+				DEBUG_LOG("uncompressed_length = " << uncompressed_length);
 
 				instream = shared_ptr<BoundInputStream<tcp::iostream> >(
 						new BoundInputStream<tcp::iostream>(sockstream, packet_length, true, false));
 
 				if (uncompressed_length > 0) {
-					//throw TransportError("cannot process compressed payload");
-
-					shared_ptr<ZlibDecompressingStream<BasicInputStream> > zdc(
+					// wrap the instream with a ZlibDecompressingStream
+					shared_ptr<ZlibDecompressingStream<BasicInputStream> > zds(
 							new ZlibDecompressingStream<BasicInputStream>(instream));
 
 					shared_ptr<BoundInputStream<ZlibDecompressingStream<BasicInputStream> > > bis(
 							new BoundInputStream<ZlibDecompressingStream<BasicInputStream> >(
-									zdc, uncompressed_length, false, true));
+									zds, uncompressed_length, false, true));
 
 					instream = bis;
 				}
@@ -329,7 +436,7 @@ namespace agnos
 
 					_write_int32(wseq);            // seq
 					_write_int32(compbuf.size());  // packet length
-					_write_int32(wbuf.size());     // 0 means uncompressed
+					_write_int32(wbuf.size());     // uncompressed length
 
 					DEBUG_LOG("W(" << compbuf.size() << ") " << repr(&compbuf[0], compbuf.size()));
 					sockstream->write(&compbuf[0], compbuf.size());
@@ -363,7 +470,6 @@ namespace agnos
 		//////////////////////////////////////////////////////////////////////
 		// ProcTransport
 		//////////////////////////////////////////////////////////////////////
-
 
 #ifdef BOOST_PROCESS_SUPPORTED
 		ProcTransport::ProcTransport(boost::process::child& proc, shared_ptr<ITransport> transport) :

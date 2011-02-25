@@ -27,12 +27,8 @@ namespace agnos
 	{
 		namespace factories
 		{
+			// a singleton required by boost::asio
 			boost::asio::io_service the_io_service;
-
-			ITransportFactory::~ITransportFactory()
-			{
-				close();
-			}
 
 			static inline shared_ptr<tcp::acceptor> _connect(const tcp::endpoint& endpoint, int backlog)
 			{
@@ -62,9 +58,19 @@ namespace agnos
 				acceptor = _connect(endpoint, backlog);
 			}
 
+			SocketTransportFactory::~SocketTransportFactory()
+			{
+				close();
+			}
+
 			void SocketTransportFactory::close()
 			{
+				if (!acceptor) {
+					return;
+				}
+				DEBUG_LOG("closing SocketTransportFactory");
 				acceptor->close();
+				acceptor.reset();
 			}
 
 			shared_ptr<ITransport> SocketTransportFactory::accept()

@@ -33,14 +33,39 @@ namespace agnos
 
 		DEFINE_EXCEPTION(PackerError);
 
+		/**
+		 * packers are serializers of a certain type
+		 */
 		class IPacker : public boost::noncopyable
 		{
 		public:
+			/**
+			 * returns the packer's unique identifier
+			 */
 			virtual int32_t get_id() const = 0;
+
+			/**
+			 * packs an object into the transport. note that the object must be
+			 * of the type expected by the packer
+			 */
 			virtual void pack_any(const any& obj, ITransport& transport) const = 0;
+
+			/**
+			 * unpacks an object from the transport (returned by-value wrapped
+			 * by a boost::any instance)
+			 */
 			virtual any unpack_any(ITransport& transport) const = 0;
+
+			/**
+			 * unpacks an object from the transport (returned as a
+			 * boost::shared_ptr)
+			 */
 			virtual any unpack_shared(ITransport& transport) const = 0;
 
+			/**
+			 * unpacks an object from the transport and return it casted to
+			 * the given type
+			 */
 			template<typename T> T unpack_as(ITransport& transport) const
 			{
 				any res = unpack_any(transport);
@@ -103,6 +128,9 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * a dead-end packer (throws exceptions when used)
+		 */
 		class VoidPacker :  public IPacker
 		{
 		public:
@@ -116,6 +144,9 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * packer for 8-bit, signed integers
+		 */
 		class Int8Packer :  public IPacker
 		{
 		public:
@@ -126,6 +157,9 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * packer for boolean values
+		 */
 		class BoolPacker :  public IPacker
 		{
 		public:
@@ -138,6 +172,9 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * packer for 16-bit, signed integers
+		 */
 		class Int16Packer :  public IPacker
 		{
 		public:
@@ -148,6 +185,9 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * packer for 32-bit, signed integers
+		 */
 		class Int32Packer :  public IPacker
 		{
 		public:
@@ -158,6 +198,9 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * packer for 64-bit, signed integers
+		 */
 		class Int64Packer :  public IPacker
 		{
 		public:
@@ -168,6 +211,9 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * packer for 64-bit, floating point values
+		 */
 		class FloatPacker :  public IPacker
 		{
 		public:
@@ -178,6 +224,9 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * packer for byte buffers (e.g., char *)
+		 */
 		class BufferPacker :  public IPacker
 		{
 		public:
@@ -188,6 +237,9 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * packer for datetime (represented as boost::posix_time::ptime)
+		 */
 		class DatePacker :  public IPacker
 		{
 		public:
@@ -198,6 +250,11 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * packer for byte strings (does not handle UTF8)
+		 *
+		 * XXX: http://www.boost.org/doc/libs/1_46_0/libs/serialization/doc/codecvt.html
+		 */
 		class StringPacker :  public IPacker
 		{
 		public:
@@ -214,6 +271,10 @@ namespace agnos
 
 		extern shared_ptr<_NullObj> NullObj;
 
+		/**
+		 * no-op packer (does nothing, returns NullObj on unpack), required by
+		 * HeteroMap
+		 */
 		class NullPacker :  public IPacker
 		{
 		public:
@@ -227,6 +288,9 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * a packer for random-access containers (e.g., std::vector<T>)
+		 */
 		template<typename TYPE, int ID> class ListPacker :  public IPacker
 		{
 		protected:
@@ -273,6 +337,9 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * a packer for std::set<T>
+		 */
 		template<typename TYPE, int ID> class SetPacker :  public IPacker
 		{
 		protected:
@@ -318,6 +385,9 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * a packer for std::map<K, V>
+		 */
 		template<typename KEYTYPE, typename VALTYPE, int ID> class MapPacker :  public IPacker
 		{
 		public:
@@ -408,6 +478,9 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		/**
+		 * proxy serialization interface
+		 */
 		class ISerializer
 		{
 		public:
@@ -415,8 +488,9 @@ namespace agnos
 			virtual any load(objref_t oid) = 0;
 		};
 
-		//--
-
+		/**
+		 * a packer for object proxies
+		 */
 		template<typename TYPE, int ID> class ObjrefPacker :  public IPacker
 		{
 		public:

@@ -30,5 +30,4 @@
 #include "protocol.hpp"
 
 
-
 #endif // AGNOS_HPP_INCLUDED

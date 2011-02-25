@@ -158,6 +158,11 @@ namespace agnos
 		{
 		}
 
+		BaseProcessor::~BaseProcessor()
+		{
+			close();
+		}
+
 		void BaseProcessor::process()
 		{
 			int32_t seq = transport->begin_read();
@@ -208,23 +213,26 @@ namespace agnos
 		}
 
 
-		struct _TransportClose
+		template<typename T> struct CloseFinalizer
 		{
-			shared_ptr<ITransport> transport;
-			_TransportClose(shared_ptr<ITransport> transport) : transport(transport)
+			shared_ptr<T> resource;
+			CloseFinalizer(shared_ptr<T> resource) : resource(resource)
 			{
 			}
-			~_TransportClose()
+			~CloseFinalizer()
 			{
-				transport->close();
+				if (!resource) {
+					return;
+				}
+				resource->close();
+				resource.reset();
 			}
 		};
-
 
 		void BaseProcessor::serve()
 		{
 			// automatically close the transport at exit
-			_TransportClose finalizer(transport);
+			CloseFinalizer<ITransport> finalizer(transport);
 
 			try {
 				while (true) {
@@ -243,9 +251,12 @@ namespace agnos
 
 		void BaseProcessor::close()
 		{
+			if (!transport) {
+				return;
+			}
 			transport->close();
+			transport.reset();
 		}
-
 
 		//////////////////////////////////////////////////////////////////////
 		// ClientUtils
@@ -258,6 +269,11 @@ namespace agnos
 				proxies(),
 				_seq(0)
 		{
+		}
+
+		ClientUtils::~ClientUtils()
+		{
+			close();
 		}
 
 		int32_t ClientUtils::get_seq()
@@ -296,7 +312,11 @@ namespace agnos
 
 		void ClientUtils::close()
 		{
+			if (!transport) {
+				return;
+			}
 			transport->close();
+			transport.reset();
 		}
 
 		void ClientUtils::decref(objref_t oid)
