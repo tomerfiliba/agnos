@@ -64,7 +64,7 @@ class TestCSharp(TargetTest):
             print clientproc.stderr.read()
             print "==================="
             self.failUnless(clientproc.wait() == 0)
-        except Exception, ex:
+        except Exception as ex:
             print "!!! %r" % (ex,)
             raise
         finally:

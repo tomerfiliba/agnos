@@ -53,7 +53,7 @@ class PrimitivePacker(Packer):
             obj = 0
         try:
             data = self.struct.pack(obj)
-        except (TypeError, ValueError), ex:
+        except (TypeError, ValueError) as ex:
             raise PackingError(ex)
         stream.write(data)
     def unpack(self, stream):
@@ -137,7 +137,7 @@ class Buffer(Packer):
         Int32.pack(len(obj), stream)
         try:
             stream.write(obj)
-        except (TypeError, ValueError), ex:
+        except (TypeError, ValueError) as ex:
             raise PackingError(ex)
     @classmethod
     def unpack(cls, stream):
@@ -153,7 +153,7 @@ class Str(Packer):
             obj = ""
         try:
             data = obj.encode("utf-8")
-        except (TypeError, ValueError), ex:
+        except (TypeError, ValueError) as ex:
             raise PackingError(ex)
         Buffer.pack(data, stream)
     @classmethod
@@ -182,7 +182,7 @@ class ListOf(Packer):
         try:
             length = len(obj)
             iterator = iter(obj)
-        except (TypeError, ValueError, AttributeError), ex:
+        except (TypeError, ValueError, AttributeError) as ex:
             raise PackingError(ex)
         Int32.pack(length, stream)
         for item in iterator:
@@ -215,7 +215,7 @@ class SetOf(Packer):
         try:
             length = len(obj)
             iterator = iter(obj)
-        except (TypeError, ValueError, AttributeError), ex:
+        except (TypeError, ValueError, AttributeError) as ex:
             raise PackingError(ex)
         Int32.pack(length, stream)
         for item in obj:
@@ -249,7 +249,7 @@ class MapOf(Packer):
         try:
             length = len(obj)
             iterator = obj.iteritems()
-        except (TypeError, ValueError, AttributeError), ex:
+        except (TypeError, ValueError, AttributeError) as ex:
             raise PackingError(ex)
         Int32.pack(length, stream)
         for key, val in iterator:
@@ -297,7 +297,7 @@ class HeteroMapPacker(Packer):
         try:
             length = len(obj)
             iterator = obj.iterfields()
-        except (TypeError, ValueError, AttributeError), ex:
+        except (TypeError, ValueError, AttributeError) as ex:
             raise PackingError(ex)
         Int32.pack(length, stream)
         for key, keypacker, val, valpacker in iterator:

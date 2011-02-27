@@ -70,7 +70,7 @@ class BaseServer(object):
         while True:
             try:
                 trans = self.transport_factory.accept()
-            except IOError, ex:
+            except IOError as ex:
                 if ex.errno == errno.EINTR:
                     continue
                 else:
@@ -106,7 +106,7 @@ class SelectingServer(BaseServer):
             while True:
                 try:
                     rlist = select(sources, (), (), None)[0]
-                except IOError, ex:
+                except IOError as ex:
                     if ex.errno == errno.EINTR:
                         continue
                     else:
@@ -212,7 +212,7 @@ class ForkingServer(BaseServer):
                 self.logger.info("child proc started")
                 signal.signal(signal.SIGCHLD, signal.SIG_DFL)
                 _handle_client(processor, self.logger)
-            except Exception, ex:
+            except Exception as ex:
                 logger.exception()
             finally:
                 sys.exit()

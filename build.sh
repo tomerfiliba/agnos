@@ -36,12 +36,29 @@ if [ $? -ne 0 ] ; then
     exit 1
 fi
 
-python setup.py bdist --formats=egg,wininst --plat-name="win32"
-
+python2.6 setup.py bdist --formats=egg,wininst --plat-name="win32"
 if [ $? -ne 0 ] ; then
-    echo "buidling agnos_compiler failed egg,wininst"
+    echo "buidling agnos_compiler failed egg-2.6,wininst"
     exit 1
 fi
+
+python2.7 setup.py bdist --formats=egg
+if [ $? -ne 0 ] ; then
+    echo "buidling agnos_compiler failed egg-2.7"
+    exit 1
+fi
+
+#python3.0 setup.py bdist --formats=egg
+#if [ $? -ne 0 ] ; then
+#    echo "buidling agnos_compiler failed egg-3.0"
+#    exit 1
+#fi
+
+#python3.1 setup.py bdist --formats=egg
+#if [ $? -ne 0 ] ; then
+#    echo "buidling agnos_compiler failed egg-3.1"
+#    exit 1
+#fi
 
 rm setup.py &> /dev/null
 
@@ -50,7 +67,7 @@ rm -rf *.egg-info
 popd
 mkdir release/agnos_compiler
 cp compiler/dist/* release/agnos_compiler
-rm -rf agnos_compiler/dist
+rm -rf compiler/dist
 
 ###############################################################################
 # python
@@ -68,19 +85,37 @@ if [ $? -ne 0 ] ; then
     exit 1
 fi
 
-python setup.py bdist --formats=egg,wininst --plat-name="win32"
-
+python2.6 setup.py bdist --formats=egg,wininst --plat-name="win32"
 if [ $? -ne 0 ] ; then
-    echo "buidling libagnos-python failed egg,wininst"
+    echo "buidling libagnos-python failed egg-2.6,wininst"
     exit 1
 fi
+
+python2.7 setup.py bdist --formats=egg
+if [ $? -ne 0 ] ; then
+    echo "buidling libagnos-python failed egg-2.7"
+    exit 1
+fi
+
+#python3.0 setup.py bdist --formats=egg
+#if [ $? -ne 0 ] ; then
+#    echo "buidling libagnos-python failed egg-3.0"
+#    exit 1
+#fi
+
+#python3.1 setup.py bdist --formats=egg
+#if [ $? -ne 0 ] ; then
+#    echo "buidling libagnos-python failed egg-3.1"
+#    exit 1
+#fi
 
 rm setup.py &> /dev/null
 rm -rf build
 rm -rf *.egg-info
+rm -rf src/*.egg-info
 cd dist
-rename 's/(.+)-[^-]+\.([twz].*)/lib$1-python.$2/' *
-rename 's/(.+)-[^-]+\-py(.+)\.egg/lib$1-python-$2.egg/' *.egg
+# rename 's/(.+)-[^-]+\.([twz].*)/lib$1-$AGNOS_TOOLCHAIN_VERSION-python.$2/' *
+# rename 's/(.+)-[^-]+\-py(.+)\.egg/lib$1-$AGNOS_TOOLCHAIN_VERSION-python-$2.egg/' *.egg
 popd
 
 mkdir -p release/libagnos/python
@@ -96,14 +131,17 @@ mkdir -p release/libagnos/java
 cp -R libagnos/java/src/ release/agnos-java/
 cp libagnos/java/SConstruct release/agnos-java/
 pushd release
-tar -czf libagnos-java.tar.gz agnos-java
-zip -r libagnos-java.zip agnos-java
+tar -czf libagnos-$AGNOS_TOOLCHAIN_VERSION-java-src.tar.gz agnos-java
+zip -r libagnos-$AGNOS_TOOLCHAIN_VERSION-java-src.zip agnos-java
 
 pushd agnos-java
 scons
+mv doc agnos-java
+zip -r libagnos-$AGNOS_TOOLCHAIN_VERSION-java-doc.zip agnos-java
 popd
 
-mv libagnos-java.* libagnos/java
+mv libagnos-*.* libagnos/java
+mv agnos-java/libagnos-*.* libagnos/java
 mv agnos-java/agnos.jar libagnos/java/agnos.jar
 rm -rf agnos-java
 popd
@@ -121,12 +159,12 @@ cp libagnos/csharp/src/*.csproj release/agnos-csharp/src/
 cp libagnos/csharp/src/*.sln release/agnos-csharp/src/
 
 pushd release
-tar -czf libagnos-csharp.tar.gz agnos-csharp
-zip -r libagnos-csharp.zip agnos-csharp
-mv libagnos-csharp.* libagnos/csharp/
+tar -czf libagnos-$AGNOS_TOOLCHAIN_VERSION-csharp-src.tar.gz agnos-csharp
+zip -r libagnos-$AGNOS_TOOLCHAIN_VERSION-csharp-src.zip agnos-csharp
+mv libagnos-*.* libagnos/csharp/
 
 pushd agnos-csharp/src
-xbuild Agnos.sln
+xbuild Agnos.sln # /p:DocumentationFile=agnos-doc.xml
 popd
 mv agnos-csharp/src/bin/*/Agnos.dll libagnos/csharp/
 rm -rf agnos-csharp
@@ -146,89 +184,25 @@ cp libagnos/cpp/src/*.cpp release/agnos-cpp/src/
 cp libagnos/cpp/src/*.hpp release/agnos-cpp/src/
 
 pushd release
-tar -czf libagnos-cpp.tar.gz agnos-cpp 
-zip -r libagnos-cpp.zip agnos-cpp
-mv libagnos-cpp.* libagnos/cpp/
+tar -czf libagnos-$AGNOS_TOOLCHAIN_VERSION-cpp-src.tar.gz agnos-cpp 
+zip -r libagnos-$AGNOS_TOOLCHAIN_VERSION-cpp-src.zip agnos-cpp
+mv libagnos-*.* libagnos/cpp/
 
 if [ "$UPLOAD" == "yes" ]; then
 	pushd agnos-cpp
 	scons
+	
+	if [ $? -ne 0 ]; then
+	   echo "c++ scons failed"
+	   exit 1
+	fi
+	
 	popd
 fi
 
 rm -rf agnos-cpp
 popd
 
-###############################################################################
-# wrap it up
-###############################################################################
-# pushd release
-# 
-# mkdir agnos-toolchain
-# mkdir agnos-toolchain/cpp
-# mkdir agnos-toolchain/csharp
-# mkdir agnos-toolchain/java
-# mkdir agnos-toolchain/python
-# 
-# cp *.zip *.exe *.egg agnos-toolchain
-# cp cpp/*.zip agnos-toolchain/cpp
-# cp csharp/*.zip csharp/*.dll agnos-toolchain/csharp
-# cp java/*.zip java/*.jar agnos-toolchain/java
-# cp python/*.zip python/*.exe python/*.egg agnos-toolchain/python
-# 
-# zip -r agnos-toolchain-$AGNOS_TOOLCHAIN_VERSION-win32.zip agnos-toolchain
-# rm -rf agnos-toolchain
-# 
-# mkdir agnos-toolchain
-# mkdir agnos-toolchain/cpp
-# mkdir agnos-toolchain/csharp
-# mkdir agnos-toolchain/java
-# mkdir agnos-toolchain/python
-# 
-# cp *.tar.gz *.egg agnos-toolchain
-# cp cpp/*.tar.gz agnos-toolchain/cpp
-# cp csharp/*.tar.gz csharp/*.dll agnos-toolchain/csharp
-# cp java/*.tar.gz java/*.jar agnos-toolchain/java
-# cp python/*.tar.gz python/*.egg agnos-toolchain/python
-# 
-# tar -czf agnos-toolchain-$AGNOS_TOOLCHAIN_VERSION-posix.tar.gz agnos-toolchain
-# rm -rf agnos-toolchain
-# 
-# mkdir libagnos
-# mkdir libagnos/cpp
-# mkdir libagnos/csharp
-# mkdir libagnos/java
-# mkdir libagnos/python
-# 
-# cp cpp/*.zip libagnos/cpp
-# cp csharp/*.zip csharp/*.dll libagnos/csharp
-# cp java/*.zip java/*.jar libagnos/java
-# cp python/*.zip python/*.exe python/*.egg libagnos/python
-# 
-# zip -r libagnos-$AGNOS_TOOLCHAIN_VERSION-win32.zip libagnos
-# rm -rf libagnos
-# 
-# mkdir libagnos
-# mkdir libagnos/cpp
-# mkdir libagnos/csharp
-# mkdir libagnos/java
-# mkdir libagnos/python
-# 
-# cp cpp/*.tar.gz libagnos/cpp
-# cp csharp/*.tar.gz csharp/*.dll libagnos/csharp
-# cp java/*.tar.gz java/*.jar libagnos/java
-# cp python/*.tar.gz python/*.egg libagnos/python
-# 
-# tar -czf libagnos-$AGNOS_TOOLCHAIN_VERSION-posix.tar.gz libagnos
-# rm -rf libagnos
-# 
-# rm agnos_compiler*
-# rm -rf cpp
-# rm -rf csharp
-# rm -rf java
-# rm -rf python
-# 
-# popd
 
 ###############################################################################
 # upload

@@ -256,7 +256,7 @@ class LogSink(object):
                 try:
                     f.write(line)
                     f.flush()
-                except IOError, ex:
+                except IOError as ex:
                     pruned.append(f)
             for f in pruned:
                 self.files.remove(f)

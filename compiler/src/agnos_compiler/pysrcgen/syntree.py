@@ -31,10 +31,12 @@ class SourceError(Exception):
     def display(self):
         if self.blk:
             print( "Error at %s(%s)" % (self.blk.fileinfo.filename, self.blk.lineno))
+        print( self.msg)
+        if self.blk:
             print( "    %s" % (self.blk.text))
             for k, v in self.kwargs.iteritems():
-                print( "    %s = %r" % (k, v))
-        print( self.msg)
+                print( "%s = %r" % (k, v))
+            print("")
 
 
 class FileInfo(object):
@@ -167,7 +169,7 @@ class TokenizedBlock(object):
         return cls("#module-root#", {}, doc, children, blk)
     
     def debug(self, level = 0):
-        print(".." * level + " " + self.tag + " " + self.args)
+        print(".." * level + " " + self.tag + " " + repr(self.args))
         for child in self.children:
             child.debug(level + 1)
 
@@ -305,12 +307,15 @@ class AstNode(object):
             try:
                 cls2 = mapping[child.tag]
             except KeyError:
-                raise SourceError(self.block.srcblock, "tag %r is invalid in this context", child.tag,
+                raise SourceError(child.srcblock, "tag %r is invalid in this context", child.tag,
                     parent_node = self)
             self.children.append(cls2(child, self))
         
         if self.GET_DOCSTRING and not self.doc:
             self.doc = self._get_docstring(block)
+    
+    def __repr__(self):
+        return "<%s(%s)>" % (self.__class__.__name__, self.block.srcblock)
 
     def _get_docstring(self, block):
         start_line = -1
@@ -538,8 +543,8 @@ def parse_source_file(filename):
     ast_root = ModuleNode(tokenized_root)
     ast_root.postprocess()
     #except Exception as ex:
-    #tokenized_root.debug()
-    #raise
+    #    tokenized_root.debug()
+    #    raise
     return ast_root
 
 def parse_source_files(rootdir, filenames, packagename):

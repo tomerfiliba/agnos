@@ -199,7 +199,7 @@ class BaseProcessor(object):
                 except GenericException as ex:
                     self.transport.restart_write()
                     self.send_generic_exception(ex)
-                except PackingError, ex:
+                except PackingError as ex:
                     tbtext = "".join(traceback.format_exception(*sys.exc_info())[:-1])
                     self.transport.restart_write()
                     self.send_generic_exception(GenericException(str(ex), tbtext))
