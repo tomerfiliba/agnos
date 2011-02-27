@@ -63,7 +63,7 @@ fi
 rm setup.py &> /dev/null
 
 rm -rf build
-rm -rf *.egg-info
+rm -rf src/*.egg-info
 popd
 mkdir release/agnos_compiler
 cp compiler/dist/* release/agnos_compiler
