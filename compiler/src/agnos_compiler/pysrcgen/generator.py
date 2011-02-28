@@ -394,7 +394,8 @@ def get_filenames(rootdir, suffix = ".py"):
     return filenames, rootdir
 
 
-def main(rootdir, outdir = None, idlfile = None, serverfile = None, packagename = None, history_file = None):
+def main(rootdir, outdir = None, idlfile = None, serverfile = None, packagename = None, 
+        history_file = None, target_options = {}):
     filenames, rootdir = get_filenames(rootdir)
     if not packagename:
         packagename = os.path.basename(rootdir)
@@ -420,7 +421,7 @@ def main(rootdir, outdir = None, idlfile = None, serverfile = None, packagename 
     with open(idlfile, "w") as f:
         f.write(visitor.doc.render())
 
-    compile(idlfile, PythonTarget(outdir))
+    compile(idlfile, PythonTarget(outdir, target_options))
     
     visitor = ServerGenerator()
     visitor.visit(ast_root)

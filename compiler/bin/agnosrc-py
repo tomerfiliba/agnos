@@ -49,6 +49,9 @@ parser.add_option("-p", "--packagename", dest="packagename", default=None,
 parser.add_option("--historyfile", dest="history_file", default=None,
                   help="specify the history file to use (by default, '_history' is appended to the idlfile's name)", 
                   metavar="NAME")
+parser.add_option("-O", "--opt", dest="options", action="append", default=[],
+                  help="pass target-specific options, see agnosc for more info", 
+                  metavar="OPTIONS")
 
 
 if __name__ == "__main__":
@@ -58,6 +61,6 @@ if __name__ == "__main__":
     for fn in args:
         main(fn, outdir = options.outdir, packagename = options.packagename,
             serverfile = options.serverfile, idlfile = options.idlfile,
-            history_file = options.history_file)
+            history_file = options.history_file, target_options = options.options)
 
 

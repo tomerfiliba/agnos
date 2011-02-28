@@ -22,6 +22,7 @@ Contents
    client
    server
    over-http
+   protocol
    
    srcgen
    restful

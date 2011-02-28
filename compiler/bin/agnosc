@@ -53,7 +53,7 @@ parser.add_option("-o", "--outdir", dest="outdir", default=None,
                   help="generate output into OUTDIR; the default directory used is that of the input file",  
                   metavar="OUTDIR")
 parser.add_option("-t", "--target", dest="target",
-                  help="specify the target output language ('python', 'java', 'csharp', 'cpp', or 'doc')", 
+                  help="specify the target output language ('python', 'java', 'csharp', 'cpp', or 'doc')",
                   metavar="TARGET")
 parser.add_option("--doc",
                   action="store_true", dest="emitdoc", default=False,
@@ -63,7 +63,7 @@ parser.add_option("--debug",
                   help="set debug flag")
 parser.add_option("-O", "--opt",
                   action="append", dest="options", default=[],
-                  help="pass target-specific options")
+                  help="pass target-specific options, e.g., '-O foo' or '-O foo=bar'")
 
 
 if __name__ == "__main__":
@@ -71,13 +71,15 @@ if __name__ == "__main__":
     if not args:
         parser.error("must specify IDL input file(s)")
     if not options.target:
-        parser.error("must specify target")
+        parser.error("must specify a target")
     if options.emitdoc:
         options.options.append("doc")
     try:
-        target = TARGET_ALIASES[options.target.lower()]
+        target_factory = TARGET_ALIASES[options.target.lower()]
     except KeyError:
-        parser.error("invalid target: %r" % (options.target,))
+        parser.error("invalid target: %r" % (target,))
+    target_options = dict((opt.split("=", 1) if "=" in opt else (opt, True)) 
+        for opt in options.options)
     try:
         for filename in args:
             if options.outdir:
@@ -86,7 +88,7 @@ if __name__ == "__main__":
                 outdir = os.path.dirname(filename)
                 if not outdir:
                     outdir = "."
-            compile(filename, target(outdir, set(options.options)))
+            compile(filename, target_factory(outdir, target_options))
     except IDLError:
         raise
     except Exception, ex:

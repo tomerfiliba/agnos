@@ -43,7 +43,7 @@ Advance Topics:
 * :doc:`library-mode`
 * :doc:`over-http`
 * :doc:`restful`
-
+* :doc:`protocol`
 
 .. _doc-about:
 

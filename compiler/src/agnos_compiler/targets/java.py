@@ -172,53 +172,56 @@ class JavaTarget(TargetBase):
     LANGUAGE = clike
 
     def generate(self, service):
-        pkg = "%s.server_bindings" % (service.package,)
-        dirs = pkg.replace(".", "/")
-        
-        self.mkdir(dirs)
-        with self.new_module(os.path.join(dirs, "%s.java" % (service.name,))) as module:
-            STMT = module.stmt
-            SEP = module.sep
+        if "no-server" not in self.options:
+            pkg = "%s.server_bindings" % (service.package,)
+            dirs = pkg.replace(".", "/")
             
-            STMT("package {0}", pkg)
-            SEP()
-            STMT("import java.util.*")
-            STMT("import java.io.*")
-            STMT("import agnos.packers.*")
-            STMT("import agnos.util.HeteroMap")
-            STMT("import agnos.util._HeteroMapPacker")
-            STMT("import agnos.protocol.*")
-            STMT("import agnos.transports.*")
-            SEP()
-            self.generate_server_bindings(module, service)
-            SEP()
+            self.mkdir(dirs)
+            with self.new_module(os.path.join(dirs, "%s.java" % (service.name,))) as module:
+                STMT = module.stmt
+                SEP = module.sep
+                
+                STMT("package {0}", pkg)
+                SEP()
+                STMT("import java.util.*")
+                STMT("import java.io.*")
+                STMT("import agnos.packers.*")
+                STMT("import agnos.util.HeteroMap")
+                STMT("import agnos.util._HeteroMapPacker")
+                STMT("import agnos.protocol.*")
+                STMT("import agnos.transports.*")
+                SEP()
+                self.generate_server_bindings(module, service)
+                SEP()
 
-        pkg = "%s.client_bindings" % (service.package,)
-        dirs = pkg.replace(".", "/")
+        if "no-client" not in self.options:
+            pkg = "%s.client_bindings" % (service.package,)
+            dirs = pkg.replace(".", "/")
+    
+            self.mkdir(dirs)
+            with self.new_module(os.path.join(dirs, "%s.java" % (service.name,))) as module:
+                STMT = module.stmt
+                SEP = module.sep
+                
+                STMT("package {0}", pkg)
+                SEP()
+                STMT("import java.util.*")
+                STMT("import java.io.*")
+                STMT("import java.net.Socket")
+                STMT("import java.net.URL")
+                STMT("import agnos.packers.*")
+                STMT("import agnos.util.HeteroMap")
+                STMT("import agnos.util._HeteroMapPacker")
+                STMT("import agnos.protocol.*")
+                STMT("import agnos.transports.*")
+                SEP()
+                self.generate_client_bindings(module, service)
+                SEP()
 
-        self.mkdir(dirs)
-        with self.new_module(os.path.join(dirs, "%s.java" % (service.name,))) as module:
-            STMT = module.stmt
-            SEP = module.sep
-            
-            STMT("package {0}", pkg)
-            SEP()
-            STMT("import java.util.*")
-            STMT("import java.io.*")
-            STMT("import java.net.Socket")
-            STMT("import java.net.URL")
-            STMT("import agnos.packers.*")
-            STMT("import agnos.util.HeteroMap")
-            STMT("import agnos.util._HeteroMapPacker")
-            STMT("import agnos.protocol.*")
-            STMT("import agnos.transports.*")
-            SEP()
-            self.generate_client_bindings(module, service)
-            SEP()
-        
-        with self.new_module("%s_server.java.stub" % (service.name,)) as module:
-            self.generate_server_stub(module, service)
-            SEP()
+        if "no-stub" not in self.options:
+            with self.new_module("%s_server.java.stub" % (service.name,)) as module:
+                self.generate_server_stub(module, service)
+                SEP()
     
     def generate_server_bindings(self, module, service):
         BLOCK = module.block
@@ -602,18 +605,19 @@ class JavaTarget(TargetBase):
                         STMT("_client._funcs.sync_{0}({1})", method.func.id, ", ".join(callargs))
                     else:
                         STMT("return _client._funcs.sync_{0}({1})", method.func.id, ", ".join(callargs))
-            if cls.all_derived:
-                SEP()
-                DOC("downcasts")
-                for cls2 in cls.all_derived:
-                    with BLOCK("public {0} castTo{1}()", type_to_java(cls2, proxy = True), cls2.name):
-                        STMT("return new {0}(_client, _objref, false)", type_to_java(cls2, proxy = True))
-            if cls.all_bases:
-                SEP()
-                DOC("upcasts")
-                for cls2 in cls.all_bases:
-                    with BLOCK("public {0} castTo{1}()", type_to_java(cls2, proxy = True), cls2.name):
-                        STMT("return new {0}(_client, _objref, false)", type_to_java(cls2, proxy = True))
+            if "no-casting" not in self.options:
+                if cls.all_derived:
+                    SEP()
+                    DOC("downcasts")
+                    for cls2 in cls.all_derived:
+                        with BLOCK("public {0} castTo{1}()", type_to_java(cls2, proxy = True), cls2.name):
+                            STMT("return new {0}(_client, _objref, false)", type_to_java(cls2, proxy = True))
+                if cls.all_bases:
+                    SEP()
+                    DOC("upcasts")
+                    for cls2 in cls.all_bases:
+                        with BLOCK("public {0} castTo{1}()", type_to_java(cls2, proxy = True), cls2.name):
+                            STMT("return new {0}(_client, _objref, false)", type_to_java(cls2, proxy = True))
 
     def generate_handler_interface(self, module, service):
         BLOCK = module.block
@@ -738,112 +742,113 @@ class JavaTarget(TargetBase):
         SEP()
         ##
         with BLOCK("protected void processGetReflectionInfo(HeteroMap map)"):
-            STMT('HeteroMap group = map.putNewMap("enums")')
-            STMT("ArrayList<String> arg_names, arg_types")
-            STMT("HeteroMap members = null")
-            STMT("HeteroMap member = null")
-            if has_annotations:
-                STMT("HashMap<String, String> anno")
-            SEP()
-            
-            for enum in service.enums():
-                STMT('members = group.putNewMap("{0}")', enum.name)
-                for mem in enum.members:
-                    STMT('members.put("{0}", "{1}")', mem.name, mem.value)
-            SEP()
-            
-            STMT('group = map.putNewMap("records")')
-            for rec in service.records():
-                STMT('members = group.putNewMap("{0}")', rec.name)
-                for mem in rec.members:
-                    STMT('members.put("{0}", "{1}")', mem.name, mem.type)
-                #STMT('group.put("{0}", )', rec.extends) ??
-            SEP()
-
-            STMT('group = map.putNewMap("exceptions")')
-            for rec in service.exceptions():
-                STMT('members = group.putNewMap("{0}")', rec.name)
-                for mem in rec.local_members:
-                    STMT('members.put("{0}", "{1}")', mem.name, mem.type)
-                STMT('members.put("__super__", "{0}")', rec.extends.name if rec.extends else "")
-            SEP()
-
-            STMT('group = map.putNewMap("classes")')
-            if service.classes():
-                STMT("HeteroMap cls_group, attr_group, meth_group, a, m")
-            has_extends = False
-            
-            for cls in service.classes():
-                STMT('cls_group = group.putNewMap("{0}")', cls.name)
-                if cls.extends:
-                    if not has_extends:
-                        has_extends = True
-                        STMT('ArrayList<String> extendsList')
-                    STMT('extendsList = new ArrayList<String>()')
-                    for cls2 in cls.extends:
-                        STMT('extendsList.add("{0}")', cls2.name)
-                    STMT('cls_group.put("extends", extendsList, Builtin.listOfStr)')
+            if "no-reflection" not in self.options:
+                STMT('HeteroMap group = map.putNewMap("enums")')
+                STMT("ArrayList<String> arg_names, arg_types")
+                STMT("HeteroMap members = null")
+                STMT("HeteroMap member = null")
+                if has_annotations:
+                    STMT("HashMap<String, String> anno")
+                SEP()
                 
-                STMT('attr_group = cls_group.putNewMap("attrs")')
-                STMT('meth_group = cls_group.putNewMap("methods")')
-                for attr in cls.attrs:
-                    STMT('a = attr_group.putNewMap("{0}")', attr.name)
-                    STMT('a.put("type", "{0}")', str(attr.type))
-                    STMT('a.put("get", {0})', "true" if attr.get else "false")
-                    STMT('a.put("set", {0})', "true" if attr.set else "false")
-                    STMT('a.put("get-id", {0})', attr.getid)
-                    STMT('a.put("set-id", {0})', attr.setid)
-                    if attr.annotations:
-                        STMT("anno = new HashMap<String, String>()")
-                        for anno in attr.annotations:
-                            STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
-                        STMT('a.put("annotations", anno, Builtin.mapOfStrStr)')
-
-                for meth in cls.methods:
-                    STMT('m = meth_group.putNewMap("{0}")', meth.name)
-                    STMT('m.put("type", "{0}")', meth.type)
-                    STMT('m.put("id", {0})', meth.id)
-                    if meth.annotations:
-                        STMT("anno = new HashMap<String, String>()")
-                        for anno in meth.annotations:
-                            STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
-                        STMT('m.put("annotations", anno, Builtin.mapOfStrStr)')
+                for enum in service.enums():
+                    STMT('members = group.putNewMap("{0}")', enum.name)
+                    for mem in enum.members:
+                        STMT('members.put("{0}", "{1}")', mem.name, mem.value)
+                SEP()
+                
+                STMT('group = map.putNewMap("records")')
+                for rec in service.records():
+                    STMT('members = group.putNewMap("{0}")', rec.name)
+                    for mem in rec.members:
+                        STMT('members.put("{0}", "{1}")', mem.name, mem.type)
+                    #STMT('group.put("{0}", )', rec.extends) ??
+                SEP()
+    
+                STMT('group = map.putNewMap("exceptions")')
+                for rec in service.exceptions():
+                    STMT('members = group.putNewMap("{0}")', rec.name)
+                    for mem in rec.local_members:
+                        STMT('members.put("{0}", "{1}")', mem.name, mem.type)
+                    STMT('members.put("__super__", "{0}")', rec.extends.name if rec.extends else "")
+                SEP()
+    
+                STMT('group = map.putNewMap("classes")')
+                if service.classes():
+                    STMT("HeteroMap cls_group, attr_group, meth_group, a, m")
+                has_extends = False
+                
+                for cls in service.classes():
+                    STMT('cls_group = group.putNewMap("{0}")', cls.name)
+                    if cls.extends:
+                        if not has_extends:
+                            has_extends = True
+                            STMT('ArrayList<String> extendsList')
+                        STMT('extendsList = new ArrayList<String>()')
+                        for cls2 in cls.extends:
+                            STMT('extendsList.add("{0}")', cls2.name)
+                        STMT('cls_group.put("extends", extendsList, Builtin.listOfStr)')
                     
+                    STMT('attr_group = cls_group.putNewMap("attrs")')
+                    STMT('meth_group = cls_group.putNewMap("methods")')
+                    for attr in cls.attrs:
+                        STMT('a = attr_group.putNewMap("{0}")', attr.name)
+                        STMT('a.put("type", "{0}")', str(attr.type))
+                        STMT('a.put("get", {0})', "true" if attr.get else "false")
+                        STMT('a.put("set", {0})', "true" if attr.set else "false")
+                        STMT('a.put("get-id", {0})', attr.getid)
+                        STMT('a.put("set-id", {0})', attr.setid)
+                        if attr.annotations:
+                            STMT("anno = new HashMap<String, String>()")
+                            for anno in attr.annotations:
+                                STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
+                            STMT('a.put("annotations", anno, Builtin.mapOfStrStr)')
+    
+                    for meth in cls.methods:
+                        STMT('m = meth_group.putNewMap("{0}")', meth.name)
+                        STMT('m.put("type", "{0}")', meth.type)
+                        STMT('m.put("id", {0})', meth.id)
+                        if meth.annotations:
+                            STMT("anno = new HashMap<String, String>()")
+                            for anno in meth.annotations:
+                                STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
+                            STMT('m.put("annotations", anno, Builtin.mapOfStrStr)')
+                        
+                        STMT("arg_names = new ArrayList<String>()")
+                        STMT("arg_types = new ArrayList<String>()")
+                        for arg in meth.args:
+                            STMT('arg_names.add("{0}")', arg.name)
+                            STMT('arg_types.add("{0}")', str(arg.type))
+                        STMT('m.put("arg_names", Builtin.Str, arg_names, Builtin.listOfStr)')
+                        STMT('m.put("arg_types", Builtin.Str, arg_types, Builtin.listOfStr)')
+                SEP()
+                
+                STMT('group = map.putNewMap("functions")')
+                for func in service.funcs.values():
+                    if not isinstance(func, compiler.Func):
+                        continue
+                    STMT('member = group.putNewMap("{0}")', func.dotted_fullname)
+                    STMT('member.put("id", {0})', str(func.id))
+                    STMT('member.put("type", "{0}")', str(func.type))
+                    if func.annotations:
+                        STMT("anno = new HashMap<String, String>()")
+                        for anno in func.annotations:
+                            STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
+                        STMT('member.put("annotations", anno, Builtin.mapOfStrStr)')
                     STMT("arg_names = new ArrayList<String>()")
                     STMT("arg_types = new ArrayList<String>()")
-                    for arg in meth.args:
+                    for arg in func.args:
                         STMT('arg_names.add("{0}")', arg.name)
                         STMT('arg_types.add("{0}")', str(arg.type))
-                    STMT('m.put("arg_names", Builtin.Str, arg_names, Builtin.listOfStr)')
-                    STMT('m.put("arg_types", Builtin.Str, arg_types, Builtin.listOfStr)')
-            SEP()
-            
-            STMT('group = map.putNewMap("functions")')
-            for func in service.funcs.values():
-                if not isinstance(func, compiler.Func):
-                    continue
-                STMT('member = group.putNewMap("{0}")', func.dotted_fullname)
-                STMT('member.put("id", {0})', str(func.id))
-                STMT('member.put("type", "{0}")', str(func.type))
-                if func.annotations:
-                    STMT("anno = new HashMap<String, String>()")
-                    for anno in func.annotations:
-                        STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
-                    STMT('member.put("annotations", anno, Builtin.mapOfStrStr)')
-                STMT("arg_names = new ArrayList<String>()")
-                STMT("arg_types = new ArrayList<String>()")
-                for arg in func.args:
-                    STMT('arg_names.add("{0}")', arg.name)
-                    STMT('arg_types.add("{0}")', str(arg.type))
-                STMT('member.put("arg_names", Builtin.Str, arg_names, Builtin.listOfStr)')
-                STMT('member.put("arg_types", Builtin.Str, arg_types, Builtin.listOfStr)')
-            SEP()
-            
-            STMT('group = map.putNewMap("consts")')
-            for const in service.consts.values():
-                STMT('member = group.putNewMap("{0}")', const.dotted_fullname)
-                STMT('member.put("type", "{0}")', str(const.type))
-                STMT('member.put("value", "{0}")', const.value)
+                    STMT('member.put("arg_names", Builtin.Str, arg_names, Builtin.listOfStr)')
+                    STMT('member.put("arg_types", Builtin.Str, arg_types, Builtin.listOfStr)')
+                SEP()
+                
+                STMT('group = map.putNewMap("consts")')
+                for const in service.consts.values():
+                    STMT('member = group.putNewMap("{0}")', const.dotted_fullname)
+                    STMT('member.put("type", "{0}")', str(const.type))
+                    STMT('member.put("value", "{0}")', const.value)
         SEP()
     
     def generate_process_invoke(self, module, service):
