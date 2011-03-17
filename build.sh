@@ -208,15 +208,10 @@ popd
 # upload
 ###############################################################################
 
-if [ "$UPLOAD" != "yes" ]; then
-	exit
-fi
-
 echo "=========================================================================="
 echo "uploading to sourceforge. ENTER to continue, CTRL+C to skip"
 read
 
-rsync -v release/ gangesmaster,agnos@frs.sourceforge.net:/home/frs/project/a/ag/agnos/$AGNOS_TOOLCHAIN_VERSION/
-
+rsync -rv release/ gangesmaster,agnos@frs.sourceforge.net:/home/frs/project/a/ag/agnos/$AGNOS_TOOLCHAIN_VERSION/
 
 
