@@ -669,13 +669,80 @@ class JavaTarget(TargetBase):
                 STMT("packersMap.put(999, heteroMapPacker)")
                 
             SEP()
+            self.generate_fill_funchandlers(module, service)
+            SEP()
             self.generate_process_getinfo(module, service)
             SEP()
             self.generate_process_invoke(module, service)
             SEP()
             DOC("$$extend-processor$$")
             SEP()
+
+    def generate_fill_funchandlers(self, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
         
+        with BLOCK("protected void fillFunctionHandlers()"):
+            for func in service.funcs.values():
+                with BLOCK("funcHandlers.put({0}, new FunctionHandler()", func.id, prefix = "{", suffix = "});"):
+                    insttype, invocation, callargs = self._generate_funchandler_parseargs(func, module, service)
+                    
+                    with BLOCK("public void invoke(ITransport transport, Object[] args) throws Exception"):
+                        if insttype:
+                            STMT("{0} inst = ({0})args[0]", type_to_java(insttype))
+                        STMT("{0}({1})", invocation, callargs)
+                        if func.type != compiler.t_void:
+                            STMT("{0}.pack(result, transport)", type_to_packer(func.type))
+    
+    def _generate_funchandler_parseargs(self, func, module, service):
+        BLOCK = module.block
+        STMT = module.stmt
+        SEP = module.sep
+
+        with BLOCK("public Object[] parseArgs(ITransport transport) throws Exception"):
+            if isinstance(func, compiler.Func):
+                if func.args:
+                    with BLOCK("Object[] args = {0}", "{", prefix = "", suffix = "};"):
+                        for arg in func.args[:-1]:
+                            STMT("{0}.unpack(transport)", type_to_packer(arg.type), suffix = ",")
+                        if func.args:
+                            arg = func.args[-1]
+                            STMT("{0}.unpack(transport)", type_to_packer(arg.type), suffix = ",")
+                callargs = ", ".join("(%s)args[%s]" % (type_to_java(arg.type), i) 
+                    for i, arg in enumerate(func.args))
+                if func.type == compiler.t_void:
+                    invocation = "handler.%s" % (func.fullname,) 
+                else:
+                    invocation = "%s result = handler.%s" % (type_to_java(func.type), func.fullname,)
+                insttype = None
+            else:
+                insttype = func.args[0].type
+                with BLOCK("Object[] args = {0}", "{", prefix = "", suffix = "};"):
+                    for arg in func.args[:-1]:
+                        STMT("{0}.unpack(transport)", type_to_packer(arg.type), suffix = ",")
+                    arg = func.args[-1]
+                    STMT("{0}.unpack(transport)", type_to_packer(arg.type), suffix = ",")
+                callargs = ", ".join("(%s)args[%s]" % (type_to_java(arg.type), i+1) 
+                    for i, arg in enumerate(func.args[1:]))
+                
+                if isinstance(func.origin, compiler.ClassAttr):
+                    if func.type == compiler.t_void:
+                        invocation = "inst.set_%s" % (func.origin.name,)
+                    else:
+                        invocation = "%s result = inst.get_%s" % (type_to_java(func.type), func.origin.name,)
+                else:
+                    if func.type == compiler.t_void:
+                        invocation = "inst.%s" % (func.origin.name,)
+                    else:
+                        invocation = "%s result = inst.%s" % (type_to_java(func.type), func.origin.name,)
+            if func.args:
+                STMT("return args")
+            else:
+                STMT("return new Object[0]")
+            
+            return insttype, invocation, callargs
+    
     def generate_processor_factory(self, module, service):
         BLOCK = module.block
         STMT = module.stmt
@@ -857,27 +924,23 @@ class JavaTarget(TargetBase):
         SEP = module.sep
 
         with BLOCK("protected void processInvoke(int seq) throws Exception"):
-            STMT("AbstractPacker packer = null")
-            STMT("Object result = null")
-            STMT("Object inst = null")
-            STMT("Object[] args = null")
-            STMT("int funcid = (Integer){0}.unpack(transport)", type_to_packer(compiler.t_int32))
+            STMT("Integer funcid = (Integer){0}.unpack(transport)", type_to_packer(compiler.t_int32))
+            STMT("FunctionHandler handler = funcHandlers.get(funcid)")
+            
+            with BLOCK("if (handler == null)"):
+                STMT('throw new ProtocolException("unknown function id: " + funcid)')
 
             with BLOCK("try") if service.exceptions() else NOOP:
-                with BLOCK("switch (funcid)"):
-                    for func in service.funcs.values():
-                        with BLOCK("case {0}:", func.id, prefix = None, suffix = None):
-                            self.generate_invocation_case(module, func)
-                            if func.type != compiler.t_void:
-                                STMT("packer = {0}", type_to_packer(func.type))
-                            STMT("break")
-                    with BLOCK("default:", prefix = None, suffix = None):
-                        STMT('throw new ProtocolException("unknown function id: " + funcid)')
-                SEP()
-                STMT("{0}.pack(new Byte((byte)constants.REPLY_SUCCESS), transport)", 
-                    type_to_packer(compiler.t_int8))
-                with BLOCK("if (packer != null)"):
-                    STMT("packer.pack(result, transport)")
+                STMT("Object[] args = handler.parseArgs(transport)")
+                with BLOCK("try {0}", "{", prefix = ""):
+                    STMT("{0}.pack(new Byte((byte)constants.REPLY_SUCCESS), transport)", 
+                        type_to_packer(compiler.t_int8))
+                    STMT("handler.invoke(transport, args)")
+                with BLOCK("catch (PackedException ex) {0}", "{", prefix = ""):
+                    STMT("throw ex")
+                with BLOCK("catch (Exception ex) {0}", "{", prefix = ""):
+                    STMT("throw new GenericException(ex.toString(), getExceptionTraceback(ex))")
+                
             for tp in reversed(service.exceptions()):
                 with BLOCK("catch ({0} ex)", tp.name):
                     STMT("transport.restartWrite()")
@@ -885,57 +948,6 @@ class JavaTarget(TargetBase):
                         type_to_packer(compiler.t_int8))
                     STMT("{0}.pack({1}, transport)", type_to_packer(compiler.t_int32), tp.id)
                     STMT("{0}.pack(ex, transport)", type_to_packer(tp))
-
-    def generate_invocation_case(self, module, func):
-        BLOCK = module.block
-        STMT = module.stmt
-        SEP = module.sep
-        
-        if isinstance(func, compiler.Func):
-            if func.args:
-                with BLOCK("args = new Object[] {0}", "{", prefix = "", suffix = "};"):
-                    for arg in func.args[:-1]:
-                        STMT("{0}.unpack(transport)", type_to_packer(arg.type), suffix = ",")
-                    if func.args:
-                        arg = func.args[-1]
-                        STMT("{0}.unpack(transport)", type_to_packer(arg.type), suffix = ",")
-            callargs = ", ".join("(%s)args[%s]" % (type_to_java(arg.type), i) 
-                for i, arg in enumerate(func.args))
-            if func.type == compiler.t_void:
-                invocation = "handler.%s" % (func.fullname,) 
-            else:
-                invocation = "result = handler.%s" % (func.fullname,)
-        else:
-            insttype = func.args[0].type
-            STMT("inst = ({0})({1}.unpack(transport))", 
-                type_to_java(insttype), type_to_packer(insttype))
-
-            if len(func.args) > 1:
-                with BLOCK("args = new Object[] {0}", "{", prefix = "", suffix = "};"):
-                    for arg in func.args[1:-1]:
-                        STMT("{0}.unpack(transport)", type_to_packer(arg.type), suffix = ",")
-                    arg = func.args[-1]
-                    STMT("{0}.unpack(transport)", type_to_packer(arg.type), suffix = ",")
-            callargs = ", ".join("(%s)args[%s]" % (type_to_java(arg.type), i) 
-                for i, arg in enumerate(func.args[1:]))
-            
-            if isinstance(func.origin, compiler.ClassAttr):
-                if func.type == compiler.t_void:
-                    invocation = "((%s)inst).set_%s" % (type_to_java(insttype), func.origin.name,)
-                else:
-                    invocation = "result = ((%s)inst).get_%s" % (type_to_java(insttype), func.origin.name,)
-            else:
-                if func.type == compiler.t_void:
-                    invocation = "((%s)inst).%s" % (type_to_java(insttype), func.origin.name,)
-                else:
-                    invocation = "result = ((%s)inst).%s" % (type_to_java(insttype), func.origin.name,)
-        
-        with BLOCK("try {0}", "{", prefix = ""):
-            STMT("{0}({1})", invocation, callargs)
-        with BLOCK("catch (PackedException ex) {0}", "{", prefix = ""):
-            STMT("throw ex")
-        with BLOCK("catch (Exception ex) {0}", "{", prefix = ""):
-            STMT("throw new GenericException(ex.toString(), getExceptionTraceback(ex))")
 
     #===========================================================================
     # client

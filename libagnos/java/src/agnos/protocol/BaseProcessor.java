@@ -52,8 +52,15 @@ public abstract class BaseProcessor implements ISerializer, Closeable {
 			return refcount <= 0;
 		}
 	}
+	
+	protected abstract static class FunctionHandler
+	{
+		abstract public Object[] parseArgs(ITransport transport) throws Exception;
+		abstract public void invoke(ITransport transport, Object[] args) throws Exception;
+	}
 
 	protected Map<Long, Cell> cells;
+	protected Map<Integer, FunctionHandler> funcHandlers;
 	protected ObjectIDGenerator idGenerator;
 	protected ITransport transport;
 
@@ -61,7 +68,11 @@ public abstract class BaseProcessor implements ISerializer, Closeable {
 		cells = new HashMap<Long, Cell>();
 		idGenerator = new ObjectIDGenerator();
 		this.transport = transport;
+		funcHandlers = new HashMap<Integer, FunctionHandler>(5000);
+		fillFunctionHandlers();
 	}
+	
+	abstract protected void fillFunctionHandlers();
 	
 	public void close() throws IOException {
 		transport.close();
@@ -231,3 +242,4 @@ public abstract class BaseProcessor implements ISerializer, Closeable {
 
 	abstract protected void processInvoke(int seq) throws Exception;
 }
+
