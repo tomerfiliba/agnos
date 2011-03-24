@@ -787,16 +787,17 @@ class JavaTarget(TargetBase):
         SEP()
         ##
         with BLOCK("protected void processGetFunctionsInfo(HeteroMap map)"):
-            STMT("HeteroMap funcinfo")
-            STMT("HashMap<String, String> args")
-            if has_annotations:
-                STMT("HashMap<String, String> anno")
-            SEP()
             for func in service.funcs.values():
-                STMT("funcinfo = new HeteroMap()")
+                STMT("processGetFunctionsInfo_{0}(map)", func.id)
+        SEP()
+        for func in service.funcs.values():
+            with BLOCK("private static final void processGetFunctionsInfo_{0}(HeteroMap map)", func.id):
+                if func.annotations:
+                    STMT("HashMap<String, String> anno")
+                STMT("HeteroMap funcinfo = new HeteroMap()")
                 STMT('funcinfo.put("name", "{0}")', func.name)
                 STMT('funcinfo.put("type", "{0}")', str(func.type))
-                STMT("args = new HashMap<String, String>()")
+                STMT("HashMap<String, String> args = new HashMap<String, String>()")
                 for arg in func.args:
                     STMT('args.put("{0}", "{1}")', arg.name, str(arg.type))
                 STMT('funcinfo.put("args", args, Builtin.mapOfStrStr)')
@@ -811,11 +812,8 @@ class JavaTarget(TargetBase):
         with BLOCK("protected void processGetReflectionInfo(HeteroMap map)"):
             if "no-reflection" not in self.options:
                 STMT('HeteroMap group = map.putNewMap("enums")')
-                STMT("ArrayList<String> arg_names, arg_types")
                 STMT("HeteroMap members = null")
                 STMT("HeteroMap member = null")
-                if has_annotations:
-                    STMT("HashMap<String, String> anno")
                 SEP()
                 
                 for enum in service.enums():
@@ -841,74 +839,15 @@ class JavaTarget(TargetBase):
                 SEP()
     
                 STMT('group = map.putNewMap("classes")')
-                if service.classes():
-                    STMT("HeteroMap cls_group, attr_group, meth_group, a, m")
-                has_extends = False
-                
                 for cls in service.classes():
-                    STMT('cls_group = group.putNewMap("{0}")', cls.name)
-                    if cls.extends:
-                        if not has_extends:
-                            has_extends = True
-                            STMT('ArrayList<String> extendsList')
-                        STMT('extendsList = new ArrayList<String>()')
-                        for cls2 in cls.extends:
-                            STMT('extendsList.add("{0}")', cls2.name)
-                        STMT('cls_group.put("extends", extendsList, Builtin.listOfStr)')
-                    
-                    STMT('attr_group = cls_group.putNewMap("attrs")')
-                    STMT('meth_group = cls_group.putNewMap("methods")')
-                    for attr in cls.attrs:
-                        STMT('a = attr_group.putNewMap("{0}")', attr.name)
-                        STMT('a.put("type", "{0}")', str(attr.type))
-                        STMT('a.put("get", {0})', "true" if attr.get else "false")
-                        STMT('a.put("set", {0})', "true" if attr.set else "false")
-                        STMT('a.put("get-id", {0})', attr.getid)
-                        STMT('a.put("set-id", {0})', attr.setid)
-                        if attr.annotations:
-                            STMT("anno = new HashMap<String, String>()")
-                            for anno in attr.annotations:
-                                STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
-                            STMT('a.put("annotations", anno, Builtin.mapOfStrStr)')
-    
-                    for meth in cls.methods:
-                        STMT('m = meth_group.putNewMap("{0}")', meth.name)
-                        STMT('m.put("type", "{0}")', meth.type)
-                        STMT('m.put("id", {0})', meth.id)
-                        if meth.annotations:
-                            STMT("anno = new HashMap<String, String>()")
-                            for anno in meth.annotations:
-                                STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
-                            STMT('m.put("annotations", anno, Builtin.mapOfStrStr)')
-                        
-                        STMT("arg_names = new ArrayList<String>()")
-                        STMT("arg_types = new ArrayList<String>()")
-                        for arg in meth.args:
-                            STMT('arg_names.add("{0}")', arg.name)
-                            STMT('arg_types.add("{0}")', str(arg.type))
-                        STMT('m.put("arg_names", Builtin.Str, arg_names, Builtin.listOfStr)')
-                        STMT('m.put("arg_types", Builtin.Str, arg_types, Builtin.listOfStr)')
+                    STMT("processGetReflectionInfo_class_{0}(group)", cls.name)
                 SEP()
                 
                 STMT('group = map.putNewMap("functions")')
                 for func in service.funcs.values():
                     if not isinstance(func, compiler.Func):
                         continue
-                    STMT('member = group.putNewMap("{0}")', func.dotted_fullname)
-                    STMT('member.put("id", {0})', str(func.id))
-                    STMT('member.put("type", "{0}")', str(func.type))
-                    if func.annotations:
-                        STMT("anno = new HashMap<String, String>()")
-                        for anno in func.annotations:
-                            STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
-                        STMT('member.put("annotations", anno, Builtin.mapOfStrStr)')
-                    STMT("arg_names = new ArrayList<String>()")
-                    STMT("arg_types = new ArrayList<String>()")
-                    for arg in func.args:
-                        STMT('arg_names.add("{0}")', arg.name)
-                        STMT('arg_types.add("{0}")', str(arg.type))
-                    STMT('member.put("arg_names", Builtin.Str, arg_names, Builtin.listOfStr)')
-                    STMT('member.put("arg_types", Builtin.Str, arg_types, Builtin.listOfStr)')
+                    STMT("processGetReflectionInfo_func_{0}(group)", func.id)
                 SEP()
                 
                 STMT('group = map.putNewMap("consts")')
@@ -916,6 +855,86 @@ class JavaTarget(TargetBase):
                     STMT('member = group.putNewMap("{0}")', const.dotted_fullname)
                     STMT('member.put("type", "{0}")', str(const.type))
                     STMT('member.put("value", "{0}")', const.value)
+        ##
+        SEP()
+        for cls in service.classes():
+            with BLOCK("private static final void processGetReflectionInfo_class_{0}(HeteroMap group)", cls.name):
+                STMT("ArrayList<String> arg_names, arg_types")
+                STMT("HashMap<String, String> anno")
+
+                if service.classes():
+                    STMT("HeteroMap cls_group, attr_group, meth_group, a")
+                has_extends = False
+
+                STMT('cls_group = group.putNewMap("{0}")', cls.name)
+                if cls.extends:
+                    if not has_extends:
+                        has_extends = True
+                        STMT('ArrayList<String> extendsList')
+                    STMT('extendsList = new ArrayList<String>()')
+                    for cls2 in cls.extends:
+                        STMT('extendsList.add("{0}")', cls2.name)
+                    STMT('cls_group.put("extends", extendsList, Builtin.listOfStr)')
+                
+                STMT('attr_group = cls_group.putNewMap("attrs")')
+                for attr in cls.attrs:
+                    STMT('a = attr_group.putNewMap("{0}")', attr.name)
+                    STMT('a.put("type", "{0}")', str(attr.type))
+                    STMT('a.put("get", {0})', "true" if attr.get else "false")
+                    STMT('a.put("set", {0})', "true" if attr.set else "false")
+                    STMT('a.put("get-id", {0})', attr.getid)
+                    STMT('a.put("set-id", {0})', attr.setid)
+                    if attr.annotations:
+                        STMT("anno = new HashMap<String, String>()")
+                        for anno in attr.annotations:
+                            STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
+                        STMT('a.put("annotations", anno, Builtin.mapOfStrStr)')
+
+                STMT('meth_group = cls_group.putNewMap("methods")')
+                for meth in cls.methods:
+                    STMT("processGetReflectionInfo_meth_{0}(meth_group)", meth.id)
+
+            for meth in cls.methods:
+                with BLOCK("private static final void processGetReflectionInfo_meth_{0}(HeteroMap group)", meth.id):
+                    STMT("ArrayList<String> arg_names = new ArrayList<String>()")
+                    STMT("ArrayList<String> arg_types = new ArrayList<String>()")
+                    if meth.annotations:
+                        STMT("HashMap<String, String> anno = new HashMap<String, String>()")
+
+                    STMT('HeteroMap m = group.putNewMap("{0}")', meth.name)
+                    STMT('m.put("type", "{0}")', meth.type)
+                    STMT('m.put("id", {0})', meth.id)
+                    if meth.annotations:
+                        for anno in meth.annotations:
+                            STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
+                        STMT('m.put("annotations", anno, Builtin.mapOfStrStr)')
+                    
+                    for arg in meth.args:
+                        STMT('arg_names.add("{0}")', arg.name)
+                        STMT('arg_types.add("{0}")', str(arg.type))
+                    STMT('m.put("arg_names", Builtin.Str, arg_names, Builtin.listOfStr)')
+                    STMT('m.put("arg_types", Builtin.Str, arg_types, Builtin.listOfStr)')
+        
+        for func in service.funcs.values():
+            if not isinstance(func, compiler.Func):
+                continue
+            with BLOCK("private static final void processGetReflectionInfo_func_{0}(HeteroMap group)", func.id):
+                STMT('HeteroMap member = group.putNewMap("{0}")', func.dotted_fullname)
+                STMT('member.put("id", {0})', str(func.id))
+                STMT('member.put("type", "{0}")', str(func.type))
+                if func.annotations:
+                    STMT("HashMap<String, String> anno = new HashMap<String, String>()")
+                    for anno in func.annotations:
+                        STMT('anno.put("{0}", "{1}")', anno.name, anno.value)
+                    STMT('member.put("annotations", anno, Builtin.mapOfStrStr)')
+                STMT("ArrayList<String> arg_names = new ArrayList<String>()")
+                STMT("ArrayList<String> arg_types = new ArrayList<String>()")
+                for arg in func.args:
+                    STMT('arg_names.add("{0}")', arg.name)
+                    STMT('arg_types.add("{0}")', str(arg.type))
+                STMT('member.put("arg_names", Builtin.Str, arg_names, Builtin.listOfStr)')
+                STMT('member.put("arg_types", Builtin.Str, arg_types, Builtin.listOfStr)')        
+        
         SEP()
     
     def generate_process_invoke(self, module, service):
