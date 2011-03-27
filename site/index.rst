@@ -37,7 +37,7 @@ For the full list, see :doc:`features and future plans <features>`.
 
 Getting Started
 ===============
-If you're ready to see go, check out our :doc:`documentation` page.
+If you're ready to go, check out our :doc:`documentation` page.
 
 Teaser
 ======

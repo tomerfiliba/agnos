@@ -23,23 +23,23 @@ Reference
 This section contains reference material about the library, useful for 
 service consumers (clients) and provides (servers):
 
-Basics:
-
+Basics
+^^^^^^
 * :doc:`idl`
 * :doc:`types`
 
-Tools and Utilities:
-
+Tools and Utilities
+^^^^^^^^^^^^^^^^^^^
 * :doc:`srcgen`
 * :doc:`tools`
 
-APIs:
-
+APIs
+^^^^
 * :doc:`client`
 * :doc:`server`
 
-Advance Topics:
-
+Advance Topics
+^^^^^^^^^^^^^^
 * :doc:`library-mode`
 * :doc:`over-http`
 * :doc:`restful`

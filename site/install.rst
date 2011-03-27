@@ -82,7 +82,7 @@ the source and build it on your own.
 **Dependencies:** 
 
 * `.NET Framework <http://www.microsoft.com/net/>`_ 3.0 and up
-  or `mono <http://mono-project.com/Main_Page>` 2.6 and up.
+  or `mono <http://mono-project.com/Main_Page>`_ 2.6 and up.
 
 ------------------------------------------------------------------------------
 
