@@ -21,7 +21,7 @@
 try:
     from cStringIO import StringIO
 except ImportError:
-    from io import StringIO
+    from io import BytesIO as StringIO
 try:
     from httplib import HTTPConnection, HTTPSConnection
 except ImportError:

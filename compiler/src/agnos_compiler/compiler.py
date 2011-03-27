@@ -22,10 +22,9 @@ import hashlib
 import xml.etree.ElementTree as etree
 import itertools
 from .idl_syntax import parse_const, parse_template, IDLError
+from .version import toolchain_version_string as AGNOS_TOOLCHAIN_VERSION
+from .version import protocol_version_string as AGNOS_PROTOCOL_VERSION
 
-
-AGNOS_TOOLCHAIN_VERSION = "1.0.0"
-AGNOS_PROTOCOL_VERSION = "AGNOS-1.0"
 
 ID_GENERATOR = itertools.count(900000)
 INCLUDE_PATTERN = re.compile(' *\<!-- *INCLUDE *"([^"]+)" *--\>')

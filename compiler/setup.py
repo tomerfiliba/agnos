@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 ##############################################################################
 # Part of the Agnos RPC Framework
 #    http://agnos.sourceforge.net
@@ -25,14 +24,17 @@ try:
 except ImportError:
     from distutils.core import setup
 
+exec(open("src/agnos_compiler/version.py", "r").read())
+
 setup(name = 'agnos_compiler',
-    version = "__AGNOS_TOOLCHAIN_VERSION__",
+    version = toolchain_version_string,
     description = 'Agnos Compiler Toolchain',
     author = 'Tomer Filiba',
     author_email = 'tomerf@il.ibm.com',
     maintainer = 'Tomer Filiba',
     maintainer_email = 'tomerf@il.ibm.com',
     url = 'http://agnos.sourceforge.net',
+    download_url = 'http://www.sourceforge.net/projects/agnos/files/%s' % (toolchain_version_string,),
     platforms = ["POSIX", "Windows"],
     long_description = """\
 Agnos - The Agnostic RPC Framework
@@ -44,7 +46,7 @@ to allow programs written in different languages to easily interoperate,
 by providing the needed bindings (glue-code) and hiding all the details from 
 the programmer. The project essentially servers the same purpose as existing 
 technologies like ``SOAP``, ``WSDL``, ``CORBA``, and others, but takes a 
-**minimalistic approach** to the issue at hand.""",
+**minimalist approach** to the issue at hand.""",
     license = 'Apache License 2.0',
     packages = [
         'agnos_compiler',

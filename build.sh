@@ -1,6 +1,7 @@
 #!/bin/bash
 
 AGNOS_TOOLCHAIN_VERSION=`python -c "import agnos_compiler;print agnos_compiler.AGNOS_TOOLCHAIN_VERSION"`
+cp compiler/src/agnos_compiler/version.py libagnos/python/src/agnos/version.py
 
 if [ "$1" == "upload" ] ; then
 	UPLOAD="yes"
@@ -27,43 +28,20 @@ mkdir release
 
 pushd compiler
 rm -rf dist
-rm setup.py &> /dev/null
-sed -e "s/__AGNOS_TOOLCHAIN_VERSION__/$AGNOS_TOOLCHAIN_VERSION/" _setup.py > setup.py
-python setup.py sdist --formats=gztar,zip
 
+python setup.py sdist --formats=gztar,zip
 if [ $? -ne 0 ] ; then
     echo "buidling agnos_compiler failed gztar,zip"
     exit 1
 fi
 
-python2.6 setup.py bdist --formats=egg,wininst --plat-name="win32"
+python setup.py bdist --formats=wininst --plat-name="win32"
 if [ $? -ne 0 ] ; then
-    echo "buidling agnos_compiler failed egg-2.6,wininst"
+    echo "buidling agnos_compiler failed wininst"
     exit 1
 fi
-
-python2.7 setup.py bdist --formats=egg
-if [ $? -ne 0 ] ; then
-    echo "buidling agnos_compiler failed egg-2.7"
-    exit 1
-fi
-
-#python3.0 setup.py bdist --formats=egg
-#if [ $? -ne 0 ] ; then
-#    echo "buidling agnos_compiler failed egg-3.0"
-#    exit 1
-#fi
-
-#python3.1 setup.py bdist --formats=egg
-#if [ $? -ne 0 ] ; then
-#    echo "buidling agnos_compiler failed egg-3.1"
-#    exit 1
-#fi
-
-rm setup.py &> /dev/null
 
 rm -rf build
-rm -rf src/*.egg-info
 popd
 mkdir release/agnos_compiler
 cp compiler/dist/* release/agnos_compiler
@@ -75,47 +53,21 @@ rm -rf compiler/dist
 
 pushd libagnos/python
 rm -rf dist
-rm setup.py &> /dev/null
-sed -e "s/__AGNOS_TOOLCHAIN_VERSION__/$AGNOS_TOOLCHAIN_VERSION/" _setup.py > setup.py
 
 python setup.py sdist --formats=gztar,zip
-
 if [ $? -ne 0 ] ; then
     echo "buidling libagnos-python failed gztar,zip"
     exit 1
 fi
 
-python2.6 setup.py bdist --formats=egg,wininst --plat-name="win32"
+python setup.py bdist --formats=wininst --plat-name="win32"
 if [ $? -ne 0 ] ; then
-    echo "buidling libagnos-python failed egg-2.6,wininst"
+    echo "buidling libagnos-python failed wininst"
     exit 1
 fi
 
-python2.7 setup.py bdist --formats=egg
-if [ $? -ne 0 ] ; then
-    echo "buidling libagnos-python failed egg-2.7"
-    exit 1
-fi
-
-#python3.0 setup.py bdist --formats=egg
-#if [ $? -ne 0 ] ; then
-#    echo "buidling libagnos-python failed egg-3.0"
-#    exit 1
-#fi
-
-#python3.1 setup.py bdist --formats=egg
-#if [ $? -ne 0 ] ; then
-#    echo "buidling libagnos-python failed egg-3.1"
-#    exit 1
-#fi
-
-rm setup.py &> /dev/null
 rm -rf build
-rm -rf *.egg-info
-rm -rf src/*.egg-info
 cd dist
-# rename 's/(.+)-[^-]+\.([twz].*)/lib$1-$AGNOS_TOOLCHAIN_VERSION-python.$2/' *
-# rename 's/(.+)-[^-]+\-py(.+)\.egg/lib$1-$AGNOS_TOOLCHAIN_VERSION-python-$2.egg/' *.egg
 popd
 
 mkdir -p release/libagnos/python
