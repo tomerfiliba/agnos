@@ -158,7 +158,7 @@ class BaseProcessor(object):
         self.cells[oid] = (ref + 1, obj)
 
     def send_protocol_error(self, exc):
-        Int8.pack(REPLY_PROTOCOL_ERROR, transport)
+        Int8.pack(REPLY_PROTOCOL_ERROR, self.transport)
         Str.pack(str(exc), self.transport)
     
     def send_generic_exception(self, exc): 

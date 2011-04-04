@@ -92,7 +92,7 @@ class SimpleServer(BaseServer):
         BaseServer.__init__(self, processor_factory, transport_factory, logger.sublogger("srv"))
     
     def _serve_client(self, processor):
-        self._handle_client(processor, self.logger)
+        _handle_client(processor, self.logger)
 
 class SelectingServer(BaseServer):
     """

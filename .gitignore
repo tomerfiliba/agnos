@@ -29,3 +29,6 @@ _build/
 release/
 *Stub.cs
 *.stub
+*.egg-info
+*.log
+.*
