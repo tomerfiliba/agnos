@@ -34,7 +34,7 @@ class SourceError(Exception):
         print( self.msg)
         if self.blk:
             print( "    %s" % (self.blk.text))
-            for k, v in self.kwargs.iteritems():
+            for k, v in self.kwargs.items():
                 print( "%s = %r" % (k, v))
             print("")
 
@@ -297,7 +297,7 @@ class AstNode(object):
         else:
             self.block.src_name, self.block.src_bases = _get_src_name(block)
         
-        for k, v in self.ATTRS.iteritems():
+        for k, v in self.ATTRS.items():
             self.attrs[k] = v(k, block)
         for arg in block.args.keys():
             if arg not in self.ATTRS:
@@ -397,7 +397,7 @@ def _get_versioned_members(node, members):
             members[name] = {}
         if members[name] and ver is None:
             raise SourceError(child.block.srcblock, "function %r is duplicated but not versioned. other instances: %r", name, 
-                ", ".join(str(f.block.srcblock) for f in members[name].itervalues()))
+                ", ".join(str(f.block.srcblock) for f in members[name].values()))
         if ver in members[name]:
             raise SourceError(child.block.srcblock, "function %r is duplicated with the same version", name)
         members[name][ver] = child

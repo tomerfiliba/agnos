@@ -68,7 +68,7 @@ class XmlBlock(object):
 
     def attr(self, **kwargs):
         head = self._get_head()
-        for k, v in kwargs.iteritems():
+        for k, v in kwargs.items():
             head.attrs[k.lower()] = str(v)
     def delattr(self, name):
         del self._get_head().attrs[name.lower()]
@@ -90,7 +90,7 @@ class XmlBlock(object):
     
     def render(self, lean = False):
         attrs = " ".join('%s="%s"' % (k, xml_escape(v)) 
-            for k, v in sorted(self.attrs.iteritems()))
+            for k, v in sorted(self.attrs.items()))
         if attrs:
             attrs = " " + attrs
         if self.children:

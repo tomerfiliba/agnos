@@ -19,7 +19,6 @@
 ##############################################################################
 
 import sys
-import itertools
 import traceback
 import weakref
 import time
@@ -28,6 +27,7 @@ from subprocess import Popen, PIPE
 from contextlib import contextmanager
 from .packers import Int8, Int32, Int64, Str, Bool, BuiltinHeteroMapPacker 
 from .packers import PackingError
+from .compat import icount
 from . import transports
 from . import httptransport
 
@@ -312,7 +312,7 @@ class ClientUtils(object):
     
     def __init__(self, transport, packed_exceptions):
         self.transport = transport
-        self.seq = itertools.count()
+        self.seq = icount()
         self.replies = {}
         self.proxy_cache = weakref.WeakValueDictionary()
         self.packed_exceptions = packed_exceptions

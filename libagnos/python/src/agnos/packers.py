@@ -248,7 +248,7 @@ class MapOf(Packer):
     def pack(self, obj, stream):
         try:
             length = len(obj)
-            iterator = obj.iteritems()
+            iterator = obj.items()
         except (TypeError, ValueError, AttributeError) as ex:
             raise PackingError(ex)
         Int32.pack(length, stream)

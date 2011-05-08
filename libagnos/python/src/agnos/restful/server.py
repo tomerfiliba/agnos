@@ -56,7 +56,7 @@ class RESTfulAgnosServer(object):
         self.reflection = agnos_client.get_service_info(INFO_REFLECTION)
         self.func_map = {}
         self.proxy_map = {}
-        for name, funcinfo in self.reflection["functions"].iteritems():
+        for name, funcinfo in self.reflection["functions"].items():
             self.func_map[name] = get_dotted_attr(agnos_client, name)
             funcinfo["url"] = "/funcs/%s" % (name,)
     
@@ -80,7 +80,7 @@ class RESTfulAgnosServer(object):
         try:
             server.serve_forever()
         except KeyboardInterrupt:
-            print "Ctrl+C"
+            print ("Ctrl+C")
         finally:
             server.socket.close()
 
@@ -129,7 +129,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         obj = self.root.proxy_map[oid]
         info = self.root.reflection["classes"][obj._idl_type]
         
-        print info
+        #print (info)
         
         if member:
             if member in info["attrs"] and info["attrs"][member]["get"]:
@@ -137,7 +137,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             else:
                 raise HttpError(405, "use POST to invoke method or set attribute")
         
-        info2 = dict(info.iteritems())
+        info2 = dict(info.items())
         info2["class"] = obj._idl_type
         return info2
     
@@ -161,7 +161,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             else:
                 raise HttpError(404, "Invalid URL")
             data = dumper(obj, self.root.proxy_map)
-        except HttpError, ex:
+        except HttpError as ex:
             code = ex.code
             enc = ex.enc
             data = ex.info
@@ -234,7 +234,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             else:
                 raise HttpError(404, "Invalid URL")
             data = dumper(obj, self.root.proxy_map)
-        except HttpError, ex:
+        except HttpError as ex:
             code = ex.code
             enc = ex.enc
             data = ex.info

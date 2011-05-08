@@ -23,11 +23,11 @@ import os
 import time
 import errno
 import threading
-import itertools
 import signal
 from optparse import OptionParser
 from .transports import SocketTransportFactory
 from .utils import Logger, LogSink, NullLogger
+from .compat import icount
 
 
 def _handle_client(processor, logger):
@@ -141,7 +141,7 @@ class ThreadedServer(BaseServer):
     """
     def __init__(self, processor_factory, transport_factory, logger = NullLogger):
         BaseServer.__init__(self, processor_factory, transport_factory, logger.sublogger("srv"))
-        self._thread_ids = itertools.count(0)
+        self._thread_ids = icount(0)
 
     def _serve_client(self, processor):
         logger2 = self.logger.sublogger("thread%04d" % (self._thread_ids.next(),))

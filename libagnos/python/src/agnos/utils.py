@@ -103,7 +103,7 @@ def create_enum(name, members):
     """creates an enum class with the given name and given members"""
     cls = type(name, (Enum,), dict(_BY_VALUE = {}))
     cls._idl_type = name
-    for n, v in members.iteritems():
+    for n, v in members.items():
         em = cls(n, v)
         setattr(cls, n, em)
         cls._BY_VALUE[v] = em
@@ -161,14 +161,12 @@ class HeteroMap(object):
     def items(self):
         return list(self.iteritems())
     def iteritems(self):
-        for k, v in self.fields.iteritems():
-            yield k, v[0]
+        return ((k, v[0]) for k, v in self.fields.items())
     def iterkeys(self):
-        return self.fields.iterkeys()
+        return (k for k in self.fields.keys())
     __iter__ = iterkeys
     def itervalues(self):
-        for v in self.fields.itervalues():
-            yield v[0]
+        return (v[0] for v in self.fields.values())
     def iterfields(self):
         for k, v in self.fields.iteritems():
             vv, kp, vp = v

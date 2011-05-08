@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 ##############################################################################
 # Part of the Agnos RPC Framework
 #    http://agnos.sourceforge.net
@@ -38,6 +37,7 @@ from agnos_compiler.targets import JavaTarget, PythonTarget, CPPTarget, CSharpTa
 
 TARGET_ALIASES = {
     "doc" : DocTarget,
+    "html" : DocTarget,
     "py" : PythonTarget, 
     "python" : PythonTarget, 
     "java" : JavaTarget, 
@@ -91,13 +91,13 @@ if __name__ == "__main__":
             compile(filename, target_factory(outdir, target_options))
     except IDLError:
         raise
-    except Exception, ex:
+    except Exception as ex:
         if not options.debug:
             raise
         import pdb, sys
-        print "-" * 50
-        print repr(ex)
-        print
+        print ("-" * 50)
+        print (repr(ex))
+        print()
         pdb.post_mortem(sys.exc_info()[2])
 
 

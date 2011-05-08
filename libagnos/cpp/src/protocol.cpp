@@ -392,7 +392,7 @@ namespace agnos
 			switch (code) {
 			case REPLY_SUCCESS:
 				if (packer == NULL || packer == &void_packer) {
-					(**slot).value = NULL;
+					(**slot).value = (void*)NULL;
 				}
 				else if ((**slot).type == SLOT_PACKER) {
 					(**slot).value = packer->unpack_any(*transport);

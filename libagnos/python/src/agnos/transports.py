@@ -22,7 +22,6 @@ import socket
 import ssl
 import signal
 import time
-import itertools
 from select import select
 try:
     from cStringIO import StringIO
@@ -32,6 +31,7 @@ from contextlib import contextmanager
 from subprocess import Popen, PIPE
 from . import packers
 from .utils import RLock, BoundedStream, ZlibStream
+from .compat import icount
 try:
     from zlib import compress as zlib_compress
 except ImportError:

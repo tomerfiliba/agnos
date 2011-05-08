@@ -18,8 +18,8 @@
 # limitations under the License.
 ##############################################################################
 import os
-import itertools
 from .syntree import parse_source_files, SourceError, MethodNode, ClassAttrNode
+from agnos_compiler.compat import icount
 from agnos_compiler import compile
 from agnos_compiler.langs import python, xml
 from agnos_compiler.targets import PythonTarget
@@ -41,7 +41,7 @@ class IdlGenerator(object):
     def __init__(self, history_file):
         self.history_file = history_file
         self.history, next_id = self.load_history()
-        self._id_generator = itertools.count(next_id)
+        self._id_generator = icount(next_id)
         
         self.doc = xml.XmlDoc("service")
 
@@ -121,7 +121,7 @@ class IdlGenerator(object):
                             type = arginfo.attrs["type"]):
                         self.emit_doc(arginfo)
 
-                for k, v in info.anno.iteritems():
+                for k, v in info.anno.items():
                     with self.BLOCK("annotation", name=k, value=v):
                         pass
 
@@ -169,11 +169,11 @@ class IdlGenerator(object):
                     self._get_derived_members(basecls, inherited_methods, inherited_attrs)
             
             self.emit_doc(node)
-            for name, method in inherited_methods.iteritems():
+            for name, method in inherited_methods.items():
                 key = self._generate_key(node.attrs["name"], method.attrs["name"], method.attrs["version"])
                 self.LEAF("inherited-method", name = method.attrs["name"], id = self.get_id(key))
 
-            for name, attr in inherited_attrs.iteritems():
+            for name, attr in inherited_attrs.items():
                 gkey = self._generate_key(node.attrs["name"], attr.attrs["name"], "get")
                 skey = self._generate_key(node.attrs["name"], attr.attrs["name"], "set")
                 self.LEAF("inherited-attr", name = attr.attrs["name"], getid = self.get_id(gkey), setid = self.get_id(skey))
@@ -321,7 +321,7 @@ class ServerGenerator(object):
         
         self.DOC("exception map")
         self.STMT("exception_map = {}")
-        for (modname, excname), idlexc in self.exception_map.iteritems():
+        for (modname, excname), idlexc in self.exception_map.items():
             self.STMT("exception_map[{0}] = {1}_bindings.{2}",
                 self.canonized_attr(modname, excname), 
                 node.service_name, idlexc)

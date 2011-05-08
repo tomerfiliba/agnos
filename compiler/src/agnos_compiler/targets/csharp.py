@@ -17,7 +17,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##############################################################################
-import itertools
 import time
 import uuid
 import os
@@ -25,6 +24,7 @@ import os
 from .base import TargetBase, NOOP
 from .. import compiler
 from ..compiler import is_complex_type
+from ..compat import icount
 
 
 def type_to_cs(t, proxy = False):
@@ -1064,7 +1064,7 @@ class CSharpTarget(TargetBase):
                 STMT("AssertServiceCompatibility()")
 
     def generate_client_namespaces(self, module, service):
-        nsid = itertools.count(0)
+        nsid = icount(0)
         root = {"__id__" : nsid.next()}
         for func in service.funcs.values():
             if isinstance(func, compiler.Func) and func.namespace and func.clientside:
@@ -1091,7 +1091,7 @@ class CSharpTarget(TargetBase):
                 node[const.name] = const
 
         roots = []
-        for name, node in root.iteritems():
+        for name, node in root.items():
             if isinstance(node, dict):
                 roots.append((name, node["__id__"]))
                 self.generate_client_namespace_classes(module, node)
@@ -1105,7 +1105,7 @@ class CSharpTarget(TargetBase):
             subnamespaces = []
             STMT("internal readonly _Functions _funcs")
             SEP()
-            for name, node in root.iteritems():
+            for name, node in root.items():
                 if isinstance(node, dict):
                     self.generate_client_namespace_classes(module, node)
                     subnamespaces.append((name, node["__id__"]))

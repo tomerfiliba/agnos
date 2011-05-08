@@ -20,13 +20,13 @@
 import re
 import hashlib
 import xml.etree.ElementTree as etree
-import itertools
+from .compat import icount
 from .idl_syntax import parse_const, parse_template, IDLError
 from .version import toolchain_version_string as AGNOS_TOOLCHAIN_VERSION
 from .version import protocol_version_string as AGNOS_PROTOCOL_VERSION
 
 
-ID_GENERATOR = itertools.count(900000)
+ID_GENERATOR = icount(900000)
 INCLUDE_PATTERN = re.compile(' *\<!-- *INCLUDE *"([^"]+)" *--\>')
 
 
@@ -132,7 +132,7 @@ class Element(object):
                 self.id = int(attrib.pop("id"))
         else:
             self.id = ID_GENERATOR.next()
-        for name, checker in self.ATTRS.iteritems():
+        for name, checker in self.ATTRS.items():
             try:
                 value = checker(name, attrib.pop(name, None))
             except IDLError as ex:
@@ -151,7 +151,7 @@ class Element(object):
         e._resolved = False
         e._postprocessed = False
         e.id = None
-        for k, v in kwargs.iteritems():
+        for k, v in kwargs.items():
             setattr(e, k, v)
         return e
     
@@ -944,7 +944,7 @@ class Service(Element):
     def from_file(cls, file):
         """creates a service from the given file object or filename"""
         data = cls._load_file_with_includes(file)
-        sha1 = hashlib.sha1(data)
+        sha1 = hashlib.sha1(data.encode("utf8"))
         xml = etree.fromstring(data)
         inst = cls.load(xml)
         inst.digest = sha1.hexdigest()

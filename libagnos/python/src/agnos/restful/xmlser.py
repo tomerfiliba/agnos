@@ -53,7 +53,7 @@ def _dump(obj, doc, proxy_map):
                 _dump(item, doc, proxy_map)
     elif isinstance(obj, dict):
         with doc.block("map"):
-            for k, v in obj.iteritems():
+            for k, v in obj.items():
                 with doc.block("item"):
                     with doc.block("key"):
                         _dump(k, doc, proxy_map)
@@ -61,7 +61,7 @@ def _dump(obj, doc, proxy_map):
                         _dump(v, doc, proxy_map)
     elif isinstance(obj, agnos.HeteroMap):
         with doc.block("heteromap"):
-            for k, v in obj.iteritems():
+            for k, v in obj.items():
                 with doc.block("item"):
                     with doc.block("key"):
                         _dump(k, doc, proxy_map)

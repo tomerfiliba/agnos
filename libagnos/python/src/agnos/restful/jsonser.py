@@ -49,11 +49,11 @@ def _dump(obj, proxy_map):
     elif isinstance(obj, dict):
         return dict(type = "map", 
             value = [(_dump(k, proxy_map), _dump(v, proxy_map)) 
-                for k, v in obj.iteritems()])
+                for k, v in obj.items()])
     elif isinstance(obj, agnos.HeteroMap):
         return dict(type = "heteromap", 
             value = [(_dump(k, proxy_map), _dump(v, proxy_map)) 
-                for k, v in obj.iteritems()])
+                for k, v in obj.items()])
     # enums
     elif isinstance(obj, agnos.Enum):
         return dict(type = "enum", name = obj._idl_type, member = obj.name)
@@ -106,7 +106,7 @@ def _load(obj, bindings_module, proxy_map):
     elif obj["type"] == "record":
         rec_cls = getattr(bindings_module, obj["name"])
         rec = rec_cls()
-        for name, child in obj["value"].iteritems():
+        for name, child in obj["value"].items():
             val = _load(child, bindings_module, proxy_map)
             setattr(rec, name, val)
         return rec
@@ -123,7 +123,7 @@ def loads(data, bindings_module, proxy_map):
 def loads_root(data, bindings_module, proxy_map):
     jsonobj = json.loads(data)
     return dict((k, _load(v, bindings_module, proxy_map)) 
-        for k, v in jsonobj.iteritems())
+        for k, v in jsonobj.items())
 
 
 #if __name__ == "__main__":
