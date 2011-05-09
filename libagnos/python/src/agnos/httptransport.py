@@ -57,11 +57,11 @@ class HttpClientTransport(Transport):
         self.urlhost = parsed.netloc
         self.urlpath = parsed.path
         self.conn = None
-    
+
     def close(self):
         self.infile = None
         self.outfile = None
-    
+
     def _build_request(self):
         if self.conn is None:
             if self.urlprot == "http":
@@ -80,12 +80,12 @@ class HttpClientTransport(Transport):
         if not self.infile:
             raise IOError("begin_read must be called only after end_write")
         return Transport.begin_read(self, timeout)
-    
+
     def end_read(self):
         self._assert_rlock()
         self.infile = None
         self._rlock.release()
-    
+
     def end_write(self):
         self._assert_wlock()
         data = "".join(self._write_buffer)
@@ -97,7 +97,7 @@ class HttpClientTransport(Transport):
             prefix = outstream.getvalue()
             req = self._build_request()
             self.infile = req.send(prefix + data)
-        
+
         self._wlock.release()
 
 

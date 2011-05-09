@@ -52,7 +52,7 @@ public abstract class BaseProcessor implements ISerializer, Closeable {
 			return refcount <= 0;
 		}
 	}
-	
+
 	protected abstract static class FunctionHandler
 	{
 		abstract public Object[] parseArgs(ITransport transport) throws Exception;
@@ -71,9 +71,9 @@ public abstract class BaseProcessor implements ISerializer, Closeable {
 		funcHandlers = new HashMap<Integer, FunctionHandler>(5000);
 		fillFunctionHandlers();
 	}
-	
+
 	abstract protected void fillFunctionHandlers();
-	
+
 	public void close() throws IOException {
 		transport.close();
 		transport = null;

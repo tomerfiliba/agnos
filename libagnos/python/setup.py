@@ -39,12 +39,12 @@ setup(name = 'agnos',
 Agnos - The Agnostic RPC Framework
 ==================================
 
-*Agnos* is a **cross-language**, **cross-platform**, lightweight RPC framework 
-with support for passing objects *by-value* or *by-reference*. Agnos is meant 
-to allow programs written in different languages to easily interoperate, 
-by providing the needed bindings (glue-code) and hiding all the details from 
-the programmer. The project essentially servers the same purpose as existing 
-technologies like ``SOAP``, ``WSDL``, ``CORBA``, and others, but takes a 
+*Agnos* is a **cross-language**, **cross-platform**, lightweight RPC framework
+with support for passing objects *by-value* or *by-reference*. Agnos is meant
+to allow programs written in different languages to easily interoperate,
+by providing the needed bindings (glue-code) and hiding all the details from
+the programmer. The project essentially servers the same purpose as existing
+technologies like ``SOAP``, ``WSDL``, ``CORBA``, and others, but takes a
 **minimalist approach** to the issue at hand.""",
 
     license = 'Apache License 2.0',

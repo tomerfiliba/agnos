@@ -136,19 +136,19 @@ cp libagnos/cpp/src/*.cpp release/agnos-cpp/src/
 cp libagnos/cpp/src/*.hpp release/agnos-cpp/src/
 
 pushd release
-tar -czf libagnos-$AGNOS_TOOLCHAIN_VERSION-cpp-src.tar.gz agnos-cpp 
+tar -czf libagnos-$AGNOS_TOOLCHAIN_VERSION-cpp-src.tar.gz agnos-cpp
 zip -r libagnos-$AGNOS_TOOLCHAIN_VERSION-cpp-src.zip agnos-cpp
 mv libagnos-*.* libagnos/cpp/
 
 if [ "$UPLOAD" == "yes" ]; then
 	pushd agnos-cpp
 	scons
-	
+
 	if [ $? -ne 0 ]; then
 	   echo "c++ scons failed"
 	   exit 1
 	fi
-	
+
 	popd
 fi
 
