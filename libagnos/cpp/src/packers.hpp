@@ -157,6 +157,8 @@ namespace agnos
 
 		//////////////////////////////////////////////////////////////////////
 
+		typedef std::vector<bool>::reference boolref_t;
+
 		/**
 		 * packer for boolean values
 		 */
@@ -165,7 +167,7 @@ namespace agnos
 		public:
 			IPACKER_SIMPLE_DECL(BoolPacker, bool, 2);
 
-            static void unpack(std::_Bit_reference obj, ITransport& transport);
+            static void unpack(boolref_t obj, ITransport& transport);
 		};
 
 		extern BoolPacker bool_packer;

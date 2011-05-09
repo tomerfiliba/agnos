@@ -211,7 +211,7 @@ namespace agnos
 			obj = (tmp != 0);
 		}
 
-		void BoolPacker::unpack(std::_Bit_reference obj, ITransport& transport)
+		void BoolPacker::unpack(boolref_t obj, ITransport& transport)
 		{
 			bool tmp;
 			unpack(tmp, transport);
@@ -344,7 +344,9 @@ namespace agnos
 			val /= 60;
 			dur += boost::posix_time::minutes(val % 60);
 			val /= 60;
-			dur += boost::posix_time::hours(val);
+			// we've divided `val` by 3,600,000,000 -- we can safely assume it
+			// can be truncated to 32 bits here
+			dur += boost::posix_time::hours((long)val);
 
 			obj = mintime + dur;
 		}

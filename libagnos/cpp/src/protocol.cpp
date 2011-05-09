@@ -239,13 +239,13 @@ namespace agnos
 					process();
 				}
 			}
-			catch (transports::TransportEOFError& ex) {
+			catch (transports::TransportEOFError& exc) {
 				// this is expected
 				DEBUG_LOG("got an EOF");
 			}
-			catch (transports::TransportError& ex) {
+			catch (transports::TransportError& exc) {
 				// this might happen
-				DEBUG_LOG("got a TransportError: " << ex.what());
+				DEBUG_LOG("got a TransportError: " << exc.what());
 			}
 		}
 

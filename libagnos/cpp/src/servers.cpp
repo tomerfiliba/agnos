@@ -112,7 +112,11 @@ namespace agnos
 			std::cout << factory->acceptor->local_endpoint().address().to_string() << std::endl;
 			std::cout << factory->acceptor->local_endpoint().port() << std::endl;
 			std::cout.flush();
+#ifdef _MSC_VER
+			fclose(stdout);
+#else
 			::fclose(::stdout);
+#endif
 
 			shared_ptr<ITransport> transport = factory->accept();
 			factory->close();

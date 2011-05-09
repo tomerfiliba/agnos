@@ -92,7 +92,11 @@ namespace agnos
 		// BasicInputStream
 		//////////////////////////////////////////////////////////////////////
 
-		BasicInputStream::BasicInputStream() : _gcount(0)
+		BasicInputStream::BasicInputStream() : 
+#ifdef _MSC_VER
+			std::istream(std::_Noinit), 
+#endif
+			_gcount(0)
 		{
 		}
 
@@ -354,7 +358,7 @@ namespace agnos
 
 				return rseq;
 			}
-			catch (std::exception &ex) {
+			catch (std::exception &exc) {
 				rlock.unlock();
 				throw;
 			}
@@ -423,12 +427,11 @@ namespace agnos
 
 		void SocketTransport::end_write()
 		{
-			int32_t tmp;
 			_assert_began_write();
 			_assert_good();
 
 			if (wbuf.size() > 0) {
-				if (wbuf.size() > compression_threshold) {
+				if ((compression_threshold >= 0) && (wbuf.size() > (unsigned)compression_threshold)) {
 					DEBUG_LOG("COMPRESSING!");
 					compbuf.clear();
 					compbuf.reserve(wbuf.size());
