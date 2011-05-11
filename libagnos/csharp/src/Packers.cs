@@ -168,7 +168,7 @@ namespace Agnos
 				if (val) {
 					Int8.pack ((byte)1, transport);
 				} else {
-					Int8.pack ((byte)1, transport);
+					Int8.pack ((byte)0, transport);
 				}
 			}
 
