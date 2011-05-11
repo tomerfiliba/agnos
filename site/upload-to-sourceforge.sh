@@ -1,5 +1,6 @@
 #!/bin/sh
 
+make clean
 make html
 if [ $? -ne 0 ]; then
     echo "--make html failed--"
