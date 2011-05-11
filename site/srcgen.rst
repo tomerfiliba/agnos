@@ -511,7 +511,7 @@ can be inferred. See example :ref:`above <srcgen-class>`.
 ^^^^^^^^^^^
 **Format**: ``@method NAME [type=TYPE] [version=VERSION]``
 
-**IDL element**: :ref:`idl-method`
+**IDL element**: :ref:`idl-class-method`
 
 **Nested tags**: :ref:`srcgen-arg`
 

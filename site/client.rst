@@ -105,7 +105,7 @@ will be implicitly called by ``Dispose`` or the destructor of the connection.
 
 ``getServiceInfo``
 ------------------
-Returns a :ref:`type-heteromap` containing various information about the service. 
+Returns a :ref:`Heteromap <type-heteromap>` containing various information about the service. 
 It takes ``code``, an integer specifying the requested information. Acceptable
 values are:
 

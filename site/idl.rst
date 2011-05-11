@@ -814,7 +814,7 @@ This will yield the functions ``bark``, ``foo.bar.bark``, and ``spam.eggs.bark``
 
 ``arg``
 =======
-An argument of a :ref:`function` or a :ref:`idl-class-method`.
+An argument of a :ref:`idl-func` or a :ref:`idl-class-method`.
 
 Syntax
 ------
