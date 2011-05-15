@@ -45,3 +45,9 @@ env.Program('myclient',
     LIBS = ["agnos", "boost_thread", "boost_date_time", "boost_iostreams", "boost_system"],
 )
 
+env.Program('performance-test', 
+    [client_bindings, "src/performance-test.cpp"], 
+    CPPPATH = ['../../libagnos/cpp/src'],
+    LIBPATH = ['../../libagnos/cpp'],
+    LIBS = ["agnos", "boost_thread", "boost_date_time", "boost_iostreams", "boost_system"],
+)
