@@ -84,7 +84,7 @@ namespace agnos
 
 		void BaseProcessor::process_ping(int32_t seq)
 		{
-			string message;
+			wstring message;
 			StringPacker::unpack(message, *transport);
 			Int8Packer::pack(REPLY_SUCCESS, *transport);
 			StringPacker::pack(message, *transport);
@@ -296,16 +296,16 @@ namespace agnos
 
 		ProtocolError ClientUtils::load_protocol_error()
 		{
-			string message;
+			wstring message;
 			StringPacker::unpack(message, *transport);
 			return ProtocolError(message);
 		}
 
 		GenericException ClientUtils::load_generic_exception()
 		{
-			string message;
+			wstring message;
 			StringPacker::unpack(message, *transport);
-			string traceback;
+			wstring traceback;
 			StringPacker::unpack(traceback, *transport);
 			return GenericException(message, traceback);
 		}
@@ -348,7 +348,7 @@ namespace agnos
 			transport->cancel_write();
 		}
 
-		int ClientUtils::ping(string payload, int msecs)
+		int ClientUtils::ping(wstring payload, int msecs)
 		{
 			int seq = get_seq();
 			transport->begin_write(seq);
@@ -356,7 +356,7 @@ namespace agnos
 			StringPacker::pack(payload, *transport);
 			transport->end_write();
 			map_put(replies, seq, shared_ptr<ReplySlot>(new ReplySlot(false, &string_packer)));
-			string reply = get_reply_as<string>(seq, msecs);
+			wstring reply = get_reply_as<wstring>(seq, msecs);
 			if (reply != payload) {
 				throw ProtocolError("reply does not match payload!");
 			}

@@ -20,6 +20,8 @@
 
 #include "packers.hpp"
 #include <boost/detail/endian.hpp>
+#include <boost/detail/endian.hpp>
+
 
 #if defined(BOOST_BIG_ENDIAN)
 #	ifndef ntohs
@@ -308,11 +310,21 @@ namespace agnos
 
 		void StringPacker::pack(const string& obj, ITransport& transport)
 		{
-			BufferPacker::pack(obj, transport);
+			wstring ws(obj.begin(), obj.end());
+			StringPacker::pack(ws, transport);
 		}
-		void StringPacker::unpack(string& obj, ITransport& transport)
+		void StringPacker::pack(const wstring& obj, ITransport& transport)
 		{
-			BufferPacker::unpack(obj, transport);
+			string bytes;
+			utils::encode_utf8(obj, bytes);
+			BufferPacker::pack(bytes, transport);
+		}
+
+		void StringPacker::unpack(wstring& obj, ITransport& transport)
+		{
+			string bytes;
+			BufferPacker::unpack(bytes, transport);
+			utils::decode_utf8(bytes, obj);
 		}
 
 		//////////////////////////////////////////////////////////////////////

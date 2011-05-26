@@ -63,10 +63,15 @@ namespace agnos
 	protected:
 		mutable string formatted;
 	public:
-		string message;
-		string traceback;
+		wstring message;
+		wstring traceback;
 
 		GenericException(const string& message, const string& traceback) :
+			message(message.begin(), message.end()),
+			traceback(traceback.begin(), traceback.end())
+		{
+		}
+		GenericException(const wstring& message, const wstring& traceback) :
 			message(message), traceback(traceback)
 		{
 		}
@@ -77,10 +82,15 @@ namespace agnos
 
 		virtual const char* what() const throw ()
 		{
+			string s1;
+			string s2;
+			utils::encode_utf8(message, s1);
+			utils::encode_utf8(traceback, s2);
+
 			formatted = "agnos.GenericException: ";
-			formatted += message;
+			formatted += s1;
 			formatted += " with remote backtrace:\n";
-			formatted += traceback;
+			formatted += s2;
 			formatted += "\n\t------------------- end of remote traceback -------------------";
 			return formatted.c_str();
 		}
@@ -264,7 +274,7 @@ namespace agnos
 			void end_call();
 			void cancel_call();
 
-			int ping(string payload, int msecs);
+			int ping(wstring payload, int msecs);
 			shared_ptr<HeteroMap> get_service_info(int code);
 
 			void process_incoming(int32_t msecs);

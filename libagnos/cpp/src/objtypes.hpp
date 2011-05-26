@@ -52,6 +52,7 @@ typedef __int64 int64_t;
 namespace agnos
 {
 	using std::string;
+	using std::wstring;
 	using std::vector;
 	using std::map;
 	using std::set;

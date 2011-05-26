@@ -253,14 +253,14 @@ namespace agnos
 		//////////////////////////////////////////////////////////////////////
 
 		/**
-		 * packer for byte strings (does not handle UTF8)
-		 *
-		 * XXX: http://www.boost.org/doc/libs/1_46_0/libs/serialization/doc/codecvt.html
+		 * packer for wstrings
 		 */
 		class StringPacker :  public IPacker
 		{
 		public:
-			IPACKER_SIMPLE_DECL(StringPacker, string, 9);
+			IPACKER_SIMPLE_DECL(StringPacker, wstring, 9);
+
+			static void pack(const string& obj, ITransport& transport);
 		};
 
 		extern StringPacker string_packer;
