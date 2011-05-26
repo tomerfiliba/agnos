@@ -1,2 +1,2 @@
 @echo off
-python agnosc %*
+python ./agnosc %*

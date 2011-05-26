@@ -2,9 +2,9 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="agnos_library"
-	ProjectGUID="{7C6019DF-2374-495B-9F60-68E7AFFF8940}"
-	RootNamespace="agnos_library"
+	Name="cpptest"
+	ProjectGUID="{BB04BB70-7F08-4723-BCF1-B9846D9F3826}"
+	RootNamespace="cpptest"
 	Keyword="Win32Proj"
 	TargetFrameworkVersion="196613"
 	>
@@ -20,7 +20,7 @@
 			Name="Debug|Win32"
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="4"
+			ConfigurationType="1"
 			CharacterSet="1"
 			>
 			<Tool
@@ -41,8 +41,8 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;C:\Program Files\boost\boost_1_44&quot;"
-				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;_SCL_SECURE_NO_WARNINGS"
+				AdditionalIncludeDirectories="D:\workspace\agnos_toolchain\libagnos\cpp\src;&quot;C:\Program Files\boost\boost_1_44&quot;"
+				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_SCL_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -60,11 +60,19 @@
 				Name="VCPreLinkEventTool"
 			/>
 			<Tool
-				Name="VCLibrarianTool"
-				AdditionalLibraryDirectories="&quot;C:\Program Files\boost\boost_1_44\lib&quot;"
+				Name="VCLinkerTool"
+				AdditionalDependencies="agnos_library.lib"
+				LinkIncremental="2"
+				AdditionalLibraryDirectories="&quot;C:\Program Files\boost\boost_1_44\lib&quot;;D:\workspace\agnos_toolchain\libagnos\cpp\Debug"
+				GenerateDebugInformation="true"
+				SubSystem="1"
+				TargetMachine="1"
 			/>
 			<Tool
 				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
 			/>
 			<Tool
 				Name="VCXDCMakeTool"
@@ -76,6 +84,9 @@
 				Name="VCFxCopTool"
 			/>
 			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
 				Name="VCPostBuildEventTool"
 			/>
 		</Configuration>
@@ -83,7 +94,7 @@
 			Name="Release|Win32"
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
-			ConfigurationType="4"
+			ConfigurationType="1"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
 			>
@@ -106,7 +117,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
@@ -123,10 +134,19 @@
 				Name="VCPreLinkEventTool"
 			/>
 			<Tool
-				Name="VCLibrarianTool"
+				Name="VCLinkerTool"
+				LinkIncremental="1"
+				GenerateDebugInformation="true"
+				SubSystem="1"
+				OptimizeReferences="2"
+				EnableCOMDATFolding="2"
+				TargetMachine="1"
 			/>
 			<Tool
 				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
 			/>
 			<Tool
 				Name="VCXDCMakeTool"
@@ -136,6 +156,9 @@
 			/>
 			<Tool
 				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -151,31 +174,15 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\src\heteromap.cpp"
+				RelativePath="..\bindings\FeatureTest_client_bindings.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\src\packers.cpp"
+				RelativePath="..\bindings\FeatureTest_server_bindings.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\src\protocol.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\servers.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\transport_factories.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\transports.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\utils.cpp"
+				RelativePath="..\src\performance-test.cpp"
 				>
 			</File>
 		</Filter>
@@ -185,43 +192,11 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\src\agnos.hpp"
+				RelativePath="..\bindings\FeatureTest_client_bindings.hpp"
 				>
 			</File>
 			<File
-				RelativePath=".\src\heteromap.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\objtypes.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\packers.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\protocol.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\servers.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\transport_factories.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\transports.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\utf8.hpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\utils.hpp"
+				RelativePath="..\bindings\FeatureTest_server_bindings.hpp"
 				>
 			</File>
 		</Filter>

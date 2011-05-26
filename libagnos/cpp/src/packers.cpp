@@ -19,7 +19,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include "packers.hpp"
-#include <boost/detail/endian.hpp>
+#include "utf8.h"
 #include <boost/detail/endian.hpp>
 
 
@@ -290,12 +290,12 @@ namespace agnos
 
 		IPACKER_SIMPLE_IMPL(BufferPacker, buffer_packer)
 
-		void BufferPacker::pack(const string& obj, ITransport& transport)
+		void BufferPacker::pack(const bstring& obj, ITransport& transport)
 		{
 			Int32Packer::pack(obj.size(), transport);
 			transport.write(obj.data(), obj.size());
 		}
-		void BufferPacker::unpack(string& obj, ITransport& transport)
+		void BufferPacker::unpack(bstring& obj, ITransport& transport)
 		{
 			int32_t size;
 			Int32Packer::unpack(size, transport);
@@ -308,24 +308,40 @@ namespace agnos
 
 		IPACKER_SIMPLE_IMPL(StringPacker, string_packer)
 
-		void StringPacker::pack(const string& obj, ITransport& transport)
+#ifdef AGNOS_USE_WSTRING
+		void StringPacker::pack(const ustring& obj, ITransport& transport)
+		{
+			bstring bytes;
+			utf8::encode(obj, bytes);
+			BufferPacker::pack(bytes, transport);
+		}
+		void StringPacker::unpack(ustring& obj, ITransport& transport)
+		{
+			bstring bytes;
+			BufferPacker::unpack(bytes, transport);
+			utf8::decode(bytes, obj);
+		}
+
+		void StringPacker::pack(const bstring& obj, ITransport& transport)
 		{
 			wstring ws(obj.begin(), obj.end());
 			StringPacker::pack(ws, transport);
 		}
-		void StringPacker::pack(const wstring& obj, ITransport& transport)
+		/*void StringPacker::unpack(bstring& obj, ITransport& transport)
 		{
-			string bytes;
-			utils::encode_utf8(obj, bytes);
-			BufferPacker::pack(bytes, transport);
-		}
+			BufferPacker::unpack(obj, transport);
+		}*/
 
-		void StringPacker::unpack(wstring& obj, ITransport& transport)
+#else
+		void StringPacker::pack(const ustring& obj, ITransport& transport)
 		{
-			string bytes;
-			BufferPacker::unpack(bytes, transport);
-			utils::decode_utf8(bytes, obj);
+			BufferPacker::pack(obj, transport);
 		}
+		void StringPacker::unpack(ustring& obj, ITransport& transport)
+		{
+			BufferPacker::unpack(obj, transport);
+		}
+#endif
 
 		//////////////////////////////////////////////////////////////////////
 
@@ -371,9 +387,9 @@ namespace agnos
 		ListPacker<int32_t, 803> list_of_int32_packer(int32_packer);
 		ListPacker<int64_t, 804> list_of_int64_packer(int64_packer);
 		ListPacker<double, 805> list_of_float_packer(float_packer);
-		ListPacker<string, 806> list_of_buffer_packer(buffer_packer);
+		ListPacker<bstring, 806> list_of_buffer_packer(buffer_packer);
 		ListPacker<datetime, 807> list_of_date_packer(date_packer);
-		ListPacker<string, 808> list_of_string_packer(string_packer);
+		ListPacker<ustring, 808> list_of_string_packer(string_packer);
 
 		SetPacker<int8_t, 820> set_of_int8_packer(int8_packer);
 		SetPacker<bool, 821> set_of_bool_packer(bool_packer);
@@ -381,14 +397,14 @@ namespace agnos
 		SetPacker<int32_t, 823> set_of_int32_packer(int32_packer);
 		SetPacker<int64_t, 824> set_of_int64_packer(int64_packer);
 		SetPacker<double, 825> set_of_float_packer(float_packer);
-		SetPacker<string, 826> set_of_buffer_packer(buffer_packer);
+		SetPacker<bstring, 826> set_of_buffer_packer(buffer_packer);
 		SetPacker<datetime, 827> set_of_date_packer(date_packer);
-		SetPacker<string, 828> set_of_string_packer(string_packer);
+		SetPacker<ustring, 828> set_of_string_packer(string_packer);
 
 		MapPacker<int32_t, int32_t, 850> map_of_int32_int32_packer(int32_packer, int32_packer);
-		MapPacker<int32_t, string, 851> map_of_int32_string_packer(int32_packer, string_packer);
-		MapPacker<string, int32_t, 852> map_of_string_int32_packer(string_packer, int32_packer);
-		MapPacker<string, string, 853> map_of_string_string_packer(string_packer, string_packer);
+		MapPacker<int32_t, ustring, 851> map_of_int32_string_packer(int32_packer, string_packer);
+		MapPacker<ustring, int32_t, 852> map_of_string_int32_packer(string_packer, int32_packer);
+		MapPacker<ustring, ustring, 853> map_of_string_string_packer(string_packer, string_packer);
 
 	}
 }

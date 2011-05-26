@@ -52,7 +52,13 @@ typedef __int64 int64_t;
 namespace agnos
 {
 	using std::string;
+	typedef std::string bstring;
 	using std::wstring;
+#ifdef AGNOS_USE_WSTRING
+	typedef std::wstring ustring;
+#else
+	typedef std::string ustring;
+#endif
 	using std::vector;
 	using std::map;
 	using std::set;
@@ -68,7 +74,6 @@ namespace agnos
 	typedef boost::posix_time::time_duration timespan;
 
 	typedef int64_t objref_t;
-
 }
 
 
