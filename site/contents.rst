@@ -8,6 +8,7 @@ Contents
    features
    download
    install
+   changelog
    
    concepts
    tut-1
