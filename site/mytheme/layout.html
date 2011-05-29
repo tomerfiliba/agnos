@@ -1,0 +1,17 @@
+{% extends "sphinxdoc/layout.html" %}
+
+{% block relbar1 %}
+    <div align="left" style="background-color: #ffffff;">
+        <a href="{{pathto(master_doc)}}"><img src="_static/logo.png" height="140px" /></a>
+    </div>
+    {{ super() }}
+{% endblock %}
+
+{% block sidebarsearch %}
+    {{ super() }}
+    <p> 
+        <script type="text/javascript" src="http://www.ohloh.net/p/486004/widgets/project_thin_badge.js"></script>
+    </p>
+{% endblock %}
+
+
