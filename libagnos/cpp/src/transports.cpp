@@ -112,6 +112,30 @@ namespace agnos
 		}
 
 		//////////////////////////////////////////////////////////////////////
+		// SocketStream
+		//////////////////////////////////////////////////////////////////////
+
+		class SocketStream : public BasicInputStream
+		{
+		protected:
+			shared_ptr<tcp::socket> sock;
+
+		public:
+			SocketStream(shared_ptr<tcp::socket> sock) : sock(sock)
+			{
+			}
+
+			std::streamsize readn(char* buf, std::streamsize count)
+			{
+				DEBUG_LOG("SocketStream::readn(" << count << ")");
+				return sock->read_some(boost::asio::buffer(buf, count));
+			}
+
+
+		};
+
+
+		//////////////////////////////////////////////////////////////////////
 		// BoundInputStream - a fixed-length input stream
 		//////////////////////////////////////////////////////////////////////
 
@@ -161,7 +185,7 @@ namespace agnos
 
 			std::streamsize readn(char* buf, std::streamsize count)
 			{
-				DEBUG_LOG("BoundInputStream::read(" << count << ")");
+				DEBUG_LOG("BoundInputStream::readn(" << count << ")");
 				if (count > remaining_length) {
 					THROW_FORMATTED(TransportEOFError, "request to read more bytes (" <<
 						count << ") than available (" << remaining_length << ")");

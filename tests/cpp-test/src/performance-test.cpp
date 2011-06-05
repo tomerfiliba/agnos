@@ -1,41 +1,54 @@
 #include <iostream>
-#include "../bindings/FeatureTest_client_bindings.hpp"
-#include "boost/date_time/posix_time/posix_time.hpp"
+#include <boost/asio.hpp>
+#include <boost/array.hpp>
 
-using namespace std;
-using namespace agnos;
-using namespace FeatureTest::ClientBindings;
+using boost::asio::ip::tcp;
 
 
-
-int main(int argc, const char * argv[])
+int main()
 {
-	//SubprocClient client("./myserver");
-	if (argc != 3) {
-		cerr << "usage: " << argv[0] << " <host> <port>" << endl;
+	boost::asio::io_service the_io_service;
+	//char buf[100];
+
+	tcp::acceptor acceptor(the_io_service);
+	tcp::endpoint ep(boost::asio::ip::address::from_string("127.0.0.1"), 17788);
+
+	acceptor.open(ep.protocol());
+	acceptor.set_option(tcp::acceptor::reuse_address(true));
+	acceptor.bind(ep);
+	acceptor.listen(1);
+
+	std::cout << "accepting..." << std::endl;
+
+	//tcp::socket mysocket(the_io_service);
+	//acceptor.accept(mysocket);
+	tcp::iostream sockstream;
+	acceptor.accept(*(sockstream.rdbuf()));
+
+	std::cout << "got client" << std::endl;
+
+	char buf[100];
+	boost::system::error_code myerror;
+
+	sockstream.rdbuf()->read_some(boost::asio::buffer(buf, sizeof(buf)), myerror);
+	std::streamsize count = sockstream.gcount();
+
+	std::size_t count = mysocket.read_some(boost::asio::buffer(buf, sizeof(buf)), myerror);
+	if (myerror == boost::asio::error::eof) {
+		// Connection closed cleanly by peer.
 	}
-	SocketClient client(argv[1], argv[2]);
-	client.assert_service_compatibility();
-
-	PersonProxy NO_ONE;
-	PersonProxy eve = client.Person.init("eve", NO_ONE, NO_ONE);
-	PersonProxy adam = client.Person.init("adam", NO_ONE, NO_ONE);
-
-	cout << "----------------------------------" << endl;
-
-	// test performance
-	boost::posix_time::ptime t0(boost::posix_time::microsec_clock::universal_time());
-	int tmp = 0;
-	const int cycles = 20;
-	for (int i = 0; i < cycles; i++) {
-		double res = adam->think(188, i+1);
-		if (res > 2) {
-			tmp = 1; // to make sure this loop is not optimized out
-		}
+	else if (myerror) {
+		throw boost::system::system_error(myerror); // Some other error.
 	}
-	boost::posix_time::ptime t1(boost::posix_time::microsec_clock::universal_time());
-	double interval = (t1 - t0).total_microseconds() / 1000000.0;
-	cout << "performing " << cycles << " cycles took " << interval << " seconds" << endl;
+
+	std::cout << "got " << count << " bytes" << std::endl;
+
+	//sockstream.rdbuf()->shutdown(tcp::socket::shutdown_both);
+	//sockstream.close();
+	//mysocket.shutdown(tcp::socket::shutdown_both);
+	//mysocket.close();
+	acceptor.close();
 
 	return 0;
 }
+
