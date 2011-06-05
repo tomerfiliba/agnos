@@ -84,10 +84,10 @@ namespace agnos
 
 		void BaseProcessor::process_ping(int32_t seq)
 		{
-			wstring message;
-			StringPacker::unpack(message, *transport);
+			bstring message;
+			BufferPacker::unpack(message, *transport);
 			Int8Packer::pack(REPLY_SUCCESS, *transport);
-			StringPacker::pack(message, *transport);
+			BufferPacker::pack(message, *transport);
 		}
 
 		void BaseProcessor::process_get_info(int32_t seq)
@@ -296,16 +296,16 @@ namespace agnos
 
 		ProtocolError ClientUtils::load_protocol_error()
 		{
-			wstring message;
+			ustring message;
 			StringPacker::unpack(message, *transport);
 			return ProtocolError(message);
 		}
 
 		GenericException ClientUtils::load_generic_exception()
 		{
-			wstring message;
+			ustring message;
+			ustring traceback;
 			StringPacker::unpack(message, *transport);
-			wstring traceback;
 			StringPacker::unpack(traceback, *transport);
 			return GenericException(message, traceback);
 		}
@@ -348,15 +348,15 @@ namespace agnos
 			transport->cancel_write();
 		}
 
-		int ClientUtils::ping(wstring payload, int msecs)
+		int ClientUtils::ping(bstring payload, int msecs)
 		{
 			int seq = get_seq();
 			transport->begin_write(seq);
 			Int8Packer::pack(CMD_PING, *transport);
 			StringPacker::pack(payload, *transport);
 			transport->end_write();
-			map_put(replies, seq, shared_ptr<ReplySlot>(new ReplySlot(false, &string_packer)));
-			wstring reply = get_reply_as<wstring>(seq, msecs);
+			map_put(replies, seq, shared_ptr<ReplySlot>(new ReplySlot(false, &buffer_packer)));
+			bstring reply = get_reply_as<bstring>(seq, msecs);
 			if (reply != payload) {
 				throw ProtocolError("reply does not match payload!");
 			}

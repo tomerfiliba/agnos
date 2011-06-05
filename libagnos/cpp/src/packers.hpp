@@ -232,7 +232,7 @@ namespace agnos
 		class BufferPacker :  public IPacker
 		{
 		public:
-			IPACKER_SIMPLE_DECL(BufferPacker, string, 7);
+			IPACKER_SIMPLE_DECL(BufferPacker, bstring, 7);
 		};
 
 		extern BufferPacker buffer_packer;
@@ -253,14 +253,17 @@ namespace agnos
 		//////////////////////////////////////////////////////////////////////
 
 		/**
-		 * packer for wstrings
+		 * packer for strings/wstrings
 		 */
 		class StringPacker :  public IPacker
 		{
 		public:
-			IPACKER_SIMPLE_DECL(StringPacker, wstring, 9);
+			IPACKER_SIMPLE_DECL(StringPacker, ustring, 9);
 
-			static void pack(const string& obj, ITransport& transport);
+#ifdef AGNOS_USE_WSTRING
+			static void pack(const bstring& obj, ITransport& transport);
+			//static void unpack(bstring& obj, ITransport& transport);
+#endif
 		};
 
 		extern StringPacker string_packer;
@@ -333,9 +336,9 @@ namespace agnos
 		extern ListPacker<int32_t, 803> list_of_int32_packer;
 		extern ListPacker<int64_t, 804> list_of_int64_packer;
 		extern ListPacker<double, 805> list_of_float_packer;
-		extern ListPacker<string, 806> list_of_buffer_packer;
+		extern ListPacker<bstring, 806> list_of_buffer_packer;
 		extern ListPacker<datetime, 807> list_of_date_packer;
-		extern ListPacker<string, 808> list_of_string_packer;
+		extern ListPacker<ustring, 808> list_of_string_packer;
 
 		//////////////////////////////////////////////////////////////////////
 
@@ -381,9 +384,9 @@ namespace agnos
 		extern SetPacker<int32_t, 823> set_of_int32_packer;
 		extern SetPacker<int64_t, 824> set_of_int64_packer;
 		extern SetPacker<double, 825> set_of_float_packer;
-		extern SetPacker<string, 826> set_of_buffer_packer;
+		extern SetPacker<bstring, 826> set_of_buffer_packer;
 		extern SetPacker<datetime, 827> set_of_date_packer;
-		extern SetPacker<string, 828> set_of_string_packer;
+		extern SetPacker<ustring, 828> set_of_string_packer;
 
 		//////////////////////////////////////////////////////////////////////
 
@@ -432,9 +435,9 @@ namespace agnos
 		};
 
 		extern MapPacker<int32_t, int32_t, 850> map_of_int32_int32_packer;
-		extern MapPacker<int32_t, string, 851> map_of_int32_string_packer;
-		extern MapPacker<string, int32_t, 852> map_of_string_int32_packer;
-		extern MapPacker<string, string, 853> map_of_string_string_packer;
+		extern MapPacker<int32_t, ustring, 851> map_of_int32_string_packer;
+		extern MapPacker<ustring, int32_t, 852> map_of_string_int32_packer;
+		extern MapPacker<ustring, ustring, 853> map_of_string_string_packer;
 
 		//////////////////////////////////////////////////////////////////////
 

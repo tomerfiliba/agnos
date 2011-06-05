@@ -1,7 +1,7 @@
 /*
  * Code adapted from UTF8-CPP v2.3.1 (http://utfcpp.sourceforge.net/)
  * Merged into a single header file by Tomer Filiba, for use in
- * libagnos-c++ (no other changes done)
+ * libagnos-c++. also added the encode() and decode() helper functions.
  */
 
 // Copyright 2006 Nemanja Trifunovic
@@ -651,6 +651,36 @@ namespace utf8
     }; // class iterator
 
 } // namespace utf8
+
+
+/*
+ * helper functions added by Tomer Filiba
+ */
+namespace utf8
+{
+	inline std::wstring decode(const std::string& bytes)
+	{
+		std::wstring wstr;
+		utf8to32(bytes.begin(), bytes.end(), std::back_inserter(wstr));
+		return wstr;
+	}
+	inline void decode(const std::string& bytes, std::wstring& wstr)
+	{
+		utf8to32(bytes.begin(), bytes.end(), std::back_inserter(wstr));
+	}
+
+	inline std::string encode(const std::wstring& wstr)
+	{
+		std::string bytes;
+		utf32to8(wstr.begin(), wstr.end(), std::back_inserter(bytes));
+		return bytes;
+	}
+	inline void encode(const std::wstring& wstr, std::string& bytes)
+	{
+		utf32to8(wstr.begin(), wstr.end(), std::back_inserter(bytes));
+	}
+} // namespace utf8
+
 
 #endif //header guard
 

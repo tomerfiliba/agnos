@@ -77,23 +77,13 @@ namespace agnos
 
 	namespace utils
 	{
-		inline void decode_utf8(const string& bytes, wstring& wstr)
-		{
-			utf8::utf8to32(bytes.begin(), bytes.end(), std::back_inserter(wstr));
-		}
-
-		inline void encode_utf8(const wstring& wstr, string& bytes)
-		{
-			utf8::utf32to8(wstr.begin(), wstr.end(), std::back_inserter(bytes));
-		}
-
 		class Exception: public std::exception
 		{
 		public:
-			string message;
+			bstring message;
 
 			Exception(const char * msg);
-			Exception(const string& msg);
+			Exception(const bstring& msg);
 			Exception(const wstring& msg);
 			~Exception() throw();
 			virtual const char* what() const throw ();
@@ -103,10 +93,8 @@ namespace agnos
 			class name : public agnos::utils::Exception { \
 			public: \
 				name (const char * msg) : agnos::utils::Exception(msg) {} \
-				name (const string& msg) : agnos::utils::Exception(msg) {} \
-				name (const wstring& msg) : agnos::utils::Exception("") { \
-					utils::encode_utf8(msg, message); \
-				} \
+				name (const bstring& msg) : agnos::utils::Exception(msg) {} \
+				name (const wstring& msg) : agnos::utils::Exception(utf8::encode(msg)) {} \
 			};
 
 		#define DEFINE_EXCEPTION2(name, base) \
@@ -114,6 +102,7 @@ namespace agnos
 			public: \
 				name (const char * msg) : base(msg) {} \
 				name (const string& msg) : base(msg) {} \
+				name (const wstring& msg) : base(msg) {} \
 			};
 
 		DEFINE_EXCEPTION(MutexError);

@@ -42,11 +42,11 @@ def type_to_cpp(t, proxy = False, shared = True, arg = False, ret = False):
         return "double"
     elif t == compiler.t_string:
         if arg:
-            return "const wstring&"
+            return "const ustring&"
         elif ret:
-            return "shared_ptr<wstring>"
+            return "shared_ptr<ustring>"
         else:
-            return "wstring"
+            return "ustring"
     elif t == compiler.t_date:
         if arg:
             return "const datetime&"
@@ -54,11 +54,11 @@ def type_to_cpp(t, proxy = False, shared = True, arg = False, ret = False):
             return "datetime"
     elif t == compiler.t_buffer:
         if arg:
-            return "const string&"
+            return "const bstring&"
         elif ret:
-            return "shared_ptr<string>"
+            return "shared_ptr<bstring>"
         else:
-            return "string"
+            return "bstring"
     elif t == compiler.t_heteromap:
         return "shared_ptr<HeteroMap>"
     elif isinstance(t, compiler.TList):
@@ -230,9 +230,9 @@ class CPPTarget(TargetBase):
         STMT("using namespace agnos::protocol")
         STMT("using agnos::transports::ITransport")
         SEP()
-        STMT('extern const wstring AGNOS_PROTOCOL_VERSION')
-        STMT('extern const wstring IDL_MAGIC')
-        STMT('extern const vector<wstring> SUPPORTED_VERSIONS')
+        STMT('extern const string AGNOS_PROTOCOL_VERSION')
+        STMT('extern const string IDL_MAGIC')
+        STMT('extern const vector<string> SUPPORTED_VERSIONS')
     
     def generate_server_header(self, module, service):
         BLOCK = module.block
@@ -400,14 +400,14 @@ class CPPTarget(TargetBase):
         SEP = module.sep
         DOC = module.doc
 
-        STMT('const wstring AGNOS_TOOLCHAIN_VERSION = L"{0}"', compiler.AGNOS_TOOLCHAIN_VERSION)
-        STMT('const wstring AGNOS_PROTOCOL_VERSION = L"{0}"', compiler.AGNOS_PROTOCOL_VERSION)
-        STMT('const wstring IDL_MAGIC = L"{0}"', service.digest)
+        STMT('const string AGNOS_TOOLCHAIN_VERSION = "{0}"', compiler.AGNOS_TOOLCHAIN_VERSION)
+        STMT('const string AGNOS_PROTOCOL_VERSION = "{0}"', compiler.AGNOS_PROTOCOL_VERSION)
+        STMT('const string IDL_MAGIC = "{0}"', service.digest)
         if service.versions:
-            STMT("static wstring _SUPPORTED_VERSIONS[] = {{ {0} }}", ", ".join('L"%s"' % (ver,) for ver in service.versions))
-            STMT('const vector<wstring> SUPPORTED_VERSIONS(_SUPPORTED_VERSIONS, _SUPPORTED_VERSIONS + sizeof(_SUPPORTED_VERSIONS) / sizeof(_SUPPORTED_VERSIONS[0]))')
+            STMT("static string _SUPPORTED_VERSIONS[] = {{ {0} }}", ", ".join('"%s"' % (ver,) for ver in service.versions))
+            STMT('const vector<string> SUPPORTED_VERSIONS(_SUPPORTED_VERSIONS, _SUPPORTED_VERSIONS + sizeof(_SUPPORTED_VERSIONS) / sizeof(_SUPPORTED_VERSIONS[0]))')
         else:
-            STMT('const vector<wstring> SUPPORTED_VERSIONS')
+            STMT('const vector<string> SUPPORTED_VERSIONS')
     
     def generate_server_module(self, module, service):
         BLOCK = module.block
@@ -621,7 +621,7 @@ class CPPTarget(TargetBase):
             STMT('map.put("AGNOS_TOOLCHAIN_VERSION", AGNOS_TOOLCHAIN_VERSION)')
             STMT('map.put("COMPRESSION_SUPPORTED", string_packer, true, bool_packer)')
             STMT('map.put("IMPLEMENTATION", "libagnos-c++")')
-            STMT('std::map<wstring, int> codes')
+            STMT('std::map<ustring, int> codes')
             STMT('codes["INFO_META"] = INFO_META')
             STMT('codes["INFO_SERVICE"] = INFO_SERVICE')
             STMT('codes["INFO_FUNCTIONS"] = INFO_FUNCTIONS')
@@ -637,8 +637,8 @@ class CPPTarget(TargetBase):
         ##
         with BLOCK("void process_get_functions_info(HeteroMap& map)"):
             STMT("HeteroMap funcinfo")
-            STMT("std::map<wstring, wstring> args")
-            STMT("std::map<wstring, wstring> anno")
+            STMT("std::map<ustring, ustring> args")
+            STMT("std::map<ustring, ustring> anno")
             
             for func in service.funcs.values():
                 STMT("funcinfo.clear()")
@@ -664,9 +664,9 @@ class CPPTarget(TargetBase):
             STMT('HeteroMap * group = map.put_new_map("enums")')
             STMT("HeteroMap * members = NULL")
             STMT("HeteroMap * member = NULL")
-            STMT("vector<wstring> arg_names")
-            STMT("vector<wstring> arg_types")
-            STMT("std::map<wstring, wstring> anno")
+            STMT("vector<ustring> arg_names")
+            STMT("vector<ustring> arg_types")
+            STMT("std::map<ustring, ustring> anno")
             SEP()
             
             for enum in service.enums():
@@ -692,7 +692,7 @@ class CPPTarget(TargetBase):
             
             STMT('group = map.put_new_map("classes")')
             STMT("HeteroMap *cls_group = NULL, *attr_group = NULL, *meth_group = NULL, *a = NULL, *m = NULL")
-            STMT("vector<wstring> extends_list")
+            STMT("vector<ustring> extends_list")
 
             for cls in service.classes():
                 STMT('cls_group = group->put_new_map("{0}")', cls.name)
@@ -1392,8 +1392,8 @@ class CPPTarget(TargetBase):
             STMT("shared_ptr<HeteroMap> meta_info = get_service_info(INFO_META)")
             STMT("shared_ptr<HeteroMap> service_info = get_service_info(INFO_SERVICE)")
             
-            STMT('wstring agnos_protocol_version = meta_info->get_as<wstring>("AGNOS_PROTOCOL_VERSION")')
-            STMT('wstring service_name = service_info->get_as<wstring>("SERVICE_NAME")')
+            STMT('ustring agnos_protocol_version = meta_info->get_as<ustring>("AGNOS_PROTOCOL_VERSION")')
+            STMT('ustring service_name = service_info->get_as<ustring>("SERVICE_NAME")')
 
             with BLOCK('if (agnos_protocol_version != AGNOS_PROTOCOL_VERSION)'):
                 STMT('''THROW_FORMATTED(WrongAgnosVersion, "expected protocol " << AGNOS_PROTOCOL_VERSION '''
@@ -1406,8 +1406,8 @@ class CPPTarget(TargetBase):
             if service.clientversion:
                 STMT("bool found = false")
                 with BLOCK('if (service_info->contains("SUPPORTED_VERSIONS"))'):
-                    STMT('vector<wstring> supported_versions = service_info->get_as< vector<wstring> >("SUPPORTED_VERSIONS")')
-                    STMT("vector<wstring>::const_iterator it")
+                    STMT('vector<ustring> supported_versions = service_info->get_as< vector<ustring> >("SUPPORTED_VERSIONS")')
+                    STMT("vector<ustring>::const_iterator it")
                     with BLOCK("for (it = supported_versions.begin(); it != supported_versions.end(); it++)"):
                         with BLOCK("if (*it == CLIENT_VERSION)"):
                             STMT("found = true")
