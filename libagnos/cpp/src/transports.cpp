@@ -227,6 +227,7 @@ namespace agnos
 		// ZlibDecompressingStream - a zlib-decompressed input stream
 		//////////////////////////////////////////////////////////////////////
 
+		// http://www.boost.org/doc/libs/1_46_1/libs/iostreams/doc/concepts/filter.html
 		template<typename T> class ZlibDecompressingStream : public BasicInputStream
 		{
 		protected:
@@ -256,6 +257,37 @@ namespace agnos
 				return _gcount;
 			}
 		};
+
+		//////////////////////////////////////////////////////////////////////
+		// socket support for boost (it's so lame)
+		//////////////////////////////////////////////////////////////////////
+		static boost::asio::io_service the_io_service;
+		static tcp::resolver resolver(the_io_service);
+
+		static shared_ptr<tcp::socket> connect_sock(const string& host, unsigned short port)
+		{
+			return connect_sock(host, convert_to_string(port));
+		}
+
+		static shared_ptr<tcp::socket> connect_sock(const string& host, const string& port)
+		{
+			tcp::resolver::query query(host.c_str(), port.c_str());
+			tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
+			tcp::resolver::iterator end;
+			boost::system::error_code error = boost::asio::error::host_not_found;
+
+			shared_ptr<tcp::socket> sock(new tcp::socket(the_io_service));
+
+			while (error && endpoint_iterator != end) {
+				sock->close();
+				sock->connect(*endpoint_iterator++, error);
+			}
+			if (error) {
+				throw boost::system::system_error(error);
+			}
+
+			return sock;
+		}
 
 		//////////////////////////////////////////////////////////////////////
 		// SocketTransport
