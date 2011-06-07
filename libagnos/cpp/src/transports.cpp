@@ -115,7 +115,7 @@ namespace agnos
 		// SocketStream
 		//////////////////////////////////////////////////////////////////////
 
-		class SocketStream : public BasicInputStream
+		/*class SocketStream : public BasicInputStream
 		{
 		protected:
 			shared_ptr<tcp::socket> sock;
@@ -132,7 +132,7 @@ namespace agnos
 			}
 
 
-		};
+		};*/
 
 
 		//////////////////////////////////////////////////////////////////////
@@ -261,7 +261,7 @@ namespace agnos
 		//////////////////////////////////////////////////////////////////////
 		// socket support for boost (it's so lame)
 		//////////////////////////////////////////////////////////////////////
-		static boost::asio::io_service the_io_service;
+		/*static boost::asio::io_service the_io_service;
 		static tcp::resolver resolver(the_io_service);
 
 		static shared_ptr<tcp::socket> connect_sock(const string& host, unsigned short port)
@@ -287,7 +287,7 @@ namespace agnos
 			}
 
 			return sock;
-		}
+		}*/
 
 		//////////////////////////////////////////////////////////////////////
 		// SocketTransport

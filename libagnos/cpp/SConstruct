@@ -39,5 +39,8 @@ except UserError:
             conf.env["CPPDEFINES"]["BOOST_PROCESS_SUPPORTED"] = None
         env = conf.Finish()
 
+    if int(ARGUMENTS.get('AGNOS_USE_WSTRING', 0)):
+       env["CPPDEFINES"]["AGNOS_USE_WSTRING"] = None
+
 env.Library('agnos', Glob('src/*.cpp')) 
 
