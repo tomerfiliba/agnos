@@ -254,6 +254,11 @@ namespace agnos
 			{
 			}
 
+			~SocketTransport()
+			{
+				close();
+			}
+
 			static shared_ptr<SocketStream> connect(const string& host, const string& port)
 			{
 				shared_ptr<SocketStream> inst(new SocketStream());
