@@ -112,30 +112,6 @@ namespace agnos
 		}
 
 		//////////////////////////////////////////////////////////////////////
-		// SocketStream
-		//////////////////////////////////////////////////////////////////////
-
-		/*class SocketStream : public BasicInputStream
-		{
-		protected:
-			shared_ptr<tcp::socket> sock;
-
-		public:
-			SocketStream(shared_ptr<tcp::socket> sock) : sock(sock)
-			{
-			}
-
-			std::streamsize readn(char* buf, std::streamsize count)
-			{
-				DEBUG_LOG("SocketStream::readn(" << count << ")");
-				return sock->read_some(boost::asio::buffer(buf, count));
-			}
-
-
-		};*/
-
-
-		//////////////////////////////////////////////////////////////////////
 		// BoundInputStream - a fixed-length input stream
 		//////////////////////////////////////////////////////////////////////
 
@@ -259,35 +235,104 @@ namespace agnos
 		};
 
 		//////////////////////////////////////////////////////////////////////
-		// socket support for boost (it's so lame)
+		// SocketStream (replacement for boost::ip::tcp::iostream)
 		//////////////////////////////////////////////////////////////////////
-		/*static boost::asio::io_service the_io_service;
-		static tcp::resolver resolver(the_io_service);
+		static boost::asio::io_service the_io_service;
+		static tcp::resolver the_resolver(the_io_service);
 
-		static shared_ptr<tcp::socket> connect_sock(const string& host, unsigned short port)
+		class SocketStream
 		{
-			return connect_sock(host, convert_to_string(port));
-		}
+		protected:
+			shared_ptr<tcp::socket> sock;
 
-		static shared_ptr<tcp::socket> connect_sock(const string& host, const string& port)
-		{
-			tcp::resolver::query query(host.c_str(), port.c_str());
-			tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-			tcp::resolver::iterator end;
-			boost::system::error_code error = boost::asio::error::host_not_found;
+			SocketStream() : sock(new tcp::socket(the_io_service))
+			{
+			}
 
-			shared_ptr<tcp::socket> sock(new tcp::socket(the_io_service));
+		public:
+			SocketStream(shared_ptr<tcp::socket> sock) : sock(sock)
+			{
+			}
 
-			while (error && endpoint_iterator != end) {
+			static shared_ptr<SocketStream> connect(const string& host, const string& port)
+			{
+				shared_ptr<SocketStream> inst(new SocketStream());
+
+				tcp::resolver::query query(host.c_str(), port.c_str());
+				tcp::resolver::iterator endpoint_iterator = the_resolver.resolve(query);
+				tcp::resolver::iterator end;
+				boost::system::error_code error = boost::asio::error::host_not_found;
+
+				while (error && endpoint_iterator != end) {
+					inst->sock->close();
+					inst->sock->connect(*endpoint_iterator++, error);
+				}
+				if (error) {
+					//throw boost::system::system_error(error);
+					THROW_FORMATTED(SocketTransportError, "failed connecting the socket to " <<
+							host << " : " << port << ", error is " << error);
+				}
+
+				return inst;
+			}
+
+			static shared_ptr<SocketStream> connect(const string& host, unsigned short port)
+			{
+				return connect(host, convert_to_string(port));
+			}
+
+			static shared_ptr<SocketStream> accept(const tcp::acceptor& acceptor)
+			{
+				shared_ptr<SocketStream> inst(new SocketStream());
+				acceptor.accept(*(inst->sock));
+			}
+
+			void close()
+			{
+				if (!sock) {
+					return;
+				}
+				sock->shutdown(tcp::socket::shutdown_both);
 				sock->close();
-				sock->connect(*endpoint_iterator++, error);
-			}
-			if (error) {
-				throw boost::system::system_error(error);
+				sock.reset();
 			}
 
-			return sock;
-		}*/
+			std::streamsize read(char * buf, std::streamsize count)
+			{
+				std::streamsize total = 0;
+				boost::system::error_code error = 0;
+				while (count > 0) {
+					size_t bytes = sock->read_some(boost::asio::buffer(buf, count), error);
+					if (error == boost::asio::error::eof) {
+						 break; // Connection closed cleanly by peer.
+					}
+					else if (error) {
+						throw boost::system::system_error(error);
+					}
+					count -= bytes;
+					buf += bytes;
+					total += bytes;
+				}
+				return total;
+			}
+
+			std::streamsize write(const char * buf, std::streamsize count)
+			{
+				std::streamsize total = 0;
+				boost::system::error_code error = 0;
+				while (count > 0) {
+					size_t bytes = sock->write_some(boost::asio::buffer(buf, count), error);
+					if (error) {
+						throw boost::system::system_error(error);
+					}
+					count -= bytes;
+					buf += bytes;
+					total += bytes;
+				}
+				return total;
+			}
+
+		};
 
 		//////////////////////////////////////////////////////////////////////
 		// SocketTransport
