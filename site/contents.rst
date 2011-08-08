@@ -25,7 +25,7 @@ Contents
    userguide/over-http
    
    devguide/protocol
-   devguide/impl-bindings
+   devguide/impl-targets
    
    userguide/srcgen
    userguide/restful

@@ -48,7 +48,7 @@ Advance Topics
 Development Guide
 ^^^^^^^^^^^^^^^^^
 * :ref:`doc-protocol`
-* :ref:`doc-impl-bindings`
+* :ref:`doc-impl-targets`
 
 
 .. _topic-about:

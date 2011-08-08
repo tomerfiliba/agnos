@@ -1,2 +1,2 @@
 * how to implement bindings
-* 
+* layout

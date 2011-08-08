@@ -109,28 +109,28 @@ class Module(Block):
 
 
 if __name__ == "__main__":
-    with Module() as m:
-        BLOCK = m.block
-        STMT = m.stmt
-        SEP = m.sep
-        
-        STMT("using System")
-        STMT("using System.Collections")
-        STMT("using Thrift")
-        SEP(2)
-        with BLOCK("namespace t4"):
-            with BLOCK("public class moshe"):
-                STMT("private int x, y")
-                SEP()
-                with BLOCK("public moshe()"):
-                    STMT("int x = 5")
-                    STMT("int y = 6")
-                SEP()
-                with BLOCK("public ~moshe()"):
-                    STMT("Dispose(false)")
+    mod = Module()
+    BLOCK = mod.block
+    STMT = mod.stmt
+    DOC = mod.doc
+    SEP = mod.sep
     
-    print(m.render())
-
+    STMT("using System")
+    STMT("using System.Collections")
+    SEP(2)
+    with BLOCK("namespace foo.bar"):
+        DOC("this is a very special class")
+        with BLOCK("public class Spam"):
+            STMT("private int x, y")
+            SEP()
+            with BLOCK("public Spam()"):
+                STMT("x = {0}", 17)
+                STMT("y = {0}", 18)
+            SEP()
+            with BLOCK("public ~Spam()"):
+                STMT("Dispose(false)")
+    
+    print(mod.render())
 
 
 
