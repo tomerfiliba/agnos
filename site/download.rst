@@ -1,3 +1,5 @@
+.. _doc-download:
+
 Downloading Agnos
 =================
 
@@ -5,7 +7,7 @@ Overview
 --------
 Agnos consists of two parts: ``agnos_compiler`` and ``libagnos``. The 
 ``agnos_compiler`` is a set of utilities that generate language-bindings from
-:doc:`IDL specifications <idl>`. ``libagnos`` is a set of libraries that 
+:ref:`IDL specifications <doc-idl>`. ``libagnos`` is a set of libraries that 
 implement the Agnos protocol for the various languages supported by Agnos. 
 
 In order to develop services with Agnos you will need the ``agnos_compiler``
@@ -42,7 +44,7 @@ as well as tagged versions, which are considered stable.
 
 Installation
 ------------
-Continue to :doc:`Installing Agnos <install>`.
+Continue to :ref:`Installing Agnos <doc-install>`.
 
 
 

@@ -1,3 +1,5 @@
+.. _doc-install:
+
 Installing Agnos
 ================
 
@@ -7,7 +9,7 @@ The ``agnos_compiler`` is a ``python`` package, so obviously you will need
 to have `python installed <http://python.org/download/>`_. If you're running
 on Windows, you can *next-next-next* your way with executable installer; 
 otherwise, install it like any other python package: either use 
-`easy_install <http://packages.python.org/distribute/easy_install.html>`_ or
+`easy_install agnos_compiler <http://packages.python.org/distribute/easy_install.html>`_ or
 do it manually, by extracting compressed package and running ::  
 
   $ python setup.py install       # you might need to sudo that command
@@ -108,11 +110,9 @@ Alternatively, you can download the source and build it on your own.
 """"""""""
 
 ``libagnos-python`` is a normal python package, which is accessed as 
-``import agnos``. If you're running on Windows, you can next-next-next 
-your way with executable installer; otherwise, install it like any other 
-python package: extract the ``tar.gz`` (or ``zip``) and run ::
-
-  $ python setup.py install       # you might need to sudo that command
+``import agnos``. You can ``easy_install libagnos``; install it like any other python package
+(by extracting the package and running ``python setup.py install``), and if you're running
+on Windows, you can next-next-next your way through the GUI installer.
 
 For more info, refer to `Installing Python Modules <http://docs.python.org/install>`_
 

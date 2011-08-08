@@ -1,3 +1,5 @@
+.. _doc-idl:
+
 IDL
 ===
 
@@ -7,7 +9,7 @@ specification of a service, and generates target-language bindings.
 This IDL is written as a very simple **XML document**, the semantics of which 
 are discussed here.
 
-Before reading this, be sure to read the :doc:`concepts` and :doc:`types`.
+Before reading this, be sure to read the :ref:`doc-concepts` and :ref:`doc-types`.
 
 The root element of every IDL file is the ``<service>`` tag, which may contain
 ``consts``, ``enums``, ``typedefs``, ``records``, ``exceptions``, ``classes``, 
@@ -192,7 +194,7 @@ but it may be compatible with multiple ones. This allows older clients to
 connect to the service.
 
 Version-compatibility is enforced when the client calls 
-``assertServiceCompatibility`` (see :doc:`client`). 
+``assertServiceCompatibility`` (see :ref:`doc-client`). 
 
 ``client_version``
 ^^^^^^^^^^^^^^^^^^

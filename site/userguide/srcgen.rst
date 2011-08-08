@@ -1,10 +1,12 @@
+.. _doc-srcgen:
+
 ``srcgen``
 ==========
 The *Source Generator*, most commonly known as ``srcgen`` (pronounced "source gen"),
 is a :ref`command-line utility <tool-agnosrc-py>`, distinct from the 
 :ref:`Agnos compiler <tool-agnosc>`, that processes special comments placed 
 inside source code, and automatically generates the necessary 
-:doc:`Agnos IDL<idl>`. Currently the utility only supports processing ``python`` 
+:ref:`Agnos IDL<doc-idl>`. Currently the utility only supports processing ``python`` 
 packages, but future versions will include ``srcgen`` for ``C#`` and ``java`` 
 (see `planned features <http://github.com/tomerfiliba/agnos/issues/labels/planned%20features>`_). 
 

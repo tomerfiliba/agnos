@@ -1,3 +1,5 @@
+.. _doc-toolchain:
+
 Tool-chain
 ==========
 This page describes the command-line tools that make up the agnos tool-chain.
@@ -9,7 +11,7 @@ This page describes the command-line tools that make up the agnos tool-chain.
 ``agnosc``
 ==========
 The Agnos compiler. This is the tool that takes an IDL file 
-(in :doc:`XML format <idl>`) and generates the language bindings for the 
+(in :ref:`XML format <doc-idl>`) and generates the language bindings for the 
 target-language. 
 
 Usage:
@@ -53,7 +55,7 @@ Example
 
 ``agnosrc-py``
 ==============
-The Pythonic :doc:`srcgen` tool. It takes a source directory (``SRCDIR``), 
+The Pythonic :ref:`doc-srcgen` tool. It takes a source directory (``SRCDIR``), 
 which contains a python package, scans all the python files within it 
 (recursively) for special comments, and creates the following files:
 
@@ -62,7 +64,7 @@ which contains a python package, scans all the python files within it
 * Python bindings of the service
 * An executable python server file that exposes the service
 
-For more info, refer to :doc:`srcgen`.
+For more info, refer to :ref:`doc-srcgen`.
 
 Usage:
 ------

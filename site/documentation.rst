@@ -1,8 +1,10 @@
+.. _doc-documentation:
+
 Documentation
 =============
 
 
-.. _doc-started:
+.. _topic-started:
 
 Getting Started
 ---------------
@@ -10,13 +12,12 @@ First, let's get you acquainted with the Agnos tool-chain, which consists of
 the ``agnos_compiler`` and ``libagnos``, and the related concepts and 
 terminology:
 
-* :doc:`download`
-* :doc:`install`
-* :doc:`concepts`
+* :ref:`doc-download`
+* :ref:`doc-install`
+* :ref:`doc-concepts`
 
 
-
-.. _doc-ref:
+.. _topic-ref:
 
 Reference
 ---------
@@ -25,56 +26,61 @@ service consumers (clients) and provides (servers):
 
 Basics
 ^^^^^^
-* :doc:`idl`
-* :doc:`types`
+* :ref:`doc-idl`
+* :ref:`doc-types`
 
 Tools and Utilities
 ^^^^^^^^^^^^^^^^^^^
-* :doc:`srcgen`
-* :doc:`tools`
+* :ref:`doc-srcgen`
+* :ref:`doc-toolchain`
 
 APIs
 ^^^^
-* :doc:`client`
-* :doc:`server`
+* :ref:`doc-client`
+* :ref:`doc-server`
 
 Advance Topics
 ^^^^^^^^^^^^^^
-* :doc:`library-mode`
-* :doc:`over-http`
-* :doc:`restful`
-* :doc:`protocol`
+* :ref:`doc-libmode`
+* :ref:`doc-over-http`
+* :ref:`doc-restful`
 
-.. _doc-about:
+Development Guide
+^^^^^^^^^^^^^^^^^
+* :ref:`doc-protocol`
+* :ref:`doc-impl-bindings`
+
+
+.. _topic-about:
 
 About
 -----
 Some general info about Agnos:
 
-* :doc:`about`
-* :doc:`roadmap`
-* :doc:`license`
-* :doc:`contrib`
-* :doc:`contact`
+* :ref:`doc-about`
+* :ref:`doc-roadmap`
+* :ref:`doc-license`
+* :ref:`doc-contrib`
+* :ref:`doc-contact`
 
-.. _doc-tutorial:
+.. _topic-tutorial:
 
 Tutorial
 --------
 Step-by-step tutorials showing you how to use Agnos:
 
-* :doc:`tut-1`
-* :doc:`tut-2`
-* :doc:`tut-3`
+* :ref:`doc-tut1`
+* :ref:`doc-tut2`
+* :ref:`doc-tut3`
 
-.. _doc-demos:
+.. _topic-demos:
 
 Demos
 -----
 Full-blown, annotates demo programs:
 
-* :doc:`demo-1`
-* :doc:`demo-2`
+* :ref:`doc-demo1`
+* :ref:`doc-demo2`
 
 
 

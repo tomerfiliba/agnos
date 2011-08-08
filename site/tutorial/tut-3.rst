@@ -1,14 +1,16 @@
+.. _doc-tut3:
+
 Part 3: ``srcgen``
 ==================
-:doc:`srcgen` is a powerful front-end to the Agnos compiler, which generates
-the :doc:`idl` specification from special comments embedded in the source code.
+:ref:`doc-srcgen` is a powerful front-end to the Agnos compiler, which generates
+the :ref:`doc-idl` specification from special comments embedded in the source code.
 Instead of having to write a lengthy XML file and keeping it up-to-date with
 your service implementation, you can use ``srcgen``.
 
 .. note::
 
    * At the moment, ``srcgen`` supports only ``python``.
-   * Be sure to read the :doc:`reference <srcgen>`.
+   * Be sure to read the :ref:`reference <doc-srcgen>`.
 
 ``srcgen`` works by scanning a directory (source code package) for ``.py`` 
 files, and looks for special comments in the format of 

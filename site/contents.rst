@@ -5,34 +5,36 @@ Contents
    :maxdepth: 2
    
    documentation
-   features
+   about/features
    download
    install
-   changelog
+   about/changelog
    
-   concepts
-   tut-1
-   tut-2
-   tut-3
-   demo-1
-   demo-2
+   about/concepts
+   tutorial/tut-1
+   tutorial/tut-2
+   tutorial/tut-3
+   tutorial/demo-1
+   tutorial/demo-2
    
-   idl
-   types
-   tools
-   client
-   server
-   over-http
-   protocol
+   userguide/idl
+   userguide/types
+   userguide/tools
+   userguide/client
+   userguide/server
+   userguide/over-http
    
-   srcgen
-   restful
-   library-mode
+   devguide/protocol
+   devguide/impl-bindings
    
-   about
-   roadmap
-   license
-   contrib
-   contact
+   userguide/srcgen
+   userguide/restful
+   userguide/library-mode
+   
+   about/about
+   about/roadmap
+   about/license
+   about/contrib
+   about/contact
 
 

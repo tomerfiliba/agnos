@@ -1,3 +1,5 @@
+.. _doc-about:
+
 About Agnos
 ===========
 Agnos is developed and maintained by `IBM XIV <http://www.xivstorage.com>`_, 
@@ -33,19 +35,19 @@ is released under) allows *derivative works*.
 
 Open Source
 -----------
-IBM chose to open-source Agnos, under the :doc:`Apache License <license>`, 
+IBM chose to open-source Agnos, under the :ref:`Apache License <doc-license>`, 
 believing that such a project would do a great service to the open source 
 community -- just as we would have wished to find a suitable open source
 project instead of writing one from scratch.
 
 We also hope to mature Agnos faster this way, receiving bug reports and 
 patches from users, maybe even new features. For more information, please
-refer to the :doc:`contrib`.
+refer to the :ref:`doc-contrib`.
 
 
 See also
 --------
-* :doc:`contact`
+* :ref:`doc-contact`
 
 
 

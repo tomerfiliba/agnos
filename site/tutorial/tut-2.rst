@@ -1,12 +1,14 @@
+.. _doc-tut2:
+
 Part 2: By-Value and By-Reference
 =================================
 
-The :doc:`first part <tut-1>` of the tutorial has introduced you to the 
+The :ref:`first part <doc-tut1>` of the tutorial has introduced you to the 
 :ref:`Agnos Compiler <tool-agnosc>`, how to implement a basic server,
 and how to write a simple client. We have not delved too deeply into the
 syntax and semantics of the IDL and its the different elements, since assumed 
 it's self-explanatory enough (of course you can refer to the 
-:doc:`reference documentation <idl>` for more info). 
+:ref:`reference documentation <doc-idl>` for more info). 
 
 In this part we'll learn more about three important constructs: **records**, 
 **classes**, and **exceptions**, and the difference between passing objects

@@ -1,8 +1,10 @@
+.. _doc-server:
+
 Server-Side APIs
 ================
 
 This section describes writing the server-side implementation of an Agnos 
-service. As with the :doc:`client`, the API names vary slightly between 
+service. As with the :ref:`doc-client`, the API names vary slightly between 
 languages, since ``libagnos`` follows the naming convention of each language.
 The "official" name is the ``java`` one, and the code snippets here are given
 in ``java``, assuming it's popular enough to serve as *lingua franca*.
@@ -34,7 +36,7 @@ There are two parts to implementing an Agnos service:
       // ...
   }
 
-For the code of a full server, refer to the :ref:`demos section <doc-demos>`.
+For the code of a full server, refer to the :ref:`demos section <topic-demos>`.
 
 You can use your favorite editor to generate all the necessary boilerplate 
 code, or use the auto-generated *stub file*: when you generate the code with 
@@ -57,7 +59,7 @@ connections from clients and handles them -- exposing the service behind it.
 * ``ThrededServer`` - a simple multi-threaded server that creates a thread
   per incoming connection.
 * ``LibraryModeServer`` - a single-shot server used for
-  :doc:`Library Mode<library-mode>`. It's not likely that you'll need to
+  :ref:`Library Mode<doc-libmode>`. It's not likely that you'll need to
   use it directly -- it's usually handled through the ``CmdlineServer``.
 
 Here's an example of setting up a ``ThreadedServer`` server, listening on

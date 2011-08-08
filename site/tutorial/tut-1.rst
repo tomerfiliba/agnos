@@ -1,8 +1,10 @@
+.. _doc-tut1:
+
 Part 1: The Environment
 =======================
 
 .. note::
-   Be sure to have read the :ref:`doc-started` section before rushing into 
+   Be sure to have read the :ref:`topic-started` section before rushing into 
    the tutorial. We assume you already have downloaded and installed Agnos
    properly, and that you're familiar with the terminology and basic 
    concepts.
@@ -11,7 +13,7 @@ In this section we'll get acquainted with the Agnos tool chain and write a
 simple service -- the Calculator -- where the server is implemented in ``java``
 and the client in ``python``.
 As the name suggests, the Calculator service exposes a small number of 
-arithmetic functions. Let's start with writing the :doc:`IDL <idl>` -- open 
+arithmetic functions. Let's start with writing the :ref:`IDL <doc-idl>` -- open 
 up your favorite XML editor (``notepad`` will do) and paste this snippet:
 
 .. code-block:: xml
@@ -55,7 +57,7 @@ up your favorite XML editor (``notepad`` will do) and paste this snippet:
 
 Save under the name ``calculator.xml`` and place it somewhere accessible.
 
-This little :doc:`IDL <idl>` is self-explanatory: we have a ``typedef`` (because
+This little :ref:`IDL <doc-idl>` is self-explanatory: we have a ``typedef`` (because
 we prefer the name ``real`` over ``float``), two constants, a record that 
 defines what a complex number is, and four functions -- two for adding and 
 multiplying real numbers, and two for adding and multiplying complex numbers. 

@@ -1,3 +1,5 @@
+.. _doc-client:
+
 Client-Side APIs
 ================
 This section describes all the client-side APIs required to write an Agnos 
@@ -39,7 +41,7 @@ Aliases:
 Creates an Agnos connection that operates on top of HTTP requests to the given
 URL. In this mode, the payload (binary) will be wrapped with the proper
 HTTP header, which allows it to integrate with an HTTP server. See also 
-:doc:`over-http`. An optional parameter, ``checked``, determines whether 
+:ref:`doc-over-http`. An optional parameter, ``checked``, determines whether 
 ``assertServiceCompatibility`` is automatically called (``true`` by default).
 
 Aliases:
@@ -51,7 +53,7 @@ Aliases:
 
 ``connectProc``
 ---------------
-Connects to a newly-spawned process server (see more under :doc:`library-mode`).
+Connects to a newly-spawned process server (see more under :ref:`doc-libmode`).
 It takes the filename of the process to spawn, or a ``ProcessBuilder`` instance,
 spawns the process and establishes an Agnos connection to it. 
 An optional parameter, ``checked``, determines whether 

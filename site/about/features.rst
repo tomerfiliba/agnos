@@ -1,3 +1,5 @@
+.. _doc-features:
+
 Features
 ========
 * **Cross-language**: interoperate seamlessly between ``java``, ``C#``, ``C++``,
@@ -13,10 +15,10 @@ Features
   supports point-to-point connectivity (no need to set up name servers, 
   web servers, URLs, etc.).
 
-* :doc:`srcgen`: Generate :doc:`idl` specifications from in-code comments; 
+* :ref:`doc-srcgen`: Generate :ref:`doc-idl` specifications from in-code comments; 
   only one file to edit
 
-* :doc:`RESTful front-end <restful>`: unsupported languages can use Agnos-exposed
+* :ref:`RESTful front-end <doc-restful>`: unsupported languages can use Agnos-exposed
   services in a `RESTful <http://en.wikipedia.org/wiki/REST>`_ manner, 
   assuming they have HTTP client-side libraries.
 
@@ -29,12 +31,12 @@ Features
     service. This is useful in environments that require integration with a 
     web server, or to cross firewalls.
   
-  * :doc:`library-mode`: instead of setting up a server, you can spawn a server 
+  * :ref:`doc-libmode`: instead of setting up a server, you can spawn a server 
     process and connect to it -- in one line of code! This is useful when you
     have a library, written in one language, which you want to make use of 
     from another language.
 
-* **Open Source**: :doc:`Apache license <license>`
+* **Open Source**: :ref:`Apache license <doc-license>`
 
 
 Planned Features
@@ -42,7 +44,7 @@ Planned Features
 You can see the most up-to-date planned features and targets on our
 `issue tracker <http://github.com/tomerfiliba/agnos/issues>`_. It's also 
 possible to comment or vote on features, and we will do our best to use
-this input for decide on our :doc:`road map <roadmap>`:
+this input for decide on our :ref:`road map <doc-roadmap>`:
 
 Features
 --------

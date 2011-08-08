@@ -1,9 +1,11 @@
+.. _doc-protocol:
+
 Protocol Specification
 ======================
 This section describes the wire-format Agnos uses to encode values, and serves
 as a reference for new implementations of ``libagnos`` (for other languages).
 Note that the ``java`` implementation of ``libagnos`` is the "reference 
-implementation". Refer to :doc:`types` for more information on types.
+implementation". Refer to :ref:`doc-types` for more information on types.
 
 .. note::
   Some notes of notations:

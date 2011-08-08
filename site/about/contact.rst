@@ -1,3 +1,5 @@
+.. _doc-contact:
+
 Contact Information
 ===================
 You are welcome to use our `mailing list <http://groups.google.com/group/agnos>`_ 

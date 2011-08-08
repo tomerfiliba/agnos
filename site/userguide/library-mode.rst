@@ -1,3 +1,5 @@
+.. _doc-libmode:
+
 Library Mode
 ============
 

@@ -1,3 +1,5 @@
+.. _doc-concepts:
+
 Concepts
 ========
 This section outlines some fundamental concepts and terms that are needs before 
@@ -79,7 +81,7 @@ as the name implies, are orderd collections of attributes (or "fields") that
 are passed by-value; classes, on the other hand, pass by-reference.
 
 .. note::
-  All the :doc:`built-in types <types>` pass by-value (except for *reference
+  All the :ref:`built-in types <doc-types>` pass by-value (except for *reference
   collections* -- ``reflist``, etc.)
 
 Do not be confused though: records can contain attributes of by-reference type,

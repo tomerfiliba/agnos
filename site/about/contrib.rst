@@ -1,3 +1,5 @@
+.. _doc-contrib:
+
 Contribution Guidelines
 =======================
 
@@ -42,7 +44,7 @@ and our `issue tracker <http://github.com/tomerfiliba/agnos/issues>`_ is also
 found there.
 
 You are welcome to discuss development-related issues and other questions on our 
-:doc:`mailing-list <contact>`. However, it's **not** the place to report bugs
+:ref:`mailing-list <doc-contact>`. However, it's **not** the place to report bugs
 or submit patches. Please use the **issue tracker** to report bugs.
 
 The preferred way to submit patches is by **forking**: you simply 

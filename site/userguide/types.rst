@@ -1,3 +1,5 @@
+.. _doc-types:
+
 Data Types
 ==========
 

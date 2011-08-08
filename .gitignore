@@ -32,3 +32,4 @@ release/
 *.egg-info
 *.log
 .*
+AssemblyInfo.cs

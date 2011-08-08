@@ -20,29 +20,29 @@ Unlike the aforementioned technologies, which tend to require integration with
 (HTTP), often also requiring complex topologies (such as *name servers* for
 registering objects, etc.) -- Agnos is designed to be **simple, efficient, 
 and straightforward**, allowing for direct communication between two ends 
-using a compact binary protocol. You can **read more** :doc:`about Agnos <about>`.
+using a compact binary protocol. You can **read more** :ref:`about Agnos <doc-about>`.
 
 Key Features
 ============
 * **Interoperate** between ``python``, ``C#``, ``java``, and ``C++``
 * **Cross-platform**
 * Operates locally or over a network, using sockets directly, or over HTTP
-* :doc:`srcgen` generates IDL from **special comments within your source 
+* :ref:`doc-srcgen` generates IDL from **special comments within your source 
   code** -- only a single place to edit!
 * Lightweight, speedy, and efficient
-* :doc:`library-mode` - connect to a spawned server process in one line of code
-* Released under the :doc:`Apache License <license>`
+* :ref:`doc-libmode` - connect to a spawned server process in one line of code
+* Released under the :ref:`Apache License <doc-license>`
 
-For the full list, see :doc:`features and future plans <features>`.
+For the full list, see :ref:`features and future plans <doc-features>`.
 
 Getting Started
 ===============
-If you're ready to go, check out our :doc:`documentation` page.
+If you're ready to go, check out our :ref:`doc-documentation` page.
 
 Teaser
 ======
 To demonstrate what we mean by **easy, efficient, and straightforward**, 
-here's a simple :doc:`IDL <idl>` that defines a remote file access service: 
+here's a simple :ref:`IDL <doc-idl>` that defines a remote file access service: 
 
 .. code-block:: xml
 
@@ -93,6 +93,6 @@ and then
   f.close()
 
 Implementing the service is a little lengthy, naturally, but very trivial too.
-To see how that's done, check out the :doc:`demo <demo-1>`.
+To see how that's done, check out the :ref:`demo <doc-demo1>`.
 
 
