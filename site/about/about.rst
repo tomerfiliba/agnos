@@ -2,6 +2,16 @@
 
 About Agnos
 ===========
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   
+   contact
+   contrib
+   license
+   changelog
+   roadmap
+
 Agnos is developed and maintained by `IBM XIV <http://www.xivstorage.com>`_, 
 at the *Host Side Group*, to allow our end users to utilize our products with 
 ease, from a variety of programming languages. We develop Storage Array 
@@ -40,14 +50,8 @@ believing that such a project would do a great service to the open source
 community -- just as we would have wished to find a suitable open source
 project instead of writing one from scratch.
 
-We also hope to mature Agnos faster this way, receiving bug reports and 
+We also hope this would help Agnos mature faster, receiving bug reports and
 patches from users, maybe even new features. For more information, please
 refer to the :ref:`doc-contrib`.
-
-
-See also
---------
-* :ref:`doc-contact`
-
 
 

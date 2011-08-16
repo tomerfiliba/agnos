@@ -128,3 +128,23 @@ doctest:
 	$(SPHINXBUILD) -b doctest $(ALLSPHINXOPTS) $(BUILDDIR)/doctest
 	@echo "Testing of doctests in the sources finished, look at the " \
 	      "results in $(BUILDDIR)/doctest/output.txt."
+
+upload: clean html
+	rsync -r -v _build/html/ gangesmaster,agnos@web.sourceforge.net:htdocs/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

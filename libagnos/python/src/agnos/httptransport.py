@@ -31,6 +31,7 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 from .transports import Transport
+from . import packers
 
 
 class HttpRequest(object):
@@ -45,7 +46,7 @@ class HttpRequest(object):
         self.headers[key] = value
     def send(self, body):
         self.conn.request(self.method, self.path, body, self.headers)
-        return conn.getresponse()
+        return self.conn.getresponse()
 
 
 class HttpClientTransport(Transport):
@@ -76,7 +77,7 @@ class HttpClientTransport(Transport):
         req["Content-type"] = "application/octet-stream"
         return req
 
-    def begin_read(timeout = None):
+    def begin_read(self, timeout = None):
         if not self.infile:
             raise IOError("begin_read must be called only after end_write")
         return Transport.begin_read(self, timeout)

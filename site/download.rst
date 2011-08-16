@@ -3,6 +3,15 @@
 Downloading Agnos
 =================
 
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   
+   about/contact
+   about/license
+   about/changelog
+
+
 Overview
 --------
 Agnos consists of two parts: ``agnos_compiler`` and ``libagnos``. The 

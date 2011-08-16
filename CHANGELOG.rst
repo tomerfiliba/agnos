@@ -4,6 +4,7 @@ v1.0.2
 * C#: fixed copy-paste bug (#44)
 * Python 2.6-3.2 compatibility
 * General: removed naughty CRLFs, updated copyrights, updated docs
+* Added *developer's guide* to the documentation
 
 v1.0.1
 ======

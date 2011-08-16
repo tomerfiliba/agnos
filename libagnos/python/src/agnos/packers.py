@@ -258,7 +258,7 @@ class MapOf(Packer):
     def unpack(self, stream):
         length = Int32.unpack(stream)
         obj = {}
-        for i in xrange(length):
+        for _ in xrange(length):
             k = self.keytype.unpack(stream)
             v = self.valtype.unpack(stream)
             obj[k] = v
@@ -309,7 +309,7 @@ class HeteroMapPacker(Packer):
     def unpack(self, stream):
         length = Int32.unpack(stream)
         map = HeteroMap()
-        for i in xrange(length):
+        for _ in xrange(length):
             keypid = Int32.unpack(stream)
             keypacker = self._get_packer(keypid)
             key = keypacker.unpack(stream)

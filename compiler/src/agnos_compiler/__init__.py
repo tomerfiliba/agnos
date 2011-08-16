@@ -31,4 +31,4 @@
 
 from .compiler import AGNOS_TOOLCHAIN_VERSION, AGNOS_PROTOCOL_VERSION
 from .compiler import compile, load_spec, IDLError
-
+from .version import toolchain_version_string as __version__

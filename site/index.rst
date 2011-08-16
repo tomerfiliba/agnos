@@ -1,7 +1,13 @@
 .. toctree::
+   :maxdepth: 1
    :hidden:
    
-   contents
+   download
+   install
+   documentation
+   tutorial
+   about/features
+   about/about
 
 
 Welcome

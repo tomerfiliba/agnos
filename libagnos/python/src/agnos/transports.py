@@ -31,7 +31,6 @@ from contextlib import contextmanager
 from subprocess import Popen, PIPE
 from . import packers
 from .utils import RLock, BoundedStream, ZlibStream
-from .compat import icount
 try:
     from zlib import compress as zlib_compress
 except ImportError:
@@ -40,6 +39,24 @@ except ImportError:
 
 class TransportTimeout(IOError):
     pass
+
+class _DebugFile(object):
+    def __init__(self, fileobj):
+        self.fileobj = fileobj
+    def write(self, data):
+        import sys, os
+        print >>sys.stderr, "%05d W %r" % (os.getpid(), data)
+        self.fileobj.write(data)
+    def read(self, count):
+        import sys, os
+        data = self.fileobj.read(count)
+        print >>sys.stderr, "%05d R %r" % (os.getpid(), data)
+        return data
+    def flush(self):
+        self.fileobj.flush()
+    def close(self):
+        self.fileobj.close()
+
 
 class Transport(object):
     """
@@ -52,6 +69,7 @@ class Transport(object):
     
     def __init__(self, infile, outfile):
         self.infile = infile
+        #self.outfile = _DebugFile(outfile)
         self.outfile = outfile
         self.compression_threshold = -1
         self._rlock = RLock()
