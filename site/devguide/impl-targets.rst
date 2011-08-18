@@ -39,7 +39,8 @@ object and generate the appropriate code for the target language.
 Language Generation Framework
 -----------------------------
 Agnos is using a sophisticated code generation framework that would (eventually) be released
-as a separate project. It uses `context managers <http://docs.python.org/reference/compound_stmts.html#the-with-statement>`_
+as a separate project. It uses 
+`context managers <http://docs.python.org/reference/compound_stmts.html#the-with-statement>`_
 to correctly express the nesting levels of code blocks, in a fashion that's consistent
 both with the generator and the generated code. These frameworks basically encapsulate the
 notions of statements, (nested) blocks, and comments in the target language, so you don't
@@ -199,11 +200,26 @@ packaging and/or build-system integration. Agnos uses `scons <http://www.scons.o
 as it's very powerful and extensible, but you're free to your a better build system if you
 find it better. As explained before, you should follow the layout of the Java implementation
 for static languages and the layout of the python implementation for dynamic ones. Quite a lot
-of effort has been put into this design, and following it may save you considerable time.
+of effort has been put into this design, and following it may save you considerable time, 
+as well as shorten the learning-curve of end users, as they only have to learn one API.
+
 
 Packers
 -------
-TBD
+Packers are object "serializers": they have a ``pack()`` and ``unpack()`` methods,
+that convert a "living" object into a sequence of bytes and vice versa.
+
+`http://github.com/tomerfiliba/agnos/tree/master/libagnos/java/src/agnos/packers`_
+
+.. code-block:: java
+
+    public abstract class AbstractPacker
+    {
+        abstract public void pack(Object obj, ITransport transport) throws IOException;
+        abstract public Object unpack(ITransport transport) throws IOException;
+        abstract public int getId();
+    }
+
 
 Protocol
 --------
