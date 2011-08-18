@@ -207,9 +207,12 @@ as well as shorten the learning-curve of end users, as they only have to learn o
 Packers
 -------
 Packers are object "serializers": they have a ``pack()`` and ``unpack()`` methods,
-that convert a "living" object into a sequence of bytes and vice versa.
+that convert a "living" object into a sequence of bytes and vice versa. From a more
+mathematical point of view, ``unpack`` and ``pack`` are inverse functions, such that
+``unpack(pack(obj)) == obj`` and ``pack(unpack(buffer)) == buffer``.
 
-`http://github.com/tomerfiliba/agnos/tree/master/libagnos/java/src/agnos/packers`_
+In Java, we define an abstract class (could also be an interface) called ``AbstractPacker``,
+which looks like so:
 
 .. code-block:: java
 
@@ -220,26 +223,138 @@ that convert a "living" object into a sequence of bytes and vice versa.
         abstract public int getId();
     }
 
+Then, all the built-in types have their packers, which simply extend ``AbstractPacker``.
+For example, here's a sketch of the ``Int32Packer``:
 
-Protocol
---------
-TBD
+.. code-block:: java
 
-Processor and ProcessorFactory
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TBD
+    public class Int32Packer extends AbstractPacker
+    {
+        @Override
+        public void pack(Object obj, ITransport transport) throws IOException
+        {
+            int val = obj == null ? 0 : ((Number)obj).intValue();
+            byte[] buffer = new byte[4];
+            buffer[0] = (byte) ((val >> 24) & 0xff);
+            buffer[1] = (byte) ((val >> 16) & 0xff);
+            buffer[2] = (byte) ((val >> 8) & 0xff);
+            buffer[3] = (byte) (val & 0xff);
+            transport.write(buffer);
+        }
+    
+        @Override
+        public Object unpack(ITransport transport) throws IOException
+        {
+            byte[] buffer = new byte[4];
+            transport.read(buffer);
+            return new Integer(((int) (buffer[0] & 0xff) << 24) | ((int) (buffer[1] & 0xff) << 16)
+                    | ((int) (buffer[2] & 0xff) << 8) | (int) (buffer[3] & 0xff));
+        }
+    }
 
-Client and ClientUtils
-^^^^^^^^^^^^^^^^^^^^^^
-TBD
+Because of the limitations of programming languages like Java, we can't use the 
+class directly, and so we create a singleton for each such packer, which is what
+we'll use when we want to actually pack or unpack data.   
+
+Packers can make use of one another, which greatly simplifies their implementation.
+For example, when packing a ``Date`` object, you can convert it to a 64-bit that
+represents the number of microseconds since January 1st, year 1, and then just call 
+``Int64.pack(num_of_microseconds)``.
+
+Packers can also be composed to form more complex packers. For example, the Agnos
+compiler generates a packer for each :ref:`record <idl-record>` -- packing all of 
+its fields, one after the other.
+
+.. code-block:: java
+
+    class Address
+    {
+        public State state;
+        public String city;
+        public String street;
+        public Integer num;
+        //...
+    }
+
+    class _AddressPacker extends AbstractPacker
+    {
+        public void pack(Object obj, ITransport transport) throws IOException
+        {
+            Address val = (Address)obj;
+            StatePacker.pack(val.state, transport);
+            Builtin.Str.pack(val.city, transport);
+            Builtin.Str.pack(val.street, transport);
+            Builtin.Int32.pack(val.num, transport);
+        }
+        public Object unpack(ITransport transport) throws IOException
+        {
+            return new Address(
+                (State)StatePacker.unpack(transport),
+                (String)Builtin.Str.unpack(transport),
+                (String)Builtin.Str.unpack(transport),
+                (Integer)Builtin.Int32.unpack(transport)
+            );
+        }
+        //...
+    }
+    
+    _AddressPacker AddressPacker = new _AddressPacker();
+    //...
+    Address myAddress = new Address(States.TX, "Dallas", "Main Rd.", 1234);
+    AddressPacker.pack(myAddress);
+
+Another important thing about packers is that each packer has a unique ID (unique
+within in the same service definition). The packers for built-in types are
+have ID in the range of 0-999, and the compiler-generated packers (like the 
+``_AddressPacker`` above) get some random unique ID. 
+
+These IDs are required for the ``HeteroMap`` type. Since it contains heterogeneous
+keys and values, it has to associate a key-type and value-type to each key-value pair.
+This is done by indicating the packer IDs of both key-type and value-type in
+the wire-format.
+
+But in this case, I belive, code speaks clearer than words. Refer to the  
+`Java sources <http://github.com/tomerfiliba/agnos/tree/master/libagnos/java/src/agnos/packers>`_
+for the complete picture.
+
+.. note::
+   Although the Java version is considered the *reference implementation*,
+   don't go about converting it one-to-one to your target language.
+   Java's type system is quite limited and enforced some arbitrary constraints.
+   If you language has a different type system, you may have better alternatives -- 
+   use the best practice for your language. For instance, *dynamic languages* would be 
+   better off basing their code on the 
+   `python version <https://github.com/tomerfiliba/agnos/blob/master/libagnos/python/src/agnos/packers.py>`_.
+
+
+``Transports`` and ``TransportFactory``
+---------------------------------------
+Because every programming language takes a different view of IO and the network stack,
+and because not all languages hide the operating system's primitive well-enough,
+Agnos defines its own "cross-platform-for-language" view of transports.
+
+!!TBD!!
+
+Server Side
+-----------
+
+``Processor`` and ``ProcessorFactory``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The ``Processor`` is the entity that handles 
+
+!!TBD!!
+
 
 Servers
--------
-TBD
+^^^^^^^
+!!TBD!!
 
-Transports and Transport Factories
-----------------------------------
-TBD
+
+Client Side: ``Client`` and ``ClientUtils``
+-------------------------------------------
+!!TBD!!
+
+
 
 
 
@@ -254,6 +369,7 @@ An Agnos target can manage perfectly without one, and if fact, it's considered a
 convenience utility. However, since this is a developer's guide, the material is covered 
 here too.
 
+!!TBD!!
 
 
 

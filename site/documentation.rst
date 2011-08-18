@@ -75,7 +75,7 @@ Advance Topics
 
 .. _topic-devguide:
 
-Development Guide
+Developer's Guide
 -----------------
 
 .. toctree::

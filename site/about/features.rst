@@ -40,14 +40,14 @@ Features
 
 
 Planned Features
-================
+----------------
 You can see the most up-to-date planned features and targets on our
 `issue tracker <http://github.com/tomerfiliba/agnos/issues>`_. It's also 
 possible to comment or vote on features, and we will do our best to use
 this input for decide on our :ref:`road map <doc-roadmap>`:
 
 Features
---------
+^^^^^^^^
 * `Planned Features <http://github.com/tomerfiliba/agnos/issues/labels/planned%20features>`_ -
   features which we plan to support in the near future.
 
@@ -56,7 +56,8 @@ Features
   more of ideas we toy with, but we'd love input on.
 
 Targets
--------
+^^^^^^^
+
 .. note::
    A note on terminology: the word *target* refers to a *target language*
    of the Agnos tool-chain, meaning a language for which ``libagnos`` has been
