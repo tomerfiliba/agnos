@@ -24,6 +24,7 @@ import time
 import errno
 import threading
 import signal
+from select import select
 from optparse import OptionParser
 from .transports import SocketTransportFactory
 from .utils import Logger, LogSink, NullLogger
@@ -212,8 +213,8 @@ class ForkingServer(BaseServer):
                 self.logger.info("child proc started")
                 signal.signal(signal.SIGCHLD, signal.SIG_DFL)
                 _handle_client(processor, self.logger)
-            except Exception as ex:
-                logger.exception()
+            except Exception:
+                self.logger.exception()
             finally:
                 sys.exit()
             os._exit(1)

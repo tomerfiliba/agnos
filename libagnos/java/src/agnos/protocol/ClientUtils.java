@@ -107,22 +107,6 @@ public final class ClientUtils implements Closeable {
 		proxies.put(objref, new WeakReference<Object>(proxy));
 	}
 
-	public void decref(Long id) {
-		int seq = getSeq();
-		try {
-			transport.beginWrite(seq);
-			Builtin.Int8.pack(constants.CMD_DECREF, transport);
-			Builtin.Int64.pack(id, transport);
-			transport.endWrite();
-		} catch (Exception ignored) {
-			try {
-				transport.cancelWrite();
-			} catch (Exception ignored2) {
-				// ignored
-			}
-		}
-	}
-
 	public int beginCall(int funcid, AbstractPacker packer)
 			throws IOException {
 		int seq = getSeq();
@@ -141,19 +125,22 @@ public final class ClientUtils implements Closeable {
 		transport.cancelWrite();
 	}
 
-	public void decref(long id) throws Exception {
+	public void decref(long id) {
 		int seq = getSeq();
 		transport.beginWrite(seq);
 		try {
 			Builtin.Int8.pack(constants.CMD_DECREF, transport);
 			Builtin.Int64.pack(id, transport);
 			transport.endWrite();
-		} catch (Exception ex) {
-			transport.cancelWrite();
-			throw ex;
+		} catch (Exception ignored) {
+			try {
+				transport.cancelWrite();
+			} catch (Exception ignored2) {
+				// ignored
+			}
 		}
 	}
-
+	
 	public int ping(String payload, int msecs) throws IOException,
 			ProtocolException, PackedException, GenericException {
 		// DateTime t0 = DateTime.Now;

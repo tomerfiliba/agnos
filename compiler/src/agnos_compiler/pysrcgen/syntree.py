@@ -17,8 +17,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##############################################################################
-import os
-
 
 class SourceError(Exception):
     def __init__(self, blk, msg, *args, **kwargs):
@@ -180,7 +178,7 @@ class TokenizedBlock(object):
 def _get_src_name(blk):
     if blk.srcblock.lineno is None:
         return None, ()
-    for i, ind, line in blk.srcblock.get_immediate_lines():
+    for _, _, line in blk.srcblock.get_immediate_lines():
         l = line.strip()
         if l.startswith("def "):
             name = l.split()[1].split("(")[0]
@@ -202,10 +200,10 @@ def auto_fill_name(argname, blk):
 def auto_enum_name(argname, blk):
     assert argname == "name"
     if argname not in blk.args:
-        for i, ind, line in blk.srcblock.get_immediate_lines():
+        for _, _, line in blk.srcblock.get_immediate_lines():
             l = line.strip()
             if "=" in l:
-                n, v = l.split("=", 1)
+                n, _ = l.split("=", 1)
                 blk.args[argname] = n.strip()
                 break
     if argname not in blk.args:
@@ -215,10 +213,10 @@ def auto_enum_name(argname, blk):
 def auto_enum_value(argname, blk):
     assert argname == "value"
     if argname not in blk.args:
-        for i, ind, line in blk.srcblock.get_immediate_lines():
+        for _, _, line in blk.srcblock.get_immediate_lines():
             l = line.strip()
             if "=" in l:
-                n, v = l.split("=", 1)
+                _, v = l.split("=", 1)
                 blk.args[argname] = int(v.strip())
                 break
     if argname not in blk.args:
@@ -228,10 +226,10 @@ def auto_enum_value(argname, blk):
 def auto_const_name(argname, blk):
     assert argname == "name"
     if argname not in blk.args:
-        for i, ind, line in blk.srcblock.get_immediate_lines():
+        for _, _, line in blk.srcblock.get_immediate_lines():
             l = line.strip()
             if "=" in l:
-                n, v = l.split("=", 1)
+                n, _ = l.split("=", 1)
                 blk.args[argname] = n.strip()
                 break
     if argname not in blk.args:
@@ -241,10 +239,10 @@ def auto_const_name(argname, blk):
 def auto_const_value(argname, blk):
     assert argname == "value"
     if argname not in blk.args:
-        for i, ind, line in blk.srcblock.get_immediate_lines():
+        for _, _, line in blk.srcblock.get_immediate_lines():
             l = line.strip()
             if "=" in l:
-                n, v = l.split("=", 1)
+                _, v = l.split("=", 1)
                 blk.args[argname] = v.strip()
                 break
     if argname not in blk.args:
@@ -269,7 +267,7 @@ def arg_default(default, type = str):
             value = blk.args[argname]
             try:
                 return type(value)
-            except (ValueError, TypeError) as ex:
+            except (ValueError, TypeError):
                 raise SourceError(blk.srcblock, "argument %r is a %s, cannot be assigned %r", argname, type.__name__, value)
     return wrapper
 
@@ -319,7 +317,7 @@ class AstNode(object):
 
     def _get_docstring(self, block):
         start_line = -1
-        for i, ind, line in block.srcblock.get_immediate_lines():
+        for i, _, line in block.srcblock.get_immediate_lines():
             if line.startswith("'''") or line.startswith('"""'):
                 start_line = i
                 quote = line[:3]
@@ -412,7 +410,7 @@ class ClassNode(AstNode):
         members = {}
         _get_versioned_members(self, members)
         for versions in members.values():
-            ordered = [n for v, n in sorted(versions.items())]
+            ordered = [n for _, n in sorted(versions.items())]
             for child in ordered:
                 child.latest = False
             ordered[-1].latest = True
@@ -526,7 +524,7 @@ class RootNode(object):
             cls.attrs["extends"] = [classes[basecls] for basecls in cls.attrs["extends"]]
 
         for versions in members.values():
-            ordered = [n for v, n in sorted(versions.items())]
+            ordered = [n for _, n in sorted(versions.items())]
             for child in ordered:
                 child.latest = False
             ordered[-1].latest = True

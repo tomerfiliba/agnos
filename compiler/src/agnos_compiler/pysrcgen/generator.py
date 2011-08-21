@@ -169,11 +169,11 @@ class IdlGenerator(object):
                     self._get_derived_members(basecls, inherited_methods, inherited_attrs)
             
             self.emit_doc(node)
-            for name, method in inherited_methods.items():
+            for _, method in inherited_methods.items():
                 key = self._generate_key(node.attrs["name"], method.attrs["name"], method.attrs["version"])
                 self.LEAF("inherited-method", name = method.attrs["name"], id = self.get_id(key))
 
-            for name, attr in inherited_attrs.items():
+            for _, attr in inherited_attrs.items():
                 gkey = self._generate_key(node.attrs["name"], attr.attrs["name"], "get")
                 skey = self._generate_key(node.attrs["name"], attr.attrs["name"], "set")
                 self.LEAF("inherited-attr", name = attr.attrs["name"], getid = self.get_id(gkey), setid = self.get_id(skey))
@@ -387,7 +387,7 @@ def get_filenames(rootdir, suffix = ".py"):
         rootdir = os.path.dirname(rootdir)
     else:
         filenames = []
-        for dirpath, dirnames, fns in os.walk(rootdir):
+        for dirpath, _, fns in os.walk(rootdir):
             for fn in fns:
                 if fn.endswith(suffix):
                     filenames.append(os.path.join(dirpath, fn))

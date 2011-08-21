@@ -287,6 +287,7 @@ Data Serialization
   * ``set[str]``: ``[00 00 00 02 . 00 00 00 01 . 41 . 00 00 00 02 . 42 43]`` encodes 
     ``Set<String> myset = new HashSet<String>(); myset.add("A"); myset.add("BC");``
 
+.. _proto-heteromap:
 
 ``heteromap``
 -------------
