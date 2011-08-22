@@ -83,12 +83,15 @@ Here's an example of setting up a ``ThreadedServer`` server, listening on
       }
   }
 
+.. _server-cmdline-args:
+
 Aside from this, you will find the ``CmdlineServer`` class, which handles the 
 standard command-line arguments and dispatches the selected server. 
 You can select the server by passing ``-m MODE``, where ``MODE`` is one of 
 ``lib``, ``simple``, or ``threaded``; the ``simple`` and ``threaded`` 
 modes also require that you pass ``-p TCP_PORT_NUMBER``, and optionally accept
-``-h HOSTNAME``. The default mode is ``simple``.
+``-h HOSTNAME``. The default mode is ``simple``, and the default hostname is 
+``localhost``.
 
 The ``CmdlineServer`` is used as follows:
 

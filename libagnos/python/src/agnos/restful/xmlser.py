@@ -17,8 +17,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##############################################################################
+if __package__ is None:
+    import agnos.restful #@UnusedImport
+    __package__ = "agnos.restful"
 
 import agnos
+import base64
 from datetime import datetime
 from agnos_compiler.langs.xml import XmlDoc
 import xml.etree.ElementTree as etree
@@ -40,7 +44,7 @@ def _dump(obj, doc, proxy_map):
     elif isinstance(obj, basestring):
         doc.elem("str", value = str(obj))
     elif isinstance(obj, bytes):
-        doc.elem("buffer", value = obj)
+        doc.elem("buffer", value = base64.b64encode(obj).decode("utf8"))
     elif isinstance(obj, datetime):
         doc.elem("date", value = obj.isoformat())
     elif isinstance(obj, (list, tuple)):
@@ -126,13 +130,20 @@ def _load(elem, bindings_module, proxy_map):
     elif elem.tag == "set":
         return set(_load(child, bindings_module, proxy_map) 
             for child in elem.getchildren())
-    elif elem.tag == "map" or elem.tag == "heteromap":
+    elif elem.tag == "map":
         map = {}
         for child in elem.getchildren():
-            k = _load(child.find("key"), bindings_module, proxy_map)
-            v = _load(child.find("value"), bindings_module, proxy_map)
+            k = _load(child.find("key").getchildren()[0], bindings_module, proxy_map)
+            v = _load(child.find("value").getchildren()[0], bindings_module, proxy_map)
             map[k] = v
         return map
+    elif elem.tag == "heteromap":
+        hmap = agnos.HeteroMap()
+        for child in elem.getchildren():
+            k = _load(child.find("key").getchildren()[0], bindings_module, proxy_map)
+            v = _load(child.find("value").getchildren()[0], bindings_module, proxy_map)
+            hmap[k] = v
+        return hmap
     elif elem.tag == "enum":
         enum_cls = getattr(bindings_module, elem.attrib["type"])
         return getattr(enum_cls, elem.attrib["member"])
@@ -155,18 +166,26 @@ def loads(data, bindings_module, proxy_map):
     return _load(xml, bindings_module, proxy_map)
 
 
-#if __name__ == "__main__":
-#    from agnos.utils import create_enum
-#    import FeatureTest_bindings
-#    
-#    FeatureTest_bindings.moshe = create_enum("moshe", dict(a=1,b=2,c=3))
-#    x = FeatureTest_bindings.RecordB(1,2,3)
-#    p = FeatureTest_bindings.PersonProxy(x, 1234, False)
-#    
-#    text = dumps([set([18,19,True]), FeatureTest_bindings.moshe.a, x, p])
-#    print text
-#    print loads(text, FeatureTest_bindings, {1234 : p})
-
+if __name__ == "__main__":
+    from agnos.utils import create_enum
+    import FeatureTest_bindings
+    
+    FeatureTest_bindings.moshe = create_enum("moshe", dict(a=1,b=2,c=3))
+    x = FeatureTest_bindings.RecordB(1,2,3)
+    p = FeatureTest_bindings.PersonProxy(x, 1234, False)
+    h = agnos.HeteroMap()
+    h["foo"] = 17
+    h["bar"] = None
+    h[19] = 3.1415926
+       
+    obj = [set([18,19,True,4.25]), datetime.now(), {"foo" : 1, "bar" : 2},
+        FeatureTest_bindings.moshe.a, x, p, h]
+    text = dumps(obj, {p : 1234})
+    print text
+    obj2 = loads(text, FeatureTest_bindings, {1234 : p})
+    print obj
+    print obj2
+    assert obj == obj2
 
 
 

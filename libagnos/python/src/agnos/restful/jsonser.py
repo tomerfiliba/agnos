@@ -17,7 +17,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##############################################################################
+if __package__ is None:
+    import agnos.restful #@UnusedImport
+    __package__ = "agnos.restful"
 
+import base64
 import json
 import agnos
 from datetime import datetime
@@ -39,9 +43,9 @@ def _dump(obj, proxy_map):
     elif isinstance(obj, basestring):
         return str(obj)
     elif isinstance(obj, bytes):
-        return dict(type = "buffer", value = obj)
+        return dict(type = "buffer", value = base64.b64encode(obj).decode("utf8"))
     elif isinstance(obj, datetime):
-        return dict(type = "date", value = obj.isoformat()) 
+        return dict(type = "datetime", value = obj.isoformat()) 
     elif isinstance(obj, (list, tuple)):
         return [_dump(item, proxy_map) for item in obj]
     elif isinstance(obj, (set, frozenset)):
@@ -60,7 +64,7 @@ def _dump(obj, proxy_map):
     # records
     elif isinstance(obj, agnos.BaseRecord):
         return dict(type = "record", name = obj._idl_type, 
-            value = dict((name, _dump(getattr(obj, name)), proxy_map) 
+            value = dict((name, _dump(getattr(obj, name), proxy_map))
                 for name in obj._idl_attrs))
     # proxies
     elif isinstance(obj, agnos.BaseProxy):
@@ -89,7 +93,7 @@ def _load(obj, bindings_module, proxy_map):
     if "type" not in obj:
         raise ValueError("malformed: %r" % (obj,))
     if obj["type"] == "buffer":
-        return obj["value"]
+        return base64.b64decode(obj["value"].encode("utf8"))
     elif obj["type"] == "datetime":
         return iso_to_datetime(obj["value"])
     elif obj["type"] == "set":
@@ -98,8 +102,12 @@ def _load(obj, bindings_module, proxy_map):
         return dict((_load(k, bindings_module, proxy_map), _load(v, bindings_module, proxy_map)) 
             for k, v in obj["value"])
     elif obj["type"] == "heteromap":
-        return dict((_load(k, bindings_module, proxy_map), _load(v, bindings_module, proxy_map)) 
-            for k, v in obj["value"])
+        hmap = agnos.HeteroMap()
+        for k, v in obj["value"]:
+            kk = _load(k, bindings_module, proxy_map)
+            vv = _load(v, bindings_module, proxy_map)
+            hmap[kk] = vv 
+        return hmap
     elif obj["type"] == "enum":
         enum_cls = getattr(bindings_module, obj["name"])
         return getattr(enum_cls, obj["member"])
@@ -126,18 +134,28 @@ def loads_root(data, bindings_module, proxy_map):
         for k, v in jsonobj.items())
 
 
-#if __name__ == "__main__":
-#    from agnos.utils import create_enum
-#    import FeatureTest_bindings
-#    
-#    FeatureTest_bindings.moshe = create_enum("moshe", dict(a=1,b=2,c=3))
-#    x = FeatureTest_bindings.RecordB(1,2,3)
-#    p = FeatureTest_bindings.PersonProxy(x, 1234, False)
-#    
-#    text = dumps([set([18,19,True]), FeatureTest_bindings.moshe.a, x, p])
-#    print text
-#    print loads(text, FeatureTest_bindings, {1234 : p})
-#
+if __name__ == "__main__":
+    from agnos.utils import create_enum
+    import FeatureTest_bindings
+    
+    FeatureTest_bindings.moshe = create_enum("moshe", dict(a=1,b=2,c=3))
+    x = FeatureTest_bindings.RecordB(1,2,3)
+    p = FeatureTest_bindings.PersonProxy(x, 1234, False)
+    
+    h = agnos.HeteroMap()
+    h["foo"] = 17
+    h["bar"] = None
+    h[19] = 3.1415926
+       
+    obj = [set([18,19,True,4.25]), datetime.now(), {"foo" : 1, "bar" : 2},
+        FeatureTest_bindings.moshe.a, x, p, h]
+    text = dumps(obj, {p : 1234})
+    print text
+    obj2 = loads(text, FeatureTest_bindings, {1234 : p})
+    print obj
+    print obj2
+    assert obj == obj2
+
 
 
 

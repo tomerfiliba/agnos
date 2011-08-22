@@ -268,9 +268,9 @@ class Handler : public IHandler
 		return arr;
 	}
 
-	shared_ptr<Everything> func_of_everything(int8_t a, int16_t b, int32_t c, int64_t d, double e, bool f, const datetime& g, const string& h, const string& i, shared_ptr< vector< double > > j, shared_ptr< set< int32_t > > k, shared_ptr< map< int32_t, string > > l, const Address& m, shared_ptr<IPerson> n)
+	shared_ptr<Everything> func_of_everything(int8_t a, int16_t b, int32_t c, int64_t d, double e, bool f, const datetime& g, const string& h, const string& i, shared_ptr< vector< double > > j, shared_ptr< set< int32_t > > k, shared_ptr< map< int32_t, string > > l, const Address& m, shared_ptr<IPerson> n, State o)
 	{
-		return shared_ptr<Everything>(new Everything(a, b, c, d, e, f, g, h, i, j, k, l, m, n));
+		return shared_ptr<Everything>(new Everything(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o));
 	}
 
 	shared_ptr<RecordB> get_record_b()

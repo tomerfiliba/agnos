@@ -504,7 +504,10 @@ port and prints its details to *stdout*, listens to an incoming connections and
 serves it. 
 
 Other than these servers, Agnos usually provides a server ``main()`` function,
-which parses command-line arguments and starts the appropriate server. 
+which parses command-line arguments and starts the appropriate server. In Java
+it's provided by the class ``CmdlineServer``, in python by ``agnos.server.server_main()``.
+The command-line arguments accepted by this server are covered 
+:ref:`here <server-cmdline-args>`.
 
 
 HeteroMap

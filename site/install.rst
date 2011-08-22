@@ -106,6 +106,8 @@ Alternatively, you can download the source and build it on your own.
 
 ------------------------------------------------------------------------------
 
+.. _install-libagnos-python:
+
 ``python``
 """"""""""
 

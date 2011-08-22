@@ -30,7 +30,7 @@ from .util import import_file
 
 ACCEPTED_FORMATS = dict(
     json = ("application/json", load_json, dump_json), 
-    xml =  ("application/xml", load_xml, dump_xml),
+    xml  = ("application/xml", load_xml, dump_xml),
 )
 
 
@@ -150,7 +150,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             format = params.get("format", "json")
             if format not in ACCEPTED_FORMATS:
                 raise HttpError(501, "Unsupported format")
-            enc, loader, dumper = ACCEPTED_FORMATS[format]
+            enc, _, dumper = ACCEPTED_FORMATS[format]
             
             if not parts:
                 obj = self._get_root()
@@ -181,16 +181,16 @@ class RequestHandler(BaseHTTPRequestHandler):
     #=========================================================================
     # POST
     #=========================================================================
-    def _post_func(self, parts, payload):
+    def _post_func(self, parts, kwargs):
         if len(parts) != 1:
             raise HttpError(404, "Invalud URL")
         name = parts[0]
         if name not in self.root.func_map:
             raise HttpError(404, "function does not exist")
         func = self.root.func_map[name]
-        return func(**payload)
+        return func(**kwargs)
 
-    def _post_obj(self, parts):
+    def _post_obj(self, parts, kwargs):
         if len(parts) == 2:
             member = parts[1]
         else:
@@ -203,7 +203,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             raise HttpError(404, "Invalid object ID")
         obj = self.root.proxy_map[oid]
         func = getattr(obj, member)
-        return func(**payload)
+        return func(**kwargs)
     
     def do_POST(self):
         try:

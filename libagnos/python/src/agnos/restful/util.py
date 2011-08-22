@@ -19,9 +19,9 @@
 ##############################################################################
 
 """
->>> mod = import_file("./FeatureTest_bindings.py")
->>> print mod    #doctest: +ELLIPSIS
-<module 'FeatureTest_bindings' from ...>
+#>>> mod = import_file("./some_file.py")
+#>>> print mod    #doctest: +ELLIPSIS
+#<module 'FeatureTest_bindings' from ...>
 
 >>> print iso_to_datetime("19970716")
 1997-07-16 00:00:00
@@ -66,8 +66,8 @@ except NameError:
 
 
 def url_to_proxy(url, proxy_map):
-    parts = [part.strip() for part in url.split("/") if part.strip()]
-    if len(parts) != 2 or part[0] != "objs":
+    parts = [str(part.strip()) for part in url.split("/") if part.strip()]
+    if len(parts) != 2 or parts[0] != "objs":
         raise ValueError("invalid proxy url: %r" % (url,))
     try:
         oid = int(parts[1])

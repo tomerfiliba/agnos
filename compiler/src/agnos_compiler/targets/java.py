@@ -164,7 +164,7 @@ def const_to_java(typ, val):
     #elif isinstance(val, dict):
     #    return "$const-map %r " % (val,)
     else:
-        raise IDLError("%r cannot be converted to a java const" % (val,))
+        raise compiler.IDLError("%r cannot be converted to a java const" % (val,))
 
 
 class JavaTarget(TargetBase):

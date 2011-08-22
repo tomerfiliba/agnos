@@ -129,6 +129,11 @@ class HeteroMap(object):
             self.fields = _fields
         self.update(_kwargs)
     
+    def __eq__(self, other):
+        return isinstance(other, HeteroMap) and self.fields == other.fields
+    def __ne__(self, other):
+        return not (self == other)
+    
     def __repr__(self):
         text = "HeteroMap:\n" + "\n".join("%r = %r" % (k, v) for k, v in self.iteritems())
         return text.replace("\n", "\n  ")

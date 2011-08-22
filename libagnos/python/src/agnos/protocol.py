@@ -53,7 +53,10 @@ INFO_REFLECTION = 3
 
 
 class BaseRecord(object):
-    pass
+    def __eq__(self, other):
+        return type(other) == type(self) and self.__dict__ == other.__dict__
+    def __ne__(self, other):
+        return not (self == other)
 
 class PackedException(Exception, BaseRecord):
     def __str__(self):
@@ -97,6 +100,12 @@ class BaseProxy(object):
             return "<%s instance (disposed)>" % (self.__class__.__name__,)
         else:
             return "<%s instance @ %s>" % (self.__class__.__name__, self._objref)
+    
+    def __eq__(self, other):
+        return isinstance(other, BaseProxy) and self._client == other._client \
+            and self._objref == other._objref
+    def __ne__(self, other):
+        return not (self == other)
 
     def dispose(self):
         if self._disposed:
