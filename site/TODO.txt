@@ -1,24 +1,24 @@
-Phase 1:
-* IDL -- done
-* types -- done
-* naming convention -- done
-* cmdline tools -- done
-* library mode -- done
-* server API -- done
-* client API -- done
-* concepts -- done
-* srcgen -- done
+Phase 1 - OK
+    * IDL -- done
+    * types -- done
+    * naming convention -- done
+    * cmdline tools -- done
+    * library mode -- done
+    * server API -- done
+    * client API -- done
+    * concepts -- done
+    * srcgen -- done
 
 
-Phase 2:
-* developer's guide -- done
-* over-http -- done
-* tutorial -- done
-* restful -- half done
+Phase 2 - OK
+    * developer's guide -- done
+    * over-http -- done
+    * tutorial -- done
+    * restful -- done
 
 
 Phase 3:
-* demos
+    * demos
 
 
 
