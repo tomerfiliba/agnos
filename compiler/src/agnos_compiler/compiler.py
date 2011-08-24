@@ -22,8 +22,8 @@ import hashlib
 import xml.etree.ElementTree as etree
 from .compat import icount
 from .idl_syntax import parse_const, parse_template, IDLError
-from .version import toolchain_version_string as AGNOS_TOOLCHAIN_VERSION
-from .version import protocol_version_string as AGNOS_PROTOCOL_VERSION
+from .version import toolchain_version_string as AGNOS_TOOLCHAIN_VERSION #@UnusedImport
+from .version import protocol_version_string as AGNOS_PROTOCOL_VERSION #@UnusedImport
 
 
 ID_GENERATOR = icount(900000)
@@ -428,7 +428,7 @@ class Class(Element):
             return self.inherited_methods[name]
         elif name in self.inherited_attrs:
             i = ["get", "set"].index(which)
-            return self.inherited_attrs[name][0]
+            return self.inherited_attrs[name][i]
         else:
             return ID_GENERATOR.next()
     
@@ -688,13 +688,33 @@ class TRefList(BuiltinType):
     @staticmethod
     @memoized
     def create(oftype):
-        return TList(oftype)
+        return TRefList(oftype)
     def __repr__(self):
         return "BuiltinType(reflist<%r>)" % (self.oftype,)
     def __str__(self):
         return "reflist[%s]" % (self.oftype,)
     def stringify(self):
         return "reflist_%s" % (self.oftype.stringify(),)
+
+class TRefSet(BuiltinType):
+    """
+    by-refererence set
+    """
+    def __init__(self, oftype):
+        if oftype == t_void:
+            raise IDLError("refset: contained type cannot be 'void'")
+        self.oftype = oftype
+        self.id = ID_GENERATOR.next()
+    @staticmethod
+    @memoized
+    def create(oftype):
+        return TRefSet(oftype)
+    def __repr__(self):
+        return "BuiltinType(refset<%r>)" % (self.oftype,)
+    def __str__(self):
+        return "refset[%s]" % (self.oftype,)
+    def stringify(self):
+        return "refset_%s" % (self.oftype.stringify(),)
 
 class TRefMap(BuiltinType):
     """
@@ -712,7 +732,7 @@ class TRefMap(BuiltinType):
     @staticmethod
     @memoized
     def create(keytype, valtype):
-        return TMap(keytype, valtype)
+        return TRefMap(keytype, valtype)
     def __repr__(self):
         return "BuiltinType(refmap<%r, %r>)" % (self.keytype, self.valtype)
     def __str__(self):
@@ -739,7 +759,8 @@ def is_complicated_type(idltype):
 
 def is_builtin_type(idltype):
     """determines whether the given type is builtin (e.g., int8, list[int8], etc.)"""
-    if idltype in (t_int8, t_bool, t_int16, t_int32, t_int64, t_float, t_buffer, t_date, t_string, t_void, t_heteromap):
+    if idltype in (t_int8, t_bool, t_int16, t_int32, t_int64, t_float, t_buffer, t_date, 
+            t_string, t_void, t_heteromap):
         return True
     elif isinstance(idltype, (TList, TSet)):
         return is_builtin_type(idltype.oftype)
@@ -748,7 +769,7 @@ def is_builtin_type(idltype):
     else:
         return False
 
-def _add_dependencies(coll, *types):
+def _add_dependencies(coll, types):
     for tp in types:
         if tp is None:
             continue
@@ -760,17 +781,19 @@ def _get_depedencies_tree(members):
     deptree = {}
     for mem in members:
         if isinstance(mem, Record) and not isinstance(mem, ExceptionRecord):
-            deptree[mem] = _add_dependencies(set(), *(attr.type for attr in mem.members))
+            deptree[mem] = _add_dependencies(set(), [attr.type for attr in mem.members])
             _add_dependencies(deptree[mem], *mem.extends)
         elif isinstance(mem, ExceptionRecord):
-            deptree[mem] = _add_dependencies(set(), *(attr.type for attr in mem.members))
+            deptree[mem] = _add_dependencies(set(), [attr.type for attr in mem.members])
             _add_dependencies(deptree[mem], mem.extends)
         elif isinstance(mem, Class):
-            deptree[mem] = _add_dependencies(set(), *(attr.type for attr in mem.attrs)) 
+            deptree[mem] = _add_dependencies(set(), [attr.type for attr in mem.attrs]) 
             for meth in mem.methods:
-                _add_dependencies(deptree[mem], meth.type) 
-                _add_dependencies(deptree[mem], *(arg.type for arg in meth.args))
-            _add_dependencies(deptree[mem], *mem.extends)
+                _add_dependencies(deptree[mem], [meth.type])
+                _add_dependencies(deptree[mem], [arg.type for arg in meth.args])
+            _add_dependencies(deptree[mem], mem.extends)
+        else:
+            deptree[mem] = [mem]
     return deptree
 
 def _toposort(node, deptree, order, visited):
@@ -874,19 +897,19 @@ class Service(Element):
     def _get_type(self, head, children):
         if head == "list":
             if len(children) != 1:
-                raise IDLError("list template: wrong number of parameters: %r" % (text,))
+                raise IDLError("list template: wrong number of parameters: %r" % (children,))
             head2, children2 = children[0]
             tp = self._get_type(head2, children2)
             return TList.create(tp)
         elif head == "set":
             if len(children) != 1:
-                raise IDLError("set template: wrong number of parameters: %r" % (text,))
+                raise IDLError("set template: wrong number of parameters: %r" % (children,))
             head2, children2 = children[0]
             tp = self._get_type(head2, children2)
             return TSet.create(tp)
         elif head == "map" or head == "dict":
             if len(children) != 2:
-                raise IDLError("map template: wrong number of parameters: %r" % (text,))
+                raise IDLError("map template: wrong number of parameters: %r" % (children,))
             khead, kchildren = children[0]
             vhead, vchildren = children[1]
             ktp = self._get_type(khead, kchildren)
@@ -894,19 +917,19 @@ class Service(Element):
             return TMap.create(ktp, vtp)
         elif head == "reflist":
             if len(children) != 1:
-                raise IDLError("reflist template: wrong number of parameters: %r" % (text,))
+                raise IDLError("reflist template: wrong number of parameters: %r" % (children,))
             head2, children2 = children[0]
             tp = self._get_type(head2, children2)
             return TRefList.create(tp)
         elif head == "refset":
             if len(children) != 1:
-                raise IDLError("refset template: wrong number of parameters: %r" % (text,))
+                raise IDLError("refset template: wrong number of parameters: %r" % (children,))
             head2, children2 = children[0]
             tp = self._get_type(head2, children2)
             return TRefSet.create(tp)
         elif head == "refmap" or head == "refdict":
             if len(children) != 2:
-                raise IDLError("refmap template: wrong number of parameters: %r" % (text,))
+                raise IDLError("refmap template: wrong number of parameters: %r" % (children,))
             khead, kchildren = children[0]
             vhead, vchildren = children[1]
             ktp = self._get_type(khead, kchildren)
