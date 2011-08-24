@@ -9,6 +9,12 @@
 		<member name="CA"/>
 	</enum>
 	
+    <enum name="MyEnum">
+        <member name="A"/>
+        <member name="B"/>
+        <member name="C"/>
+    </enum>	
+	
 	<record name="Address">
 		<attr name="state" type="State"/>
 		<attr name="city" type="str"/>
@@ -63,7 +69,6 @@
 		<attr name="some_map" type="map[int32, str]"/> 
 		<attr name="some_record" type="Address"/> 
 		<attr name="some_class" type="Person"/> 
-        <attr name="some_enum" type="State"/> 
 	</record>
 	
 	<func name="func_of_everything" type="Everything">
@@ -81,7 +86,7 @@
 		<arg name="l" type="map[int32, str]"/>
 		<arg name="m" type="Address"/>
 		<arg name="n" type="Person"/>
-		<arg name="o" type="State"/> 
+		<arg name="o" type="MyEnum"/>
 	</func>
 	
 	<class name="ClassA">

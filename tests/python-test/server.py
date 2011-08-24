@@ -65,7 +65,7 @@ class Handler(FeatureTest.IHandler):
             ClassC(33, 12, 76.2, [ClassA(5,7), ClassA(3,3)]),
             ClassC(77, 88, 99.11, [ClassA(2,7), ClassA(1,1)])] 
     
-    def func_of_everything(self, a, b, c, d, e, f, g, h, i, j, k, l, m, n):
+    def func_of_everything(self, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o):
         return FeatureTest.Everything(a, b, c, d, e, f, g, h, i, j, k, l, m, n)
 
 

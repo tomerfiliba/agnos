@@ -34,7 +34,7 @@ class FeatureTestClient(TargetTest):
             1, 2, 3, 4, 5.5, True, datetime.now(), "\xff\xee\xaa\xbb", "hello world", 
             [1.3, FeatureTest.pi, 4.4], set([18,19,20]), {34:"foo", 56:"bar"}, 
             FeatureTest.Address(FeatureTest.State.NY, "albany", "foobar drive", 1772),
-            eve)
+            eve, FeatureTest.MyEnum.C)
 
         self.assertEquals(adam.think(17, 3), 17/3.0)
         self.assertRaises(agnos.GenericException, adam.think, 17, 0)
