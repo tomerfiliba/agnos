@@ -36,8 +36,16 @@ class FeatureTestClient(TargetTest):
             FeatureTest.Address(FeatureTest.State.NY, "albany", "foobar drive", 1772),
             eve, FeatureTest.MyEnum.C)
 
+        self.assertEquals(everything.some_int32, 3)
         self.assertEquals(adam.think(17, 3), 17/3.0)
         self.assertRaises(agnos.GenericException, adam.think, 17, 0)
+        
+        hm1 = agnos.HeteroMap()
+        hm1["x"] = "y"
+        hm2 = conn.hmap_test(1999, hm1)
+        self.assertEquals(hm2["a"], 1999)
+
+        
         
 
 if __name__ == "__main__":

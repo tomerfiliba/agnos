@@ -111,6 +111,42 @@ int main(int argc, const char * argv[])
 
 	cout << "(14)" << endl;
 
+	datetime dt = boost::posix_time::second_clock::local_time();
+	bstring s1("\xff\xee\xaa\xbb");
+	ustring s2("hello world");
+	Address adr(NY, "Albany", "foobar drive", 1727);
+	shared_ptr< vector<double> > lst(new vector<double>());
+	lst->push_back(1.3);
+	lst->push_back(FeatureTest::ClientBindings::pi);
+	lst->push_back(4.4);
+	shared_ptr< set<int32_t> > st(new set<int32_t>());
+	st->insert(18);
+	st->insert(19);
+	st->insert(20);
+	shared_ptr< map<int32_t, ustring> > mp(new map<int32_t, ustring>);
+	(*mp)[34] = "foo";
+	(*mp)[56] = "bar";
+
+	shared_ptr<Everything> everything = client.func_of_everything(1, 2, 3, 4, 5.5,
+				true, dt, s1, s2, lst, st, mp, adr, eve, C);
+
+	cout << "(15)" << endl;
+
+	if (everything->some_int32 != 3) {
+        throw std::runtime_error("expected some_int to be 3");
+	}
+
+	cout << "(16)" << endl;
+
+	shared_ptr<HeteroMap> hm1(new HeteroMap());
+	hm1->put("x", "y");
+	shared_ptr<HeteroMap> hm2 = client.hmap_test(1999, hm1);
+	if (hm2->get_as<int>("a") != 1999) {
+        throw std::runtime_error("expected 'a' to be 1999");
+	}
+
+	cout << "(17)" << endl;
+
 	/*
 	// test performance
 	boost::posix_time::ptime t0(boost::posix_time::microsec_clock::local_time());

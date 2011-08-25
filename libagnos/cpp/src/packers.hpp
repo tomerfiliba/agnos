@@ -552,7 +552,7 @@ namespace agnos
 				return ser.load(oid);
 			}
 
-			any unpack_shared(ITransport& transport) const
+			inline any unpack_shared(ITransport& transport) const
 			{
 				return unpack_any(transport);
 			}

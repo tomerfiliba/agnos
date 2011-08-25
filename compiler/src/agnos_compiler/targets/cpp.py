@@ -774,8 +774,7 @@ class CPPTarget(TargetBase):
         with BLOCK("void process_invoke(int32_t seq)"):
             STMT("IPacker * packer = NULL")
             STMT("any result")
-            STMT("vector<any> args")
-            STMT("any current")
+            STMT("any tmp");
             STMT("int32_t funcid")
             STMT("{0}.unpack(funcid, *transport)", type_to_packer(compiler.t_int32))
             
@@ -803,18 +802,29 @@ class CPPTarget(TargetBase):
                     STMT("{0}.pack({1}, *transport)", type_to_packer(compiler.t_int32), tp.id)
                     STMT("{0}.pack(ex, *transport)", type_to_packer(tp))
     
+    def _generate_argument_unpackers(self, module, func, args):
+        STMT = module.stmt
+        callargs = []
+        
+        for i, arg in enumerate(args):
+            callargs.append("arg%d" % (i,))
+            STMT("{0} arg{1}", type_to_cpp(arg.type), i)
+            # XXX: ugly hack, need to fix this sometime
+            if type_to_cpp(arg.type).startswith("shared_ptr<"):
+                STMT("tmp = {0}.unpack_shared(*transport)", type_to_packer(arg.type))
+            else:
+                STMT("tmp = {0}.unpack_any(*transport)", type_to_packer(arg.type))
+            STMT("arg{0} = tmp.empty() ? {1}() : any_cast< {1} >(tmp)", i, type_to_cpp(arg.type))
+            STMT('DEBUG_LOG("func {0} arg {1} OK")', func.id, i)
+        
+        return ", ".join(callargs)
+    
     def generate_invocation_case(self, module, func):
         BLOCK = module.block
         STMT = module.stmt
-        SEP = module.sep
         
         if isinstance(func, compiler.Func):
-            if func.args:
-                for arg in func.args:
-                    STMT("current = {0}.unpack_any(*transport)", type_to_packer(arg.type))
-                    STMT("args.push_back(current.empty() ? {0}() : current)", type_to_cpp(arg.type))
-            callargs = ", ".join("any_cast< %s >(args[%s])" % (type_to_cpp(arg.type), i) 
-                for i, arg in enumerate(func.args))
+            callargs = self._generate_argument_unpackers(module, func, func.args)
             if func.type == compiler.t_void:
                 invocation = "handler->%s(%s)" % (func.fullname, callargs) 
             else:
@@ -824,17 +834,10 @@ class CPPTarget(TargetBase):
             STMT("{0} inst", type_to_cpp(insttype))
             STMT("{0}.unpack(inst, *transport)", type_to_packer(insttype))
             
-            for arg in func.args[1:]:
-                    STMT("current = {0}.unpack_any(*transport)", type_to_packer(arg.type))
-                    STMT("args.push_back(current.empty() ? {0}() : current)", type_to_cpp(arg.type))
-            
-            callargs = ", ".join("any_cast< %s >(args[%s])" % (type_to_cpp(arg.type), i) 
-                for i, arg in enumerate(func.args[1:]))
-            
+            callargs = self._generate_argument_unpackers(module, func, func.args[1:])
             if isinstance(func.origin, compiler.ClassAttr):
                 if func.type == compiler.t_void:
-                    invocation = "inst->set_%s(any_cast< %s >(args[0]))" % (func.origin.name, 
-                        type_to_cpp(func.origin.type))
+                    invocation = "inst->set_%s(arg0)" % (func.origin.name,)
                 else:
                     invocation = "result = inst->get_%s()" % (func.origin.name,)
             else:
@@ -1355,7 +1358,7 @@ class CPPTarget(TargetBase):
                 args = ", ".join(args)
             with BLOCK("{0} _Functions::sync_{1}({2})", type_to_cpp(func.type, proxy = True, ret = True), 
                     func.id, args):
-                if is_complicated_type(func.type):
+                if is_complicated_type(func.type) or func.type == compiler.t_heteromap:
                     STMT("int seq = client._utils.begin_call({0}, client.{1}, {2})", 
                         func.id, type_to_packer(func.type), is_type_shared_ptr(func.type))
                 else:
@@ -1366,7 +1369,7 @@ class CPPTarget(TargetBase):
                         if method:
                             STMT("int64_packer.pack(_oid, *client._utils.transport)")
                         for arg in func.args[1:] if method else func.args:
-                            if is_complicated_type(arg.type):
+                            if is_complicated_type(arg.type) or arg.type == compiler.t_heteromap:
                                 STMT("client.{0}.pack({1}, *client._utils.transport)", 
                                     type_to_packer(arg.type), arg.name)
                             else:

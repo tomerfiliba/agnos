@@ -86,7 +86,14 @@ public class myclient
 				eve, FeatureTest.MyEnum.C);
 		
 		if (everything.some_int32.intValue() != 3) {
-			throw new Exception("expected 'some_int32' to be 3" + everything.some_int32);
+			throw new Exception("expected 'some_int32' to be 3; " + everything.some_int32);
+		}
+		
+		HeteroMap hm1 = new HeteroMap();
+		hm1.put("x", "y");
+		HeteroMap hm2 = conn.hmap_test(1999, hm1);
+		if (((Integer)hm2.get("a")).intValue() != 1999) {
+			throw new Exception("expected 'a' to be 1999; " + hm2.get("a"));
 		}
 		
 

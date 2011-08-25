@@ -1,5 +1,6 @@
 import java.util.*;
 import agnos.servers.CmdlineServer;
+import agnos.util.HeteroMap;
 import FeatureTest.server_bindings.FeatureTest;
 
 public class myserver {
@@ -228,6 +229,14 @@ public class myserver {
 				throws Exception {
 			return new FeatureTest.Everything(a, b, c, d, e, f, g, h,
 					i, j, k, l, m, n);
+		}
+		
+		public HeteroMap hmap_test(Integer a, HeteroMap b) 
+		{
+			HeteroMap hm = new HeteroMap();
+			hm.put("a", a);
+			hm.put("b", 18);
+			return hm;
 		}
 	}
 

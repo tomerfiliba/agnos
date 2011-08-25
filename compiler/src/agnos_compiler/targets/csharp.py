@@ -1200,7 +1200,7 @@ class CSharpTarget(TargetBase):
                     for arg in func.args)
                 with BLOCK("public {0} sync_{1}({2})", type_to_cs(func.type, proxy = True), 
                         func.id, args):
-                    if is_complex_type(func.type):
+                    if is_complex_type(func.type) or func.type == compiler.t_heteromap:
                         STMT("int seq = client._utils.BeginCall({0}, client.{1})", 
                             func.id, type_to_packer(func.type))
                     else:
@@ -1209,7 +1209,7 @@ class CSharpTarget(TargetBase):
                     if func.args:
                         with BLOCK("try"):
                             for arg in func.args:
-                                if is_complex_type(arg.type):
+                                if is_complex_type(arg.type) or arg.type is compiler.t_heteromap:
                                     STMT("client.{0}.pack({1}, client._utils.transport)", type_to_packer(arg.type), arg.name)
                                 else:
                                     STMT("{0}.pack({1}, client._utils.transport)", type_to_packer(arg.type), arg.name)

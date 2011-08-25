@@ -9,13 +9,14 @@ from urllib import urlopen
 class FeatureTestClient(TargetTest):
     def runTest(self):
         port = 8877
-        self.proc = self.spawn([
-            sys.executable, self.REL("libagnos/python/bin/restful-agnos"),
-            "-p", str(port), 
+        cmdline = [sys.executable, self.REL("libagnos/python/bin/restful-agnos"),
+            "-p", str(port),             
             "-m", self.REL("tests/python-test/FeatureTest_bindings.py"), 
             "--exec", "%s %s -m lib" % (sys.executable, self.REL("tests/python-test/server.py")),
-            ])
-        time.sleep(1)
+        ]
+        print "!!", cmdline
+        self.proc = self.spawn(cmdline)
+        time.sleep(3)
         if self.proc.poll() is not None:
             print "server stdout: ", self.proc.stdout.read()
             print "server stderr: ", self.proc.stderr.read()
@@ -33,7 +34,7 @@ class FeatureTestClient(TargetTest):
     def _request(self, path, data, format, retcodes = [200]):
         if not data:
             data = "    "
-        url = self.baseurl + "/" + path + "?format=" + format
+        url = "%s/%s?format=%s" % (self.baseurl, path, format)
         f = urlopen(url, data)
         rc = f.getcode()
         data = f.read()
@@ -43,7 +44,7 @@ class FeatureTestClient(TargetTest):
         return data
     
     def _query(self, path, format, retcodes = [200]):
-        f = urlopen(self.baseurl + "/" + path + "?format=" + format)
+        f = urlopen("%s/%s?format=%s" % (self.baseurl, path, format))
         rc = f.getcode()
         data = f.read()
         if rc not in retcodes:

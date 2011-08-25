@@ -537,6 +537,10 @@ namespace agnos
 			virtual int32_t get_id() const;
 
 			void pack(const HeteroMap& obj, ITransport& transport) const;
+			inline void pack(const shared_ptr<HeteroMap> obj, ITransport& transport) const
+			{
+				pack(*obj, transport);
+			}
 			void unpack(HeteroMap& obj, ITransport& transport) const;
 
 			virtual void pack_any(const any& obj, ITransport& transport) const;

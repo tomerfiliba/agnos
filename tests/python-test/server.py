@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from agnos import HeteroMap
 from datetime import datetime
 import FeatureTest_bindings as FeatureTest
 
@@ -67,6 +68,12 @@ class Handler(FeatureTest.IHandler):
     
     def func_of_everything(self, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o):
         return FeatureTest.Everything(a, b, c, d, e, f, g, h, i, j, k, l, m, n)
+    
+    def hmap_test(self, a, b):
+        hm = HeteroMap()
+        hm["a"] = a
+        hm["b"] = 18
+        return hm
 
 
 if __name__ == "__main__":

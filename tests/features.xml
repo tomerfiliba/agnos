@@ -128,6 +128,12 @@
 	
 	<func name="get_record_b" type="RecordB">
 	</func>
+	
+	<func name="hmap_test" type="heteromap">
+	   <arg name="a" type="int"/>
+	   <arg name="b" type="heteromap"/>
+	</func>
+	
 </service>
 
 

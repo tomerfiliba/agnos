@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using FeatureTestBindings.ServerBindings;
+using Agnos;
 
 
 public class myserver 
@@ -256,10 +257,18 @@ public class myserver
 		public FeatureTest.Everything func_of_everything(Byte a,
 				short b, int c, long d, double e, bool f, DateTime g,
 				byte[] h, string i, IList<double> j, ICollection<int> k, IDictionary<int, string> l,
-				FeatureTest.Address m, FeatureTest.IPerson n)
+				FeatureTest.Address m, FeatureTest.IPerson n, FeatureTest.MyEnum o)
 				 {
 			return new FeatureTest.Everything(a, b, c, d, e, f, g, h,
 					i, j, k, l, m, n);
+		}
+		
+		public HeteroMap hmap_test(int a, HeteroMap b) 
+		{
+			HeteroMap hm = new HeteroMap();
+			hm["a"] = a;
+			hm["b"] = 18;
+			return hm;
 		}
 	}
 

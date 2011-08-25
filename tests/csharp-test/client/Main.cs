@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using Agnos;
 using FeatureTestBindings.ClientBindings;
 
@@ -67,6 +68,36 @@ public class myclient
 			System.Console.WriteLine("{0} = {1}", e.Key, e.Value);
 		}
 		
+		byte[] barr = {(byte)0xff, (byte)0xee, (byte)0xaa, (byte)0xbb};
+		IList<double> lst = new List<double>();
+		lst.Add(1.3);
+		lst.Add(FeatureTest.pi);
+		lst.Add(4.4);
+		ICollection<int> hs = new HashSet<int>();
+		hs.Add(18);
+		hs.Add(19);
+		hs.Add(20);
+		IDictionary<int, string> hm = new Dictionary<int, string>();
+		hm[34] = "foo";
+		hm[56] = "bar";
+		FeatureTest.Address adr = new FeatureTest.Address(FeatureTest.State.NY, "albany", "foobar drive", 1772);
+		
+		
+		FeatureTest.Everything everything = conn.func_of_everything(
+				(byte)1, (short)2, 3, (long)4, 5.5, true, new DateTime(), barr, 
+				"hello world", lst, hs, hm, adr, eve, FeatureTest.MyEnum.C);
+		
+		if (everything.some_int32 != 3) {
+			throw new Exception("expected 'some_int32' to be 3" + everything.some_int32);
+		}
+
+		HeteroMap hm1 = new HeteroMap();
+		hm1["x"] = "y";
+		HeteroMap hm2 = conn.hmap_test(1999, hm1);
+		if ((int)hm2["a"] != 1999) {
+			throw new Exception("expected 'a' to be 1999; " + hm2["a"]);
+		}
+				
 		System.Console.WriteLine("test passed!");
 	}
 }

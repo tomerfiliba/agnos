@@ -237,7 +237,7 @@ namespace agnos
 		//////////////////////////////////////////////////////////////////////
 		// SocketStream (replacement for boost::ip::tcp::iostream)
 		//////////////////////////////////////////////////////////////////////
-		static boost::asio::io_service the_io_service;
+		/*static boost::asio::io_service the_io_service;
 		static tcp::resolver the_resolver(the_io_service);
 
 		class SocketStream
@@ -337,7 +337,7 @@ namespace agnos
 				return total;
 			}
 
-		};
+		};*/
 
 		//////////////////////////////////////////////////////////////////////
 		// SocketTransport
