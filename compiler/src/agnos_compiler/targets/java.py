@@ -557,9 +557,12 @@ class JavaTarget(TargetBase):
                 STMT("_disposed = owns_ref ? false : true")
             SEP()
             with BLOCK("protected void finalize()"):
-                STMT("dispose()")
+                with BLOCK("try"):
+                    STMT("dispose()")
+                with BLOCK("catch (IOException ex)"):
+                    DOC("ignored")
             SEP()
-            with BLOCK("public void dispose()"):
+            with BLOCK("public void dispose() throws IOException"):
                 with BLOCK("if (_disposed)"):
                     STMT("return")
                 with BLOCK("synchronized (this)"):

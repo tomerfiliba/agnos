@@ -125,7 +125,7 @@ public final class ClientUtils implements Closeable {
 		transport.cancelWrite();
 	}
 
-	public void decref(long id) {
+	public void decref(long id) throws IOException {
 		int seq = getSeq();
 		transport.beginWrite(seq);
 		try {

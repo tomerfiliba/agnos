@@ -786,7 +786,7 @@ def _get_depedencies_tree(members):
         elif isinstance(mem, ExceptionRecord):
             deptree[mem] = _add_dependencies(set(), [attr.type for attr in mem.members])
             if mem.extends:
-                _add_dependencies(deptree[mem], mem.extends)
+                _add_dependencies(deptree[mem], [mem.extends])
         elif isinstance(mem, Class):
             deptree[mem] = _add_dependencies(set(), [attr.type for attr in mem.attrs]) 
             for meth in mem.methods:
