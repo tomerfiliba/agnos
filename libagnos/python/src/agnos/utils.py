@@ -96,8 +96,8 @@ class Enum(object):
     def get_by_name(cls, name):
         try:
             return getattr(cls, name)
-        except AttrributeError:
-            raise EnumError("no member named %r" % (val,))
+        except AttributeError:
+            raise EnumError("no member named %r" % (name,))
 
 def create_enum(name, members):
     """creates an enum class with the given name and given members"""
@@ -259,35 +259,36 @@ class LogSink(object):
                 try:
                     f.write(line)
                     f.flush()
-                except IOError as ex:
+                except IOError:
                     pruned.append(f)
             for f in pruned:
                 self.files.remove(f)
 
-NullSink = LogSink([])
+NullSink = LogSink(())
 StdoutSink = LogSink([sys.stdout])
 StderrSink = LogSink([sys.stderr])
 
 class Logger(object):
     """lightweight, simple to use logger object"""
     
-    DATE_FORMAT = "%y-%m-%d"
-    TIME_FORMAT = "%H:%M:%S"
-    LINE_FORMAT = "[{time}|{level:<10}|{source:<15}] {text}"
+    DATE_FORMAT = "{0.year:04}-{0.month:02}-{0.day:02}"
+    TIME_FORMAT = "{0.hour:02}:{0.minute:02}:{0.second:02}.{0.microsecond:06}"
+    LINE_FORMAT = "[{date} {time}|{level:<10}|{source:<15}] {text}"
     
     def __init__(self, sink, name = None):
         self.sink = sink
         self.name = name
     
     def _log(self, level, text):
+        t0 = datetime.now()
         line = self.LINE_FORMAT.format(
             level = level, 
             source = self.name, 
             text = text, 
             pid = os.getpid(), 
             tid = threading.current_thread().ident,
-            time = time.strftime(self.TIME_FORMAT), 
-            date = time.strftime(self.DATE_FORMAT),
+            time = self.TIME_FORMAT.format(t0), 
+            date = self.DATE_FORMAT.format(t0),
         )
         self.sink.write(line)
 
@@ -307,7 +308,7 @@ class Logger(object):
     def error(self, msg, *args):
         self._log("ERROR", self._autoformat(msg, args))
     def exception(self):
-        tbtext = "".join(traceback.format_exception(*sys.exc_info())[:-1])
+        tbtext = "".join(traceback.format_exception(*sys.exc_info()))
         self._log("EXCEPTION", tbtext)
 
 NullLogger = Logger(NullSink)

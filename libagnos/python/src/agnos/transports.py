@@ -23,14 +23,10 @@ import ssl
 import signal
 import time
 from select import select
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from io import StringIO
 from contextlib import contextmanager
 from subprocess import Popen, PIPE
 from . import packers
-from .utils import RLock, BoundedStream, ZlibStream
+from .utils import RLock, BoundedStream, ZlibStream, NullLogger
 try:
     from zlib import compress as zlib_compress
 except ImportError:
@@ -72,6 +68,7 @@ class Transport(object):
         #self.outfile = _DebugFile(outfile)
         self.outfile = outfile
         self.compression_threshold = -1
+        self.logger = NullLogger
         self._rlock = RLock()
         self._wlock = RLock()
         self._wseq = -1
@@ -89,7 +86,10 @@ class Transport(object):
         compression. before calling this method, be sure to test that the other
         party reports True under "COMPRESSION_SUPPOTED" in INFO_META.
         """
-        self.compression_threshold = zlib_compress is not None and self._get_compression_threshold()
+        if zlib_compress is None:
+            self.disable_compresion()
+            return False
+        self.compression_threshold = self._get_compression_threshold()
         return self.is_compression_enabled()
     def disable_compresion(self):
         """disables compression on this transport"""
@@ -101,6 +101,7 @@ class Transport(object):
         return -1
     
     def close(self):
+        self.logger.info("closing")
         if self.infile:
             self.infile.close()
             self.infile = None
@@ -122,6 +123,7 @@ class Transport(object):
         if self._rlock.is_held_by_current_thread():
             raise IOError("begin_read is not reentrant")
         self._rlock.acquire()
+        self.logger.info("begin_read")
         try:
             if timeout is not None and timeout < 0:
                 timeout = 0
@@ -159,13 +161,19 @@ class Transport(object):
         self._assert_rlock()
         if count > self._rstream.available():
             raise EOFError("request to read more than available")
-        return self._rstream.read(count)
+        self.logger.info("read(%r)", count)
+        data = self._rstream.read(count)
+        self.logger.info("    <- %r bytes", len(data))
+        return data
     
     def read_all(self):
         """reads all the available data in the ongoing read transaction.
         begin_read() must have been called prior to this"""
         self._assert_rlock()
-        return self._rstream.read()
+        self.logger.info("read_all")
+        data = self._rstream.read()
+        self.logger.info("    <- %r bytes", len(data))
+        return data
     
     def end_read(self):
         """ends the ongoing read transaction. begin_read() must have been 
@@ -174,6 +182,7 @@ class Transport(object):
         if self._rstream is not None:
             self._rstream.close()
             self._rstream = None
+        self.logger.info("end_read")
         self._rlock.release()
     
     def begin_write(self, seq):
@@ -187,6 +196,7 @@ class Transport(object):
         self._wlock.acquire()
         self._wseq = seq
         del self._wbuffer[:]
+        self.logger.info("begin_write seq = %r", seq)
     
     def _assert_wlock(self):
         if not self._wlock.is_held_by_current_thread():
@@ -203,14 +213,17 @@ class Transport(object):
         the write transaction. begin_write must have been called prior to this"""
         self._assert_wlock()
         del self._wbuffer[:]
+        self.logger.info("restart_write")
     
     def end_write(self):
         """finalizes the transaction and flushes all the write buffer to the 
         underlying stream. begin_write must have been called prior to this.
         must be called to finalize the transaction"""
         self._assert_wlock()
+        self.logger.info("end_write")
         data = "".join(self._wbuffer)
         del self._wbuffer[:]
+        self.logger.info("    data = %r bytes", len(data))
         if data:
             packers.Int32.pack(self._wseq, self.outfile)
             if self.compression_threshold > 0 and len(data) > self.compression_threshold:
@@ -222,6 +235,7 @@ class Transport(object):
             packers.Int32.pack(uncompressed_length, self.outfile)
             self.outfile.write(data)
             self.outfile.flush()
+        self.logger.info("    ok")
         self._wlock.release()
     
     def cancel_write(self):
@@ -230,6 +244,7 @@ class Transport(object):
         begin_write must have been called prior to this. do not call end_write
         after canceling the transaction"""
         self._assert_wlock()
+        self.logger.info("cancel_write")
         del self._wbuffer[:]
         self._wlock.release()
     
@@ -366,7 +381,8 @@ class SocketTransport(Transport):
             self.infile.sock_port, self.infile.peer_host, self.infile.peer_port)
     
     def _get_compression_threshold(self):
-        return 4 * 1024
+        #return 4 * 1024
+        return -1
     
     @classmethod
     def connect(cls, host, port):
@@ -383,6 +399,9 @@ class SslSocketTransport(Transport):
     def __repr__(self):
         return "<SslSocketTransport %s:%s - %s:%s>" % (self.infile.sock_host, 
             self.infile.sock_port, self.infile.peer_host, self.infile.peer_port)
+
+    def _get_compression_threshold(self):
+        return -1
     
     @classmethod
     def connect(cls, host, port, keyfile = None, certfile = None,  

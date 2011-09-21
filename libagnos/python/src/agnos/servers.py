@@ -34,6 +34,8 @@ from .compat import icount
 def _handle_client(processor, logger):
     """the default implementation of handling a client"""
     logger.info("handling %s", processor.transport)
+    processor.logger = logger.sublogger("proc")
+    processor.transport.logger = logger.sublogger("trns")
     try:
         while True:
             processor.process()
@@ -51,10 +53,14 @@ def _handle_client(processor, logger):
 
 class BaseServer(object):
     """abstract Agnos server"""
+    LOGGER_NAME = None
+    
     def __init__(self, processor_factory, transport_factory, logger):
         self.processor_factory = processor_factory
         self.transport_factory = transport_factory
         self.logger = logger
+        if not self.logger.name:
+            self.logger.name = self.LOGGER_NAME
         self.logger.info("server details: %s, pid = %d", self, os.getpid())
     
     def __del__(self):
@@ -63,6 +69,7 @@ class BaseServer(object):
     def close(self):
         """terminates the listener and terminates all client handlers"""
         self.logger.info("server is shutting down")
+        self.logger = NullLogger
         self.transport_factory.close()
     
     def serve(self):
@@ -79,7 +86,7 @@ class BaseServer(object):
             self.logger.info("accepted %s", trans)
             processor = self.processor_factory(trans)
             self._serve_client(processor)
-        
+    
     def _serve_client(self, processor):
         """implement this to create customize serving schemes"""
         raise NotImplementedError()
@@ -89,6 +96,8 @@ class SimpleServer(BaseServer):
     an implementation of an Agnos server where only a single client can be
     served at any point of time.
     """
+    LOGGER_NAME = "smpsvr"
+
     def __init__(self, processor_factory, transport_factory, logger = NullLogger):
         BaseServer.__init__(self, processor_factory, transport_factory, logger.sublogger("srv"))
     
@@ -100,6 +109,8 @@ class SelectingServer(BaseServer):
     an implementation of an Agnos server where only a a number of clients can
     be juggled simultaneously using select()
     """
+    LOGGER_NAME = "slctsvr"
+
     def serve(self):
         self.logger.info("started serving")
         sources = [self.transport_factory]
@@ -140,6 +151,8 @@ class ThreadedServer(BaseServer):
     an implementation of an Agnos server where each client is served by a 
     separate thread
     """
+    LOGGER_NAME = "thdsvr"
+
     def __init__(self, processor_factory, transport_factory, logger = NullLogger):
         BaseServer.__init__(self, processor_factory, transport_factory, logger.sublogger("srv"))
         self._thread_ids = icount(0)
@@ -154,6 +167,8 @@ class ForkingServer(BaseServer):
     an implementation of an Agnos server where each client is served by a 
     separate child process
     """
+    LOGGER_NAME = "frksvr"
+    
     def __init__(self, processor_factory, transport_factory, logger):
         BaseServer.__init__(self, processor_factory, transport_factory, 
             logger.sublogger("srv"))
@@ -231,11 +246,15 @@ class LibraryModeServer(BaseServer):
     stdout and serves a single connection. when the connection is closed, the
     server finishes and the process is expected to quit
     """
+    LOGGER_NAME = "libsvr"
+    
     def serve(self):
+        self.logger.info("started serving on %s:%s", self.transport_factory.host, self.transport_factory.port)
         sys.stdout.write("AGNOS\n%s\n%d\n\n" % (self.transport_factory.host, self.transport_factory.port))
         sys.stdout.flush()
         sys.stdout.close()
         trans = self.transport_factory.accept()
+        self.logger.info("accepted %s, closing listener", trans)
         self.transport_factory.close()
         processor = self.processor_factory(trans)
         _handle_client(processor, self.logger)

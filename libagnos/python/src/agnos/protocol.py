@@ -23,7 +23,6 @@ import traceback
 import weakref
 import time
 from . import utils
-from subprocess import Popen, PIPE
 from contextlib import contextmanager
 from .packers import Int8, Int32, Int64, Str, Bool, BuiltinHeteroMapPacker 
 from .packers import PackingError
@@ -123,6 +122,7 @@ class BaseProcessor(object):
     def __init__(self, transport):
         self.transport = transport
         self.cells = {}
+        self.logger = utils.NullLogger
     
     def close(self):
         self.transport.close()
@@ -182,8 +182,10 @@ class BaseProcessor(object):
         packer.pack(exc, self.transport)
     
     def process(self):
+        self.logger.info("new request")
         with self.transport.reading() as seq:
             cmd = Int8.unpack(self.transport)
+            self.logger.info("    seq = %r, cmd = %r", seq, cmd)
             with self.transport.writing(seq):
                 try:
                     if cmd == CMD_INVOKE:
@@ -203,18 +205,23 @@ class BaseProcessor(object):
                     else:
                         raise ProtocolError("unknown command code: %d" % (cmd,))
                 except ProtocolError as ex:
+                    self.logger.info("    got ProtocolError %r", ex)
                     self.transport.restart_write()
                     self.send_protocol_error(ex)
                 except GenericException as ex:
+                    self.logger.info("    got GenericException %r", ex)
                     self.transport.restart_write()
                     self.send_generic_exception(ex)
                 except PackingError as ex:
+                    self.logger.info("    got PackingError %r", ex)
                     tbtext = "".join(traceback.format_exception(*sys.exc_info())[:-1])
                     self.transport.restart_write()
                     self.send_generic_exception(GenericException(str(ex), tbtext))
                 except PackedException as ex:
+                    self.logger.info("    got PackedException %r", ex)
                     self.transport.restart_write()
                     self.send_packed_exception(ex)
+        self.logger.info("end request")
 
     def process_ping(self, seq):
         msg = Str.unpack(self.transport)
@@ -236,7 +243,7 @@ class BaseProcessor(object):
         oid = Int64.unpack(self.transport)
         idl_class_name = Str.unpack(self.transport)
         tp = type(self.load(oid))
-        res = _idl in tp._idl_super_classes
+        res = idl_class_name in tp._idl_super_classes
         Int8.pack(REPLY_SUCCESS, self.transport)
         Bool.pack(res, self.transport)
 
@@ -265,6 +272,7 @@ class BaseProcessor(object):
 
     def process_invoke(self, seq):
         funcid = Int32.unpack(self.transport)
+        self.logger.info("     invoking %r", funcid)
         try:
             func, unpack_args, res_packer = self.func_mapping[funcid]
         except KeyError:
@@ -279,6 +287,7 @@ class BaseProcessor(object):
         except Exception:
             raise self.pack_exception(*sys.exc_info())
         else:
+            self.logger.info("     invoke success")
             Int8.pack(REPLY_SUCCESS, self.transport)
             if res_packer:
                 res_packer.pack(res, self.transport)
@@ -339,8 +348,8 @@ class ClientUtils(object):
         seq = self.seq.next()
         try:
             with self.transport.writing(seq):
-                Int8.pack(CMD_DECREF, transport)
-                Int64.pack(oid, transport)
+                Int8.pack(CMD_DECREF, self.transport)
+                Int64.pack(oid, self.transport)
         except Exception:
             pass
     
@@ -462,7 +471,7 @@ class ClientUtils(object):
             if self.is_reply_ready(seq):
                 del self.replies[seq]
             else:
-                tp, val = self.replies[seq]
+                _, val = self.replies[seq]
                 self.replies[seq] = (self.REPLY_SLOT_DISCARDED, val)
     
     def wait_reply(self, seq, timeout = None):
@@ -477,10 +486,10 @@ class ClientUtils(object):
         return self.replies.pop(seq)
     
     def get_reply(self, seq, timeout = None):
-        type, obj = self.wait_reply(seq, timeout)
-        if type == self.REPLY_SLOT_SUCCESS:
+        tp, obj = self.wait_reply(seq, timeout)
+        if tp == self.REPLY_SLOT_SUCCESS:
             return obj
-        elif type == self.REPLY_SLOT_ERROR:
+        elif tp == self.REPLY_SLOT_ERROR:
             raise obj
         else:
             raise ValueError("invalid reply slot type: %r" % (seq,))
@@ -513,7 +522,7 @@ class BaseClient(object):
     def get_service_info(self, code):
         return self._utils.get_service_info(code)
     def tunnel_request(self, blob):
-        return self._utils.tunnel_request(code)
+        return self._utils.tunnel_request(blob)
 
 
 
