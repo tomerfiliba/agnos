@@ -790,6 +790,7 @@ class JavaTarget(TargetBase):
         SEP()
         ##
         with BLOCK("protected void processGetFunctionsInfo(HeteroMap map)"):
+            #STMT('loadHeteromap("functions_info.xml")')
             for func in service.funcs.values():
                 STMT("processGetFunctionsInfo_{0}(map)", func.id)
         SEP()

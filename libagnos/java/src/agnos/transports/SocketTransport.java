@@ -101,7 +101,7 @@ public class SocketTransport extends BaseTransport
 	
 	@Override
 	protected int getCompressionThreshold() {
-		return 4 * 1024;
+		return -1; //4 * 1024;
 	}
 	
 }
