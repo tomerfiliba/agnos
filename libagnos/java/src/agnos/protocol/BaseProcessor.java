@@ -33,6 +33,11 @@ import agnos.transports.ITransport;
 import agnos.util.HeteroMap;
 import agnos.util.ObjectIDGenerator;
 
+import java.util.logging.Logger;
+import java.util.logging.Level;
+import agnos.util.SimpleLogger;
+
+
 public abstract class BaseProcessor implements ISerializer, Closeable {
 	protected static final class Cell {
 		public int refcount;
@@ -63,6 +68,8 @@ public abstract class BaseProcessor implements ISerializer, Closeable {
 	protected Map<Integer, FunctionHandler> funcHandlers;
 	protected ObjectIDGenerator idGenerator;
 	protected ITransport transport;
+	
+	protected Logger logger = SimpleLogger.getLogger("PROCSSOR");
 
 	public BaseProcessor(ITransport transport) {
 		cells = new HashMap<Long, Cell>();
@@ -148,11 +155,13 @@ public abstract class BaseProcessor implements ISerializer, Closeable {
 	}
 
 	public void process() throws Exception {
+		logger.info("new request");
 		int seq = transport.beginRead();
 		int cmdid = (Byte) (Builtin.Int8.unpack(transport));
 
+		logger.info("seq = " + seq + " cmd = " + cmdid);
 		transport.beginWrite(seq);
-
+		
 		try {
 			switch (cmdid) {
 			case constants.CMD_INVOKE:
@@ -177,18 +186,22 @@ public abstract class BaseProcessor implements ISerializer, Closeable {
 				throw new ProtocolException("unknown command code: " + cmdid);
 			}
 		} catch (ProtocolException exc) {
+			logger.log(Level.WARNING, "ProtocolException", exc);
 			transport.restartWrite();
 			sendProtocolException(exc);
 		} catch (GenericException exc) {
+			logger.log(Level.WARNING, "GenericException", exc);
 			transport.restartWrite();
 			sendGenericException(exc);
-		} catch (Exception ex) {
+		} catch (Exception exc) {
+			logger.log(Level.WARNING, "Exception", exc);
 			transport.cancelWrite();
-			throw ex;
+			throw exc;
 		} finally {
 			transport.endRead();
 		}
 		transport.endWrite();
+		logger.info("end request, seq = " + seq);
 	}
 
 	protected void processDecref(Integer seq) throws IOException {

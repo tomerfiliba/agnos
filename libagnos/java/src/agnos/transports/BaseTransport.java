@@ -28,15 +28,20 @@ import java.io.IOException;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
+import java.util.logging.Logger;
+import java.util.logging.Level;
+
+import agnos.packers.Builtin;
 import agnos.util.ClosedOutputStream;
 import agnos.util.ClosedInputStream;
 import agnos.util.BoundedInputStream;
-import agnos.packers.Builtin;
+import agnos.util.DebugStreams;
+import agnos.util.SimpleLogger;
 
 
 /**
- * The base transport class -- implements the common logic used by most (if 
- * not all) derived transports.
+ * The base transport class -- implements the common logic used by most (if not all)
+ * derived transports. See {@agnos.transports.ITransport} for documentation.
  * 
  * @author Tomer Filiba
  *
@@ -100,9 +105,13 @@ public abstract class BaseTransport implements ITransport {
 		}
 	};
 	
+	private Logger logger = SimpleLogger.getLogger("TRNS");
+	
 	public BaseTransport(InputStream inStream, OutputStream outStream) {
-		this.inStream = inStream;
-		this.outStream = outStream;
+		this.inStream = new DebugStreams.LoggingInputStream(logger, inStream);
+		this.outStream = new DebugStreams.LoggingOutputStream(logger, outStream);
+		/*this.inStream = inStream;
+		this.outStream = outStream;*/
 	}
 	
 	@Override
@@ -174,14 +183,19 @@ public abstract class BaseTransport implements ITransport {
 		if (rlock.isHeldByCurrentThread()) {
 			throw new IOException("beginRead is not reentrant");
 		}
-
+		
+		logger.info("beginRead: acq lock...");
 		rlock.lock();
+		logger.info("beginRead: got lock");
 		try {
 			assert readStream == null;
 			
 			int seq = readSInt32(inStream);
+			logger.info("beginRead: seq = " + seq);
 			int packetLength = readSInt32(inStream);
+			logger.info("beginRead: packetLength = " + packetLength);
 			int uncompressedLength = readSInt32(inStream);
+			logger.info("beginRead: uncompressedLength = " + uncompressedLength);
 			readStream = new BoundedInputStream(inStream, packetLength, true, false);
 			if (uncompressedLength > 0) {
 				readStream = new BoundedInputStream(new InflaterInputStream(readStream),
@@ -191,6 +205,7 @@ public abstract class BaseTransport implements ITransport {
 			return seq;
 		}
 		catch (IOException ex) {
+			logger.log(Level.WARNING, "beginRead", ex);
 			readStream = null;
 			rlock.unlock();
 			throw ex;
@@ -208,6 +223,7 @@ public abstract class BaseTransport implements ITransport {
 		assertBeganRead();
 		readStream.close();
 		readStream = null;
+		logger.info("endRead: releasing lock");
 		rlock.unlock();
 	}
 	
@@ -224,7 +240,9 @@ public abstract class BaseTransport implements ITransport {
 			throw new IOException("beginWrite is not reentrant");
 		}
 		
+		logger.info("beginWrite: seq = " + seq + ", acq lock...");
 		wlock.lock();
+		logger.info("beginWrite: got lock");
 		wbuffer.reset();
 		wseq = seq;
 	}
@@ -245,6 +263,7 @@ public abstract class BaseTransport implements ITransport {
 	public void endWrite() throws IOException {
 		assertBeganWrite();
 		int len = wbuffer.size();
+		logger.info("endWrite: len = " + len);
 		if (len > 0) {
 			writeSInt32(outStream, wseq);
 			
@@ -267,6 +286,7 @@ public abstract class BaseTransport implements ITransport {
 			}
 			outStream.flush();
 		}
+		logger.info("endWrite: releasing lock");
 		wlock.unlock();
 	}
 	
@@ -278,6 +298,7 @@ public abstract class BaseTransport implements ITransport {
 	public void cancelWrite() throws IOException {
 		assertBeganWrite();
 		wbuffer.reset();
+		logger.info("cancelWrite: releasing lock");
 		wlock.unlock();
 	}
 }

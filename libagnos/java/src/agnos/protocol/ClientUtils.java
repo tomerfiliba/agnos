@@ -25,11 +25,13 @@ import java.io.Closeable;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import agnos.packers.AbstractPacker;
 import agnos.packers.Builtin;
 import agnos.transports.ITransport;
 import agnos.util.HeteroMap;
+import agnos.util.SimpleLogger;
 
 /**
  * A collection of client-side utilities. Although this class is public, it is
@@ -67,6 +69,7 @@ public final class ClientUtils implements Closeable {
 	protected final Map<Long, WeakReference<Object>> proxies;
 	protected int _seq;
 	public ITransport transport;
+	protected Logger logger = SimpleLogger.getLogger("CLIENT");
 
 	public ClientUtils(ITransport transport,
 			Map<Integer, AbstractPacker> packedExceptionsMap)
@@ -110,6 +113,7 @@ public final class ClientUtils implements Closeable {
 	public int beginCall(int funcid, AbstractPacker packer)
 			throws IOException {
 		int seq = getSeq();
+		logger.info("beginCall seq = " + seq + " func = " + funcid);
 		transport.beginWrite(seq);
 		Builtin.Int8.pack(constants.CMD_INVOKE, transport);
 		Builtin.Int32.pack(funcid, transport);
@@ -119,14 +123,17 @@ public final class ClientUtils implements Closeable {
 
 	public void endCall() throws IOException {
 		transport.endWrite();
+		logger.info("endCall");
 	}
 
 	public void cancelCall() throws IOException {
 		transport.cancelWrite();
+		logger.info("cancelCall");
 	}
 
 	public void decref(long id) throws IOException {
 		int seq = getSeq();
+		logger.info("decref " + id);
 		transport.beginWrite(seq);
 		try {
 			Builtin.Int8.pack(constants.CMD_DECREF, transport);
@@ -168,6 +175,7 @@ public final class ClientUtils implements Closeable {
 	public HeteroMap getServiceInfo(int code) throws IOException,
 			ProtocolException, PackedException, GenericException {
 		int seq = getSeq();
+		logger.info("getServiceInfo " + code);
 		transport.beginWrite(seq);
 		Builtin.Int8.pack(constants.CMD_GETINFO, transport);
 		Builtin.Int32.pack(code, transport);
@@ -199,7 +207,10 @@ public final class ClientUtils implements Closeable {
 
 	public void processIncoming(int timeout_msecs) throws IOException,
 			ProtocolException {
+		logger.info("processIncoming");
 		int seq = transport.beginRead();
+
+		logger.info("processIncoming seq = " + seq);
 
 		try {
 			int code = (Byte) (Builtin.Int8.unpack(transport));
@@ -241,6 +252,7 @@ public final class ClientUtils implements Closeable {
 		} finally {
 			transport.endRead();
 		}
+		logger.info("processIncoming finished " + seq);
 	}
 
 	public boolean isReplyReady(int seq) {
@@ -262,6 +274,7 @@ public final class ClientUtils implements Closeable {
 
 	public ReplySlot waitReply(int seq, int msecs) throws IOException,
 			ProtocolException {
+		logger.info("waitReply seq = " + seq);
 		while (!isReplyReady(seq)) {
 			processIncoming(msecs);
 		}

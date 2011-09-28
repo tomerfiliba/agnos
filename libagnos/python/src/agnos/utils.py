@@ -186,7 +186,7 @@ class HeteroMap(object):
         else:
             raise TypeError("pop takes at most two arguments")
     def popitem(self):
-        k, (vv, kp, vp) = self.fields.popitem()
+        _, (vv, _, _) = self.fields.popitem()
         return vv
     def update(self, other):
         if isinstance(other, HeteroMap):
