@@ -260,7 +260,8 @@ public final class ClientUtils implements Closeable {
 		return slot.type.ready;
 	}
 
-	public void discardReply(int seq) {
+	public void discardReply(int seq) 
+	{
 		ReplySlot slot = replies.get(seq);
 		if (slot == null) {
 			return;
@@ -272,8 +273,8 @@ public final class ClientUtils implements Closeable {
 		}
 	}
 
-	public ReplySlot waitReply(int seq, int msecs) throws IOException,
-			ProtocolException {
+	public ReplySlot waitReply(int seq, int msecs) throws IOException, ProtocolException 
+	{
 		logger.info("waitReply seq = " + seq);
 		while (!isReplyReady(seq)) {
 			processIncoming(msecs);
@@ -282,7 +283,8 @@ public final class ClientUtils implements Closeable {
 	}
 
 	public Object getReply(int seq, int msecs) throws IOException,
-			PackedException, GenericException, ProtocolException {
+			PackedException, GenericException, ProtocolException 
+	{
 		ReplySlot slot = waitReply(seq, msecs);
 		if (slot.type == ReplySlotType.SLOT_VALUE) {
 			return slot.value;
@@ -298,7 +300,8 @@ public final class ClientUtils implements Closeable {
 	}
 
 	public Object getReply(int seq) throws IOException, PackedException,
-			GenericException, ProtocolException {
+			GenericException, ProtocolException 
+	{
 		return getReply(seq, -1);
 	}
 }

@@ -73,7 +73,7 @@ public class DebugStreams
 		public int read() throws IOException
 		{
 			byte[] buffer = { 0 };
-			if (read(buffer) < 0) {
+			if (read(buffer, 0, buffer.length) < 0) {
 				return -1;
 			}
 			return buffer[0];

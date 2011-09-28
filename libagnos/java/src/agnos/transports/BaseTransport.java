@@ -41,7 +41,7 @@ import agnos.util.SimpleLogger;
 
 /**
  * The base transport class -- implements the common logic used by most (if not all)
- * derived transports. See {@agnos.transports.ITransport} for documentation.
+ * derived transports. See {@agnos.transports.ITransport ITransport} for documentation.
  * 
  * @author Tomer Filiba
  *
@@ -52,6 +52,7 @@ public abstract class BaseTransport implements ITransport {
 	protected InputStream inStream;
 	protected OutputStream outStream;
 	protected final ReentrantLock rlock = new ReentrantLock();
+	//protected final ReentrantLock wlock = rlock;
 	protected final ReentrantLock wlock = new ReentrantLock();
 	
 	private BoundedInputStream readStream = null;
@@ -75,6 +76,11 @@ public abstract class BaseTransport implements ITransport {
 			return buffer[0];
 		}
 		@Override 
+		public int read(byte[] data) throws IOException
+		{
+			return BaseTransport.this.read(data, 0, data.length);
+		}
+		@Override 
 		public int read(byte[] data, int off, int len) throws IOException
 		{
 			return BaseTransport.this.read(data, off, len);
@@ -94,6 +100,11 @@ public abstract class BaseTransport implements ITransport {
 			write(buffer);
 		}
 		@Override 
+		public void write(byte[] data) throws IOException
+		{
+			BaseTransport.this.write(data, 0, data.length);
+		}
+		@Override 
 		public void write(byte[] data, int off, int len) throws IOException
 		{
 			BaseTransport.this.write(data, off, len);
@@ -108,10 +119,10 @@ public abstract class BaseTransport implements ITransport {
 	private Logger logger = SimpleLogger.getLogger("TRNS");
 	
 	public BaseTransport(InputStream inStream, OutputStream outStream) {
-		this.inStream = new DebugStreams.LoggingInputStream(logger, inStream);
-		this.outStream = new DebugStreams.LoggingOutputStream(logger, outStream);
-		/*this.inStream = inStream;
-		this.outStream = outStream;*/
+		/*this.inStream = new DebugStreams.LoggingInputStream(logger, inStream);
+		this.outStream = new DebugStreams.LoggingOutputStream(logger, outStream);*/
+		this.inStream = inStream;
+		this.outStream = outStream;
 	}
 	
 	@Override

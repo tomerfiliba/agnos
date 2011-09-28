@@ -47,6 +47,11 @@ public class BoundedInputStream extends InputStream
 	}
 
 	@Override
+	public int read(byte[] buf) throws IOException {
+		return read(buf, 0, buf.length);
+	}
+
+	@Override
 	public int read(byte[] buf, int off, int len) throws IOException {
 		if (len > remainingLength) {
 			throw new EOFException("request to read more than available");
