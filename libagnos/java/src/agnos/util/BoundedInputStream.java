@@ -34,7 +34,7 @@ public class BoundedInputStream extends InputStream
 		if (closeUnderlying) {
 			inputStream.close();
 		}
-		inputStream = null;
+		inputStream = ClosedInputStream.getInstance();
 	}
 	
 	@Override
@@ -57,7 +57,9 @@ public class BoundedInputStream extends InputStream
 			throw new EOFException("request to read more than available");
 		}
 		int n = inputStream.read(buf, off, len);
-		remainingLength -= n;
+		if (n > 0) {
+			remainingLength -= n;
+		}
 		return n;
 	}
 	

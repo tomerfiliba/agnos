@@ -96,8 +96,7 @@ public abstract class BaseTransport implements ITransport {
 		@Override 
 		public void write(int b) throws IOException
 		{
-			byte[] buffer = { (byte) b };
-			write(buffer);
+			write(new byte[] {(byte) b});
 		}
 		@Override 
 		public void write(byte[] data) throws IOException
@@ -172,14 +171,19 @@ public abstract class BaseTransport implements ITransport {
 		if (len != buf.length) {
 			throw new EOFException("expected " + buf.length + " bytes, got " + len);
 		}
-		return ((int) (buf[0] & 0xff) << 24) | ((int) (buf[1] & 0xff) << 16) | 
-			((int) (buf[2] & 0xff) << 8) | ((int) (buf[3] & 0xff));
+		return ((int) (buf[0] & 0xff) << 24) | 
+				((int) (buf[1] & 0xff) << 16) | 
+				((int) (buf[2] & 0xff) << 8) | 
+				((int) (buf[3] & 0xff));
 	}
 
 	protected static void writeSInt32(OutputStream out, int val) throws IOException {
-		byte[] buf = {(byte) ((val >> 24) & 0xff), (byte) ((val >> 16) & 0xff),
-				(byte) ((val >> 8) & 0xff), (byte) (val & 0xff)};		
-		out.write(buf, 0, buf.length);
+		byte[] buf = {
+				(byte) ((val >> 24) & 0xff), 
+				(byte) ((val >> 16) & 0xff),
+				(byte) ((val >> 8) & 0xff), 
+				(byte) (val & 0xff)};		
+		out.write(buf);
 	}
 
 	protected final void assertBeganRead() throws IOException
@@ -203,10 +207,13 @@ public abstract class BaseTransport implements ITransport {
 			
 			int seq = readSInt32(inStream);
 			logger.info("beginRead: seq = " + seq);
+			
 			int packetLength = readSInt32(inStream);
 			logger.info("beginRead: packetLength = " + packetLength);
+			
 			int uncompressedLength = readSInt32(inStream);
 			logger.info("beginRead: uncompressedLength = " + uncompressedLength);
+			
 			readStream = new BoundedInputStream(inStream, packetLength, true, false);
 			if (uncompressedLength > 0) {
 				readStream = new BoundedInputStream(new InflaterInputStream(readStream),
@@ -219,6 +226,7 @@ public abstract class BaseTransport implements ITransport {
 			logger.log(Level.WARNING, "beginRead", ex);
 			readStream = null;
 			rlock.unlock();
+			close();
 			throw ex;
 		}
 	}

@@ -1196,7 +1196,7 @@ class JavaTarget(TargetBase):
             for func in service.funcs.values():
                 args = ", ".join("%s %s" % (type_to_java(arg.type, proxy = True), arg.name) 
                     for arg in func.args)
-                with BLOCK("public {0} sync_{1}({2}) throws Exception", 
+                with BLOCK("public synchronized {0} sync_{1}({2}) throws Exception", 
                         type_to_java(func.type, proxy = True), func.id, args):
                     STMT("int seq = utils.beginCall({0}, {1})", func.id, type_to_packer(func.type))
                     with BLOCK("try"):
