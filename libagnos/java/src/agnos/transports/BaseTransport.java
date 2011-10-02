@@ -126,6 +126,7 @@ public abstract class BaseTransport implements ITransport {
 	
 	@Override
 	public void close() throws IOException {
+		logger.info("close()");
 		if (readStream != null) {
 			readStream.close();
 		}
@@ -223,6 +224,7 @@ public abstract class BaseTransport implements ITransport {
 			return seq;
 		}
 		catch (IOException ex) {
+			logger.info("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" + ex);
 			logger.log(Level.WARNING, "beginRead", ex);
 			readStream = null;
 			rlock.unlock();
