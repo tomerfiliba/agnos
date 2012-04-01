@@ -20,7 +20,7 @@
 from .base import TargetBase, NOOP
 from contextlib import contextmanager
 from .. import compiler
-from ..compiler import is_complex_type, is_complicated_type
+from ..compiler import is_complex_type, is_complicated_type, IDLError
 from ..compat import icount
 
 

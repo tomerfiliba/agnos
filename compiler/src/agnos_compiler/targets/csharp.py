@@ -23,7 +23,7 @@ import os
 
 from .base import TargetBase, NOOP
 from .. import compiler
-from ..compiler import is_complex_type
+from ..compiler import is_complex_type, IDLError
 from ..compat import icount
 
 
@@ -1200,27 +1200,28 @@ class CSharpTarget(TargetBase):
                     for arg in func.args)
                 with BLOCK("public {0} sync_{1}({2})", type_to_cs(func.type, proxy = True), 
                         func.id, args):
-                    if is_complex_type(func.type) or func.type == compiler.t_heteromap:
-                        STMT("int seq = client._utils.BeginCall({0}, client.{1})", 
-                            func.id, type_to_packer(func.type))
-                    else:
-                        STMT("int seq = client._utils.BeginCall({0}, {1})", func.id, 
-                            type_to_packer(func.type))
-                    if func.args:
-                        with BLOCK("try"):
-                            for arg in func.args:
-                                if is_complex_type(arg.type) or arg.type is compiler.t_heteromap:
-                                    STMT("client.{0}.pack({1}, client._utils.transport)", type_to_packer(arg.type), arg.name)
-                                else:
-                                    STMT("{0}.pack({1}, client._utils.transport)", type_to_packer(arg.type), arg.name)
-                        with BLOCK("catch (Exception ex)"):
-                            STMT("client._utils.CancelCall()")
-                            STMT("throw ex")
-                    STMT("client._utils.EndCall()")
-                    if func.type == compiler.t_void:
-                        STMT("client._utils.GetReply(seq)")
-                    else:
-                        STMT("return ({0})client._utils.GetReply(seq)", type_to_cs(func.type, proxy = True))
+                    with BLOCK("lock(this)"):
+                        if is_complex_type(func.type) or func.type == compiler.t_heteromap:
+                            STMT("int seq = client._utils.BeginCall({0}, client.{1})", 
+                                func.id, type_to_packer(func.type))
+                        else:
+                            STMT("int seq = client._utils.BeginCall({0}, {1})", func.id, 
+                                type_to_packer(func.type))
+                        if func.args:
+                            with BLOCK("try"):
+                                for arg in func.args:
+                                    if is_complex_type(arg.type) or arg.type is compiler.t_heteromap:
+                                        STMT("client.{0}.pack({1}, client._utils.transport)", type_to_packer(arg.type), arg.name)
+                                    else:
+                                        STMT("{0}.pack({1}, client._utils.transport)", type_to_packer(arg.type), arg.name)
+                            with BLOCK("catch (Exception ex)"):
+                                STMT("client._utils.CancelCall()")
+                                STMT("throw ex")
+                        STMT("client._utils.EndCall()")
+                        if func.type == compiler.t_void:
+                            STMT("client._utils.GetReply(seq)")
+                        else:
+                            STMT("return ({0})client._utils.GetReply(seq)", type_to_cs(func.type, proxy = True))
                 SEP()
         SEP()
         STMT("internal readonly _Functions _funcs")

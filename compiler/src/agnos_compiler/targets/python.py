@@ -19,7 +19,7 @@
 ##############################################################################
 from .base import TargetBase
 from .. import compiler
-from ..compiler import is_complex_type
+from ..compiler import is_complex_type, IDLError
 
 
 def type_to_packer(t):
@@ -97,6 +97,7 @@ class PythonTarget(TargetBase):
             STMT("from agnos import packers")
             STMT("from agnos import utils")
             STMT("from functools import partial")
+            STMT("import threading")
             SEP()
             
             STMT("AGNOS_TOOLCHAIN_VERSION = '{0}'", compiler.AGNOS_TOOLCHAIN_VERSION)
@@ -576,18 +577,20 @@ class PythonTarget(TargetBase):
         with BLOCK("class Functions(object)"):
             with BLOCK("def __init__(self, utils)"):
                 STMT("self.utils = utils")
+                STMT("self.lock = threading.Lock()")
             for func in service.funcs.values():
                 args = ", ".join(arg.name for arg in func.args)
                 with BLOCK("def sync_{0}(_self, {1})", func.id, args):
-                    with BLOCK("with _self.utils.invocation({0}, {1}) as seq", 
-                            func.id, type_to_packer(func.type)):
-                        if not func.args:
-                            STMT("pass")
-                        else:
-                            for arg in func.args:
-                                STMT("{0}.pack({1}, _self.utils.transport)", 
-                                    type_to_packer(arg.type), arg.name)
-                    STMT("return _self.utils.get_reply(seq)")
+                    with BLOCK("with self.lock"):
+                        with BLOCK("with _self.utils.invocation({0}, {1}) as seq", 
+                                func.id, type_to_packer(func.type)):
+                            if not func.args:
+                                STMT("pass")
+                            else:
+                                for arg in func.args:
+                                    STMT("{0}.pack({1}, _self.utils.transport)", 
+                                        type_to_packer(arg.type), arg.name)
+                        STMT("return _self.utils.get_reply(seq)")
         SEP()
         STMT("self._funcs = Functions(self._utils)")
         SEP()
