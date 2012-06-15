@@ -1,2 +1,3 @@
 @echo off
-python ./agnosc %*
+cd /d %~dp0
+python agnosc %*
