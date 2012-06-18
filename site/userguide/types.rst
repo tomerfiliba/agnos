@@ -28,7 +28,7 @@ Simple Types
 * ``int32`` or ``int`` -- signed integer, 32 bits wide (-2^31..2^31-1).
 * ``int64`` -- signed integer, 64 bits wide (-2^63..2^63-1).
 * ``float`` -- 64-bit floating point number (usually called ``double``).
-* ``datetime`` -- a point in time, in microsecond resolution. It represents the 
+* ``date`` -- a point in time, in microsecond resolution. It represents the 
   number of microseconds from 00:00:00, January 1st, year 0 in UTC; however, its
   actual range is limited by the implementation:
   
