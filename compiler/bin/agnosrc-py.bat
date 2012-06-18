@@ -1,2 +1,2 @@
 @echo off
-python agnosrc-py %*
+python %~dp0\agnosrc-py %*
