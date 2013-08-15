@@ -20,7 +20,15 @@
 
 #include "protocol.hpp"
 #include <boost/interprocess/detail/atomic.hpp>
+#include <boost/detail/workaround.hpp>
 
+#include <boost/version.hpp>
+
+#if BOOST_WORKAROUND(BOOST_VERSION, >= 104800)
+namespace bid = boost::interprocess::ipcdetail;
+#else
+namespace bid = boost::interprocess::detail;
+#endif
 
 namespace agnos
 {
@@ -278,7 +286,7 @@ namespace agnos
 
 		int32_t ClientUtils::get_seq()
 		{
-			return boost::interprocess::detail::atomic_inc32((boost::uint32_t*)&_seq);
+			return bid::atomic_inc32((boost::uint32_t*)&_seq);
 		}
 
 		shared_ptr<PackedException> ClientUtils::load_packed_exception()

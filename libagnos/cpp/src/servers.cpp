@@ -107,7 +107,7 @@ namespace agnos
 
 		void LibraryModeServer::serve()
 		{
-			shared_ptr<SocketTransportFactory> factory = boost::shared_static_cast<SocketTransportFactory>(transport_factory);
+			shared_ptr<SocketTransportFactory> factory = boost::dynamic_pointer_cast<SocketTransportFactory>(transport_factory);
 			std::cout << "AGNOS" << std::endl;
 			std::cout << factory->acceptor->local_endpoint().address().to_string() << std::endl;
 			std::cout << factory->acceptor->local_endpoint().port() << std::endl;
