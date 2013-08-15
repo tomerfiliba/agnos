@@ -112,7 +112,7 @@ namespace agnos
 			std::cout << factory->acceptor->local_endpoint().address().to_string() << std::endl;
 			std::cout << factory->acceptor->local_endpoint().port() << std::endl;
 			std::cout.flush();
-#ifdef _MSC_VER
+#ifdef _WIN32
 			fclose(stdout);
 #else
 			::fclose(::stdout);
