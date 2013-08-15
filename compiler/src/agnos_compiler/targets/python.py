@@ -581,7 +581,7 @@ class PythonTarget(TargetBase):
             for func in service.funcs.values():
                 args = ", ".join(arg.name for arg in func.args)
                 with BLOCK("def sync_{0}(_self, {1})", func.id, args):
-                    with BLOCK("with self.lock"):
+                    with BLOCK("with _self.lock"):
                         with BLOCK("with _self.utils.invocation({0}, {1}) as seq", 
                                 func.id, type_to_packer(func.type)):
                             if not func.args:
