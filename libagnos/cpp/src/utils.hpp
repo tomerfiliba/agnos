@@ -25,6 +25,7 @@
 #include <iterator>
 #include "utf8.h"
 
+#include <boost/asio.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include "objtypes.hpp"
